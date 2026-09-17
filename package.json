@@ -1,0 +1,32 @@
+{
+  "name": "ai-sandbox-engine",
+  "version": "0.1.0",
+  "description": "AI Sandbox Engine — modular, provider-agnostic sandbox platform for interactive AI-driven scenarios (Master Spec v2.2).",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "start": "vite --open",
+    "build": "tsc -b && vite build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "smoke:ollama": "tsx scripts/smoke-test-ollama.ts"
+  },
+  "dependencies": {
+    "zod": "^3.23.8",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "fake-indexeddb": "^6.0.0",
+    "fast-check": "^3.19.0",
+    "typescript": "^5.5.4",
+    "tsx": "^4.19.1",
+    "vite": "^6.4.3",
+    "vitest": "^3.2.6"
+  }
+}

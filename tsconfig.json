@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "declaration": true,
+    "outDir": "dist",
+    "baseUrl": ".",
+    "paths": {
+      "@session/*": ["src/session/*"],
+      "@state/*": ["src/state/*"],
+      "@context/*": ["src/context/*"],
+      "@memory/*": ["src/memory/*"],
+      "@layers/*": ["src/layers/*"],
+      "@llm/*": ["src/llm/*"],
+      "@events/*": ["src/events/*"],
+      "@persistence/*": ["src/persistence/*"],
+      "@library/*": ["src/library/*"],
+      "@crypto/*": ["src/crypto/*"],
+      "@diagnostics/*": ["src/diagnostics/*"],
+      "@ui/*": ["src/ui/*"]
+    }
+  },
+  "include": ["src", "tests"]
+}
