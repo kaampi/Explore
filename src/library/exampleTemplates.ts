@@ -21,28 +21,28 @@ export const EXAMPLE_REALM_DUNBAAR_ID = FALLBACK_REALM_ID;
 
 /** Always-on map for the Aurora example. These rooms exist; access is still a favor. */
 export const EXAMPLE_AURORA_NOTE =
-  "Adjoining the bar: toilets off the hall, Emma's room behind the staff door, a guest room upstairs, and a cellar door behind the bar.";
+  "Adjoining the archive: a washroom off the hall, Emma's room behind the staff door, a guest room upstairs, and a locked cellar behind the counter.";
 
 /** Compact Pass 1 copy for the Aurora example. The long intro stays on the picture. */
 export const EXAMPLE_AURORA_BRIEF =
-  "The Aurora Room is a hidden, atmospheric jazz bar with subdued lighting, weathered wooden surfaces and dark doors lurking in the shadows. Behind the bar, the bartender goes about his business unhurriedly – a quiet haven for those who simply want to be left in peace without having to explain themselves.";
+  "The Aurora Room is a hidden harbor archive with subdued lighting, weathered wooden shelves and dark doors lurking in the shadows. Behind the counter, the keeper goes about her business unhurriedly – a quiet haven for those who simply want to be left in peace without having to explain themselves.";
 
 /** Keyword-gated lore for the Aurora example. Quiet until chat names the room. */
 export const EXAMPLE_CELLAR_LORE = {
   content:
-    "A locked cellar door sits behind the bar. The better bottles are stored there. Staff do not mention it unless asked.",
+    "A locked cellar door sits behind the counter. Old manifests and a strongbox are stored there. Staff do not mention it unless asked.",
   keywords: ["cellar", "cellar door", "wine cellar", "källare", "källaren"]
 };
 
 export const EXAMPLE_EMMA_ROOM_LORE = {
   content:
-    "Emma's room is behind the staff door. A narrow bed, a chair, curtains drawn. She does not invite people in lightly.",
-  brief: "A narrow bed, a chair, curtains drawn. They are already in this room.",
+    "Emma's room is behind the staff door. A narrow bed, a writing desk, charts pinned to the wall. She keeps this room to herself.",
+  brief: "A narrow bed, a writing desk, charts pinned to the wall. They are already in this room.",
   keywords: ["emma's room", "emmas room", "staff room", "her room", "your room", "my room"]
 };
 
 export const EXAMPLE_TOILETS_LORE = {
-  content: "Toilets off a short hall from the bar. One lock, one bulb, nothing fancy.",
+  content: "A washroom off a short hall from the archive. One lock, one bulb, nothing fancy.",
   keywords: ["toilet", "toilets", "bathroom", "wc", "loo", "toalett"]
 };
 
@@ -150,11 +150,11 @@ export function exampleCharacterTemplate(): CharacterTemplate {
     id: EXAMPLE_CHARACTER_ID,
     name: "Emma",
     personality:
-      "Dry-witted, observant, and slow to open up. Speaks in short, precise sentences and rarely volunteers information about herself. When she already trusts someone, she can be physically warm — she is not professionally distant with a person she wants.",
+      "Dry-witted, meticulous, and slow to trust strangers with what she keeps in the ledgers. Speaks in short, precise sentences and rarely volunteers information about herself. When she decides someone is trustworthy, the reserve cracks — a real hug, not just a nod across the counter.",
     mood: "reserved",
     pronoun: "she",
     approximateAge: 28,
-    appearance: "Dark hair, sharp features, hands used to glassware.",
+    appearance: "Dark hair, sharp features, ink-stained fingers.",
     position: "",
     scenario: "",
     source: "example",
@@ -182,10 +182,10 @@ export function examplePlaceTemplate(): PlaceTemplate {
   return PlaceTemplateSchema.parse({
     id: EXAMPLE_PLACE_ID,
     realmId: EXAMPLE_REALM_DUNBAAR_ID,
-    name: "The Aurora Room — a quiet late-night bar",
-    lighting: "low, amber",
-    noise: "a soft jazz record",
-    music: true,
+    name: "The Aurora Room — a quiet harbor archive",
+    lighting: "low, oil-lamp amber",
+    noise: "creaking timbers and distant gulls",
+    music: false,
     note: EXAMPLE_AURORA_NOTE,
     brief: EXAMPLE_AURORA_BRIEF,
     rooms: EXAMPLE_AURORA_ROOMS,
@@ -285,7 +285,7 @@ export function exampleFantasyRuleset(): RulesetTemplate {
 export function exampleClosenessRuleset(): RulesetTemplate {
   return RulesetTemplateSchema.parse({
     id: EXAMPLE_RULESET_CLOSENESS_ID,
-    name: "Närhet",
+    name: "Förtroende",
     attributes: [
       {
         id: "safety",
@@ -299,25 +299,27 @@ export function exampleClosenessRuleset(): RulesetTemplate {
         maxShift: 10
       },
       {
-        id: "jealousy",
-        name: "Svartsjuka",
+        id: "suspicion",
+        name: "Misstänksamhet",
         kind: "number",
         min: 0,
         max: 100,
-        highMeaning: "{{char}} reacts to rivals.",
-        lowMeaning: "{{char}} does not react to rivals.",
-        description: "How possessive {{char}} is. High: {{char}} reacts to rivals. Low: {{char}} does not.",
+        highMeaning: "{{char}} watches the player closely and holds things back.",
+        lowMeaning: "{{char}} answers questions freely.",
+        description:
+          "How suspicious {{char}} is of the player's motives. High: {{char}} holds back. Low: {{char}} answers freely.",
         maxShift: 15
       },
       {
-        id: "desire",
-        name: "Längtan",
+        id: "warmth",
+        name: "Värme",
         kind: "number",
         min: 0,
         max: 100,
-        highMeaning: "{{char}} wants closeness this beat.",
-        lowMeaning: "{{char}} is not ready.",
-        description: "How much {{char}} wants the player. High: {{char}} wants closeness this beat. Low: {{char}} is not ready.",
+        highMeaning: "{{char}} is comfortable with a hand on the shoulder or a hug from the player.",
+        lowMeaning: "{{char}} keeps physical distance.",
+        description:
+          "How comfortable {{char}} is with physical warmth from the player — a hand on the shoulder, a hug. High: comfortable. Low: keeps distance.",
         maxShift: 15,
         role: "desire"
       }

@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-export const ORIENTATION_PRESET = ["Hetero", "Homo", "Bi"];
+export const TRAIT_PRESET_EXAMPLE = ["Calm", "Wary", "Bold"];
 
 function commitLabel(raw: string, existing: string[]): string | undefined {
   const label = raw.trim();
@@ -68,7 +68,7 @@ export function PickChips({
   onPick,
   onAdd,
   labelFor,
-  addPlaceholder = "Asexual…",
+  addPlaceholder = "Add a choice…",
   ariaLabel
 }: {
   choices: string[];
@@ -110,7 +110,7 @@ export function PickChips({
 export function EditChips({
   items,
   onChange,
-  addPlaceholder = "Asexual…",
+  addPlaceholder = "Add a choice…",
   preset,
   presetLabel
 }: {

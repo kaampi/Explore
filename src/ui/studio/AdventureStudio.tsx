@@ -336,9 +336,9 @@ export function AdventureStudio({
     setCast([
       {
         libraryId: emma.id,
-        position: "behind the bar",
+        position: "behind the counter",
         mood: emma.mood || "reserved",
-        clothing: "a bartender's apron over indoor clothes",
+        clothing: "a keeper's coat over indoor clothes",
         holding: "",
         stats: {},
         trust: "20",
@@ -564,7 +564,7 @@ export function AdventureStudio({
                     <input
                       value={pick.clothing}
                       onChange={(e) => patchCast(pick.libraryId, { clothing: e.target.value })}
-                      placeholder="a winter coat, a towel…"
+                      placeholder="a winter coat, a lantern…"
                     />
                   </label>
                   <label className="setup-field">
@@ -593,7 +593,6 @@ export function AdventureStudio({
                             ariaLabel={def.name}
                             choices={picks}
                             value={current || undefined}
-                            addPlaceholder="Asexual…"
                             onPick={(choice) =>
                               patchStat(pick.libraryId, def.id, current === choice ? "" : choice)
                             }

@@ -1022,7 +1022,7 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
               className="setup-field__story"
               value={draft.brief}
               onChange={(e) => setDraft({ ...draft, brief: e.target.value })}
-              placeholder="The Aurora Room is a hidden, atmospheric jazz bar…"
+              placeholder="The Aurora Room is a hidden harbor archive…"
             />
             </FormSection>
             {notice && <p className="setup-notice">{notice}</p>}

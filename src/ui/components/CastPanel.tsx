@@ -636,7 +636,7 @@ export function CastPanel() {
                 className="setup-field__story"
                 value={session.handoff ?? ""}
                 onChange={(e) => setHandoff(e.target.value)}
-                placeholder="He asked to sleep. No sex."
+                placeholder="He asked to sleep. Nothing else happened."
               />
               <p className="panel-heading" style={{ marginTop: 22 }}>
                 For the next scene

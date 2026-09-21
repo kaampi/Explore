@@ -5,7 +5,7 @@ import { exampleRulesetTemplates, mergeWithExamples } from "@library/exampleTemp
 import { withOriginalTimestamps } from "@library/fromForm";
 import { slugifyCharacterId } from "@session/createSession";
 import type { AttributeDef } from "@state/StateSchema";
-import { EditChips, ORIENTATION_PRESET } from "./ChoiceChips";
+import { EditChips, TRAIT_PRESET_EXAMPLE } from "./ChoiceChips";
 import { FormSection } from "./FormSection";
 import { StudioList } from "./StudioList";
 import { SheetNameField } from "./SheetNameField";
@@ -295,7 +295,7 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
                 </button>
               }
               lede={
-                "Name the field, then write high and low. Those sentences are what the model sees — Boldness is not a built-in rule. Mid is optional. Min/max stay on this field (fantasy 1–18, meters 0–100). Move / beat is how far Pass 2 may shift the number (0 = Styrka stays; 15 ≈ a kiss raising Arousal; 3 = a nudge). Closeness signal (at most one) is the field whose live band feeds a kiss/hug when asked. Write for any NPC: {{char}} is their given name, {{they}} / {{them}} / {{their}} / {{themselves}} follow that card's pronoun. Prefer {{char}} as the subject ({{char}} starts…). Do not write She — it will be wrong for a he."
+                "Name the field, then write high and low. Those sentences are what the model sees — Boldness is not a built-in rule. Mid is optional. Min/max stay on this field (fantasy 1–18, meters 0–100). Move / beat is how far Pass 2 may shift the number (0 = Styrka stays; 15 ≈ a kiss raising Warmth; 3 = a nudge). Closeness signal (at most one) is the field whose live band feeds a kiss/hug when asked. Write for any NPC: {{char}} is their given name, {{they}} / {{them}} / {{their}} / {{themselves}} follow that card's pronoun. Prefer {{char}} as the subject ({{char}} starts…). Do not write She — it will be wrong for a he."
               }
             >
             {draft.attributes.map((row, index) => (
@@ -342,7 +342,7 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
                           )
                         })
                       }
-                      placeholder="Honor the live value only. Hetero: …"
+                      placeholder="Honor the live value only. Loyal: …"
                     />
                   </label>
                 ) : (
@@ -374,7 +374,7 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
                             )
                           })
                         }
-                        placeholder="{{char}} does not start intimacy…"
+                        placeholder="{{char}} hangs back, waits for the player to lead…"
                       />
                     </label>
                     <label className="setup-field">
@@ -501,8 +501,7 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
                       Choices <span className="setup-optional">Adventure picks</span>
                       <EditChips
                         items={row.options}
-                        preset={ORIENTATION_PRESET}
-                        addPlaceholder="Asexual…"
+                        preset={TRAIT_PRESET_EXAMPLE}
                         onChange={(options) =>
                           setDraft({
                             ...draft,

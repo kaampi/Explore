@@ -297,11 +297,11 @@ export function CampaignStudio({
     setHandoffDraft("");
   }
 
-  async function loadBarExample() {
+  async function loadExampleCampaign() {
     const emma = visibleCharacters.find((item) => item.id === EXAMPLE_CHARACTER_ID) ?? exampleCharacterTemplate();
     const built = newCampaignTemplate({
       name: "The Aurora Room",
-      playerIntro: "A quiet late-night bar. Stay as long as you like.",
+      playerIntro: "A quiet harbor archive, kept long after hours. Stay as long as you like.",
       rulesetId: EXAMPLE_RULESET_CLOSENESS_ID,
       realmId: EXAMPLE_REALM_DUNBAAR_ID,
       people: [{ characterId: emma.id, stats: {} }],
@@ -313,8 +313,8 @@ export function CampaignStudio({
           people: [
             {
               ...emptyCast(emma.id, emma.mood || "reserved"),
-              position: "behind the bar",
-              clothing: "a bartender's apron over indoor clothes"
+              position: "behind the counter",
+              clothing: "a keeper's coat over indoor clothes"
             }
           ]
         }
@@ -543,8 +543,8 @@ export function CampaignStudio({
             <button type="button" className="setup-start" onClick={createNew}>
               New campaign
             </button>
-            <button type="button" className="setup-text-btn" onClick={() => void loadBarExample()}>
-              Load the bar example
+            <button type="button" className="setup-text-btn" onClick={() => void loadExampleCampaign()}>
+              Load the example campaign
             </button>
             <button type="button" className="setup-text-btn" onClick={onOneOff}>
               One-off scene
@@ -915,7 +915,6 @@ export function CampaignStudio({
                             ariaLabel={def.name}
                             choices={picks}
                             {...(current ? { value: current } : {})}
-                            addPlaceholder="Asexual…"
                             onPick={(choice) => patchYouStat(def.id, current === choice ? "" : choice)}
                             onAdd={(label) => patchYouStat(def.id, label)}
                           />
@@ -1038,7 +1037,6 @@ export function CampaignStudio({
                                 ariaLabel={def.name}
                                 choices={picks}
                                 {...(current ? { value: current } : {})}
-                                addPlaceholder="Asexual…"
                                 onPick={(choice) =>
                                   patchStat(member.characterId, def.id, current === choice ? "" : choice)
                                 }
@@ -1148,7 +1146,7 @@ export function CampaignStudio({
                     ...(text.trim() ? { handoff: text.trim() } : {})
                   });
                 }}
-                placeholder="He asked to sleep. No sex."
+                placeholder="He asked to sleep. Nothing else happened."
               />
             </FormSection>
             {draft.scenes.map((scene) => (

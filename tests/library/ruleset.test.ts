@@ -45,9 +45,9 @@ describe("ruleset templates", () => {
     expect(set.attributes.some((a) => a.role === "desire")).toBe(false);
   });
 
-  it("marks Längtan as the closeness signal on the Närhet example", () => {
+  it("marks Värme as the closeness signal on the Förtroende example", () => {
     const set = exampleClosenessRuleset();
-    expect(set.attributes.find((a) => a.id === "desire")?.role).toBe("desire");
+    expect(set.attributes.find((a) => a.id === "warmth")?.role).toBe("desire");
     expect(set.attributes.filter((a) => a.role === "desire")).toHaveLength(1);
   });
 
