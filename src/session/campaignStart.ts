@@ -146,7 +146,10 @@ export function setupFromCampaignScene(args: {
     .map((trigger) => ({
       content: trigger.content.trim(),
       keywords: trigger.keywords.map((word) => word.trim()).filter(Boolean),
-      trigger: trigger.when
+      trigger: trigger.when,
+      requiresFlags: trigger.requiresFlags.map((flag) => flag.trim()).filter(Boolean),
+      requiresAbsentFlags: trigger.requiresAbsentFlags.map((flag) => flag.trim()).filter(Boolean),
+      setsFlags: trigger.setsFlags.map((flag) => flag.trim()).filter(Boolean)
     }))
     .filter((item) => item.content && item.keywords.length > 0);
 

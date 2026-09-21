@@ -190,6 +190,64 @@ describe("sessionFromCampaignScene", () => {
     expect(result.session.player.position.value).toBe(place.name);
   });
 
+  it("carries a Trigger's requiresFlags / requiresAbsentFlags / setsFlags onto its once-beat layer", () => {
+    const place = examplePlaceTemplate();
+    const emma = exampleCharacterTemplate();
+    const campaign = newCampaignTemplate({
+      name: "The Aurora Room",
+      realmId: place.realmId,
+      people: [{ characterId: emma.id, stats: {} }],
+      scenes: [
+        {
+          ...emptyCampaignScene(),
+          placeId: place.id,
+          people: [
+            {
+              characterId: emma.id,
+              position: "behind the bar",
+              mood: "reserved",
+              clothing: "",
+              holding: "",
+              trust: "20",
+              familiarity: "10",
+              tension: "5"
+            }
+          ],
+          triggers: [
+            {
+              id: "brooch-dream",
+              content: "The fallen comrade and the old woman: Emma should have the brooch.",
+              keywords: ["asleep"],
+              when: "return_to_bar",
+              requiresFlags: ["brooch_shown"],
+              requiresAbsentFlags: ["brooch_given"],
+              setsFlags: ["had_the_dream"]
+            }
+          ]
+        }
+      ]
+    });
+    const result = sessionFromCampaignScene(
+      {
+        campaign,
+        scene: campaign.scenes[0]!,
+        places: [place],
+        realms: [exampleRealmDunbaar()],
+        characters: [emma],
+        objects: [],
+        voices: [],
+        rulesets: []
+      },
+      "camp-2"
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const once = result.session.layers.find((layer) => layer.once);
+    expect(once?.requiresFlags).toEqual(["brooch_shown"]);
+    expect(once?.requiresAbsentFlags).toEqual(["brooch_given"]);
+    expect(once?.setsFlags).toEqual(["had_the_dream"]);
+  });
+
   it("copies the campaign player sheet onto the session", () => {
     const place = examplePlaceTemplate();
     const emma = exampleCharacterTemplate();

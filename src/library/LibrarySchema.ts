@@ -184,9 +184,44 @@ export const CampaignTriggerSchema = z.object({
   content: z.string().min(1),
   /** Already in play: said in chat ever, or in someone's hands. */
   keywords: z.array(z.string().min(1)).default(() => []),
-  when: TriggerWhenSchema.default("return_to_bar")
+  when: TriggerWhenSchema.default("return_to_bar"),
+  /** Story flags this beat requires present — on top of `when`/`keywords`. */
+  requiresFlags: z.array(z.string().min(1)).default(() => []),
+  /** Story flags that must be ABSENT — a beat that stops firing once something else happened. */
+  requiresAbsentFlags: z.array(z.string().min(1)).default(() => []),
+  /** Story flags this beat sets the turn it fires. */
+  setsFlags: z.array(z.string().min(1)).default(() => [])
 });
 export type CampaignTrigger = z.infer<typeof CampaignTriggerSchema>;
+
+/**
+ * One connection in the Storyboard: this scene leads to that one. Purely
+ * authoring-time map data — it does not by itself make Start auto-chain
+ * from one scene into the next (Scenes are still separate nights); it is
+ * what a future "which scenes are open" view reads, and what the
+ * Storyboard canvas draws as an arrow between two scene cards.
+ */
+export const StoryboardLinkSchema = z.object({
+  id: z.string().min(1),
+  fromSceneId: z.string().min(1),
+  toSceneId: z.string().min(1),
+  /** Story flags that must be present for this path to be open. */
+  requiresFlags: z.array(z.string().min(1)).default(() => []),
+  /** Story flags that must be absent — the case a plain requirement can't express. */
+  requiresAbsentFlags: z.array(z.string().min(1)).default(() => []),
+  /** Story flags this path sets when taken. */
+  setsFlags: z.array(z.string().min(1)).default(() => []),
+  /** Short chip text on the connector, e.g. "spelaren väljer". */
+  label: z.string().default("")
+});
+export type StoryboardLink = z.infer<typeof StoryboardLinkSchema>;
+
+/** Canvas placement for a scene card on the Storyboard. Missing = not yet placed. */
+export const StoryboardPositionSchema = z.object({
+  x: z.number(),
+  y: z.number()
+});
+export type StoryboardPosition = z.infer<typeof StoryboardPositionSchema>;
 
 export const CampaignMemberSchema = z.object({
   characterId: z.string().min(1),
@@ -299,7 +334,9 @@ export const CampaignSceneSchema = z.preprocess(
     objectIds: z.array(z.string()).default([]),
     triggers: z.array(CampaignTriggerSchema).default([]),
     /** Pre-defined Replies: each entry is Triggered by + up to three buttons. */
-    whatNowSets: z.array(WhatNowSetSchema).default(() => [])
+    whatNowSets: z.array(WhatNowSetSchema).default(() => []),
+    /** Card position on the Storyboard canvas. Missing = not yet placed. */
+    position: StoryboardPositionSchema.optional()
   })
 );
 export type CampaignScene = z.infer<typeof CampaignSceneSchema>;
@@ -327,6 +364,8 @@ export const CampaignTemplateSchema = z.object({
   player: CampaignPlayerSchema.optional(),
   objectIds: z.array(z.string()).default([]),
   scenes: z.array(CampaignSceneSchema).default([]),
+  /** The Storyboard: how this campaign's scenes connect. */
+  sceneLinks: z.array(StoryboardLinkSchema).default(() => []),
   /**
    * Character-shelf Look for. Empty = All. `__unsorted__` = no tags.
    * Does not change who already belongs. Not used on Objects.

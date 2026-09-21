@@ -130,6 +130,11 @@ export interface SceneSetup {
     content: string;
     keywords: string[];
     trigger?: string;
+    /** Story flags this beat also requires present/absent, on top of `trigger`/`keywords`. */
+    requiresFlags?: string[];
+    requiresAbsentFlags?: string[];
+    /** Story flags this beat sets the turn it fires. */
+    setsFlags?: string[];
   }>;
   /** Pre-defined Replies groups. Each has Triggered by + buttons. */
   whatNowSets?: Array<{
@@ -326,6 +331,9 @@ export function createSessionFromSetup(setup: SceneSetup, sessionId: string): Se
     const content = item.content.trim();
     const keywords = (item.keywords ?? []).map((word) => word.trim()).filter(Boolean);
     if (!content || keywords.length === 0) return;
+    const requiresFlags = (item.requiresFlags ?? []).map((flag) => flag.trim()).filter(Boolean);
+    const requiresAbsentFlags = (item.requiresAbsentFlags ?? []).map((flag) => flag.trim()).filter(Boolean);
+    const setsFlags = (item.setsFlags ?? []).map((flag) => flag.trim()).filter(Boolean);
     layers.push({
       id: `layer-once-${index + 1}`,
       type: "state_trigger",
@@ -335,7 +343,10 @@ export function createSessionFromSetup(setup: SceneSetup, sessionId: string): Se
       trigger: item.trigger?.trim() || "return_to_bar",
       once: true,
       active: true,
-      aiGenerated: false
+      aiGenerated: false,
+      ...(requiresFlags.length > 0 ? { requiresFlags } : {}),
+      ...(requiresAbsentFlags.length > 0 ? { requiresAbsentFlags } : {}),
+      ...(setsFlags.length > 0 ? { setsFlags } : {})
     });
   });
 
