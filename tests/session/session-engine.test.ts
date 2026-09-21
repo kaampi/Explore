@@ -1028,3 +1028,58 @@ describe("SessionEngine + AI-Generated Layer proposal — integration", () => {
     expect(stateEngine.getSession().layers[0]?.content).toContain("call 2");
   });
 });
+
+describe("SessionEngine — once-beat story flags", () => {
+  it("sets a story flag the turn a firing once-beat carries setsFlags", async () => {
+    const session = makeSession();
+    session.layers = [
+      {
+        id: "invite",
+        type: "state_trigger",
+        priority: 0,
+        content: "Emma invites the player upstairs.",
+        trigger: "characters.emma.mood==neutral",
+        once: true,
+        active: true,
+        aiGenerated: false,
+        setsFlags: ["emma_bjod_in"]
+      }
+    ];
+    const eventLog = new EventLog();
+    const stateEngine = new StateEngine(session, eventLog);
+    const llmAdapter = new LLMAdapter({ primary: new MockProvider({ responseChunks: ["Sure, come up."] }) });
+    const sessionEngine = new SessionEngine(stateEngine, llmAdapter, eventLog);
+
+    await sessionEngine.runTurn("turn-1", "emma", "Can I see your room?");
+
+    expect(stateEngine.getSession().storyFlags).toContain("emma_bjod_in");
+    expect(stateEngine.getSession().layers.find((l) => l.id === "invite")?.spent).toBe(true);
+  });
+
+  it("does not set the flag again on a later turn once the once-beat is spent", async () => {
+    const session = makeSession();
+    session.layers = [
+      {
+        id: "invite",
+        type: "state_trigger",
+        priority: 0,
+        content: "Emma invites the player upstairs.",
+        trigger: "characters.emma.mood==neutral",
+        once: true,
+        active: true,
+        aiGenerated: false,
+        setsFlags: ["emma_bjod_in"]
+      }
+    ];
+    const eventLog = new EventLog();
+    const stateEngine = new StateEngine(session, eventLog);
+    const llmAdapter = new LLMAdapter({ primary: new MockProvider({ responseChunks: ["ok"] }) });
+    const sessionEngine = new SessionEngine(stateEngine, llmAdapter, eventLog);
+
+    await sessionEngine.runTurn("turn-1", "emma", "Hej");
+    expect(stateEngine.getSession().storyFlags).toEqual(["emma_bjod_in"]);
+
+    await sessionEngine.runTurn("turn-2", "emma", "Hej igen");
+    expect(stateEngine.getSession().storyFlags).toEqual(["emma_bjod_in"]); // still just the one — no duplicate, no re-set
+  });
+});

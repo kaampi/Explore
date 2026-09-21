@@ -301,6 +301,20 @@ export const LayerSchema = z.object({
   once: z.boolean().optional(),
   /** A spent once-layer never returns. */
   spent: z.boolean().optional(),
+  /**
+   * Story flags this layer requires to be effectively active, on top of
+   * its own trigger/keyword gate. AND'd together; empty/missing = no
+   * requirement. Same story-flag pool as scene links (Storyboard).
+   */
+  requiresFlags: z.array(z.string().min(1)).optional(),
+  /**
+   * Story flags that must be ABSENT — the case a plain `trigger` cannot
+   * express. A dream about a brooch never fires once it was given away:
+   * `requiresAbsentFlags: ["brosch_given"]`.
+   */
+  requiresAbsentFlags: z.array(z.string().min(1)).optional(),
+  /** Story flags this layer sets the turn it fires (paired with `once`). */
+  setsFlags: z.array(z.string().min(1)).optional(),
   active: z.boolean().default(false),
   aiGenerated: z.boolean().default(false)
 });
@@ -473,6 +487,14 @@ export const SessionSchema = z.object({
   whatNowOpen: z.boolean().optional(),
   /** Focal ids whose locked/hidden gate has lifted this play. */
   openedRoomIds: z.array(z.string().min(1)).default([]),
+  /**
+   * Freeform narrative facts a scene, once-beat, or Pre-defined Reply can
+   * set — "the player gave Emma the brooch". A trigger or layer can then
+   * require one present or, just as often, require one absent (the dream
+   * about the brooch never fires once it was given away). Player/system
+   * only, same as party and room state — never a direct AI write.
+   */
+  storyFlags: z.array(z.string().min(1)).default([]),
   /** Character ids the player accepted into the traveling party. Max 3. */
   partyIds: z.array(z.string().min(1)).max(3).default([]),
   /** Party members who stay put until Come. Still in the party. */

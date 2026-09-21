@@ -32,7 +32,8 @@ function makeSession(id: string): Session {
     openedRoomIds: [],
     partyIds: [],
     partyHoldIds: [],
-    partyPendingIds: []
+    partyPendingIds: [],
+    storyFlags: []
   };
 }
 

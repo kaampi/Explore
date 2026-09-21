@@ -577,6 +577,13 @@ export class SessionEngine {
         const spentEvent = this.stateEngine.getEventLog().last();
         if (spentEvent && spentEvent.type === "layer_spent") eventIdsThisTurn.push(spentEvent.id);
       }
+      // Not added to eventIdsThisTurn: like room-opened and party state, a
+      // story flag is a durable world fact, not part of the reversible
+      // dialogue chain — Regenerate replaces the reply, not what already
+      // became true. (reverseEvent() also has no case for it, on purpose.)
+      for (const flag of layer.setsFlags ?? []) {
+        this.stateEngine.setStoryFlag(flag);
+      }
     }
 
     // AI-Generated Layers: opportunistic, best-effort, same

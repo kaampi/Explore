@@ -368,3 +368,65 @@ describe("once beats", () => {
     expect(isEffectivelyActive(session, hunters, { continuation: true })).toBe(true);
   });
 });
+
+describe("story flag gates", () => {
+  it("requiresFlags: stays inactive until the flag is set", () => {
+    const gated = layer({ id: "g1", type: "core", active: true, requiresFlags: ["met_the_stranger"] });
+    expect(isEffectivelyActive(makeSession(), gated)).toBe(false);
+    expect(isEffectivelyActive(makeSession({ storyFlags: ["met_the_stranger"] }), gated)).toBe(true);
+  });
+
+  it("requiresAbsentFlags: the brooch dream never fires once the brooch was given away", () => {
+    const dream = layer({
+      id: "brooch-dream",
+      type: "state_trigger",
+      active: true,
+      once: true,
+      trigger: "player.status==asleep",
+      requiresAbsentFlags: ["brosch_given"],
+      content: "The fallen comrade and the old woman: Emma should have the brooch."
+    });
+    const asleep = (overrides: Partial<Session> = {}) =>
+      makeSession({
+        player: { position: { value: "Emma's room", lock: "unlocked" }, status: { value: "asleep", lock: "unlocked" } },
+        layers: [dream],
+        ...overrides
+      });
+
+    // Kept the brooch: the dream is free to fire.
+    expect(isEffectivelyActive(asleep(), dream)).toBe(true);
+
+    // Gave it to Emma: the exact same trigger no longer fires.
+    expect(isEffectivelyActive(asleep({ storyFlags: ["brosch_given"] }), dream)).toBe(false);
+  });
+
+  it("requiresFlags and requiresAbsentFlags compose with an existing trigger/keyword gate, not replace it", () => {
+    const layerWithBoth = layer({
+      id: "g2",
+      type: "state_trigger",
+      active: false,
+      trigger: "characters.emma.mood==angry",
+      requiresFlags: ["armed"]
+    });
+    // Trigger matches but the flag is missing.
+    expect(isEffectivelyActive(makeSession(), layerWithBoth)).toBe(false);
+    // Flag present but the trigger no longer matches.
+    expect(
+      isEffectivelyActive(
+        makeSession({
+          storyFlags: ["armed"],
+          characters: { emma: { position: { value: "bar", lock: "unlocked" }, mood: { value: "calm", lock: "unlocked" } } }
+        }),
+        layerWithBoth
+      )
+    ).toBe(false);
+    // Both satisfied.
+    expect(isEffectivelyActive(makeSession({ storyFlags: ["armed"] }), layerWithBoth)).toBe(true);
+  });
+
+  it("a flag gate applies even to a spent-checked, otherwise-always-on core layer", () => {
+    const gated = layer({ id: "g3", type: "core", active: true, requiresAbsentFlags: ["curse_lifted"] });
+    expect(isEffectivelyActive(makeSession(), gated)).toBe(true);
+    expect(isEffectivelyActive(makeSession({ storyFlags: ["curse_lifted"] }), gated)).toBe(false);
+  });
+});

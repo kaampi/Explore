@@ -22,6 +22,7 @@ import { attributeRange } from "./traitBands";
 import { clipHandoff } from "./sceneHandoff";
 import { sessionWhatNowSets } from "./whatNowGate";
 import { roomIdForDest, roomIdsNamedInText } from "./roomGate";
+import { nextFlagsAfterClear, nextFlagsAfterSet } from "./storyFlags";
 import { nextPartyAfterLeave, nextPartyAfterPlayerText, nextPendingAfterOffer, nextPendingAfterIds, idsFromOfferValue, canAcceptParty, holdingPartyIds } from "./party";
 import { applyLandmarkTravel, type LandmarkTravelPatch } from "./landmarkTravel";
 
@@ -1049,6 +1050,32 @@ export class StateEngine {
       timestamp: new Date().toISOString(),
       type: "room_opened_changed",
       payload: { roomId: id, opened }
+    });
+  }
+
+  /** Sets a story flag ("brosch_given"). No-op, no event, if already set. */
+  setStoryFlag(flag: string): void {
+    const next = nextFlagsAfterSet(this.session.storyFlags, flag);
+    if (!next) return;
+    this.session.storyFlags = next;
+    this.eventLog.append({
+      turn: this.session.stateVersion,
+      timestamp: new Date().toISOString(),
+      type: "story_flag_set",
+      payload: { flag: flag.trim() }
+    });
+  }
+
+  /** Clears a story flag. No-op, no event, if it was not set. */
+  clearStoryFlag(flag: string): void {
+    const next = nextFlagsAfterClear(this.session.storyFlags, flag);
+    if (!next) return;
+    this.session.storyFlags = next;
+    this.eventLog.append({
+      turn: this.session.stateVersion,
+      timestamp: new Date().toISOString(),
+      type: "story_flag_cleared",
+      payload: { flag: flag.trim() }
     });
   }
 

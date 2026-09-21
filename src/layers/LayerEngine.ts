@@ -2,6 +2,7 @@ import type { Session, Layer } from "@state/StateSchema";
 import { PRIORITY, type ContextBlock } from "@context/ContextBlock";
 import { layerHasKeywordGate, keywordsMatchConversation, tokenKnownInPlay } from "./keywords";
 import { isVenueFloor, sideRoomStage } from "@state/playerDestination";
+import { storyFlagsSatisfied } from "@state/storyFlags";
 
 /**
  * Layer Engine — Master Spec §12-15.
@@ -65,9 +66,13 @@ export function evaluateTrigger(
  *  - state_trigger: persisted `active` OR its trigger currently matches.
  *    A trigger layer with no trigger defined just falls back to its
  *    persisted flag, same as any other layer.
+ *  - requiresFlags / requiresAbsentFlags (any type): a story-flag gate on
+ *    top of the above — never active while unsatisfied, whatever the
+ *    layer's own trigger/keyword state says.
  */
 export function isEffectivelyActive(session: Session, layer: Layer, hints: TriggerHints = {}): boolean {
   if (layer.spent) return false;
+  if (!storyFlagsSatisfied(session, layer.requiresFlags, layer.requiresAbsentFlags)) return false;
   if (layer.once) {
     if (!layer.active) return false;
     if (!layer.trigger && !(layer.keywords?.length)) return false;
