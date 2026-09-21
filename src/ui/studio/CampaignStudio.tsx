@@ -1182,8 +1182,11 @@ export function CampaignStudio({
             <StoryboardCanvas
               scenes={draft.scenes}
               links={draft.sceneLinks}
+              chapters={draft.chapters}
+              campaignName={draft.name}
               onScenesChange={(scenes) => setDraft({ ...draft, scenes })}
               onLinksChange={(sceneLinks) => setDraft({ ...draft, sceneLinks })}
+              onChaptersChange={(chapters) => setDraft({ ...draft, chapters })}
             />
           </section>
         )}

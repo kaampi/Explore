@@ -2903,6 +2903,76 @@ textarea.setup-field__story {
   margin-bottom: 4px;
 }
 
+.storyboard-chapters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.storyboard-chapters__label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+}
+
+.storyboard-chapter-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 6px 3px 10px;
+  background: var(--panel-raised);
+}
+
+.storyboard-chapter-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.storyboard-chapter-chip input {
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 12.5px;
+  width: 110px;
+  padding: 2px 0;
+}
+
+.storyboard-chapter-chip input:focus {
+  outline: none;
+}
+
+.storyboard-chapter-remove {
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 50%;
+}
+
+.storyboard-chapter-remove:hover {
+  background: var(--border-soft);
+  color: var(--text);
+}
+
+.storyboard-card__chapter {
+  width: 100%;
+  font-size: 11px;
+  background: var(--panel);
+  color: var(--text-dim);
+  border: 1px solid var(--border-soft);
+  border-radius: 4px;
+  padding: 2px 4px;
+}
+
 @media (max-width: 720px) {
   .studio-split {
     grid-template-columns: 1fr;

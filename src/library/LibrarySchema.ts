@@ -223,6 +223,17 @@ export const StoryboardPositionSchema = z.object({
 });
 export type StoryboardPosition = z.infer<typeof StoryboardPositionSchema>;
 
+/**
+ * A chapter groups Storyboard scenes for export to the writing tool
+ * (chapter shells: title + brief, no prose — StoryBook AI drafts that).
+ * Authoring-time only, like a link; does not touch play.
+ */
+export const StoryboardChapterSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().default("")
+});
+export type StoryboardChapter = z.infer<typeof StoryboardChapterSchema>;
+
 export const CampaignMemberSchema = z.object({
   characterId: z.string().min(1),
   /** Starting rule-set numbers for this campaign. Where they stand is on the scene. */
@@ -336,7 +347,9 @@ export const CampaignSceneSchema = z.preprocess(
     /** Pre-defined Replies: each entry is Triggered by + up to three buttons. */
     whatNowSets: z.array(WhatNowSetSchema).default(() => []),
     /** Card position on the Storyboard canvas. Missing = not yet placed. */
-    position: StoryboardPositionSchema.optional()
+    position: StoryboardPositionSchema.optional(),
+    /** Which Storyboard chapter this scene is grouped into, if any. */
+    chapterId: z.string().min(1).optional()
   })
 );
 export type CampaignScene = z.infer<typeof CampaignSceneSchema>;
@@ -366,6 +379,8 @@ export const CampaignTemplateSchema = z.object({
   scenes: z.array(CampaignSceneSchema).default([]),
   /** The Storyboard: how this campaign's scenes connect. */
   sceneLinks: z.array(StoryboardLinkSchema).default(() => []),
+  /** Storyboard chapter groups, for chapter-shell export to the writing tool. */
+  chapters: z.array(StoryboardChapterSchema).default(() => []),
   /**
    * Character-shelf Look for. Empty = All. `__unsorted__` = no tags.
    * Does not change who already belongs. Not used on Objects.

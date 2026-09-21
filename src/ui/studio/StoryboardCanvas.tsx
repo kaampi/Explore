@@ -1,10 +1,19 @@
 import { useRef, useState } from "react";
-import type { CampaignScene, StoryboardLink, StoryboardPosition } from "@library/LibrarySchema";
+import type { CampaignScene, StoryboardChapter, StoryboardLink, StoryboardPosition } from "@library/LibrarySchema";
 import { formatKeywordList, parseKeywordList } from "@layers/keywords";
 import { linksFromScene, linksToScene, removeSceneLink, setScenePosition, upsertSceneLink } from "@library/storyboardLinks";
+import {
+  buildChapterExport,
+  chapterExportFilename,
+  newChapter,
+  setSceneChapter,
+  unassignChapter
+} from "@library/storyboardChapters";
+import { downloadJson } from "./studioShared";
 
 /**
- * Storyboard — a free-canvas map of how this campaign's scenes connect.
+ * Storyboard — a free-canvas map of how this campaign's scenes connect,
+ * and which of them make up a chapter for export to the writing tool.
  * Drag a card to move it; drag from its port to another card to link
  * them; click a line to edit what it requires and sets. Purely
  * authoring-time (§ project_spec) — Start still plays one scene at a
@@ -12,13 +21,18 @@ import { linksFromScene, linksToScene, removeSceneLink, setScenePosition, upsert
  */
 
 const CARD_W = 200;
-const CARD_H = 96;
+const CARD_H = 124;
+const CHAPTER_COLORS = ["#4fb0a5", "#6fa8dc", "#b08bc9", "#c98a3b", "#d9707a", "#8bc98a"];
+
+function chapterColor(index: number): string {
+  return CHAPTER_COLORS[index % CHAPTER_COLORS.length]!;
+}
 
 function defaultPosition(index: number): StoryboardPosition {
   const perRow = 4;
   const col = index % perRow;
   const row = Math.floor(index / perRow);
-  return { x: 40 + col * 240, y: 40 + row * 150 };
+  return { x: 40 + col * 240, y: 40 + row * 180 };
 }
 
 function outPort(pos: StoryboardPosition): StoryboardPosition {
@@ -37,13 +51,19 @@ function bezierPath(a: StoryboardPosition, b: StoryboardPosition): string {
 export function StoryboardCanvas({
   scenes,
   links,
+  chapters,
+  campaignName,
   onScenesChange,
-  onLinksChange
+  onLinksChange,
+  onChaptersChange
 }: {
   scenes: CampaignScene[];
   links: StoryboardLink[];
+  chapters: StoryboardChapter[];
+  campaignName: string;
   onScenesChange: (scenes: CampaignScene[]) => void;
   onLinksChange: (links: StoryboardLink[]) => void;
+  onChaptersChange: (chapters: StoryboardChapter[]) => void;
 }) {
   const boardRef = useRef<HTMLDivElement>(null);
   const dragOffset = useRef({ x: 0, y: 0 });
@@ -145,6 +165,49 @@ export function StoryboardCanvas({
         Drag a card to move it. Drag from the dot on its right edge onto another card to connect them. Click a line
         to set what it requires or sets.
       </p>
+
+      <div className="storyboard-chapters">
+        <span className="storyboard-chapters__label">Chapters</span>
+        {chapters.map((chapter, index) => (
+          <div key={chapter.id} className="storyboard-chapter-chip">
+            <span className="storyboard-chapter-dot" style={{ background: chapterColor(index) }} />
+            <input
+              type="text"
+              value={chapter.title}
+              onChange={(e) =>
+                onChaptersChange(chapters.map((c) => (c.id === chapter.id ? { ...c, title: e.target.value } : c)))
+              }
+              placeholder={`Chapter ${index + 1}`}
+            />
+            <button
+              type="button"
+              className="storyboard-chapter-remove"
+              aria-label={`Remove ${chapter.title.trim() || `Chapter ${index + 1}`}`}
+              onClick={() => {
+                onChaptersChange(chapters.filter((c) => c.id !== chapter.id));
+                onScenesChange(unassignChapter(scenes, chapter.id));
+              }}
+            >
+              &times;
+            </button>
+          </div>
+        ))}
+        <button type="button" className="setup-text-btn" onClick={() => onChaptersChange([...chapters, newChapter()])}>
+          + Chapter
+        </button>
+        <button
+          type="button"
+          className="setup-text-btn"
+          disabled={chapters.length === 0}
+          onClick={() => {
+            const payload = buildChapterExport({ name: campaignName, scenes, chapters });
+            downloadJson(chapterExportFilename(campaignName), payload);
+          }}
+        >
+          Export chapters
+        </button>
+      </div>
+
       <div
         ref={boardRef}
         className="storyboard-board"
@@ -192,18 +255,40 @@ export function StoryboardCanvas({
           ) : null}
         </svg>
 
-        {positioned.map(({ scene, pos }) => (
+        {positioned.map(({ scene, pos }) => {
+          const chapterIndex = scene.chapterId ? chapters.findIndex((c) => c.id === scene.chapterId) : -1;
+          const color = chapterIndex >= 0 ? chapterColor(chapterIndex) : undefined;
+          return (
           <div
             key={scene.id}
             data-scene-id={scene.id}
             className={`storyboard-card${connectFrom && hoverTarget === scene.id ? " is-drop-target" : ""}`}
-            style={{ left: pos.x, top: pos.y, width: CARD_W, height: CARD_H }}
+            style={{
+              left: pos.x,
+              top: pos.y,
+              width: CARD_W,
+              height: CARD_H,
+              ...(color ? { borderLeft: `4px solid ${color}` } : {})
+            }}
             onPointerDown={(event) => startDrag(event, scene.id)}
           >
             <div className="storyboard-card__name">{scene.name.trim() || "Untitled scene"}</div>
             <div className="storyboard-card__meta">
               {linksFromScene(links, scene.id).length} out · {linksToScene(links, scene.id).length} in
             </div>
+            <select
+              className="storyboard-card__chapter"
+              value={scene.chapterId ?? ""}
+              onPointerDown={(event) => event.stopPropagation()}
+              onChange={(e) => onScenesChange(setSceneChapter(scenes, scene.id, e.target.value || undefined))}
+            >
+              <option value="">No chapter</option>
+              {chapters.map((chapter, index) => (
+                <option key={chapter.id} value={chapter.id}>
+                  {chapter.title.trim() || `Chapter ${index + 1}`}
+                </option>
+              ))}
+            </select>
             <button
               type="button"
               className="storyboard-card__port"
@@ -211,7 +296,8 @@ export function StoryboardCanvas({
               aria-label={`Connect ${scene.name.trim() || "this scene"} to another scene`}
             />
           </div>
-        ))}
+          );
+        })}
 
         {scenes.length === 0 ? <p className="inspector-empty">Add a scene on the Scenes tab first.</p> : null}
       </div>
