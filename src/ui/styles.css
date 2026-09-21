@@ -2772,6 +2772,137 @@ textarea.setup-field__story {
   }
 }
 
+.storyboard-board {
+  position: relative;
+  min-height: 420px;
+  height: 60vh;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background-color: var(--bg);
+  background-image: radial-gradient(circle, var(--border-soft) 1.5px, transparent 1.5px);
+  background-size: 24px 24px;
+}
+
+.storyboard-lines {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 2000px;
+  height: 1400px;
+  pointer-events: none;
+}
+
+.storyboard-line {
+  fill: none;
+  stroke: var(--accent-active);
+  stroke-width: 2;
+  opacity: 0.7;
+}
+
+.storyboard-line.is-selected {
+  opacity: 1;
+  stroke-width: 3;
+}
+
+.storyboard-line--blocks {
+  stroke: var(--accent-danger);
+  stroke-dasharray: 5 5;
+}
+
+.storyboard-line--draft {
+  stroke: var(--text-dim);
+  stroke-dasharray: 3 5;
+}
+
+.storyboard-line-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 16;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
+.storyboard-arrowhead {
+  fill: var(--accent-active);
+}
+
+.storyboard-line-label {
+  fill: var(--text-dim);
+  font-size: 11px;
+  font-family: var(--font-ui);
+}
+
+.storyboard-card {
+  position: absolute;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-raised);
+  padding: 10px 12px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.storyboard-card:active {
+  cursor: grabbing;
+}
+
+.storyboard-card.is-drop-target {
+  border-color: var(--accent-active);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-active) 40%, transparent);
+}
+
+.storyboard-card__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.storyboard-card__meta {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.storyboard-card__port {
+  position: absolute;
+  right: -7px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-active);
+  background: var(--bg);
+  padding: 0;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.storyboard-inspector {
+  margin-top: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-raised);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 420px;
+}
+
+.storyboard-inspector__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
 @media (max-width: 720px) {
   .studio-split {
     grid-template-columns: 1fr;

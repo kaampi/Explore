@@ -43,6 +43,8 @@ import {
   type VoiceTemplate
 } from "@library/LibrarySchema";
 import { withOriginalTimestamps } from "@library/fromForm";
+import { removeLinksForScene } from "@library/storyboardLinks";
+import { StoryboardCanvas } from "./StoryboardCanvas";
 import { dropOversizedPortrait } from "@library/slimPortrait";
 import { BUILTIN_PRONOUNS, isBuiltinPronoun, normalizePronoun, pronounLabel } from "@state/pronouns";
 import { portraitDataUrlFromFile, PortraitError, portraitSrc } from "./portrait";
@@ -62,14 +64,15 @@ import {
   mergeWithExamples
 } from "@library/exampleTemplates";
 
-type Tab = "general" | "you" | "characters" | "objects" | "scenes";
+type Tab = "general" | "you" | "characters" | "objects" | "scenes" | "storyboard";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "general", label: "General" },
   { id: "you", label: "You" },
   { id: "characters", label: "Characters" },
   { id: "objects", label: "Objects" },
-  { id: "scenes", label: "Scenes" }
+  { id: "scenes", label: "Scenes" },
+  { id: "storyboard", label: "Storyboard" }
 ];
 
 function Chip({
@@ -1160,12 +1163,28 @@ export function CampaignStudio({
                 busy={busy}
                 onPatch={(patch) => patchScene(scene.id, patch)}
                 onRemove={() =>
-                  setDraft({ ...draft, scenes: draft.scenes.filter((item) => item.id !== scene.id) })
+                  setDraft({
+                    ...draft,
+                    scenes: draft.scenes.filter((item) => item.id !== scene.id),
+                    sceneLinks: removeLinksForScene(draft.sceneLinks, scene.id)
+                  })
                 }
                 onStart={() => void startScene(scene)}
                 canRemove={draft.scenes.length > 1}
               />
             ))}
+          </section>
+        )}
+
+        {tab === "storyboard" && (
+          <section className="setup-section">
+            <p className="panel-heading">How your scenes connect</p>
+            <StoryboardCanvas
+              scenes={draft.scenes}
+              links={draft.sceneLinks}
+              onScenesChange={(scenes) => setDraft({ ...draft, scenes })}
+              onLinksChange={(sceneLinks) => setDraft({ ...draft, sceneLinks })}
+            />
           </section>
         )}
 
@@ -1235,7 +1254,15 @@ function SceneCard({
       ...current,
       triggers: [
         ...current.triggers,
-        { id: crypto.randomUUID(), content: "", keywords: [], when: "return_to_bar" as const }
+        {
+          id: crypto.randomUUID(),
+          content: "",
+          keywords: [],
+          when: "return_to_bar" as const,
+          requiresFlags: [],
+          requiresAbsentFlags: [],
+          setsFlags: []
+        }
       ]
     }));
   }
