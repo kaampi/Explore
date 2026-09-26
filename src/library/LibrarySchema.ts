@@ -390,6 +390,12 @@ export const CampaignTemplateSchema = z.object({
   placeLens: z.string().optional(),
   /** Object-shelf Look for. Same shape as `lens`. */
   objectLens: z.string().optional(),
+  /**
+   * Flags set during play (`session.storyFlags`), carried forward across
+   * separate scene Starts in this campaign. A fresh session at Start is
+   * seeded from this list; play then syncs it back here as flags change.
+   */
+  storyFlags: z.array(z.string().min(1)).default([]),
   source: LibrarySourceSchema.default("player"),
   createdAt: z.string(),
   updatedAt: z.string()

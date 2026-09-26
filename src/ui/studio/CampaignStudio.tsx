@@ -111,18 +111,17 @@ function personLabel(template: CharacterTemplate | undefined, id: string): strin
   return typeof template.approximateAge === "number" ? `${name} · ${template.approximateAge}` : name;
 }
 
+// Spreads `draft` first, so every field — including ones this function
+// never mentions (sceneLinks, chapters, placeIds, placeLens, storyFlags,
+// anything added later) — survives a save by default. Only the fields
+// below need trimming, clearing, or recomputation.
 function sanitizeCampaign(draft: CampaignTemplate) {
   const model = draft.model?.trim();
   const rulesetId = draft.rulesetId;
   const voiceId = draft.voiceId;
   return {
-    id: draft.id,
+    ...draft,
     name: draft.name.trim() || "New campaign",
-    playerIntro: draft.playerIntro,
-    startPrompt: draft.startPrompt,
-    people: draft.people,
-    objectIds: draft.objectIds,
-    source: draft.source,
     scenes: draft.scenes.map((scene) => ({
       ...scene,
       name: scene.name.trim() || "Opening",
@@ -135,16 +134,13 @@ function sanitizeCampaign(draft: CampaignTemplate) {
       })),
       startRoomId: scene.startRoomId?.trim() ?? ""
     })),
-    ...(model ? { model } : {}),
-    ...(rulesetId ? { rulesetId } : {}),
-    ...(voiceId ? { voiceId } : {}),
-    ...(draft.realmId?.trim() ? { realmId: draft.realmId.trim() } : {}),
-    ...(draft.lens ? { lens: draft.lens } : {}),
-    ...(draft.objectLens ? { objectLens: draft.objectLens } : {}),
-    ...(() => {
-      const you = sanitizeYou(draft.player);
-      return you ? { player: you } : {};
-    })()
+    ...(model ? { model } : { model: undefined }),
+    ...(rulesetId ? { rulesetId } : { rulesetId: undefined }),
+    ...(voiceId ? { voiceId } : { voiceId: undefined }),
+    ...(draft.realmId?.trim() ? { realmId: draft.realmId.trim() } : { realmId: undefined }),
+    ...(draft.lens ? { lens: draft.lens } : { lens: undefined }),
+    ...(draft.objectLens ? { objectLens: draft.objectLens } : { objectLens: undefined }),
+    player: sanitizeYou(draft.player)
   };
 }
 

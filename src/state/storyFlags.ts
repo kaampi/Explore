@@ -46,3 +46,15 @@ export function nextFlagsAfterClear(flags: string[] | undefined, flag: string): 
   if (!current.includes(target)) return undefined;
   return current.filter((item) => item !== target);
 }
+
+/**
+ * Whether a session's live `storyFlags` differ from a campaign's stored
+ * copy — the campaign needs re-saving so the *next* scene Start in this
+ * campaign sees them too. Order-sensitive: flags are set in a specific
+ * sequence and that sequence is itself part of what "the same" means here.
+ */
+export function storyFlagsDiffer(campaignFlags: string[], sessionFlags: string[] | undefined): boolean {
+  const live = sessionFlags ?? [];
+  if (campaignFlags.length !== live.length) return true;
+  return campaignFlags.some((flag, index) => flag !== live[index]);
+}

@@ -28,6 +28,7 @@ import { foldPlace } from "@state/roomMatch";
 import { focusCharacterId, lastCharacterSpeaker } from "@state/sceneFocus";
 import { isLeftBehind } from "@state/party";
 import { draftSceneHandoff } from "@state/sceneHandoff";
+import { storyFlagsDiffer } from "@state/storyFlags";
 
 /**
  * This is the seam between the engine layer (fully tested in isolation,
@@ -190,6 +191,10 @@ export function EngineProvider({
   // --- Reactive session snapshot via useSyncExternalStore -------------
   const sessionListeners = useRef(new Set<() => void>()).current;
   const sessionSnapshotRef = useRef<Session>(stateEngine.getSession());
+  // Story flags as seeded from the campaign at Start — the baseline to
+  // diff against so we only touch the campaign record when play actually
+  // changes a flag, not on every unrelated turn.
+  const syncedStoryFlagsRef = useRef<string[]>(sessionSnapshotRef.current.storyFlags ?? []);
   const notifySession = useCallback(() => {
     sessionSnapshotRef.current = stateEngine.getSession();
     sessionListeners.forEach((l) => l());
@@ -220,13 +225,29 @@ export function EngineProvider({
   const refreshSnapshots = useCallback(() => {
     eventLogSnapshotRef.current = sharedEventLog.all();
     notifySession();
+    const session = stateEngine.getSession();
     // Fire-and-forget autosave. A failed save shouldn't block the UI —
     // the in-memory session is still correct, it just won't survive a
     // refresh this time. Logged, not surfaced as a chat error, since
     // it's unrelated to whether the turn itself succeeded.
-    repo.saveSession(stateEngine.getSession()).catch((err) => {
+    repo.saveSession(session).catch((err) => {
       console.warn("Autosave failed:", err);
     });
+    // Story flags carry forward across separate scene Starts in the same
+    // campaign (unlike chat and trust, which reset). Sync the campaign's
+    // stored copy whenever play actually changes a flag, so the next Start
+    // — even of a different scene — sees it.
+    const campaignId = session.campaignId?.trim();
+    const liveFlags = session.storyFlags ?? [];
+    if (campaignId && storyFlagsDiffer(syncedStoryFlagsRef.current, liveFlags)) {
+      syncedStoryFlagsRef.current = liveFlags;
+      repo
+        .loadCampaign(campaignId)
+        .then((campaign) => repo.saveCampaign({ ...campaign, storyFlags: liveFlags, updatedAt: new Date().toISOString() }))
+        .catch((err) => {
+          console.warn("Story flag sync failed:", err);
+        });
+    }
   }, [notifySession, sharedEventLog, repo, stateEngine]);
 
   const sendMessage = useCallback(

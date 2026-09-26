@@ -6,6 +6,7 @@ import {
   nextFlagsAfterClear,
   nextFlagsAfterSet,
   normalizeStoryFlag,
+  storyFlagsDiffer,
   storyFlagsSatisfied
 } from "@state/storyFlags";
 import type { Session } from "@state/StateSchema";
@@ -80,6 +81,20 @@ describe("storyFlags (pure)", () => {
     // Förhandla: only while the enemy is alive.
     expect(storyFlagsSatisfied(session, [], ["fienden_dod"])).toBe(false);
     expect(storyFlagsSatisfied(makeSession(), [], ["fienden_dod"])).toBe(true);
+  });
+
+  it("storyFlagsDiffer: same list, same order — no diff", () => {
+    expect(storyFlagsDiffer(["a", "b"], ["a", "b"])).toBe(false);
+    expect(storyFlagsDiffer([], undefined)).toBe(false);
+  });
+
+  it("storyFlagsDiffer: a set or cleared flag is a diff", () => {
+    expect(storyFlagsDiffer(["a"], ["a", "b"])).toBe(true);
+    expect(storyFlagsDiffer(["a", "b"], ["a"])).toBe(true);
+  });
+
+  it("storyFlagsDiffer: same flags in a different order still counts as a diff", () => {
+    expect(storyFlagsDiffer(["a", "b"], ["b", "a"])).toBe(true);
   });
 });
 

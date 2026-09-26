@@ -248,6 +248,97 @@ describe("sessionFromCampaignScene", () => {
     expect(once?.setsFlags).toEqual(["had_the_dream"]);
   });
 
+  it("seeds the session's storyFlags from the campaign's own stored flags", () => {
+    const place = examplePlaceTemplate();
+    const emma = exampleCharacterTemplate();
+    const campaign = newCampaignTemplate({
+      name: "The Aurora Room",
+      realmId: place.realmId,
+      storyFlags: ["brooch_shown", "had_the_dream"],
+      people: [{ characterId: emma.id, stats: {} }],
+      scenes: [
+        {
+          ...emptyCampaignScene(),
+          placeId: place.id,
+          people: [
+            {
+              characterId: emma.id,
+              position: "behind the bar",
+              mood: "reserved",
+              clothing: "",
+              holding: "",
+              trust: "20",
+              familiarity: "10",
+              tension: "5"
+            }
+          ]
+        }
+      ]
+    });
+    const result = sessionFromCampaignScene(
+      {
+        campaign,
+        scene: campaign.scenes[0]!,
+        places: [place],
+        realms: [exampleRealmDunbaar()],
+        characters: [emma],
+        objects: [],
+        voices: [],
+        rulesets: []
+      },
+      "camp-3"
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // A different scene in the same campaign still opens with those flags
+    // set — unlike chat and trust, which do not carry between Starts.
+    expect(result.session.storyFlags).toEqual(["brooch_shown", "had_the_dream"]);
+  });
+
+  it("a campaign with no stored flags starts a session with none, not an empty-array placeholder", () => {
+    const place = examplePlaceTemplate();
+    const emma = exampleCharacterTemplate();
+    const campaign = newCampaignTemplate({
+      name: "The Aurora Room",
+      realmId: place.realmId,
+      people: [{ characterId: emma.id, stats: {} }],
+      scenes: [
+        {
+          ...emptyCampaignScene(),
+          placeId: place.id,
+          people: [
+            {
+              characterId: emma.id,
+              position: "behind the bar",
+              mood: "reserved",
+              clothing: "",
+              holding: "",
+              trust: "20",
+              familiarity: "10",
+              tension: "5"
+            }
+          ]
+        }
+      ]
+    });
+    const result = sessionFromCampaignScene(
+      {
+        campaign,
+        scene: campaign.scenes[0]!,
+        places: [place],
+        realms: [exampleRealmDunbaar()],
+        characters: [emma],
+        objects: [],
+        voices: [],
+        rulesets: []
+      },
+      "camp-4"
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.session.storyFlags).toEqual([]);
+  });
+
   it("copies the campaign player sheet onto the session", () => {
     const place = examplePlaceTemplate();
     const emma = exampleCharacterTemplate();

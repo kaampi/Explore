@@ -179,6 +179,7 @@ export function setupFromCampaignScene(args: {
       ...(playerIntro ? { campaignIntro: playerIntro } : {}),
       campaignId: campaign.id,
       sceneId: scene.id,
+      ...(campaign.storyFlags.length > 0 ? { storyFlags: campaign.storyFlags } : {}),
       ...(args.handoff?.trim() ? { handoff: args.handoff.trim() } : {}),
       ...(() => {
         const you = campaign.player;

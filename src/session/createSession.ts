@@ -78,6 +78,8 @@ export interface SceneSetup {
   campaignId?: string;
   /** Authored scene that was Started. */
   sceneId?: string;
+  /** Carried forward from the campaign's own `storyFlags`, set by earlier Starts. */
+  storyFlags?: string[];
   /** Why they arrived — from the last scene. Trusted Pass 1. */
   /** Who you play tonight. Not an NPC. */
   playerIdentity?: {
@@ -451,6 +453,7 @@ export function createSessionFromSetup(setup: SceneSetup, sessionId: string): Se
     ...(setup.campaignIntro?.trim() ? { campaignIntro: setup.campaignIntro.trim() } : {}),
     ...(setup.campaignId?.trim() ? { campaignId: setup.campaignId.trim() } : {}),
     ...(setup.sceneId?.trim() ? { sceneId: setup.sceneId.trim() } : {}),
+    ...(setup.storyFlags && setup.storyFlags.length > 0 ? { storyFlags: setup.storyFlags } : {}),
     ...(setup.handoff?.trim() ? { handoff: setup.handoff.trim() } : {}),
     ...(() => {
       const fromSets = copyWhatNowSets(setup.whatNowSets);
