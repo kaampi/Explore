@@ -59,14 +59,21 @@ export function percentileNotation(roll: number): string {
   return `1d100+1d10@${tens},${units}`;
 }
 
-export function checkOutcomeInstruction(result: CheckResult): string {
+export function checkOutcomeInstruction(result: CheckResult, participants?: { actor: string; counterpart: string }): string {
   return [
     "ENGINE-RESOLVED ACTION CHECK — authoritative outcome for this beat.",
-    JSON.stringify({ action: result.action, attribute: result.attributeName, value: result.value,
+    JSON.stringify({ actor: participants?.actor ?? "the player", counterpart: participants?.counterpart ?? "the selected character",
+      action: result.action, attribute: result.attributeName, value: result.value,
       range: [result.min, result.max], difficulty: result.difficulty, roll: result.roll,
       target: result.target, outcome: result.success ? "SUCCESS" : "FAILURE" }),
-    "Narrate this outcome; do not reroll, reverse it, or replace it with a favor/closeness check.",
-    "Success is a proportionate positive response to the attempt. It does not dictate another person's actions or consent.",
-    "Failure advances the scene with a proportionate setback. Do not invent combat damage, stat changes, rooms, or rewards."
+    "The attempted action is already supplied by the player. Continue with the counterpart's reaction only. Every new quoted line belongs to the counterpart; the player's next words and actions wait for the player's next turn.",
+    ...(result.success ? [
+      "SUCCESS IS ESTABLISHED FACT. Begin with an observable positive result of this exact attempt. Current trust, mood and personality shape HOW the counterpart responds to the success; they do not decide the outcome again.",
+      "For a successful charm or flirt attempt: the counterpart warms to the player, shows interest and gives an engaged response. Caution may remain alongside that positive response.",
+      "Keep success within the stated attempt. Charming someone earns a warmer response; moving to another room, physical intimacy and new commitments are separate choices. Narrate this successful moment, then leave space for the player."
+    ] : [
+      "FAILURE IS ESTABLISHED FACT. The attempt meets a proportionate setback. Show that consequence, with a clear opening for the player's next action."
+    ]),
+    "Use the engine outcome as written. Mechanical damage, stat changes, rooms and rewards require established rules; this check resolves the attempted interaction."
   ].join("\n");
 }

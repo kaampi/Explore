@@ -485,7 +485,10 @@ export class SessionEngine {
     if (options.check) {
       // A system instruction outside trimmable lore/chat; the model never decides the roll.
       messages.splice(Math.max(0, messages.length - 1), 0, {
-        role: "system", content: checkOutcomeInstruction(options.check)
+        role: "system", content: checkOutcomeInstruction(options.check, {
+          actor: session.player?.name?.trim() || "the player",
+          counterpart: narrationCallName(session, characterId)
+        })
       });
     }
     this.state = transition(this.state, "provider_responding"); // -> streaming

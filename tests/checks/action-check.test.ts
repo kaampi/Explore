@@ -130,6 +130,10 @@ describe("Action check turns", () => {
     expect(outcome?.role).toBe("system");
     expect(outcome?.content).toContain('"roll":43');
     expect(outcome?.content).toContain('"outcome":"SUCCESS"');
+    expect(outcome?.content).toContain('"actor":"Alex"');
+    expect(outcome?.content).toContain("Continue with the counterpart's reaction only");
+    expect(outcome?.content).toContain("SUCCESS IS ESTABLISHED FACT");
+    expect(outcome?.content).not.toContain("FAILURE IS ESTABLISHED FACT");
     await engine.runTurn("one", "emma", check.action, {}, { check });
     expect(requests).toHaveLength(1);
     await engine.regenerateLastTurn("two");
