@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CheckResultSchema } from "../checks/CheckEngine";
 
 /**
  * Canonical Data Model — Master Spec §54.
@@ -341,7 +342,9 @@ export const ConversationTurnSchema = z.object({
   speaker: z.string().optional(),
   /** Leftover NPC: the card is Narrator, not their portrait. */
   toldBy: z.enum(["narrator"]).optional(),
-  content: z.string()
+  content: z.string(),
+  /** Engine-resolved roll, preserved across save, regenerate and replay. */
+  check: CheckResultSchema.optional()
 });
 export type ConversationTurn = z.infer<typeof ConversationTurnSchema>;
 

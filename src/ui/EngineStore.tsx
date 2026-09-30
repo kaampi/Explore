@@ -1,3 +1,4 @@
+import type { CheckResult } from "../checks/CheckEngine";
 import React, { createContext, useContext, useMemo, useRef, useState, useCallback, useEffect, useSyncExternalStore } from "react";
 import { StateEngine } from "@state/StateEngine";
 import type { Session } from "@state/StateSchema";
@@ -48,7 +49,7 @@ interface EngineContextValue {
   streamingCharacterId: string | null;
   streamingNarrator: boolean;
   lastError: string | null;
-  sendMessage: (text: string, options?: { goTo?: string; travelPlaceId?: string }) => Promise<void>;
+  sendMessage: (text: string, options?: { goTo?: string; travelPlaceId?: string; check?: CheckResult }) => Promise<void>;
   regenerate: (note?: string) => Promise<void>;
   replay: (conversationTurn: number, note?: string) => Promise<void>;
   inspectTurn: number | null;
@@ -230,7 +231,7 @@ export function EngineProvider({
   }, [notifySession, sharedEventLog, repo, stateEngine]);
 
   const sendMessage = useCallback(
-    async (text: string, options?: { goTo?: string; travelPlaceId?: string }) => {
+    async (text: string, options?: { goTo?: string; travelPlaceId?: string; check?: CheckResult }) => {
       setPhase("streaming");
       setStreamingText("");
       setLastError(null);
@@ -238,7 +239,7 @@ export function EngineProvider({
 
       try {
         const session = stateEngine.getSession();
-        const speakingAsId = focusCharacterId(session, text) ?? primaryCharacter(session)?.id;
+        const speakingAsId = options?.check?.targetId ?? focusCharacterId(session, text) ?? primaryCharacter(session)?.id;
         if (!speakingAsId) {
           throw new Error("There is no character in this scene to speak.");
         }
@@ -256,7 +257,7 @@ export function EngineProvider({
                 return place ? landmarkTravelPatch(place) : undefined;
               })()
             : undefined;
-        if (!travel && !options?.goTo?.trim()) {
+        if (!options?.check && !travel && !options?.goTo?.trim()) {
           const exits = mapLandmarkTravels(session, placesRef.current);
           const hay = foldPlace(text);
           if (/\b(?:walk|go|gå|head|leave)\b/i.test(text)) {
@@ -284,7 +285,8 @@ export function EngineProvider({
           },
           {
             ...(options?.goTo?.trim() ? { goTo: options.goTo.trim() } : {}),
-            ...(travel ? { travel } : {})
+            ...(travel ? { travel } : {}),
+            ...(options?.check ? { check: options.check } : {})
           }
         );
         setPhase("idle");
