@@ -96,10 +96,35 @@ Looks on the character card is body and face. Outfit and handheld things are sce
 
 Phase 6 does not block play, Studio, or context slices.
 
+### Action checks — first playable slice
+
+A **Check** button in Chat opens a modal over the dimmed scene: player and
+counterpart, selected player stat, explicit attempt and difficulty, then
+percentile dice and the resolved outcome. Numeric stats come from Campaign
+**You** and the current rule-set. Only characters here can be selected.
+
+CheckEngine normalizes the live stat range onto 0–100, rounds it, adds Easy
++20 / Normal +0 / Hard −20, clamps to 0–100, and succeeds on d100 ≤ target.
+The engine owns the result. UI uses **@3d-dice/dice-box-threejs**, the sibling
+renderer with predetermined outcomes, rather than the originally proposed
+Babylon package. Animation is optional; a failure/reduced-motion fallback
+retains the engine's numeric result. No asset CDN or sound/texture downloads.
+
+The result is stored with the player conversation entry through StateEngine
+and supplied as authoritative Pass 1 context. Regenerate and replay preserve
+the roll. The selected counterpart is the turn focus. Attempt text does not
+automatically move the player or recruit a party member before resolution.
+
+This slice narrates success/setback. It does not implement HP, combat turns,
+object checks, opposed checks, mechanical damage/rewards, or rule-set-authored
+action definitions. Stats and difficulty are explicitly chosen by the player.
+Existing story-choice gates remain in force. Player stats are still not moved
+by Pass 2.
+
 ### Designed, not built
 
-- **Checks vs meters.** Trust / Längtan already **gate closeness in Pass 1**. Trust is 0–100. The desire signal is the marked field’s **band** (same high/low/mid as Pass 1 meanings), so a 1–18 scale works. Authored high/low/mid trait meanings are in Pass 1 as required state. Number attributes used as *dice checks* (strength vs a stone) are not wired. Pass 2 may move a **cast** rule-set number only when that field's `maxShift` is above 0. Campaign **You** stats exist as Pass 1 labels (same as cast); they are not dice, and Pass 2 does not move them.
-- **Object rolls / CheckEngine (later).** Object cards already store weight / difficulty / `checkAttribute`. Nothing rolls them. When they do: a new isolated `CheckEngine` (pure code, no LLM, same test shape as StateEngine). Input `{ attribute, character, difficulty }` → `{ roll, target, success }`. Reuse the Favor pattern already in play (d100 in code; Pass 1 only narrates). Normalize the live number onto 0–100 with the same per-field min–max as trait bands: `(value − min) / (max − min) × 100` — do not hardcode a 0–100 threshold (that was the warm-beat bug). **Player-initiated** only: a Cast/object button (“try to lift the stone”), never Pass 2 deciding to roll. The outcome is required Pass 1 fact, like Here or a band meaning. First and only check type until that feels right: **object interaction**. Not skills, saves, or combat on day one. Do not import a RoleForge/D&D architecture — generalize Favor. **3D dice (UI only):** `@3d-dice/dice-box` (BabylonJS + AmmoJS, web workers, React examples; same family as D&D Beyond / Roll20 rollers). Lives in `src/ui/`, never in an engine. CheckEngine still owns the number — the box is the throw the player sees, not a second RNG. Same rule as portraits and place audio: not assembled into the prompt.
+- **Checks vs meters.** Trust / Längtan already **gate closeness in Pass 1**. Trust is 0–100. The desire signal is the marked field’s **band** (same high/low/mid as Pass 1 meanings), so a 1–18 scale works. Authored high/low/mid trait meanings are in Pass 1 as required state. Player number attributes now support the generic action-check slice above; object-specific checks (strength vs a stone) are not wired. Pass 2 may move a **cast** rule-set number only when that field's `maxShift` is above 0. Campaign **You** stats exist as Pass 1 labels (same as cast); the action-check slice also reads their numeric values, and Pass 2 does not move them.
+- **Object rolls / CheckEngine (later).** Object cards already store weight / difficulty / `checkAttribute`. Nothing rolls them. When they do: extend the isolated `CheckEngine` (pure code, no LLM) with object interactions. Input `{ attribute, character, difficulty }` → `{ roll, target, success }`. Reuse the Favor pattern already in play (d100 in code; Pass 1 only narrates). Normalize the live number onto 0–100 with the same per-field min–max as trait bands: `(value − min) / (max − min) × 100` — do not hardcode a 0–100 threshold (that was the warm-beat bug). **Player-initiated** only: a Cast/object button (“try to lift the stone”), never Pass 2 deciding to roll. The outcome is required Pass 1 fact, like Here or a band meaning. First and only check type until that feels right: **object interaction**. Not skills, saves, or combat on day one. Do not import a RoleForge/D&D architecture — generalize Favor. **3D dice (UI only):** the first slice uses `@3d-dice/dice-box-threejs` for predetermined faces. The previously proposed Babylon package is not installed. Lives in `src/ui/`, never in an engine. CheckEngine still owns the number — the box is the throw the player sees, not a second RNG. Same rule as portraits and place audio: not assembled into the prompt.
 - **Combat / 5e-style resolution.** Out of scope until object checks are proven. Same order as Favor: engine owns the outcome, then Pass 1 narrates. Friends & Fables had to take AI-narrated 5e combat off by default; do not start here.
 - **Object pictures.** Same UI-only pair as places (thumb in Cast, high-res reveal when the player actually holds the thing). Pickup is not first-class inventory yet (`holding` is a free string).
 - **Relative positioning / proximity zones** as live play logic.
@@ -153,3 +178,4 @@ Encryption, workers, privacy model, SLA, diagnostics. Migration engine for *sess
 ## Tests
 
 Vitest covers engines in isolation (invariants, session turns, context, layers, memory, persistence, library, spatial writes, party, scene backdrop). Each new surface extends that suite. Phase 6 still needs integration/SLA tests when those components exist.
+

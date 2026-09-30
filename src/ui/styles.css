@@ -2846,3 +2846,46 @@ textarea.setup-field__story {
     max-height: 40vh;
   }
 }
+/* A shared action surface; the ruleset supplies stats, the engine owns the roll. */
+.action-check {
+  width: min(680px, calc(100vw - 32px)); max-height: calc(100dvh - 32px);
+  overflow: auto; box-sizing: border-box; padding: 28px;
+  border: 1px solid #75633d; border-radius: 18px;
+  background: #181a1f; color: #f1e9da; box-shadow: 0 24px 100px #0009;
+  font: inherit;
+}
+.action-check::backdrop { background: #07090bc4; backdrop-filter: blur(3px); }
+.action-check__header { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.action-check__header h2 { font-size: 28px; margin: 6px 0 0; font-weight: 500; }
+.action-check__eyebrow { color: #c8ad75; font-size: 11px; letter-spacing: .14em; }
+.action-check button { font: inherit; border: 1px solid #66583d; border-radius: 8px; padding: 10px 18px; background: #29282a; color: #f1e9da; cursor: pointer; }
+.action-check button:disabled { opacity: .45; cursor: default; }
+.action-check button:focus-visible, .action-check select:focus-visible, .action-check input:focus-visible { outline: 2px solid #e1bd78; outline-offset: 3px; }
+.action-check__participants { display: grid; grid-template-columns: 1fr 32px 1fr; gap: 16px; align-items: center; margin: 28px 0; }
+.action-check__participant { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; min-width: 0; }
+.action-check__participant img, .action-check__silhouette { width: 88px; height: 104px; border-radius: 12px; border: 1px solid #75633d; object-fit: cover; }
+.action-check__silhouette { display: grid; place-items: center; font-size: 25px; background: linear-gradient(160deg, #4a4438, #24262c); color: #d8c7a0; }
+.action-check__participant strong { font-size: 18px; overflow-wrap: anywhere; }
+.action-check__participant span:not(.action-check__silhouette) { color: #b7b1a6; font-size: 13px; }
+.action-check__between { text-align: center; color: #c8ad75; font-size: 24px; }
+.action-check__fields { display: grid; gap: 16px; }
+.action-check label { display: grid; gap: 7px; font-size: 12px; color: #c8c1b6; }
+.action-check select, .action-check input { width: 100%; min-width: 0; box-sizing: border-box; font: inherit; font-size: 15px; padding: 12px; border: 1px solid #4c4840; border-radius: 8px; background: #101216; color: #f1e9da; }
+.action-check__settings { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.action-check__hint { color: #aba69d; font-size: 13px; line-height: 1.6; }
+.action-check__footer { display: flex; justify-content: flex-end; gap: 12px; margin-top: 22px; }
+.action-check button.action-check__primary { background: #c8ad75; color: #17191d; font-weight: 600; }
+.action-check__attempt { text-align: center; color: #d7c8aa; margin-bottom: 12px; overflow-wrap: anywhere; }
+.action-check__tray { width: 100%; height: 230px; border-radius: 12px; background: radial-gradient(ellipse, #3a3542, #11141b); overflow: hidden; }
+.action-check__tray canvas { display: block; width: 100%; height: 100%; }
+.action-check__outcome { display: grid; gap: 8px; text-align: center; padding: 18px 0 0; }
+.action-check__outcome strong { font-size: 28px; font-weight: 500; }
+.action-check__success { color: #a4d0aa; }
+.action-check__failure { color: #e0ae95; }
+.action-check__outcome small { color: #aba69d; }
+.message__check { font-size: 11px; color: #d7bc7d; border: 1px solid #66583d; border-radius: 5px; padding: 2px 6px; margin-left: 8px; }
+@media (max-width: 520px) {
+  .action-check { padding: 18px; }
+  .action-check__settings { grid-template-columns: 1fr; }
+  .action-check__tray { height: 200px; }
+}

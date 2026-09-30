@@ -14,9 +14,10 @@
     "smoke:ollama": "tsx scripts/smoke-test-ollama.ts"
   },
   "dependencies": {
-    "zod": "^3.23.8",
+    "@3d-dice/dice-box-threejs": "0.0.12",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",
@@ -24,8 +25,8 @@
     "@vitejs/plugin-react": "^4.3.4",
     "fake-indexeddb": "^6.0.0",
     "fast-check": "^3.19.0",
-    "typescript": "^5.5.4",
     "tsx": "^4.19.1",
+    "typescript": "^5.5.4",
     "vite": "^6.4.3",
     "vitest": "^3.2.6"
   }

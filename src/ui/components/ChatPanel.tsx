@@ -1,3 +1,5 @@
+import { ActionCheckDialog } from "./ActionCheckDialog";
+import type { CheckResult } from "../../checks/CheckEngine";
 import { useEffect, useRef, useState } from "react";
 import { useEngine } from "../EngineStore";
 import { Dot } from "./Dot";
@@ -24,6 +26,7 @@ interface DisplayTurn {
   speaker?: string;
   toldBy?: "narrator";
   content: string;
+  check?: CheckResult;
 }
 
 function speakerLabel(turn: DisplayTurn, session: Session, fallback: string): string {
@@ -133,6 +136,7 @@ export function ChatPanel() {
   const characterName = speakingAs ? speakingAs.name : "someone";
   const toldBy = narratorLabel(session) ?? characterName;
   const [draft, setDraft] = useState("");
+  const [checkOpen, setCheckOpen] = useState(false);
   const [editingTurn, setEditingTurn] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState("");
   const [editError, setEditError] = useState<string | null>(null);
@@ -184,7 +188,7 @@ export function ChatPanel() {
   const youLabel = session.player?.name?.trim() || "You";
 
   useEffect(() => {
-    if (busy || editingTurn !== null || fork) return;
+    if (checkOpen || busy || editingTurn !== null || fork) return;
     const input = inputRef.current;
     if (!input) return;
     const active = document.activeElement;
@@ -197,7 +201,7 @@ export function ChatPanel() {
       return;
     }
     input.focus();
-  }, [busy, editingTurn, fork]);
+  }, [busy, editingTurn, fork, checkOpen]);
 
   async function handleSend() {
     const text = draft.trim();
@@ -224,7 +228,7 @@ export function ChatPanel() {
     dest: string,
     kind: "landmark" | "room" | "travel"
   ) {
-    if (busy || editingTurn !== null || fork) return;
+    if (checkOpen || busy || editingTurn !== null || fork) return;
     if (kind === "travel") {
       await sendMessage(`I walk to ${label}.`, { travelPlaceId: dest });
       return;
@@ -341,6 +345,9 @@ export function ChatPanel() {
               <span className="message__attribution">
                 <Dot kind={turn.role === "player" ? "player" : "ai"} />
                 {speakerLabel(turn, session, characterName)}
+                {turn.check && <span className="message__check" title={`${turn.check.attributeName}: ${turn.check.value}; ${turn.check.difficulty}`}>
+                  d100 · {turn.check.roll}/{turn.check.target} · {turn.check.success ? "success" : "setback"}
+                </span>}
                 {!isEditing && !busy && (
                   <>
                     <button
@@ -499,6 +506,10 @@ export function ChatPanel() {
         </div>
       </div>
 
+      {checkOpen && <ActionCheckDialog session={session} onClose={() => setCheckOpen(false)} onContinue={(check) => {
+        setCheckOpen(false);
+        void sendMessage(check.action, { check });
+      }} />}
       <div className="chat-composer">
         {lastError && phase === "error" && <div className="chat-error">{lastError}</div>}
         {fork && editingTurn === null ? (
@@ -649,6 +660,7 @@ export function ChatPanel() {
         ) : null}
         {fork ? null : (
         <>
+        <button type="button" className="chat-check-button" disabled={busy || editingTurn !== null} onClick={() => setCheckOpen(true)} title="Attempt an action using your rule-set stats">Check</button>
         <input
           ref={inputRef}
           value={draft}

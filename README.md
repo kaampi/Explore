@@ -46,6 +46,30 @@ Phases 1–5 of the Master Spec are in the product. Studio, Adventure, world can
 - **Agency.** The player controls their own body. Lines that dictate what an NPC does or says are split: the player’s action is fact; the NPC claim is rejected (`PlayerAgency`).
 - **Live state Pass 2 may write** (when unlocked and grounded): character `position | mood | energy | clothing | holding | pose`, relationship `trust | familiarity | tension`, `player.position | player.status`, and rule-set numbers whose **Move / beat** is above 0 (clamped). Looks is body, not clothes. Attribute **high/low/mid meanings** are trusted Pass 1 fact at the live band of each field's own scale; the numbers themselves are not dice.
 
+## Action checks (first version)
+
+Start a campaign with a rule-set and numeric values on **You**. In play, click
+**Check**, select a character who is here, describe your attempt, select your
+stat and difficulty, then **Roll the dice**. Both participants and your stat
+are shown over a dimmed scene. The other character's existing trust is shown
+when available. **Continue the story** submits the attempt and fixed outcome
+to the narrator; a d100 badge remains on the player line.
+
+Checks normalize the selected stat's min–max onto 0–100, rounded, with Easy
++20 / Normal +0 / Hard −20 (clamped). A d100 roll **at or below** the target
+succeeds. This is a generic first rule, not D&D resolution. You select the
+stat and difficulty explicitly; action definitions, opposed rolls, HP,
+combat turns, and automatic mechanical effects are future work.
+
+`src/checks/CheckEngine.ts` owns the random result. The lazy-loaded
+`@3d-dice/dice-box-threejs` renderer displays predetermined percentile faces
+(tens + units; 00 and 0 mean 100). Its total is never used for game logic.
+Reduced motion, unsupported WebGL, and animation failures show the same
+numeric result without rerolling. Once rolled, continue rather than closing
+and fishing for another result. The check is stored on the player turn and
+reused on regenerate/replay and after saving. An attempted move is not
+committed as a completed movement by this first version.
+
 ## Module boundaries
 
 ```
@@ -138,3 +162,4 @@ See [`project_spec.md`](project_spec.md) for the full list. Short version:
 
 - **Phase 6:** PIN/password export (AES-256-GCM), crypto worker, DiagnosticsEngine / SLA, privacy model as a product. `crypto.worker.ts` and `DiagnosticsEngine.ts` are empty stubs. There is no ExportEngine.
 - **Designed, not wired:** attribute *checks* vs *meters*; object weight/difficulty rolls; player stats; live proximity zones (schema only); auto-reject of ungrounded AI environment layers (today they sit inactive until Approve).
+

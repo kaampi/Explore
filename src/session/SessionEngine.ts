@@ -1,4 +1,6 @@
 import { StateEngine, type MutationProposal } from "@state/StateEngine";
+import { checkOutcomeInstruction, type CheckResult } from "../checks/CheckEngine";
+import { validatePlayerCheck } from "../checks/playerCheck";
 import type { AuthoritySource } from "@state/AuthorityResolver";
 import { assembleContext, buildPass1Messages, metersFromSession, parseConversationTurns } from "@context/ContextEngine";
 import { closeReplyIfCut, stripPass1InstructionLeak } from "@context/PlayerAgency";
@@ -91,6 +93,7 @@ export interface RunTurnCallbacks {
 }
 
 export interface RunTurnOptions {
+  check?: CheckResult;
   /** What now? destination — a listed room or the venue floor. */
   goTo?: string;
   /** Walk to another landmark in this realm. Swaps Here before Pass 1. */
@@ -155,6 +158,7 @@ export interface RollingMemoryConfig {
 
 /** What's needed to redo a turn's dialogue+mutations while keeping the same player message. */
 interface TurnManifest {
+  check?: CheckResult;
   turnId: string;
   characterId: string;
   playerMessage: string;
@@ -219,6 +223,10 @@ export class SessionEngine {
     if (intercept.kind === "blocked") {
       throw new WhatNowRequiredError();
     }
+    if (options.check) {
+      validatePlayerCheck(this.stateEngine.getSession(), options.check);
+      if (options.check.targetId !== characterId) throw new Error("Check target must be the turn focus.");
+    }
     const goTo = intercept.goTo;
 
     try {
@@ -226,7 +234,7 @@ export class SessionEngine {
 
       const preTurnVersion = this.stateEngine.getSession().stateVersion;
       const appendPlayerResult = this.stateEngine.appendConversationTurn(
-        { role: "player", content: playerMessage },
+        { role: "player", content: playerMessage, ...(options.check ? { check: options.check } : {}) },
         preTurnVersion
       );
       if (!appendPlayerResult.committed) {
@@ -289,6 +297,7 @@ export class SessionEngine {
 
       const regenNote = options.note?.trim();
       return await this.runDialogueAndCommit(newTurnId, manifest.characterId, manifest.playerMessage, callbacks, {
+        ...(manifest.check ? { check: manifest.check } : {}),
         ...(regenNote ? { regenNote } : {})
       });
     } catch (err) {
@@ -348,6 +357,7 @@ export class SessionEngine {
       turnId: beat.reply.turn.toString(),
       characterId: beat.reply.speaker,
       playerMessage: beat.player.content,
+      ...(beat.player.check ? { check: beat.player.check } : {}),
       eventIds: beatIds
     };
     return this.regenerateLastTurn(newTurnId, callbacks, options);
@@ -370,15 +380,19 @@ export class SessionEngine {
     const previousStage = sceneStageKey(this.stateEngine.getSession());
     const previousPlace = sceneStageLabel(this.stateEngine.getSession());
     const notesBeforeMove = standingNotesForSummarizer(this.stateEngine.getSession());
-    this.stateEngine.openRoomsNamedInText(playerMessage);
-    if (options.goTo?.trim()) this.stateEngine.openRoomAtDest(options.goTo.trim());
-    this.stateEngine.syncPartyFromPlayerText(playerMessage, characterId);
-    if (options.travel) this.stateEngine.travelToLandmark(options.travel);
-    const walkedIn = destinationRoomFromPlayerText(
+    // An attempt is not a completed move or recruitment. This MVP only
+    // resolves a narrative response; future action rules own mechanical effects.
+    if (!options.check) {
+      this.stateEngine.openRoomsNamedInText(playerMessage);
+      if (options.goTo?.trim()) this.stateEngine.openRoomAtDest(options.goTo.trim());
+      this.stateEngine.syncPartyFromPlayerText(playerMessage, characterId);
+      if (options.travel) this.stateEngine.travelToLandmark(options.travel);
+    }
+    const walkedIn = options.check ? undefined : destinationRoomFromPlayerText(
       playerMessage,
       this.stateEngine.getSession()
     );
-    if (!options.travel) {
+    if (!options.check && !options.travel) {
       applyPlayerDestinationOn(
         this.stateEngine,
         playerMessage,
@@ -412,7 +426,7 @@ export class SessionEngine {
     const assembled = assembleContext(session, { continuation });
     const { turns } = parseConversationTurns(session, undefined);
     const trust = session.relationships[characterId]?.trust.value;
-    const favor = trust !== undefined ? checkFavor(trust, rollD100()) : undefined;
+    const favor = !options.check && trust !== undefined ? checkFavor(trust, rollD100()) : undefined;
     const stageRoom = sideRoomStage(session);
     const intro = herePrompt(session);
     const introForModel = intro
@@ -468,6 +482,12 @@ export class SessionEngine {
       ...(outOfSight ? { outOfSight: true } : {})
     });
 
+    if (options.check) {
+      // A system instruction outside trimmable lore/chat; the model never decides the roll.
+      messages.splice(Math.max(0, messages.length - 1), 0, {
+        role: "system", content: checkOutcomeInstruction(options.check)
+      });
+    }
     this.state = transition(this.state, "provider_responding"); // -> streaming
 
     let fullText = "";
@@ -608,7 +628,10 @@ export class SessionEngine {
     // Captured before Rolling Memory runs, so a condensation triggered
     // by this turn is never itself undone by a later Regenerate call —
     // condensation of *older* history is unrelated to this turn's reply.
-    this.lastTurnManifest = { turnId, characterId, playerMessage, eventIds: eventIdsThisTurn };
+    this.lastTurnManifest = {
+      turnId, characterId, playerMessage, eventIds: eventIdsThisTurn,
+      ...(options.check ? { check: options.check } : {})
+    };
 
     // Rolling Conversation Memory: opportunistic, best-effort. A
     // failure here must never fail a turn whose dialogue and
