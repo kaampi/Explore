@@ -525,12 +525,23 @@ export function safeParseSession(input: unknown) {
 }
 
 function withDefaultPlayer(session: Session): Session {
-  if (session.player) return session;
+  const player = session.player ?? {
+    position: { value: session.scene?.location ?? "here", lock: "unlocked" as const },
+    status: { value: "awake", lock: "unlocked" as const }
+  };
+  // Old scene setups stored "here" instead of the starting room. Resolve
+  // that placeholder once on load, so proximity works and NPCs don't
+  // silently follow every later movement by the player.
+  const here = player.position.value.trim();
+  const characters = Object.fromEntries(Object.entries(session.characters).map(([id, character]) => [
+    id,
+    here && character.position.value.trim().toLowerCase() === "here"
+      ? { ...character, position: { ...character.position, value: here } }
+      : character
+  ]));
   return {
     ...session,
-    player: {
-      position: { value: session.scene?.location ?? "here", lock: "unlocked" },
-      status: { value: "awake", lock: "unlocked" }
-    }
+    player,
+    characters
   };
 }

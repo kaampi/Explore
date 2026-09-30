@@ -246,7 +246,12 @@ export function createSessionFromSetup(setup: SceneSetup, sessionId: string): Se
     const stats = statsFromDraft(draft, setup.ruleset);
     characters[id] = {
       name,
-      position: { value: draft.position.trim() || "here", lock: "unlocked" },
+      position: {
+        value: !draft.position.trim() || draft.position.trim().toLowerCase() === "here"
+          ? (setup.playerPosition?.trim() || setup.location.trim() || "Somewhere")
+          : draft.position.trim(),
+        lock: "unlocked"
+      },
       mood: { value: draft.mood.trim() || "neutral", lock: "unlocked" },
       ...(familyName ? { familyName } : {}),
       ...(middleName ? { middleName } : {}),

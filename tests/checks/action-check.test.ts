@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import fc from "fast-check";
 import { CheckResultSchema, checkTarget, percentileNotation, resolveCheck } from "../../src/checks/CheckEngine";
 import { playerCheckStats, rollPlayerCheck, validatePlayerCheck } from "../../src/checks/playerCheck";
-import { SessionSchema, ConversationTurnSchema } from "@state/StateSchema";
+import { SessionSchema, ConversationTurnSchema, parseSession } from "@state/StateSchema";
+import { createSessionFromSetup } from "@session/createSession";
+import { charactersHere } from "@state/sceneFocus";
 import { StateEngine } from "@state/StateEngine";
 import { EventLog } from "@events/EventLog";
 import { SessionEngine } from "@session/SessionEngine";
@@ -26,6 +28,29 @@ function session() {
 const attempt = { id: "roll-1", action: "I try to charm them.", targetId: "emma", attributeId: "charm", difficulty: "normal" as const };
 
 describe("Action checks", () => {
+  it("anchors a character's Here to the chosen starting room", () => {
+    for (const position of ["", "here", " Here "]) {
+      const s = createSessionFromSetup({
+        location: "The Aurora Room", playerPosition: "cellar",
+        lighting: "dim", noise: "quiet", music: false, placeNote: "",
+        characters: [{ name: "Emma", personality: "", mood: "neutral", position }]
+      }, "start-cellar");
+      expect(s.characters.emma!.position.value).toBe("cellar");
+      expect(charactersHere(s)).toContain("emma");
+    }
+  });
+  it("repairs saved Here once, without teleporting named rooms or following later moves", () => {
+    const raw = session();
+    raw.player!.position.value = "cellar";
+    raw.characters.emma!.position.value = "here";
+    const loaded = parseSession(raw);
+    expect(loaded.characters.emma!.position.value).toBe("cellar");
+    expect(rollPlayerCheck(loaded, attempt, () => .2).targetId).toBe("emma");
+    expect(raw.characters.emma!.position.value).toBe("here");
+    loaded.player!.position.value = "bar";
+    expect(charactersHere(loaded)).not.toContain("emma");
+    expect(parseSession(loaded).characters.emma!.position.value).toBe("cellar");
+  });
   it("normalizes different scales and applies explicit difficulty", () => {
     expect(checkTarget(14, 1, 18, "normal")).toBe(76);
     expect(checkTarget(14, 1, 18, "hard")).toBe(56);
