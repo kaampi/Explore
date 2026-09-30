@@ -64,6 +64,9 @@ combat turns, and automatic mechanical effects are future work.
 `src/checks/CheckEngine.ts` owns the random result. The lazy-loaded
 `@3d-dice/dice-box-threejs` renderer displays predetermined percentile faces
 (tens + units; 00 and 0 mean 100). Its total is never used for game logic.
+A **Dice sound: On/Off** button remembers the sound preference. Two bundled
+impact clips play on visible dice/table collisions; audio is unlocked by the
+Roll click and cleaned up when the dialog closes. Audio failure is silent.
 Reduced motion, unsupported WebGL, and animation failures show the same
 numeric result without rerolling. Once rolled, continue rather than closing
 and fishing for another result. The check is stored on the player turn and

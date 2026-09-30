@@ -108,7 +108,9 @@ CheckEngine normalizes the live stat range onto 0–100, rounds it, adds Easy
 The engine owns the result. UI uses **@3d-dice/dice-box-threejs**, the sibling
 renderer with predetermined outcomes, rather than the originally proposed
 Babylon package. Animation is optional; a failure/reduced-motion fallback
-retains the engine's numeric result. No asset CDN or sound/texture downloads.
+retains the engine's numeric result. No asset CDN: two collision sound clips are bundled locally. **Dice sound**
+can be toggled and remembers the preference; sound follows visible collisions
+and never the hidden simulation. Audio failure never blocks a roll.
 
 The result is stored with the player conversation entry through StateEngine
 and supplied as authoritative Pass 1 context. Regenerate and replay preserve

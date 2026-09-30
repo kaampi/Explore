@@ -1,8 +1,9 @@
 import { useEffect, useId, useRef } from "react";
 import { percentileNotation } from "../../checks/CheckEngine";
+import type { DiceSound } from "../diceSound";
 
-export function DiceTray({ roll, onSettled }: {
-  roll: number; onSettled: (fallback: boolean) => void;
+export function DiceTray({ roll, sound, onSettled }: {
+  roll: number; sound: DiceSound | null; onSettled: (fallback: boolean) => void;
 }) {
   const id = `dice-${useId().replace(/:/g, "")}`;
   const onSettledRef = useRef(onSettled);
@@ -44,6 +45,13 @@ export function DiceTray({ roll, onSettled }: {
         // Its resizeWorld registers an anonymous global listener with no
         // removal API. Own resizing locally so repeated checks don't leak it.
         box.resizeWorld = () => {};
+        const audioBox = box;
+        box.eventCollide = ({ body, target }) => {
+          // Skip the invisible simulation used to predetermine faces.
+          if (audioBox.animstate !== "throw" || !body || !target) return;
+          const diceCollision = body.mass > 0;
+          sound?.hit(diceCollision ? body.velocity.length() : target.velocity.length(), diceCollision);
+        };
         await box.initialize();
         if (cancelled) return;
         initialized = true;
@@ -75,7 +83,7 @@ export function DiceTray({ roll, onSettled }: {
         }, 200);
       }
     };
-  }, [id, roll]);
+  }, [id, roll, sound]);
 
   return <div id={id} className="action-check__tray" aria-label="Percentile dice: tens and units" />;
 }

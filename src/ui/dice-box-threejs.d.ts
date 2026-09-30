@@ -8,6 +8,11 @@ declare module "@3d-dice/dice-box-threejs" {
     setDimensions(size: { x: number; y: number }): void;
     running: boolean | number;
     rolling: boolean;
+    animstate: string;
+    eventCollide(event: {
+      body?: { mass: number; velocity: { length(): number } };
+      target?: { velocity: { length(): number } };
+    }): void;
     scene: { traverse: (visit: (object: {
       geometry?: { dispose(): void };
       material?: { dispose(): void } | Array<{ dispose(): void }>;

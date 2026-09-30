@@ -2858,6 +2858,7 @@ textarea.setup-field__story {
 .action-check__header { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
 .action-check__header h2 { font-size: 28px; margin: 6px 0 0; font-weight: 500; }
 .action-check__eyebrow { color: #c8ad75; font-size: 11px; letter-spacing: .14em; }
+.action-check button.action-check__sound { margin-top: 16px; padding: 6px 10px; font-size: 12px; }
 .action-check button { font: inherit; border: 1px solid #66583d; border-radius: 8px; padding: 10px 18px; background: #29282a; color: #f1e9da; cursor: pointer; }
 .action-check button:disabled { opacity: .45; cursor: default; }
 .action-check button:focus-visible, .action-check select:focus-visible, .action-check input:focus-visible { outline: 2px solid #e1bd78; outline-offset: 3px; }

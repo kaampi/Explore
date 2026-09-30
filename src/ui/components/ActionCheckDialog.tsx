@@ -6,6 +6,7 @@ import { DIFFICULTIES, checkTarget, type CheckResult, type Difficulty } from "..
 import { playerCheckStats, rollPlayerCheck } from "../../checks/playerCheck";
 import { portraitSrc } from "../studio/portrait";
 import { DiceTray } from "./DiceTray";
+import { DiceSound } from "../diceSound";
 
 export function ActionCheckDialog({ session, onClose, onContinue }: {
   session: Session; onClose: () => void; onContinue: (result: CheckResult) => void;
@@ -23,6 +24,10 @@ export function ActionCheckDialog({ session, onClose, onContinue }: {
   const [error, setError] = useState<string | null>(null);
   const rolledRef = useRef(false);
   const continuedRef = useRef(false);
+  const soundRef = useRef<DiceSound | null>(null);
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    try { return localStorage.getItem("sandbox-dice-sound") !== "off"; } catch { return true; }
+  });
   const stat = stats.find((item) => item.id === attributeId);
   const targetName = targetId ? narrationCallName(session, targetId) : "No one here";
   const playerPortrait = portraitSrc(session.player?.portraitDataUrl);
@@ -31,7 +36,7 @@ export function ActionCheckDialog({ session, onClose, onContinue }: {
   useEffect(() => {
     const dialog = dialogRef.current;
     dialog?.showModal();
-    return () => dialog?.close();
+    return () => { dialog?.close(); soundRef.current?.close(); };
   }, []);
 
   function roll() {
@@ -40,6 +45,7 @@ export function ActionCheckDialog({ session, onClose, onContinue }: {
       const check = rollPlayerCheck(session, { id: crypto.randomUUID(), action,
         targetId, attributeId, difficulty });
       rolledRef.current = true;
+      soundRef.current = new DiceSound(soundEnabled);
       setResult(check);
       setError(null);
     } catch (err) {
@@ -55,6 +61,13 @@ export function ActionCheckDialog({ session, onClose, onContinue }: {
           <h2 id="action-check-title">Take a chance</h2></div>
         {!result && <button type="button" onClick={onClose} aria-label="Close action check">×</button>}
       </header>
+      <button type="button" className="action-check__sound" aria-pressed={soundEnabled}
+        onClick={() => {
+          const enabled = !soundEnabled;
+          setSoundEnabled(enabled);
+          soundRef.current?.setEnabled(enabled);
+          try { localStorage.setItem("sandbox-dice-sound", enabled ? "on" : "off"); } catch {}
+        }}>Dice sound: {soundEnabled ? "On" : "Off"}</button>
       <div className="action-check__participants">
         <div className="action-check__participant">
           {playerPortrait ? <img src={playerPortrait} alt="" /> : <span className="action-check__silhouette">You</span>}
@@ -94,7 +107,7 @@ export function ActionCheckDialog({ session, onClose, onContinue }: {
       ) : (
         <>
           <p className="action-check__attempt">{result.action}</p>
-          {!settled || !fallback ? <DiceTray roll={result.roll} onSettled={(didFallback) => { setSettled(true); setFallback(didFallback); }} /> : null}
+          {!settled || !fallback ? <DiceTray roll={result.roll} sound={soundRef.current} onSettled={(didFallback) => { setSettled(true); setFallback(didFallback); }} /> : null}
           <div className="action-check__outcome" role="status" aria-live="polite">
             {settled ? <><strong className={result.success ? "action-check__success" : "action-check__failure"}>{result.success ? "Success" : "Setback"}</strong>
               <span>Rolled <b>{result.roll}</b> · needed {result.target} or lower</span>
