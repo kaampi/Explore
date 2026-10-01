@@ -1,3 +1,4 @@
+import { ActionDefinitionSchema, validateActionDefinitions } from "../checks/ActionDefinitions";
 import {
   ApproximateAgeSchema,
   AttributeDefSchema,
@@ -145,13 +146,14 @@ export const VoiceTemplateSchema = z.object({
 export type VoiceTemplate = z.infer<typeof VoiceTemplateSchema>;
 
 export const RulesetTemplateSchema = z.object({
+  actions: z.array(ActionDefinitionSchema).max(100).optional(),
   id: z.string().min(1),
   name: z.string().min(1),
   attributes: z.array(AttributeDefSchema).default(() => []),
   source: LibrarySourceSchema.default("player"),
   createdAt: z.string(),
   updatedAt: z.string()
-});
+}).superRefine(validateActionDefinitions);
 export type RulesetTemplate = z.infer<typeof RulesetTemplateSchema>;
 
 /**
@@ -672,3 +674,4 @@ export function deriveStoryTitle(title: string, premise: string): string {
   if (first.length <= 48) return first;
   return `${first.slice(0, 45).trimEnd()}…`;
 }
+

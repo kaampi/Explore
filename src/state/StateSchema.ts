@@ -1,3 +1,4 @@
+import { ActionDefinitionSchema, validateActionDefinitions } from "../checks/ActionDefinitions";
 import { z } from "zod";
 import { CheckResultSchema } from "../checks/CheckEngine";
 
@@ -194,8 +195,9 @@ export type AttributeDef = z.infer<typeof AttributeDefSchema>;
 
 export const RulesetStateSchema = z.object({
   name: z.string().min(1),
-  attributes: z.array(AttributeDefSchema).default(() => [])
-});
+  attributes: z.array(AttributeDefSchema).default(() => []),
+  actions: z.array(ActionDefinitionSchema).max(100).optional()
+}).superRefine(validateActionDefinitions);
 export type RulesetState = z.infer<typeof RulesetStateSchema>;
 
 export const StatValueSchema = z.union([z.number(), z.string()]);

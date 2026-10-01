@@ -1,3 +1,4 @@
+import type { ActionDefinition } from "../../checks/ActionDefinitions";
 import { useEffect, useState } from "react";
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 import { newRulesetTemplate, type LibrarySource, type RulesetTemplate } from "@library/LibrarySchema";
@@ -31,6 +32,7 @@ type Draft = {
   id: string | null;
   name: string;
   attributes: AttrDraft[];
+  actions: (Omit<ActionDefinition, "attributeId"> & { attributeKey: string })[];
   source: LibrarySource;
   createdAt?: string;
 };
@@ -72,7 +74,7 @@ function attrFromDef(def: AttributeDef): AttrDraft {
 }
 
 function emptyDraft(): Draft {
-  return { id: null, name: "", attributes: [emptyAttr()], source: "player" };
+  return { id: null, name: "", attributes: [emptyAttr()], actions: [], source: "player" };
 }
 
 function draftFrom(template: RulesetTemplate): Draft {
@@ -80,6 +82,7 @@ function draftFrom(template: RulesetTemplate): Draft {
     id: template.id,
     name: template.name,
     attributes: template.attributes.length > 0 ? template.attributes.map(attrFromDef) : [emptyAttr()],
+    actions: (template.actions ?? []).map(({ attributeId, ...action }) => ({ ...action, attributeKey: attributeId })),
     source: template.source,
     createdAt: template.createdAt
   };
@@ -218,6 +221,13 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
         ...(draft.id ? { id: draft.id } : {}),
         name,
         attributes,
+        actions: draft.actions.map(({ attributeKey, ...action }) => {
+          const row = draft.attributes.find((item) => item.key === attributeKey);
+          const namedRows = draft.attributes.filter((item) => item.name.trim());
+          const attribute = row ? attributes[namedRows.indexOf(row)] : undefined;
+          if (!attribute || attribute.kind !== "number") throw new Error(`Choose an existing numeric stat for ${action.name || "each action"}.`);
+          return { ...action, attributeId: attribute.id };
+        }),
         source: draft.source
       });
       const previous = library.find((item) => item.id === built.id);
@@ -392,9 +402,8 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
                         placeholder="{{char}} can answer a kiss, but does not take the next step."
                       />
                     </label>
-                    {row.description.trim() && !row.highMeaning.trim() && !row.lowMeaning.trim() ? (
-                      <label className="setup-field">
-                        Fallback meaning
+                    <label className="setup-field">
+                        Description / when used for checks
                         <textarea
                           value={row.description}
                           onChange={(e) =>
@@ -407,7 +416,6 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
                           }
                         />
                       </label>
-                    ) : null}
                   </>
                 )}
                 <div className="setup-row">
@@ -518,6 +526,25 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
               </div>
             ))}
             </FormSection>
+            <FormSection title="Actions" lede="Define when to roll, which player stat applies, and exactly what success means. AI suggests a matching action; you review it before rolling. Existing scenes keep the rule-set copied at their start."
+              action={<button type="button" className="setup-text-btn" onClick={() => setDraft({ ...draft, actions: [...draft.actions,
+                { id: crypto.randomUUID(), name: "", attributeKey: "", when: "", successMeaning: "" }] })}>+ Add action</button>}>
+              {draft.actions.length === 0 && <p className="inspector-empty">No defined actions. Checks use a manually selected stat.</p>}
+              {draft.actions.map((action, index) => {
+                const update = (fields: Partial<typeof action>) => setDraft({ ...draft, actions: draft.actions.map((item) => item.id === action.id ? { ...item, ...fields } : item) });
+                return <div className="setup-character" key={action.id}>
+                  <div className="setup-character__head"><span className="setup-character__index">action {index + 1}</span>
+                    <button type="button" className="layer-card__toggle" onClick={() => setDraft({ ...draft, actions: draft.actions.filter((item) => item.id !== action.id) })}>Remove</button></div>
+                  <label className="setup-field">Name<input maxLength={100} value={action.name} placeholder="Flirt" onChange={(e) => update({ name: e.target.value })} /></label>
+                  <label className="setup-field">Player stat<select value={action.attributeKey} onChange={(e) => update({ attributeKey: e.target.value })}>
+                    <option value="">Choose a numeric stat</option>
+                    {draft.attributes.filter((item) => item.kind === "number" && item.name.trim()).map((item) => <option key={item.key} value={item.key}>{item.name}</option>)}
+                  </select></label>
+                  <label className="setup-field">When to use it<textarea maxLength={1000} value={action.when} placeholder="Trying to spark romantic interest through conversation." onChange={(e) => update({ when: e.target.value })} /></label>
+                  <label className="setup-field">Success means<textarea maxLength={1000} value={action.successMeaning} placeholder="The counterpart responds with warmth and interest in this exchange." onChange={(e) => update({ successMeaning: e.target.value })} /></label>
+                </div>;
+              })}
+            </FormSection>
             {notice && <p className="setup-notice">{notice}</p>}
             {error && <p className="setup-error">{error}</p>}
             <div className="studio-sheet__actions">
@@ -536,3 +563,4 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
     </div>
   );
 }
+

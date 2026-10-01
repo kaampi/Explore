@@ -289,7 +289,7 @@ export function AdventureStudio({
             model,
             ...(ruleset
               ? {
-                  ruleset: { name: ruleset.name, attributes: ruleset.attributes }
+                  ruleset: { name: ruleset.name, attributes: ruleset.attributes, ...(ruleset.actions ? { actions: ruleset.actions } : {}) }
                 }
               : {}),
             characters: cast.flatMap((pick) => {
@@ -683,3 +683,4 @@ export function AdventureStudio({
     </div>
   );
 }
+

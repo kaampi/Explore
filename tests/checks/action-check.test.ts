@@ -1,7 +1,9 @@
+import { actionSuggestionMessages, parseActionSuggestion } from "../../src/checks/suggestAction";
+import { parseRulesetTemplate, newRulesetTemplate } from "@library/LibrarySchema";
 import { describe, expect, it } from "vitest";
 import fc from "fast-check";
 import { CheckResultSchema, successGrade, checkOutcomeInstruction, checkOutcomeLabel, checkTarget, percentileNotation, resolveCheck } from "../../src/checks/CheckEngine";
-import { playerCheckStats, rollPlayerCheck, validatePlayerCheck } from "../../src/checks/playerCheck";
+import { playerCheckStats, playerCheckActions, rollPlayerCheck, validatePlayerCheck } from "../../src/checks/playerCheck";
 import { SessionSchema, ConversationTurnSchema, parseSession } from "@state/StateSchema";
 import { createSessionFromSetup } from "@session/createSession";
 import { charactersHere } from "@state/sceneFocus";
@@ -116,6 +118,76 @@ describe("Action checks", () => {
         expect(result.success).toBe(roll <= result.target);
         expect(CheckResultSchema.safeParse(result).success).toBe(true);
       }));
+  });
+});
+
+describe("Rule-set actions", () => {
+  const definition = { id: "flirt", name: "Flirt", attributeId: "charm", when: "Trying to spark romantic interest.", successMeaning: "The counterpart responds with interest to this exchange." };
+  function authoredSession() {
+    const s = session();
+    s.ruleset!.actions = [definition];
+    return s;
+  }
+  it("copies actions into new scenes and round-trips library templates", () => {
+    const s = authoredSession();
+    const template = newRulesetTemplate({ name: "Romance", attributes: s.ruleset!.attributes, actions: [definition], source: "player" });
+    expect(parseRulesetTemplate(template).actions).toEqual([definition]);
+    const started = createSessionFromSetup({ location: "bar", lighting: "dim", noise: "quiet", music: false, placeNote: "", characters: [], ruleset: s.ruleset! }, "authored-start");
+    expect(started.ruleset!.actions).toEqual([definition]);
+    expect(parseSession(started).ruleset!.actions).toEqual([definition]);
+    expect(parseSession(session()).ruleset!.actions).toBeUndefined();
+    expect(() => parseRulesetTemplate({ ...template, actions: [{ ...definition, attributeId: "missing" }] })).toThrow();
+    expect(() => parseRulesetTemplate({ ...template, actions: [definition, definition] })).toThrow();
+    expect(() => parseRulesetTemplate({ ...template, attributes: [{ id: "charm", name: "Charm", kind: "text" }] })).toThrow();
+  });
+  it("enforces the authored stat, stores the success meaning and rejects stale definitions", () => {
+    const s = authoredSession();
+    const check = rollPlayerCheck(s, { ...attempt, actionId: "flirt" }, () => 0);
+    expect(check.actionDefinition).toEqual(definition);
+    expect(validatePlayerCheck(s, check)).toEqual(check);
+    expect(checkOutcomeInstruction(check)).toContain(definition.successMeaning);
+    expect(() => rollPlayerCheck(s, { ...attempt, actionId: "flirt", attributeId: "other" })).toThrow(/stat/);
+    expect(() => rollPlayerCheck(s, { ...attempt, actionId: "invented" })).toThrow(/unavailable/);
+    expect(CheckResultSchema.safeParse({ ...check, actionDefinition: { ...definition, attributeId: "other" } }).success).toBe(false);
+    s.ruleset!.actions = [{ ...definition, successMeaning: "Different consequence." }];
+    expect(() => validatePlayerCheck(s, check)).toThrow(/definition changed/);
+    s.player!.stats!.charm = "";
+    expect(playerCheckActions(s)).toEqual([]);
+  });
+  it("constrains AI suggestions to available authored actions and permits no match", () => {
+    const s = authoredSession();
+    const messages = actionSuggestionMessages(s, "I try to catch her eye.", "emma");
+    expect(messages[0]!.content).toContain("Never roll");
+    expect(messages[1]!.content).toContain(definition.when);
+    expect(messages[1]!.content).toContain('"attributeId":"charm"');
+    expect(parseActionSuggestion('{"actionId":"flirt"}', s)).toBe("flirt");
+    expect(parseActionSuggestion('```json\n{"actionId":"flirt"}\n```', s)).toBe("flirt");
+    expect(parseActionSuggestion('{"actionId":null}', s)).toBeNull();
+    expect(() => parseActionSuggestion('{"actionId":"invented"}', s)).toThrow();
+    expect(() => parseActionSuggestion('{"actionId":"flirt","stat":"strength"}', s)).toThrow();
+    s.player!.stats!.charm = "";
+    expect(() => parseActionSuggestion('{"actionId":"flirt"}', s)).toThrow();
+  });
+  it("preserves authored meaning through persistence, regeneration and replay", async () => {
+    const s = authoredSession();
+    const check = rollPlayerCheck(s, { ...attempt, actionId: "flirt" }, () => .2);
+    const requests: CompletionRequest[] = [];
+    class Recording extends MockProvider {
+      override async *streamCompletion(request: CompletionRequest) { requests.push(request); yield* super.streamCompletion(request); }
+    }
+    const events = new EventLog();
+    const state = new StateEngine(s, events);
+    const engine = new SessionEngine(state, new LLMAdapter({ primary: new Recording() }), events);
+    await engine.runTurn("defined-one", "emma", check.action, {}, { check });
+    await engine.regenerateLastTurn("defined-two");
+    const last = ConversationTurnSchema.parse(state.getSession().conversation.at(-1));
+    await engine.replayTurn("defined-three", last.turn);
+    for (const request of requests) expect(request.messages.find((message) => message.content.includes("ENGINE-RESOLVED"))!.content).toContain(definition.successMeaning);
+    const repo = new IndexedDBRepository(new IDBFactory());
+    await repo.saveSession(state.getSession());
+    const loaded = await repo.loadSession(s.id);
+    expect(ConversationTurnSchema.parse(loaded.conversation[0]).check!.actionDefinition).toEqual(definition);
+    await repo.close();
   });
 });
 

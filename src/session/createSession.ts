@@ -88,7 +88,7 @@ export interface SceneSetup {
     portraitDataUrl?: string;
     stats?: Record<string, string>;
   };
-  ruleset?: { name: string; attributes: AttributeDef[] };
+  ruleset?: { name: string; attributes: AttributeDef[]; actions?: import("../checks/ActionDefinitions").ActionDefinition[] | undefined };
   characters: CharacterDraft[];
   objects?: Array<{
     id: string;
@@ -438,7 +438,8 @@ export function createSessionFromSetup(setup: SceneSetup, sessionId: string): Se
       ? {
           ruleset: {
             name: setup.ruleset.name.trim(),
-            attributes: setup.ruleset.attributes
+            attributes: setup.ruleset.attributes,
+            ...(setup.ruleset.actions ? { actions: setup.ruleset.actions } : {})
           }
         }
       : {}),

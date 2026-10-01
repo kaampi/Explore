@@ -276,6 +276,11 @@ export function exampleFantasyRuleset(): RulesetTemplate {
         lowMeaning: "Talks past people, is easy to dismiss, struggles to rally anyone."
       }
     ],
+    actions: [
+      { id: "sneak", name: "Smyga", attributeId: "dexterity", when: "Attempting to move quietly without being noticed.", successMeaning: "The player completes the attempted quiet movement without being noticed." },
+      { id: "persuade", name: "Övertyga", attributeId: "charisma", when: "Trying to win someone over with a specific argument or request.", successMeaning: "The counterpart accepts the specific argument or request in this exchange." },
+      { id: "read-intentions", name: "Läsa avsikter", attributeId: "wisdom", when: "Trying to understand what the counterpart intends or feels beneath their words.", successMeaning: "The player picks up a relevant, truthful clue about the counterpart's intentions." }
+    ],
     source: "example",
     createdAt: STAMP,
     updatedAt: STAMP
@@ -395,3 +400,4 @@ export function mergeWithExamples<T extends { id: string }>(library: T[], exampl
   const extras = library.filter((item) => !exampleIds.has(item.id));
   return [...resolved, ...extras];
 }
+

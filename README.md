@@ -58,7 +58,7 @@ to the narrator; a d100 badge remains on the player line.
 Checks normalize the selected stat's min–max onto 0–100, rounded, with Easy
 +20 / Normal +0 / Hard −20 (clamped). A d100 roll **at or below** the target
 succeeds. This is a generic first rule, not D&D resolution. You select the
-stat and difficulty explicitly; action definitions, opposed rolls, HP,
+stat and difficulty explicitly for manual checks; opposed rolls, HP,
 combat turns, and automatic mechanical effects are future work.
 
 Successful checks also derive an authoritative grade from the exact ratio
@@ -79,6 +79,28 @@ numeric result without rerolling. Once rolled, continue rather than closing
 and fishing for another result. The check is stored on the player turn and
 reused on regenerate/replay and after saving. An attempted move is not
 committed as a completed movement by this first version.
+
+### Rule-set actions
+
+In Studio → Rule-sets, **Actions → Add action** stores a name, numeric player
+stat, **When to use it**, and **Success means**. Numeric attributes also have
+a **Description / when used for checks** field. Action references must point
+to existing numeric attributes. The fantasy example includes three actions.
+Start a new scene after editing a rule-set: running scenes keep their copy.
+
+In Check, describe an attempt, then select a **Rule-set action** or click
+**Suggest action with AI**. The current Ollama model proposes an existing
+available action, or no match. The player reviews the suggestion and difficulty
+before rolling. Suggestions never roll or change game state; unavailable or
+invalid suggestions are rejected, and manual selection remains available.
+A selected action fixes its stat. Actions requiring missing player values are
+unavailable. Manual checks remain available for older and custom rule-sets.
+
+The saved check includes the chosen action definition. Pass 1 receives its
+success meaning and the engine-defined effort grade; regeneration/replay
+retain that same meaning. This resolves narration, not mechanical movement,
+damage or rewards. AI suggestion is requested in the Check dialog; ordinary
+chat does not automatically trigger dice.
 
 ## Module boundaries
 

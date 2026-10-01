@@ -506,8 +506,9 @@ export function ChatPanel() {
         </div>
       </div>
 
-      {checkOpen && <ActionCheckDialog session={session} onClose={() => setCheckOpen(false)} onContinue={(check) => {
+      {checkOpen && <ActionCheckDialog session={session} initialAttempt={draft} onClose={() => setCheckOpen(false)} onContinue={(check) => {
         setCheckOpen(false);
+        setDraft("");
         void sendMessage(check.action, { check });
       }} />}
       <div className="chat-composer">

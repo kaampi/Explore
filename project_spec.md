@@ -96,6 +96,28 @@ Looks on the character card is body and face. Outfit and handheld things are sce
 
 Phase 6 does not block play, Studio, or context slices.
 
+### Rule-set actions
+
+In Studio → Rule-sets, **Actions → Add action** stores a name, numeric player
+stat, **When to use it**, and **Success means**. Numeric attributes also have
+a **Description / when used for checks** field. Action references must point
+to existing numeric attributes. The fantasy example includes three actions.
+Start a new scene after editing a rule-set: running scenes keep their copy.
+
+In Check, describe an attempt, then select a **Rule-set action** or click
+**Suggest action with AI**. The current Ollama model proposes an existing
+available action, or no match. The player reviews the suggestion and difficulty
+before rolling. Suggestions never roll or change game state; unavailable or
+invalid suggestions are rejected, and manual selection remains available.
+A selected action fixes its stat. Actions requiring missing player values are
+unavailable. Manual checks remain available for older and custom rule-sets.
+
+The saved check includes the chosen action definition. Pass 1 receives its
+success meaning and the engine-defined effort grade; regeneration/replay
+retain that same meaning. This resolves narration, not mechanical movement,
+damage or rewards. AI suggestion is requested in the Check dialog; ordinary
+chat does not automatically trigger dice.
+
 ### Action checks — first playable slice
 
 A **Check** button in Chat opens a modal over the dimmed scene: player and
@@ -125,8 +147,7 @@ the roll. The selected counterpart is the turn focus. Attempt text does not
 automatically move the player or recruit a party member before resolution.
 
 This slice narrates success/setback. It does not implement HP, combat turns,
-object checks, opposed checks, mechanical damage/rewards, or rule-set-authored
-action definitions. Stats and difficulty are explicitly chosen by the player.
+object checks, opposed checks, mechanical damage/rewards. Difficulty is chosen by the player.
 Existing story-choice gates remain in force. Player stats are still not moved
 by Pass 2.
 

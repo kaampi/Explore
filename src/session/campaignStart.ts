@@ -201,7 +201,7 @@ export function setupFromCampaignScene(args: {
           }
         : {}),
       ...(campaign.model?.trim() ? { model: campaign.model.trim() } : {}),
-      ...(ruleset ? { ruleset: { name: ruleset.name, attributes: ruleset.attributes } } : {}),
+      ...(ruleset ? { ruleset: { name: ruleset.name, attributes: ruleset.attributes, ...(ruleset.actions ? { actions: ruleset.actions } : {}) } } : {}),
       characters: setupCharacters,
       objects: pickedObjects.map((item) => ({
         id: item.id,
@@ -239,3 +239,4 @@ export function sessionFromCampaignScene(
   if (!built.ok) return built;
   return { ok: true, session: createSessionFromSetup(built.setup, sessionId) };
 }
+

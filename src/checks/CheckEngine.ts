@@ -1,3 +1,4 @@
+import { ActionDefinitionSchema } from "./ActionDefinitions";
 import { z } from "zod";
 
 export const DIFFICULTIES = {
@@ -10,6 +11,7 @@ export type Difficulty = keyof typeof DIFFICULTIES;
 export const CheckResultSchema = z.object({
   id: z.string().min(1),
   action: z.string().trim().min(1).max(240),
+  actionDefinition: ActionDefinitionSchema.optional(),
   targetId: z.string().min(1),
   attributeId: z.string().min(1),
   attributeName: z.string().min(1),
@@ -24,6 +26,9 @@ export const CheckResultSchema = z.object({
   if (result.max <= result.min || result.value < result.min || result.value > result.max) {
     ctx.addIssue({ code: "custom", message: "Invalid attribute range or value" });
     return;
+  }
+  if (result.actionDefinition && result.actionDefinition.attributeId !== result.attributeId) {
+    ctx.addIssue({ code: "custom", message: "Action stat does not match the check." });
   }
   const target = checkTarget(result.value, result.min, result.max, result.difficulty);
   if (target !== result.target || result.success !== (result.roll <= target)) {
@@ -92,12 +97,14 @@ export function checkOutcomeInstruction(result: CheckResult, participants?: { ac
       action: result.action, attribute: result.attributeName, value: result.value,
       range: [result.min, result.max], difficulty: result.difficulty, roll: result.roll,
       target: result.target, outcome: result.success ? "SUCCESS" : "FAILURE",
-      successGrade: grade, successMeaning: grade ? SUCCESS_GRADES[grade].narration : null }),
+      successGrade: grade, effort: grade ? SUCCESS_GRADES[grade].narration : null,
+      definedAction: result.actionDefinition ?? null }),
     "The attempted action is already supplied by the player. Continue with the counterpart's reaction only. Every new quoted line belongs to the counterpart; the player's next words and actions wait for the player's next turn.",
     ...(result.success ? [
+      ...(result.actionDefinition ? [`The established success is: ${result.actionDefinition.successMeaning}. Apply this meaning to the exact player attempt; the grade determines ease, not extra rewards.`] : []),
       "The engine-defined success grade is authoritative. Reflect its effort and ease in the reaction; do not invent a critical success or upgrade the grade because the raw roll is low. Ease does not expand the scope of the attempted action.",
       "SUCCESS IS ESTABLISHED FACT. Begin with an observable positive result of this exact attempt. Current trust, mood and personality shape HOW the counterpart responds to the success; they do not decide the outcome again.",
-      "For a successful charm or flirt attempt: the counterpart warms to the player, shows interest and gives an engaged response. Caution may remain alongside that positive response.",
+      "If this is a charm or flirt attempt and no authored success meaning overrides this guidance: the counterpart warms to the player, shows interest and gives an engaged response. Caution may remain alongside that positive response.",
       "Keep success within the stated attempt. Charming someone earns a warmer response; moving to another room, physical intimacy and new commitments are separate choices. Narrate this successful moment, then leave space for the player."
     ] : [
       "FAILURE IS ESTABLISHED FACT. The attempt meets a proportionate setback. Show that consequence, with a clear opening for the player's next action."
