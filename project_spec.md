@@ -105,6 +105,13 @@ percentile dice and the resolved outcome. Numeric stats come from Campaign
 
 CheckEngine normalizes the live stat range onto 0–100, rounds it, adds Easy
 +20 / Normal +0 / Hard −20, clamps to 0–100, and succeeds on d100 ≤ target.
+Successful checks also derive an authoritative grade from the exact ratio
+`roll / target`: 80–100% barely succeeds, 60–<80% succeeds with a final effort,
+40–<60% succeeds, 20–<40% succeeds easily, and <20% succeeds effortlessly.
+No rounding or separate critical rule is used. The dialog, chat badge and
+narrator use this same grade; failed checks remain setbacks. Saved rolls
+retain their grade on replay without a schema migration.
+
 The engine owns the result. UI uses **@3d-dice/dice-box-threejs**, the sibling
 renderer with predetermined outcomes, rather than the originally proposed
 Babylon package. Animation is optional; a failure/reduced-motion fallback

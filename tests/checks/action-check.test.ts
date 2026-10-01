@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import fc from "fast-check";
-import { CheckResultSchema, checkTarget, percentileNotation, resolveCheck } from "../../src/checks/CheckEngine";
+import { CheckResultSchema, successGrade, checkOutcomeInstruction, checkOutcomeLabel, checkTarget, percentileNotation, resolveCheck } from "../../src/checks/CheckEngine";
 import { playerCheckStats, rollPlayerCheck, validatePlayerCheck } from "../../src/checks/playerCheck";
 import { SessionSchema, ConversationTurnSchema, parseSession } from "@state/StateSchema";
 import { createSessionFromSetup } from "@session/createSession";
@@ -64,6 +64,26 @@ describe("Action checks", () => {
     expect(resolveCheck({ ...input, value: 0 }, () => 0).success).toBe(false);
     expect(resolveCheck({ ...input, value: 100 }, () => .9999).success).toBe(true);
     expect(() => resolveCheck(input, () => 1)).toThrow();
+  });
+  it("grades success by exact percentages of the target, including every boundary", () => {
+    const input = { ...attempt, attributeName: "Charm", value: 50, min: 0, max: 100 };
+    const cases = [[1, "effortlessly"], [9, "effortlessly"], [10, "easily"], [19, "easily"],
+      [20, "succeeds"], [29, "succeeds"], [30, "lastEffort"], [39, "lastEffort"],
+      [40, "barely"], [50, "barely"], [51, null], [100, null]] as const;
+    for (const [roll, grade] of cases) {
+      const result = resolveCheck(input, () => (roll - .5) / 100);
+      expect(successGrade(result)).toBe(grade);
+      expect(checkOutcomeInstruction(result)).toContain(`"successGrade":${JSON.stringify(grade)}`);
+    }
+    expect(successGrade({ roll: 1, target: 0, success: false })).toBeNull();
+    expect(successGrade({ roll: 1, target: 1, success: true })).toBe("barely");
+    expect(successGrade({ roll: 13, target: 17, success: true })).toBe("lastEffort");
+    expect(successGrade({ roll: 14, target: 17, success: true })).toBe("barely");
+    expect(successGrade({ roll: 19, target: 99, success: true })).toBe("effortlessly");
+    expect(successGrade({ roll: 20, target: 99, success: true })).toBe("easily");
+    expect(checkOutcomeLabel(resolveCheck(input, () => 0))).toBe("Succeeds effortlessly");
+    expect(checkOutcomeLabel(resolveCheck(input, () => .50))).toBe("Setback");
+    expect(checkOutcomeInstruction(resolveCheck(input, () => 0))).toContain("do not invent a critical success");
   });
   it("keeps percentile faces faithful for all 100 engine results", () => {
     for (let roll = 1; roll <= 100; roll++) {

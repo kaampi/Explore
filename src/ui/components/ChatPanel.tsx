@@ -1,5 +1,5 @@
 import { ActionCheckDialog } from "./ActionCheckDialog";
-import type { CheckResult } from "../../checks/CheckEngine";
+import { checkOutcomeLabel, type CheckResult } from "../../checks/CheckEngine";
 import { useEffect, useRef, useState } from "react";
 import { useEngine } from "../EngineStore";
 import { Dot } from "./Dot";
@@ -346,7 +346,7 @@ export function ChatPanel() {
                 <Dot kind={turn.role === "player" ? "player" : "ai"} />
                 {speakerLabel(turn, session, characterName)}
                 {turn.check && <span className="message__check" title={`${turn.check.attributeName}: ${turn.check.value}; ${turn.check.difficulty}`}>
-                  d100 · {turn.check.roll}/{turn.check.target} · {turn.check.success ? "success" : "setback"}
+                  d100 · {turn.check.roll}/{turn.check.target} · {checkOutcomeLabel(turn.check)}
                 </span>}
                 {!isEditing && !busy && (
                   <>

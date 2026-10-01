@@ -61,6 +61,13 @@ succeeds. This is a generic first rule, not D&D resolution. You select the
 stat and difficulty explicitly; action definitions, opposed rolls, HP,
 combat turns, and automatic mechanical effects are future work.
 
+Successful checks also derive an authoritative grade from the exact ratio
+`roll / target`: 80–100% barely succeeds, 60–<80% succeeds with a final effort,
+40–<60% succeeds, 20–<40% succeeds easily, and <20% succeeds effortlessly.
+No rounding or separate critical rule is used. The dialog, chat badge and
+narrator use this same grade; failed checks remain setbacks. Saved rolls
+retain their grade on replay without a schema migration.
+
 `src/checks/CheckEngine.ts` owns the random result. The lazy-loaded
 `@3d-dice/dice-box-threejs` renderer displays predetermined percentile faces
 (tens + units; 00 and 0 mean 100). Its total is never used for game logic.

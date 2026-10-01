@@ -51,6 +51,31 @@ export function resolveCheck(
   return CheckResultSchema.parse({ ...input, target, roll, success: roll <= target });
 }
 
+export const SUCCESS_GRADES = {
+  barely: { label: "Barely succeeds", narration: "The player succeeds, but only just." },
+  lastEffort: { label: "Succeeds with a final effort", narration: "The player succeeds with a final effort." },
+  succeeds: { label: "Succeeds", narration: "The player succeeds." },
+  easily: { label: "Succeeds easily", narration: "The player succeeds easily." },
+  effortlessly: { label: "Succeeds effortlessly", narration: "The player succeeds with playful ease." }
+} as const;
+export type SuccessGrade = keyof typeof SUCCESS_GRADES;
+
+/** Exact roll/target bands, without rounding. Derived from the saved roll for replay. */
+export function successGrade(result: Pick<CheckResult, "roll" | "target" | "success">): SuccessGrade | null {
+  if (!result.success || result.target <= 0 || result.roll > result.target) return null;
+  const scaledRoll = result.roll * 100;
+  if (scaledRoll >= result.target * 80) return "barely";
+  if (scaledRoll >= result.target * 60) return "lastEffort";
+  if (scaledRoll >= result.target * 40) return "succeeds";
+  if (scaledRoll >= result.target * 20) return "easily";
+  return "effortlessly";
+}
+
+export function checkOutcomeLabel(result: CheckResult): string {
+  const grade = successGrade(result);
+  return grade ? SUCCESS_GRADES[grade].label : "Setback";
+}
+
 /** Display only. The library's summed total is NOT our percentile result. */
 export function percentileNotation(roll: number): string {
   if (!Number.isInteger(roll) || roll < 1 || roll > 100) throw new Error("Invalid d100 roll.");
@@ -60,14 +85,17 @@ export function percentileNotation(roll: number): string {
 }
 
 export function checkOutcomeInstruction(result: CheckResult, participants?: { actor: string; counterpart: string }): string {
+  const grade = successGrade(result);
   return [
     "ENGINE-RESOLVED ACTION CHECK — authoritative outcome for this beat.",
     JSON.stringify({ actor: participants?.actor ?? "the player", counterpart: participants?.counterpart ?? "the selected character",
       action: result.action, attribute: result.attributeName, value: result.value,
       range: [result.min, result.max], difficulty: result.difficulty, roll: result.roll,
-      target: result.target, outcome: result.success ? "SUCCESS" : "FAILURE" }),
+      target: result.target, outcome: result.success ? "SUCCESS" : "FAILURE",
+      successGrade: grade, successMeaning: grade ? SUCCESS_GRADES[grade].narration : null }),
     "The attempted action is already supplied by the player. Continue with the counterpart's reaction only. Every new quoted line belongs to the counterpart; the player's next words and actions wait for the player's next turn.",
     ...(result.success ? [
+      "The engine-defined success grade is authoritative. Reflect its effort and ease in the reaction; do not invent a critical success or upgrade the grade because the raw roll is low. Ease does not expand the scope of the attempted action.",
       "SUCCESS IS ESTABLISHED FACT. Begin with an observable positive result of this exact attempt. Current trust, mood and personality shape HOW the counterpart responds to the success; they do not decide the outcome again.",
       "For a successful charm or flirt attempt: the counterpart warms to the player, shows interest and gives an engaged response. Caution may remain alongside that positive response.",
       "Keep success within the stated attempt. Charming someone earns a warmer response; moving to another room, physical intimacy and new commitments are separate choices. Narrate this successful moment, then leave space for the player."

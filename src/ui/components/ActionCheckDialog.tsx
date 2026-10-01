@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Session } from "@state/StateSchema";
 import { charactersHere } from "@state/sceneFocus";
 import { narrationCallName } from "@state/nameHeard";
-import { DIFFICULTIES, checkTarget, type CheckResult, type Difficulty } from "../../checks/CheckEngine";
+import { DIFFICULTIES, checkTarget, checkOutcomeLabel, type CheckResult, type Difficulty } from "../../checks/CheckEngine";
 import { playerCheckStats, rollPlayerCheck } from "../../checks/playerCheck";
 import { portraitSrc } from "../studio/portrait";
 import { DiceTray } from "./DiceTray";
@@ -109,7 +109,7 @@ export function ActionCheckDialog({ session, onClose, onContinue }: {
           <p className="action-check__attempt">{result.action}</p>
           {!settled || !fallback ? <DiceTray roll={result.roll} sound={soundRef.current} onSettled={(didFallback) => { setSettled(true); setFallback(didFallback); }} /> : null}
           <div className="action-check__outcome" role="status" aria-live="polite">
-            {settled ? <><strong className={result.success ? "action-check__success" : "action-check__failure"}>{result.success ? "Success" : "Setback"}</strong>
+            {settled ? <><strong className={result.success ? "action-check__success" : "action-check__failure"}>{checkOutcomeLabel(result)}</strong>
               <span>Rolled <b>{result.roll}</b> · needed {result.target} or lower</span>
               <small>{result.attributeName} {result.value} · {DIFFICULTIES[result.difficulty].label}</small></> : <strong>Rolling…</strong>}
           </div>
