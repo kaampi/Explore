@@ -83,7 +83,12 @@ committed as a completed movement by this first version.
 ### Rule-set actions
 
 In Studio → Rule-sets, **Actions → Add action** stores a name, numeric player
-stat, **When to use it**, and **Success means**. Numeric attributes also have
+stat, **When to use it**, and **Success means**, plus optional
+**Prerequisites / context** and **Limits / what success cannot do**. These
+contain general principles; the current place, relationship and character
+wishes provide the actual context. Both fields are shown before rolling and
+supplied with suggestions and narration. They are narrative guidance; an
+automatic pre-roll feasibility/no-roll assessment is not implemented yet. Numeric attributes also have
 a **Description / when used for checks** field. Action references must point
 to existing numeric attributes. The fantasy example includes three actions.
 Start a new scene after editing a rule-set: running scenes keep their copy.

@@ -128,6 +128,21 @@ describe("Rule-set actions", () => {
     s.ruleset!.actions = [definition];
     return s;
   }
+  it("preserves optional context and limits in saved actions and AI instructions", () => {
+    const s = authoredSession();
+    const action = { ...definition, prerequisites: "Consider place norms and the counterpart's wishes.", limits: "Charm cannot override personal boundaries." };
+    s.ruleset!.actions = [action];
+    const template = newRulesetTemplate({ name: "Romance", attributes: s.ruleset!.attributes, actions: [action], source: "player" });
+    expect(parseRulesetTemplate(template).actions).toEqual([action]);
+    expect(parseSession(s).ruleset!.actions).toEqual([action]);
+    const check = rollPlayerCheck(s, { ...attempt, actionId: action.id }, () => 0);
+    expect(CheckResultSchema.parse(check).actionDefinition).toEqual(action);
+    expect(actionSuggestionMessages(s, check.action, "emma")[1]!.content).toContain(action.prerequisites);
+    expect(checkOutcomeInstruction(check)).toContain(action.limits);
+    expect(checkOutcomeInstruction(check)).toContain("A low roll or easy success never overrides");
+    s.ruleset!.actions = [{ ...action, limits: "A changed limit." }];
+    expect(() => validatePlayerCheck(s, check)).toThrow(/definition changed/);
+  });
   it("copies actions into new scenes and round-trips library templates", () => {
     const s = authoredSession();
     const template = newRulesetTemplate({ name: "Romance", attributes: s.ruleset!.attributes, actions: [definition], source: "player" });

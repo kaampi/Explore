@@ -526,9 +526,9 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
               </div>
             ))}
             </FormSection>
-            <FormSection title="Actions" lede="Define when to roll, which player stat applies, and exactly what success means. AI suggests a matching action; you review it before rolling. Existing scenes keep the rule-set copied at their start."
+            <FormSection title="Actions" lede="Define the stat, possible success, and general conditions and limits. Place norms, the relationship and the character’s own wishes belong to the scene; describe principles here, rather than every possible situation. AI suggests a matching action; you review it before rolling. Existing scenes keep the rule-set copied at their start."
               action={<button type="button" className="setup-text-btn" onClick={() => setDraft({ ...draft, actions: [...draft.actions,
-                { id: crypto.randomUUID(), name: "", attributeKey: "", when: "", successMeaning: "" }] })}>+ Add action</button>}>
+                { id: crypto.randomUUID(), name: "", attributeKey: "", when: "", successMeaning: "", prerequisites: "", limits: "" }] })}>+ Add action</button>}>
               {draft.actions.length === 0 && <p className="inspector-empty">No defined actions. Checks use a manually selected stat.</p>}
               {draft.actions.map((action, index) => {
                 const update = (fields: Partial<typeof action>) => setDraft({ ...draft, actions: draft.actions.map((item) => item.id === action.id ? { ...item, ...fields } : item) });
@@ -541,9 +541,18 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
                     {draft.attributes.filter((item) => item.kind === "number" && item.name.trim()).map((item) => <option key={item.key} value={item.key}>{item.name}</option>)}
                   </select></label>
                   <label className="setup-field">When to use it<textarea maxLength={1000} value={action.when} placeholder="Trying to spark romantic interest through conversation." onChange={(e) => update({ when: e.target.value })} /></label>
+                  <label className="setup-field">Prerequisites / context <span className="setup-optional">optional</span>
+                    <textarea maxLength={2000} value={action.prerequisites ?? ""} placeholder="The request must be plausible given the place, relationship and the counterpart’s own wishes. An ordinary, welcome interaction may need no roll." onChange={(e) => update({ prerequisites: e.target.value })} />
+                    <span className="setup-optional">Describe what makes an attempt possible or uncertain. AI should interpret the current scene.</span>
+                  </label>
+                  <label className="setup-field">Limits / what success cannot do <span className="setup-optional">optional</span>
+                    <textarea maxLength={2000} value={action.limits ?? ""} placeholder="Charm can warm a response. It cannot override personal boundaries or make someone accept any request, even on a roll of 1." onChange={(e) => update({ limits: e.target.value })} />
+                    <span className="setup-optional">A strong roll improves the permitted outcome; it does not remove these limits.</span>
+                  </label>
                   <label className="setup-field">Success means<textarea maxLength={1000} value={action.successMeaning} placeholder="The counterpart responds with warmth and interest in this exchange." onChange={(e) => update({ successMeaning: e.target.value })} /></label>
                 </div>;
               })}
+              <p className="inspector-empty">These descriptions accompany action suggestions and narration. Automatic assessment of whether a roll is needed or possible is a future step.</p>
             </FormSection>
             {notice && <p className="setup-notice">{notice}</p>}
             {error && <p className="setup-error">{error}</p>}

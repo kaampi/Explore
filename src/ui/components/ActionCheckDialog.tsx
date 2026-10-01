@@ -147,7 +147,9 @@ export function ActionCheckDialog({ session, initialAttempt, onClose, onContinue
               <button type="button" disabled={suggesting || !action.trim() || actions.length === 0} onClick={() => void suggest()}>{suggesting ? "Finding an action…" : "Suggest action with AI"}</button>
               {actions.length === 0 && <p className="action-check__hint">Set your player stats to use the defined actions.</p>}
               {suggestion && <p role="status" className="action-check__hint">{suggestion}</p>}
-              {definition && <p className="action-check__hint"><strong>{definition.name}</strong>: {definition.when}<br />Success: {definition.successMeaning}</p>}
+              {definition && <p className="action-check__hint"><strong>{definition.name}</strong>: {definition.when}<br />Success: {definition.successMeaning}
+                {definition.prerequisites && <><br />Context: {definition.prerequisites}</>}
+                {definition.limits && <><br />Limits: {definition.limits}</>}</p>}
             </>}
             <div className="action-check__settings">
               <label>Your stat<select disabled={Boolean(definition) || suggesting} value={attributeId} onChange={(e) => setAttributeId(e.target.value)}>

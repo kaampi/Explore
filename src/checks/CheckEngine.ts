@@ -99,6 +99,7 @@ export function checkOutcomeInstruction(result: CheckResult, participants?: { ac
       target: result.target, outcome: result.success ? "SUCCESS" : "FAILURE",
       successGrade: grade, effort: grade ? SUCCESS_GRADES[grade].narration : null,
       definedAction: result.actionDefinition ?? null }),
+    "Respect the authored action prerequisites and limits in definedAction. A low roll or easy success never overrides those limits or expands the permitted outcome. Interpret general conditions using the actual scene, place norms, relationship and counterpart’s wishes. If a request exceeds the action’s scope, reflect success only within its permitted scope and preserve the counterpart’s choices.",
     "The attempted action is already supplied by the player. Continue with the counterpart's reaction only. Every new quoted line belongs to the counterpart; the player's next words and actions wait for the player's next turn.",
     ...(result.success ? [
       ...(result.actionDefinition ? [`The established success is: ${result.actionDefinition.successMeaning}. Apply this meaning to the exact player attempt; the grade determines ease, not extra rewards.`] : []),

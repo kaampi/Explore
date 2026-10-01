@@ -5,7 +5,9 @@ export const ActionDefinitionSchema = z.object({
   name: z.string().trim().min(1).max(100),
   attributeId: z.string().trim().min(1),
   when: z.string().trim().min(1).max(1000),
-  successMeaning: z.string().trim().min(1).max(1000)
+  successMeaning: z.string().trim().min(1).max(1000),
+  prerequisites: z.string().trim().max(2000).optional(),
+  limits: z.string().trim().max(2000).optional()
 });
 export type ActionDefinition = z.infer<typeof ActionDefinitionSchema>;
 
