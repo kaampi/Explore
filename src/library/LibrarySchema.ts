@@ -1,3 +1,4 @@
+import { MaterialPurposeSchema } from "../state/playMode";
 import { ActionDefinitionSchema, validateActionDefinitions } from "../checks/ActionDefinitions";
 import {
   ApproximateAgeSchema,
@@ -18,6 +19,7 @@ export const LibrarySourceSchema = z.enum(["player", "sillytavern", "example"]);
 export type LibrarySource = z.infer<typeof LibrarySourceSchema>;
 
 export const CharacterLoreEntrySchema = z.object({
+  purpose: MaterialPurposeSchema.optional(),
   id: z.string().min(1),
   title: z.string().default(""),
   content: z.string().min(1),
@@ -126,6 +128,7 @@ export const RealmTemplateSchema = z.object({
 export type RealmTemplate = z.infer<typeof RealmTemplateSchema>;
 
 export const StoryTemplateSchema = z.object({
+  storyline: z.string().optional(),
   id: z.string().min(1),
   name: z.string().min(1),
   premise: z.string().min(1),
@@ -317,6 +320,8 @@ export const CampaignTemplateSchema = z.object({
   playerIntro: z.string().default(""),
   /** Writer premise for Pass 1. Characters do not automatically know it. */
   startPrompt: z.string().default(""),
+  /** World background independent of the authored adventure. */
+  worldPremise: z.string().optional(),
   model: z.string().optional(),
   rulesetId: z.string().optional(),
   voiceId: z.string().optional(),

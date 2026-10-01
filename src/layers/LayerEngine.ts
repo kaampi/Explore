@@ -1,3 +1,4 @@
+import { layerAllowedInMode } from "../state/playMode";
 import type { Session, Layer } from "@state/StateSchema";
 import { PRIORITY, type ContextBlock } from "@context/ContextBlock";
 import { layerHasKeywordGate, keywordsMatchConversation, tokenKnownInPlay } from "./keywords";
@@ -67,7 +68,7 @@ export function evaluateTrigger(
  *    persisted flag, same as any other layer.
  */
 export function isEffectivelyActive(session: Session, layer: Layer, hints: TriggerHints = {}): boolean {
-  if (layer.spent) return false;
+  if (!layerAllowedInMode(session, layer) || layer.spent) return false;
   if (layer.once) {
     if (!layer.active) return false;
     if (!layer.trigger && !(layer.keywords?.length)) return false;
@@ -132,3 +133,4 @@ function isDuplicatePlaceLayer(session: Session, layer: Layer): boolean {
   const note = session.scene?.note?.trim();
   return Boolean((brief && text === brief) || (note && text === note));
 }
+

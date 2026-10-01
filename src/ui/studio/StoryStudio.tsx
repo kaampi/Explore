@@ -11,12 +11,13 @@ type Draft = {
   id: string | null;
   name: string;
   premise: string;
+  storyline: string;
   source: LibrarySource;
   createdAt?: string;
 };
 
 function emptyDraft(): Draft {
-  return { id: null, name: "", premise: "", source: "player" };
+  return { id: null, name: "", premise: "", storyline: "", source: "player" };
 }
 
 function draftFrom(template: StoryTemplate): Draft {
@@ -24,6 +25,7 @@ function draftFrom(template: StoryTemplate): Draft {
     id: template.id,
     name: template.name,
     premise: template.premise,
+    storyline: template.storyline ?? "",
     source: template.source,
     createdAt: template.createdAt
   };
@@ -81,6 +83,7 @@ export function StoryStudio({ repo }: { repo: IndexedDBRepository }) {
         ...(draft.id ? { id: draft.id } : {}),
         name: deriveStoryTitle(draft.name, premise),
         premise,
+        storyline: draft.storyline.trim(),
         source: draft.source
       });
       const previous = library.find((item) => item.id === built.id);
@@ -143,13 +146,16 @@ export function StoryStudio({ repo }: { repo: IndexedDBRepository }) {
               placeholder="New story"
               onChange={(name) => setDraft({ ...draft, name })}
             />
-            <FormSection title="The world, so far" lede="Bag End and Mount Doom can share the same story.">
+            <FormSection title="The world, so far" lede="World lore shared by all play modes. Keep planned events, quests and required outcomes in Storyline below.">
               <textarea
                 className="setup-field__story"
                 value={draft.premise}
                 onChange={(e) => setDraft({ ...draft, premise: e.target.value })}
                 placeholder="In the Second Age, the Dark Lord Sauron secretly forged the One Ring…"
               />
+            </FormSection>
+            <FormSection title="Storyline" lede="Optional. Only included in Adventure; excluded from Free exploration and Fan Fiction.">
+              <textarea className="setup-field__story" value={draft.storyline} onChange={(e) => setDraft({ ...draft, storyline: e.target.value })} placeholder="The planned adventure and its possible developments…" />
             </FormSection>
             {notice && <p className="setup-notice">{notice}</p>}
             {error && <p className="setup-error">{error}</p>}
@@ -169,3 +175,4 @@ export function StoryStudio({ repo }: { repo: IndexedDBRepository }) {
     </div>
   );
 }
+

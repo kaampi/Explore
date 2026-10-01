@@ -1,3 +1,4 @@
+import { usesGameRules } from "./playMode";
 import type { SceneRoom, Session } from "./StateSchema";
 import { keywordHitsText } from "@layers/keywords";
 
@@ -13,6 +14,7 @@ export function roomIsOpened(session: Session, roomId: string): boolean {
 }
 
 export function roomIsVisible(session: Session, room: Pick<SceneRoom, "id" | "gate">): boolean {
+  if (!usesGameRules(session)) return true;
   const gate = roomGate(room);
   if (gate !== "hidden") return true;
   return roomIsOpened(session, room.id);
@@ -20,6 +22,7 @@ export function roomIsVisible(session: Session, room: Pick<SceneRoom, "id" | "ga
 
 /** Graph may still refuse. This is only the lock/hidden gate. */
 export function roomGateAllowsEntry(session: Session, room: Pick<SceneRoom, "id" | "gate">): boolean {
+  if (!usesGameRules(session)) return true;
   const gate = roomGate(room);
   if (gate === "open") return true;
   return roomIsOpened(session, room.id);
@@ -48,3 +51,4 @@ export function roomIdForDest(session: Session, dest: string | undefined): strin
   const hit = rooms.find((room) => room.label.trim().toLowerCase() === needle.toLowerCase());
   return hit?.id;
 }
+

@@ -1,3 +1,4 @@
+import { usesGameRules } from "../state/playMode";
 import type { Session } from "@state/StateSchema";
 import { pass1NameOptions, maskUnheardGivenNames } from "@state/nameHeard";
 import { sideRoomStage, venueBuildingName } from "@state/playerDestination";
@@ -6,6 +7,7 @@ import { namedRoomsInCanon } from "@state/WorldCanon";
 import { DEFAULT_BUDGET } from "./ContextBudgetManager";
 import {
   assembleContext,
+  FAN_FICTION_WRITING,
   buildPass1WritingInstructions,
   metersFromSession,
   parseConversationTurns
@@ -69,7 +71,7 @@ export function inspectPromptBudget(session: Session): PromptBudgetSnapshot {
         body: maskUnheardGivenNames(session, intro.body)
       }
     : undefined;
-  const writing = focusId
+  const writing = !usesGameRules(session) ? FAN_FICTION_WRITING : focusId
     ? buildPass1WritingInstructions(focusId, {
         narrator: assembled.includedBlocks.some((block) => block.source === "voice"),
         ...names,
@@ -123,3 +125,4 @@ export function inspectPromptBudget(session: Session): PromptBudgetSnapshot {
     parts
   };
 }
+

@@ -113,6 +113,7 @@ describe("sessionFromCampaignScene", () => {
       name: "The Aurora Room",
       playerIntro: "Stay as long as you like.",
       startPrompt: "A hidden jazz bar in a quiet city.",
+      worldPremise: "An ancient city with many factions.",
       realmId: place.realmId,
       people: [{ characterId: emma.id, stats: {} }],
       scenes: [
@@ -168,7 +169,8 @@ describe("sessionFromCampaignScene", () => {
     expect(result.session.campaignIntro).toBe("Stay as long as you like.");
     expect(result.session.campaignId).toBe(campaign.id);
     expect(result.session.sceneId).toBe(campaign.scenes[0]!.id);
-    expect(result.session.story?.premise).toContain("hidden jazz bar");
+    expect(result.session.storyline?.premise).toContain("hidden jazz bar");
+    expect(result.session.story?.premise).toContain("ancient city");
     const once = result.session.layers.find((layer) => layer.once);
     expect(once?.content).toContain("Two strangers");
     expect(once?.keywords).toEqual(["brooch"]);
@@ -439,3 +441,4 @@ describe("createSession once-beats", () => {
     expect(session.layers.some((layer) => layer.once)).toBe(false);
   });
 });
+

@@ -1,9 +1,11 @@
+import { usesGameRules } from "../state/playMode";
 import type { Session } from "../state/StateSchema";
 import { charactersHere } from "../state/sceneFocus";
 import { whatNowBlocksComposer, resolveWhatNowIntercept } from "../state/whatNowGate";
 import { CheckResultSchema, resolveCheck, type CheckResult, type Difficulty } from "./CheckEngine";
 
 export function playerCheckStats(session: Session) {
+  if (!usesGameRules(session)) return [];
   return (session.ruleset?.attributes ?? []).flatMap((def) => {
     if (def.kind !== "number") return [];
     const raw = session.player?.stats?.[def.id];
@@ -24,6 +26,7 @@ export function playerCheckActions(session: Session) {
 export function rollPlayerCheck(session: Session, input: {
   id: string; action: string; targetId: string; attributeId: string; difficulty: Difficulty; actionId?: string;
 }, rng?: () => number): CheckResult {
+  if (!usesGameRules(session)) throw new Error("Fan Fiction does not use game-rule checks.");
   if (whatNowBlocksComposer(session)) throw new Error("Choose the next story beat before attempting a check.");
   if (resolveWhatNowIntercept(session, input.action).kind !== "pass") {
     throw new Error("This action opens a story choice. Use the chat to choose that beat first.");

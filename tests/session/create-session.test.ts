@@ -59,6 +59,7 @@ describe("createSessionFromSetup", () => {
     );
 
     expect(session.story).toEqual({
+      scope: "world",
       title: "The War of the Ring",
       premise:
         "In the Second Age, the Dark Lord Sauron secretly forged the One Ring in order to control all the other Rings of Power."
@@ -491,3 +492,4 @@ describe("slugifyCharacterId / displayCharacterName", () => {
     );
   });
 });
+

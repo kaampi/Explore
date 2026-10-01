@@ -322,6 +322,7 @@ export class StateEngine {
   addLayer(
     layer: {
       type: LayerType;
+      purpose?: "world" | "storyline" | "rules";
       priority: number;
       content: string;
       trigger?: string;
@@ -349,6 +350,7 @@ export class StateEngine {
     const newLayer: Layer = LayerSchema.parse({
       id: crypto.randomUUID(),
       type: layer.type,
+      ...(layer.purpose ? { purpose: layer.purpose } : {}),
       priority: layer.priority,
       content: layer.content,
       trigger: layer.trigger,
@@ -594,6 +596,10 @@ export class StateEngine {
       const layer = this.session.layers.find((item) => item.id === id);
       if (!layer) return { committed: false, reason: `Unknown layer id: ${id}` };
       removed.push(layer);
+    }
+
+    if (removed.some((layer) => layer.purpose && layer.purpose !== "world")) {
+      return { committed: false, reason: "Compact world lore separately from storyline and rules." };
     }
 
     const added = replacements.map((item) =>
@@ -1272,3 +1278,4 @@ function coerceMutationValue(path: string, value: unknown, session: Session): un
   }
   return undefined;
 }
+

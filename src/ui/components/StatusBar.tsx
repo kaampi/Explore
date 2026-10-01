@@ -1,3 +1,4 @@
+import { usesGameRules } from "../../state/playMode";
 import { useEngine } from "../EngineStore";
 import { inspectPromptBudget } from "@context/promptBudget";
 import { OllamaModelPicker } from "./OllamaModelPicker";
@@ -32,7 +33,7 @@ export function StatusBar() {
         </span>
       )}
 
-      {budget.injectionFindings > 0 && (
+      {usesGameRules(session) && budget.injectionFindings > 0 && (
         <span className="chip" style={{ borderColor: "var(--accent-danger)", color: "var(--accent-danger)" }}>
           {budget.injectionFindings} injection signal
           {budget.injectionFindings > 1 ? "s" : ""}
@@ -70,3 +71,4 @@ export function StatusBar() {
     </div>
   );
 }
+

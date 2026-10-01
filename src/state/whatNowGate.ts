@@ -1,3 +1,4 @@
+import { usesStoryline } from "./playMode";
 import type { Session } from "./StateSchema";
 import { keywordHitsText } from "@layers/keywords";
 import {
@@ -65,6 +66,7 @@ export function copyWhatNowSets(
 
 /** Authored groups, or one group from a leftover single list. */
 export function sessionWhatNowSets(session: Session): WhatNowSetLive[] {
+  if (!usesStoryline(session)) return [];
   const authored = copyWhatNowSets(session.whatNowSets);
   if (authored.length > 0) return authored;
   const choices = copyWhatNowChoices(session.whatNow);
@@ -92,6 +94,7 @@ export function whatNowBlocksComposer(session: Session): boolean {
 }
 
 function activeChoices(session: Session): Array<{ id: string; label: string; room: string }> {
+  if (!usesStoryline(session)) return [];
   if (session.whatNowOpen) return copyWhatNowChoices(session.whatNow);
   return sessionWhatNowSets(session).flatMap((set) => set.choices);
 }
@@ -176,7 +179,7 @@ export function resolveWhatNowIntercept(
   playerMessage: string,
   goTo?: string
 ): WhatNowIntercept {
-  if (!whatNowOnFloor(session)) return { kind: "pass", ...(goTo?.trim() ? { goTo: goTo.trim() } : {}) };
+  if (!usesStoryline(session) || !whatNowOnFloor(session)) return { kind: "pass", ...(goTo?.trim() ? { goTo: goTo.trim() } : {}) };
 
   const tapped = listedWhatNowDest(session, goTo);
   if (tapped) return { kind: "pass", goTo: tapped };
@@ -208,3 +211,4 @@ export function setIdToArmAfterTurn(session: Session): string | undefined {
   if (!whatNowOnFloor(session) || session.whatNowOpen) return undefined;
   return setIdFromCharacterLine(session);
 }
+

@@ -2890,3 +2890,7 @@ textarea.setup-field__story {
   .action-check__settings { grid-template-columns: 1fr; }
   .action-check__tray { height: 200px; }
 }
+
+.chat-mode { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; font-size: .8rem; color: var(--text-muted, #aaa); }
+.chat-mode label { display: flex; align-items: center; gap: 8px; }
+.chat-mode select { background: #252529; color: #eee; border: 1px solid #555; border-radius: 5px; padding: 5px; }

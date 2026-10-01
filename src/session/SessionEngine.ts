@@ -1,3 +1,4 @@
+import { playMode, usesGameRules } from "../state/playMode";
 import { StateEngine, type MutationProposal } from "@state/StateEngine";
 import { checkOutcomeInstruction, type CheckResult } from "../checks/CheckEngine";
 import { validatePlayerCheck } from "../checks/playerCheck";
@@ -94,6 +95,7 @@ export interface RunTurnCallbacks {
 
 export interface RunTurnOptions {
   check?: CheckResult;
+  intent?: "action" | "director";
   /** What now? destination — a listed room or the venue floor. */
   goTo?: string;
   /** Walk to another landmark in this realm. Swaps Here before Pass 1. */
@@ -159,6 +161,7 @@ export interface RollingMemoryConfig {
 /** What's needed to redo a turn's dialogue+mutations while keeping the same player message. */
 interface TurnManifest {
   check?: CheckResult;
+  intent?: "action" | "director";
   turnId: string;
   characterId: string;
   playerMessage: string;
@@ -207,6 +210,19 @@ export class SessionEngine {
       throw new SessionNotIdleError(this.state);
     }
 
+    if (options.intent === "director" && usesGameRules(this.stateEngine.getSession())) {
+      throw new Error("Story directions are available only in Fan Fiction.");
+    }
+    if (options.intent === "director" && (!playerMessage.trim() || playerMessage.length > 2000)) {
+      throw new Error("A story direction must contain 1–2000 characters.");
+    }
+    if (options.intent === "director") {
+      // Refuse a premise that cannot fit required context before it enters the save.
+      const current = this.stateEngine.getSession();
+      const lastTurn = parseConversationTurns(current, undefined).turns.at(-1)?.turn ?? 0;
+      assembleContext({ ...current, conversation: [...current.conversation,
+        { turn: lastTurn + 1, role: "player", content: playerMessage, intent: "director" }] });
+    }
     const intercept = resolveWhatNowIntercept(this.stateEngine.getSession(), playerMessage, options.goTo);
     if (intercept.kind === "open") {
       this.stateEngine.armWhatNowSet(intercept.setId);
@@ -234,7 +250,7 @@ export class SessionEngine {
 
       const preTurnVersion = this.stateEngine.getSession().stateVersion;
       const appendPlayerResult = this.stateEngine.appendConversationTurn(
-        { role: "player", content: playerMessage, ...(options.check ? { check: options.check } : {}) },
+        { role: "player", content: playerMessage, ...(options.check ? { check: options.check } : {}), ...(options.intent ? { intent: options.intent } : {}) },
         preTurnVersion
       );
       if (!appendPlayerResult.committed) {
@@ -298,6 +314,7 @@ export class SessionEngine {
       const regenNote = options.note?.trim();
       return await this.runDialogueAndCommit(newTurnId, manifest.characterId, manifest.playerMessage, callbacks, {
         ...(manifest.check ? { check: manifest.check } : {}),
+        ...(manifest.intent ? { intent: manifest.intent } : {}),
         ...(regenNote ? { regenNote } : {})
       });
     } catch (err) {
@@ -358,6 +375,7 @@ export class SessionEngine {
       characterId: beat.reply.speaker,
       playerMessage: beat.player.content,
       ...(beat.player.check ? { check: beat.player.check } : {}),
+      ...(beat.player.intent ? { intent: beat.player.intent } : {}),
       eventIds: beatIds
     };
     return this.regenerateLastTurn(newTurnId, callbacks, options);
@@ -377,22 +395,24 @@ export class SessionEngine {
     callbacks: RunTurnCallbacks,
     options: RunTurnOptions = {}
   ): Promise<TurnResult> {
+    const rulesEnabled = usesGameRules(this.stateEngine.getSession());
+    const isDirector = options.intent === "director";
     const previousStage = sceneStageKey(this.stateEngine.getSession());
     const previousPlace = sceneStageLabel(this.stateEngine.getSession());
     const notesBeforeMove = standingNotesForSummarizer(this.stateEngine.getSession());
     // An attempt is not a completed move or recruitment. This MVP only
     // resolves a narrative response; future action rules own mechanical effects.
-    if (!options.check) {
-      this.stateEngine.openRoomsNamedInText(playerMessage);
-      if (options.goTo?.trim()) this.stateEngine.openRoomAtDest(options.goTo.trim());
-      this.stateEngine.syncPartyFromPlayerText(playerMessage, characterId);
+    if (!options.check && !isDirector) {
+      if (rulesEnabled) this.stateEngine.openRoomsNamedInText(playerMessage);
+      if (rulesEnabled && options.goTo?.trim()) this.stateEngine.openRoomAtDest(options.goTo.trim());
+      if (rulesEnabled) this.stateEngine.syncPartyFromPlayerText(playerMessage, characterId);
       if (options.travel) this.stateEngine.travelToLandmark(options.travel);
     }
-    const walkedIn = options.check ? undefined : destinationRoomFromPlayerText(
+    const walkedIn = options.check || isDirector ? undefined : destinationRoomFromPlayerText(
       playerMessage,
       this.stateEngine.getSession()
     );
-    if (!options.check && !options.travel) {
+    if (!options.check && !isDirector && !options.travel) {
       applyPlayerDestinationOn(
         this.stateEngine,
         playerMessage,
@@ -426,7 +446,7 @@ export class SessionEngine {
     const assembled = assembleContext(session, { continuation });
     const { turns } = parseConversationTurns(session, undefined);
     const trust = session.relationships[characterId]?.trust.value;
-    const favor = !options.check && trust !== undefined ? checkFavor(trust, rollD100()) : undefined;
+    const favor = rulesEnabled && !options.check && trust !== undefined ? checkFavor(trust, rollD100()) : undefined;
     const stageRoom = sideRoomStage(session);
     const intro = herePrompt(session);
     const introForModel = intro
@@ -441,6 +461,8 @@ export class SessionEngine {
       !outOfSight && (Boolean(options.travel) || Boolean(walkedIn && stageRoom === walkedIn));
     const messages: ChatMessage[] = buildPass1Messages(assembled, turns, playerMessage, characterId, {
       ...names,
+      playMode: playMode(session),
+      ...(options.intent ? { intent: options.intent } : {}),
       ...(character?.pronoun ? { pronoun: character.pronoun } : {}),
       ...(session.player?.status.value ? { playerStatus: session.player.status.value } : {}),
       ...(session.player?.position.value
@@ -517,7 +539,7 @@ export class SessionEngine {
     this.state = transition(this.state, "stream_complete"); // -> extracting
 
     const liveSession = this.stateEngine.getSession();
-    const proposalInputs = filterUninvitedFollowProposals(
+    const proposalInputs = !rulesEnabled ? [] : filterUninvitedFollowProposals(
       dropAiPlayerPosition(
         await this.proposalExtractor(
           fullText,
@@ -579,8 +601,8 @@ export class SessionEngine {
     if (!appendReplyResult.committed) {
       throw new TurnFailedError(turnId, `Could not append character reply: ${appendReplyResult.reason}`);
     }
-    this.stateEngine.openRoomsNamedInText(fullText);
-    this.stateEngine.offerPartyFromReply(characterId, fullText);
+    if (rulesEnabled) this.stateEngine.openRoomsNamedInText(fullText);
+    if (rulesEnabled) this.stateEngine.offerPartyFromReply(characterId, fullText);
     const replyEvent = this.stateEngine.getEventLog().last();
     if (replyEvent) eventIdsThisTurn.push(replyEvent.id);
 
@@ -608,7 +630,7 @@ export class SessionEngine {
     // proposed layer is force-created inactive by LayerPolicy (or
     // discarded if it invents a room or creature not in canon), so this
     // never has an immediate behavioral effect.
-    if (this.layerProposalExtractor) {
+    if (rulesEnabled && this.layerProposalExtractor) {
       try {
         const layerProposal = await this.layerProposalExtractor(fullText, characterId);
         if (layerProposal) {
@@ -633,7 +655,8 @@ export class SessionEngine {
     // condensation of *older* history is unrelated to this turn's reply.
     this.lastTurnManifest = {
       turnId, characterId, playerMessage, eventIds: eventIdsThisTurn,
-      ...(options.check ? { check: options.check } : {})
+      ...(options.check ? { check: options.check } : {}),
+      ...(options.intent ? { intent: options.intent } : {})
     };
 
     // Rolling Conversation Memory: opportunistic, best-effort. A
@@ -766,7 +789,7 @@ function applyPlayerDestinationOn(
       expectedStateVersion: session.stateVersion
     });
   }
-  const dressed = dressForPublicBarWrites(engine.getSession(), playerMessage, characterId);
+  const dressed = usesGameRules(engine.getSession()) ? dressForPublicBarWrites(engine.getSession(), playerMessage, characterId) : [];
   for (const write of dressed) {
     const session = engine.getSession();
     engine.proposeMutation({

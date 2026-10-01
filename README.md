@@ -46,6 +46,51 @@ Phases 1–5 of the Master Spec are in the product. Studio, Adventure, world can
 - **Agency.** The player controls their own body. Lines that dictate what an NPC does or says are split: the player’s action is fact; the NPC claim is rejected (`PlayerAgency`).
 - **Live state Pass 2 may write** (when unlocked and grounded): character `position | mood | energy | clothing | holding | pose`, relationship `trust | familiarity | tension`, `player.position | player.status`, and rule-set numbers whose **Move / beat** is above 0 (clamped). Looks is body, not clothes. Attribute **high/low/mid meanings** are trusted Pass 1 fact at the live band of each field's own scale; the numbers themselves are not dice.
 
+## Play modes
+
+Choose a **Play mode** in Campaign Builder or the one-off scene setup before
+starting. The chosen mode is stored in the session; existing saves without a
+mode remain Adventure. There is no in-place mode switch.
+
+| Mode | Authored storyline / reply gates | Game rules | Coauthor directions |
+| --- | --- | --- | --- |
+| Adventure | On | On | Off |
+| Free exploration | Off | On | Off |
+| Fan Fiction | Off | Off | On |
+
+Campaign Builder separates **World background** (all modes) from
+**Storyline / adventure instructions** (Adventure only). Legacy start text
+is retained as storyline: move reusable lore into World background. The
+Stories editor likewise separates world history from optional Storyline.
+Lore entries can be marked **World**, **Storyline**, or **Game rule**; the
+latter two are filtered at their source by the mode. Triggers and once-beats
+are storyline by default. World-lore compaction never merges storyline/rule
+entries into ordinary lore.
+
+Free exploration retains stats and checks but excludes authored plot and
+predefined-reply gates. Fan Fiction additionally hides Check and party-rule
+controls, disables Favor, closeness/trait gates, mechanical Pass 2 writes,
+AI-proposed game layers, locked-room and room-route restrictions. It uses a
+separate narration prompt without the usual fixed-canon/player-agency rules.
+Lore/personality provide starting points, and established fiction takes
+precedence. Known-map navigation remains available; new fictional locations
+can be narrated but do not create new atlas cards automatically.
+
+In Fan Fiction choose **Character action** or **Story direction** in chat.
+Directions are explicit fictional premises (up to 2,000 characters each),
+not permission to change application instructions or settings. They persist
+on player conversation entries and remain required context independently of
+ordinary chat trimming/condensation. Regenerate, replay and save/load preserve
+them. Original library cards are untouched. These are narrative overrides;
+they do not rewrite character/library sheets or numerical Inspector values.
+Persistent directions still consume context capacity; a new direction is
+rejected before saving if it would exceed the required-context budget.
+
+Authors must separate planned events from reusable lore. The app cannot
+reliably detect a quest hidden inside unclassified personality, world text,
+place descriptions or custom narrator instructions. Review old content before
+using the free modes. Emergent events are welcome; authored obligations are not.
+
 ## Action checks (first version)
 
 Start a campaign with a rule-set and numeric values on **You**. In play, click

@@ -1,3 +1,4 @@
+import { type PlayMode } from "../state/playMode";
 import { formatPersonName } from "@library/personName";
 import { DEFAULT_OLLAMA_MODEL } from "@llm/providers/OllamaProvider";
 import {
@@ -24,7 +25,7 @@ export interface CharacterDraft {
   clothing?: string;
   holding?: string;
   portraitDataUrl?: string;
-  lore?: Array<{ id?: string; title?: string; content: string; keywords?: string[] }>;
+  lore?: Array<{ id?: string; title?: string; content: string; keywords?: string[]; purpose?: "world" | "storyline" | "rules" | undefined }>;
   libraryId?: string;
   saveToLibrary?: boolean;
   source?: "player" | "sillytavern" | "example";
@@ -39,6 +40,8 @@ export interface CharacterDraft {
 }
 
 export interface SceneSetup {
+  playMode?: PlayMode;
+  storyline?: string;
   location: string;
   /** Atlas parent. Not Here. */
   realm?: string;
@@ -66,7 +69,7 @@ export interface SceneSetup {
    * Extra place lore, typically keyword-gated. Independent of the venue
    * intro and the compact prompt.
    */
-  placeLore?: Array<{ content: string; keywords?: string[] }>;
+  placeLore?: Array<{ content: string; keywords?: string[]; purpose?: "world" | "storyline" | "rules" | undefined }>;
   storyTitle?: string;
   storyPremise?: string;
   voiceTitle?: string;
@@ -288,6 +291,7 @@ export function createSessionFromSetup(setup: SceneSetup, sessionId: string): Se
       const keywords = (entry.keywords ?? []).map((word) => word.trim()).filter(Boolean);
       layers.push({
         id: `layer-lore-${id}-${entry.id ?? index + 1}`,
+        ...(entry.purpose ? { purpose: entry.purpose } : {}),
         type: "core",
         priority: 8 + index,
         content: title ? `${title}\n\n${body}` : body,
@@ -318,6 +322,7 @@ export function createSessionFromSetup(setup: SceneSetup, sessionId: string): Se
     const keywords = (item.keywords ?? []).map((word) => word.trim()).filter(Boolean);
     layers.push({
       id: `layer-place-lore-${index + 1}`,
+      ...(item.purpose ? { purpose: item.purpose } : {}),
       type: "environment",
       priority: 20 + index,
       content,
@@ -333,6 +338,7 @@ export function createSessionFromSetup(setup: SceneSetup, sessionId: string): Se
     if (!content || keywords.length === 0) return;
     layers.push({
       id: `layer-once-${index + 1}`,
+      purpose: "storyline",
       type: "state_trigger",
       priority: 4 + index,
       content,
@@ -422,7 +428,8 @@ export function createSessionFromSetup(setup: SceneSetup, sessionId: string): Se
       ? {
           story: {
             title: storyTitle,
-            premise: storyPremise
+            premise: storyPremise,
+            scope: "world"
           }
         }
       : {}),
@@ -471,6 +478,8 @@ export function createSessionFromSetup(setup: SceneSetup, sessionId: string): Se
         ...(item.checkAttribute?.trim() ? { checkAttribute: item.checkAttribute.trim() } : {})
       })),
     relationships,
+    ...(setup.playMode ? { playMode: setup.playMode } : {}),
+    ...(setup.storyline?.trim() ? { storyline: { title: storyTitle, premise: setup.storyline.trim() } } : {}),
     layers,
     memory: { episodic: [], semantic: [], relational: [] },
     conversation: [],

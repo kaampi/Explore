@@ -1,3 +1,4 @@
+import { PlayModeSchema, MaterialPurposeSchema } from "./playMode";
 import { ActionDefinitionSchema, validateActionDefinitions } from "../checks/ActionDefinitions";
 import { z } from "zod";
 import { CheckResultSchema } from "../checks/CheckEngine";
@@ -141,7 +142,8 @@ export const WorldStateSchema = z.object({
  */
 export const StoryStateSchema = z.object({
   title: z.string().default(""),
-  premise: z.string().min(1)
+  premise: z.string().min(1),
+  scope: z.enum(["world", "storyline"]).optional()
 });
 export type StoryState = z.infer<typeof StoryStateSchema>;
 
@@ -281,6 +283,7 @@ export const LayerTypeSchema = z.enum(["core", "relationship", "environment", "s
 export type LayerType = z.infer<typeof LayerTypeSchema>;
 
 export const LayerSchema = z.object({
+  purpose: MaterialPurposeSchema.optional(),
   id: z.string(),
   type: LayerTypeSchema,
   priority: z.number().int(),
@@ -346,7 +349,8 @@ export const ConversationTurnSchema = z.object({
   toldBy: z.enum(["narrator"]).optional(),
   content: z.string(),
   /** Engine-resolved roll, preserved across save, regenerate and replay. */
-  check: CheckResultSchema.optional()
+  check: CheckResultSchema.optional(),
+  intent: z.enum(["action", "director"]).optional()
 });
 export type ConversationTurn = z.infer<typeof ConversationTurnSchema>;
 
@@ -435,6 +439,9 @@ export const SessionSchema = z.object({
   schemaVersion: z.number().int().positive(),
   id: z.string(),
   runtime: RuntimeConfigSchema,
+  playMode: PlayModeSchema.optional(),
+  /** Authored progression, excluded outside Adventure. */
+  storyline: StoryStateSchema.optional(),
   stateVersion: z.number().int().nonnegative(),
 
   characters: z.record(z.string(), CharacterStateSchema).default({}),

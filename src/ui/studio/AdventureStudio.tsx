@@ -1,3 +1,5 @@
+import { PlayModePicker } from "./PlayModePicker";
+import type { PlayMode } from "../../state/playMode";
 import { useEffect, useState } from "react";
 import { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 import type { Session } from "@state/StateSchema";
@@ -98,6 +100,7 @@ export function AdventureStudio({
   const [voices, setVoices] = useState<VoiceTemplate[]>([]);
   const [rulesets, setRulesets] = useState<RulesetTemplate[]>([]);
   const [objects, setObjects] = useState<ObjectTemplate[]>([]);
+  const [selectedMode, setSelectedMode] = useState<PlayMode>("adventure");
   const [model, setModel] = useState(DEFAULT_OLLAMA_MODEL);
   const [voiceId, setVoiceId] = useState<string | null>(null);
   const [storyId, setStoryId] = useState<string | null>(null);
@@ -277,7 +280,8 @@ export function AdventureStudio({
             ...(story
               ? {
                   storyTitle: story.name,
-                  storyPremise: story.premise
+                  storyPremise: story.premise,
+                  ...(story.storyline?.trim() ? { storyline: story.storyline.trim() } : {})
                 }
               : {}),
             ...(voice
@@ -287,6 +291,7 @@ export function AdventureStudio({
                 }
               : {}),
             model,
+            playMode: selectedMode,
             ...(ruleset
               ? {
                   ruleset: { name: ruleset.name, attributes: ruleset.attributes, ...(ruleset.actions ? { actions: ruleset.actions } : {}) }
@@ -358,6 +363,8 @@ export function AdventureStudio({
         <p className="setup-lede">
           No campaign — just tonight. Pick a place and a character. Stats need a rule-set. Then Start scene.
         </p>
+
+        <PlayModePicker value={selectedMode} onChange={setSelectedMode} />
 
         <section className="setup-section">
           <div className="setup-section__head">

@@ -1,3 +1,5 @@
+import { PlayModePicker } from "./PlayModePicker";
+import type { PlayMode } from "../../state/playMode";
 import { useEffect, useRef, useState } from "react";
 import type { IndexedDBRepository, StudioResume } from "@persistence/IndexedDBRepository";
 import type { Session } from "@state/StateSchema";
@@ -117,6 +119,7 @@ function sanitizeCampaign(draft: CampaignTemplate) {
     name: draft.name.trim() || "New campaign",
     playerIntro: draft.playerIntro,
     startPrompt: draft.startPrompt,
+    ...(draft.worldPremise !== undefined ? { worldPremise: draft.worldPremise } : {}),
     people: draft.people,
     objectIds: draft.objectIds,
     source: draft.source,
@@ -204,6 +207,7 @@ export function CampaignStudio({
   const [notice, setNotice] = useState<string | null>(null);
   const [freshNight, setFreshNight] = useState(false);
   const [handoffDraft, setHandoffDraft] = useState("");
+  const [selectedMode, setSelectedMode] = useState<PlayMode>("adventure");
   const [busy, setBusy] = useState(false);
   const [ageBand, setAgeBand] = useState<AgeBand | null>(null);
   const resumeApplied = useRef(false);
@@ -412,6 +416,7 @@ export function CampaignStudio({
       const result = sessionFromCampaignScene(
         {
           campaign: saved,
+          playMode: selectedMode,
           scene,
           places: visiblePlaces,
           realms: visibleRealms,
@@ -623,6 +628,8 @@ export function CampaignStudio({
           onChange={(name) => setDraft({ ...draft, name })}
         />
 
+        <PlayModePicker value={selectedMode} onChange={setSelectedMode} />
+
         {tab === "characters" || tab === "objects" ? (
           <LensBar
             filter={pickFilter}
@@ -761,12 +768,15 @@ export function CampaignStudio({
                 placeholder="The long pitch — What you tell a person sitting down to play"
               />
             </FormSection>
-            <FormSection title="Background for the story (What AI knows)">
+            <FormSection title="World background" lede="Lore shared by all play modes. Describe the world as it is; keep required events and quests in Storyline below.">
+              <textarea className="setup-field__story" value={draft.worldPremise ?? ""} onChange={(e) => setDraft({ ...draft, worldPremise: e.target.value })} placeholder="The world's history, factions and background…" />
+            </FormSection>
+            <FormSection title="Storyline / adventure instructions" lede="Adventure only. Legacy start text is kept here; move reusable world lore into World background before playing other modes.">
               <textarea
                 className="setup-field__story"
                 value={draft.startPrompt}
                 onChange={(e) => setDraft({ ...draft, startPrompt: e.target.value })}
-                placeholder="The world in a few lines for the AI-model to have. Player will not get this information unless told by someone in the game"
+                placeholder="Authored quests, required developments and planned outcomes…"
               />
             </FormSection>
           </section>
@@ -1614,3 +1624,4 @@ function SceneCard({
     </div>
   );
 }
+

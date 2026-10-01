@@ -63,7 +63,8 @@ export function characterTemplateFromDraft(draft: CharacterDraft): CharacterTemp
           id: entry.id?.trim() || `lore-${index + 1}`,
           title: entry.title ?? "",
           content: entry.content.trim(),
-          keywords: entry.keywords ?? []
+          keywords: entry.keywords ?? [],
+          ...(entry.purpose ? { purpose: entry.purpose } : {})
         }))
     });
   }
@@ -87,7 +88,8 @@ export function characterTemplateFromDraft(draft: CharacterDraft): CharacterTemp
         id: entry.id?.trim() || `lore-${index + 1}`,
         title: entry.title ?? "",
         content: entry.content.trim(),
-        keywords: entry.keywords ?? []
+        keywords: entry.keywords ?? [],
+        ...(entry.purpose ? { purpose: entry.purpose } : {})
       }))
   });
 }
@@ -195,3 +197,4 @@ export function withOriginalTimestamps<T extends { createdAt: string; updatedAt:
   if (!previous) return next;
   return { ...next, createdAt: previous.createdAt, updatedAt: nowIso() };
 }
+

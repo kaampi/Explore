@@ -49,7 +49,7 @@ interface EngineContextValue {
   streamingCharacterId: string | null;
   streamingNarrator: boolean;
   lastError: string | null;
-  sendMessage: (text: string, options?: { goTo?: string; travelPlaceId?: string; check?: CheckResult }) => Promise<void>;
+  sendMessage: (text: string, options?: { goTo?: string; travelPlaceId?: string; check?: CheckResult; intent?: "action" | "director" }) => Promise<void>;
   regenerate: (note?: string) => Promise<void>;
   replay: (conversationTurn: number, note?: string) => Promise<void>;
   inspectTurn: number | null;
@@ -231,7 +231,7 @@ export function EngineProvider({
   }, [notifySession, sharedEventLog, repo, stateEngine]);
 
   const sendMessage = useCallback(
-    async (text: string, options?: { goTo?: string; travelPlaceId?: string; check?: CheckResult }) => {
+    async (text: string, options?: { goTo?: string; travelPlaceId?: string; check?: CheckResult; intent?: "action" | "director" }) => {
       setPhase("streaming");
       setStreamingText("");
       setLastError(null);
@@ -257,7 +257,7 @@ export function EngineProvider({
                 return place ? landmarkTravelPatch(place) : undefined;
               })()
             : undefined;
-        if (!options?.check && !travel && !options?.goTo?.trim()) {
+        if (options?.intent !== "director" && !options?.check && !travel && !options?.goTo?.trim()) {
           const exits = mapLandmarkTravels(session, placesRef.current);
           const hay = foldPlace(text);
           if (/\b(?:walk|go|gå|head|leave)\b/i.test(text)) {
@@ -286,7 +286,8 @@ export function EngineProvider({
           {
             ...(options?.goTo?.trim() ? { goTo: options.goTo.trim() } : {}),
             ...(travel ? { travel } : {}),
-            ...(options?.check ? { check: options.check } : {})
+            ...(options?.check ? { check: options.check } : {}),
+            ...(options?.intent ? { intent: options.intent } : {})
           }
         );
         setPhase("idle");

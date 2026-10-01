@@ -1,3 +1,4 @@
+import type { PlayMode } from "../state/playMode";
 import {
   campaignPlayerIsFilled,
   whatNowSetsFromScene,
@@ -103,6 +104,7 @@ export function setupFromCampaignScene(args: {
   voices: VoiceTemplate[];
   rulesets: RulesetTemplate[];
   handoff?: string;
+  playMode?: PlayMode;
 }): { ok: true; setup: SceneSetup } | { ok: false; reason: string } {
   const { campaign, scene, places, realms, characters, objects, voices, rulesets } = args;
   const place = places.find((item) => item.id === scene.placeId);
@@ -172,7 +174,9 @@ export function setupFromCampaignScene(args: {
       placeBrief: place.brief?.trim() || (place.id === EXAMPLE_PLACE_ID ? EXAMPLE_AURORA_BRIEF : ""),
       ...(place.id === EXAMPLE_PLACE_ID ? { placeLore: EXAMPLE_AURORA_LORE } : {}),
       ...(hasVisual ? { placeVisual: visual } : {}),
-      ...(startPrompt ? { storyTitle: campaign.name, storyPremise: startPrompt } : {}),
+      ...(campaign.worldPremise?.trim() ? { storyTitle: campaign.name, storyPremise: campaign.worldPremise.trim() } : {}),
+      ...(startPrompt ? { storyline: startPrompt } : {}),
+      ...(args.playMode ? { playMode: args.playMode } : {}),
       ...(playerIntro ? { campaignIntro: playerIntro } : {}),
       campaignId: campaign.id,
       sceneId: scene.id,
@@ -232,6 +236,7 @@ export function sessionFromCampaignScene(
     voices: VoiceTemplate[];
     rulesets: RulesetTemplate[];
     handoff?: string;
+    playMode?: PlayMode;
   },
   sessionId: string
 ): { ok: true; session: Session } | { ok: false; reason: string } {

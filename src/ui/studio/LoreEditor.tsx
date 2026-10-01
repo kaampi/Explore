@@ -36,6 +36,11 @@ export function LoreEditor({
               }
             />
           </label>
+          <label className="setup-field setup-field--row">Used as
+            <select value={entry.purpose ?? "world"} onChange={(e) => onChange(entries.map((item) => item.id === entry.id ? { ...item, purpose: e.target.value as "world" | "storyline" | "rules" } : item))}>
+              <option value="world">World lore · all modes</option><option value="storyline">Storyline · Adventure only</option><option value="rules">Game rule · Adventure / Free exploration</option>
+            </select>
+          </label>
           <label className="setup-field">
             <span className="setup-field__label">When this wakes</span>
             <textarea
@@ -73,3 +78,4 @@ export function LoreEditor({
     </FormSection>
   );
 }
+

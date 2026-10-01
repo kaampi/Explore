@@ -1,3 +1,4 @@
+import { playMode, usesGameRules, PLAY_MODES } from "../../state/playMode";
 import { ActionCheckDialog } from "./ActionCheckDialog";
 import { checkOutcomeLabel, type CheckResult } from "../../checks/CheckEngine";
 import { useEffect, useRef, useState } from "react";
@@ -27,6 +28,7 @@ interface DisplayTurn {
   toldBy?: "narrator";
   content: string;
   check?: CheckResult;
+  intent?: "action" | "director";
 }
 
 function speakerLabel(turn: DisplayTurn, session: Session, fallback: string): string {
@@ -135,6 +137,8 @@ export function ChatPanel() {
   const speakingAs = primaryCharacter(session);
   const characterName = speakingAs ? speakingAs.name : "someone";
   const toldBy = narratorLabel(session) ?? characterName;
+  const fanfiction = !usesGameRules(session);
+  const [inputIntent, setInputIntent] = useState<"action" | "director">("action");
   const [draft, setDraft] = useState("");
   const [checkOpen, setCheckOpen] = useState(false);
   const [editingTurn, setEditingTurn] = useState<number | null>(null);
@@ -208,7 +212,7 @@ export function ChatPanel() {
     if (!text || busy || fork) return;
     setDraft("");
     inputRef.current?.focus();
-    await sendMessage(text);
+    await sendMessage(text, fanfiction ? { intent: inputIntent } : undefined);
     inputRef.current?.focus();
   }
 
@@ -345,6 +349,7 @@ export function ChatPanel() {
               <span className="message__attribution">
                 <Dot kind={turn.role === "player" ? "player" : "ai"} />
                 {speakerLabel(turn, session, characterName)}
+                {turn.intent === "director" && <span className="message__check">Story direction</span>}
                 {turn.check && <span className="message__check" title={`${turn.check.attributeName}: ${turn.check.value}; ${turn.check.difficulty}`}>
                   d100 · {turn.check.roll}/{turn.check.target} · {checkOutcomeLabel(turn.check)}
                 </span>}
@@ -512,6 +517,13 @@ export function ChatPanel() {
         void sendMessage(check.action, { check });
       }} />}
       <div className="chat-composer">
+        <div className="chat-mode"><span>{PLAY_MODES[playMode(session)].label}</span>
+          {fanfiction && <label>Write as <select disabled={busy} value={inputIntent} onChange={(e) => setInputIntent(e.target.value as "action" | "director")}>
+            <option value="action">Character action</option><option value="director">Story direction</option>
+          </select></label>}
+        </div>
+        {fanfiction && inputIntent === "director" && <p className="action-check__hint">Establish a premise, relationship or event for your own story. Changes stay in this playthrough.</p>}
+
         {lastError && phase === "error" && <div className="chat-error">{lastError}</div>}
         {fork && editingTurn === null ? (
           <div className="chat-what-now">
@@ -535,7 +547,7 @@ export function ChatPanel() {
             </div>
           </div>
         ) : null}
-        <div className="chat-exits chat-party">
+        {!fanfiction && <div className="chat-exits chat-party">
           <div className="chat-party__row">
             <div className="chat-party__group">
               <p className="chat-exits__label">My Party</p>
@@ -623,7 +635,7 @@ export function ChatPanel() {
               </div>
             </div>
           </div>
-        </div>
+        </div>}
         {exits.length > 0 ? (
           <div className="chat-exits">
             <p className="chat-exits__label">Go</p>
@@ -661,7 +673,7 @@ export function ChatPanel() {
         ) : null}
         {fork ? null : (
         <>
-        <button type="button" className="chat-check-button" disabled={busy || editingTurn !== null} onClick={() => setCheckOpen(true)} title="Attempt an action using your rule-set stats">Check</button>
+        {!fanfiction && <button type="button" className="chat-check-button" disabled={busy || editingTurn !== null} onClick={() => setCheckOpen(true)} title="Attempt an action using your rule-set stats">Check</button>}
         <input
           ref={inputRef}
           value={draft}
@@ -669,7 +681,8 @@ export function ChatPanel() {
           onKeyDown={(e) => {
             if (e.key === "Enter") void handleSend();
           }}
-          placeholder={
+          maxLength={fanfiction && inputIntent === "director" ? 2000 : undefined}
+          placeholder={fanfiction && inputIntent === "director" ? "Set a story direction…" :
             busy
               ? "Write the next line…"
               : narratorLabel(session)

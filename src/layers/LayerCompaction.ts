@@ -46,6 +46,8 @@ export function groupLayersForCompaction(layers: Layer[], characterIds: string[]
   };
 
   for (const layer of layers) {
+    // Keep storyline/rule material separate from world lore.
+    if (layer.purpose && layer.purpose !== "world") continue;
     const shown = displayLayerType(layer, characterIds);
     if (shown === "core" || shown === "relationship" || shown === "environment") {
       buckets[shown].push(layer);
@@ -168,3 +170,4 @@ export function selectEstablishedForCompaction(
   const established = layers.filter((layer) => !isPendingAiLayer(layer));
   return groupLayersForCompaction(established, characterIds).filter((group) => group.type === type);
 }
+

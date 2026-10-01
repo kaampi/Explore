@@ -1,3 +1,4 @@
+import { usesGameRules } from "./playMode";
 import type { Session } from "./StateSchema";
 import { matchRoomMention, namedRoomsInCanon } from "./WorldCanon";
 import { foldPlace } from "./roomMatch";
@@ -89,6 +90,7 @@ export function roomEntryFromIds(room: { fromRoomIds?: string[] } | undefined): 
 
 export function canWalkToLandmark(session: Session): boolean {
   if (!sideRoomStage(session)) return false;
+  if (!usesGameRules(session)) return true;
   const hereRoom = currentFocalRoom(session);
   if (!hereRoom) return true;
   return roomEntryFromIds(hereRoom).includes(ROOM_FROM_LANDMARK);
@@ -100,6 +102,7 @@ export function roomIsReachable(
 ): boolean {
   const here = currentFocalId(session);
   if (room.id && here === room.id) return false;
+  if (!usesGameRules(session)) return true;
   if (roomEntryFromIds(room).includes(here)) return true;
   const hereRoom = currentFocalRoom(session);
   if (hereRoom && room.id && roomEntryFromIds(hereRoom).includes(room.id)) return true;
@@ -388,3 +391,4 @@ export function sceneContinuesAfterNight(
   }
   return false;
 }
+
