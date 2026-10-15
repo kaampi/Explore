@@ -1747,6 +1747,21 @@ textarea.setup-field__story {
   margin: 0;
 }
 
+.studio-list__head-actions > :nth-child(3) {
+  grid-column: 1 / -1;
+}
+
+.character-generator {
+  margin: 0 0 18px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.studio-sheet--character textarea.character-generator__brief {
+  height: 72px;
+  min-height: 72px;
+}
+
 .studio-list__filters {
   display: flex;
   flex-wrap: wrap;
