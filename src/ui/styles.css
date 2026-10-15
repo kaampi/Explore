@@ -1747,6 +1747,45 @@ textarea.setup-field__story {
   margin: 0;
 }
 
+.studio-list__head-actions > :nth-child(3) {
+  grid-column: 1 / -1;
+}
+
+.character-generator {
+  margin: 0 0 18px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.studio-sheet--character textarea.character-generator__brief {
+  height: 72px;
+  min-height: 72px;
+}
+
+.character-generator__proposal {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-raised);
+}
+
+.character-generator__proposal p {
+  margin: 0 0 8px;
+  line-height: 1.45;
+}
+
+.character-generator__name {
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.character-generator__proposal .setup-field__label {
+  display: block;
+  margin-bottom: 2px;
+}
+
 .studio-list__filters {
   display: flex;
   flex-wrap: wrap;

@@ -22,6 +22,7 @@ export function characterDraftFromTemplate(template: CharacterTemplate): Charact
     ...(names.middle ? { middleName: names.middle } : {}),
     ...(typeof template.approximateAge === "number" ? { approximateAge: template.approximateAge } : {}),
     personality: template.personality,
+    ...(template.speech.trim() ? { speech: template.speech } : {}),
     mood: template.mood,
     position: "",
     libraryId: template.id,
@@ -47,6 +48,7 @@ export function characterTemplateFromDraft(draft: CharacterDraft): CharacterTemp
       id: draft.libraryId,
       name,
       personality: draft.personality,
+      speech: draft.speech ?? "",
       mood: draft.mood,
       position: "",
       scenario: draft.scenario ?? "",
@@ -71,6 +73,7 @@ export function characterTemplateFromDraft(draft: CharacterDraft): CharacterTemp
   return newCharacterTemplate({
     name,
     personality: draft.personality,
+    speech: draft.speech ?? "",
     mood: draft.mood,
     position: "",
     scenario: draft.scenario ?? "",

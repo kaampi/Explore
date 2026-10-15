@@ -21,6 +21,8 @@ import { SheetNameField } from "./SheetNameField";
 import { SillyTavernImportReview } from "./SillyTavernImportReview";
 import { StudioErrorBoundary } from "./StudioErrorBoundary";
 import { confirmRemove, downloadJson } from "./studioShared";
+import { CharacterGeneratorPanel } from "./CharacterGeneratorPanel";
+import type { GeneratedCharacter } from "@library/characterGenerator";
 import type { CompactCardFields } from "@library/compactCharacterCard";
 import {
   EMPTY_CHARACTER_SHELF_FILTERS,
@@ -48,6 +50,7 @@ type Draft = {
   personality: string;
   appearance: string;
   mood: string;
+  speech: string;
   pronoun: CharacterPronoun | null;
   portraitDataUrl: string;
   tags: string;
@@ -65,6 +68,7 @@ function emptyDraft(): Draft {
     personality: "",
     appearance: "",
     mood: "",
+    speech: "",
     pronoun: null,
     portraitDataUrl: "",
     tags: "",
@@ -86,6 +90,7 @@ function draftFrom(template: CharacterTemplate): Draft {
     personality: template.personality ?? "",
     appearance: template.appearance ?? "",
     mood: template.mood ?? "",
+    speech: template.speech ?? "",
     pronoun:
       template.pronoun && template.pronoun.length <= 32 ? template.pronoun : null,
     portraitDataUrl: portraitSrc(template.portraitDataUrl) ?? "",
@@ -124,6 +129,8 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
   const [compactUndo, setCompactUndo] = useState<CompactCardFields | null>(null);
   const [skippedCards, setSkippedCards] = useState(0);
   const [shelfFilter, setShelfFilter] = useState<CharacterShelfFilters>(EMPTY_CHARACTER_SHELF_FILTERS);
+  const [generatorOpen, setGeneratorOpen] = useState(false);
+  const [generatorKey, setGeneratorKey] = useState(0);
   draftRef.current = draft;
   importSessionRef.current = importSession;
 
@@ -193,6 +200,7 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
       setError(null);
       setNotice(null);
       setImportSession(null);
+      setGeneratorOpen(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not open that character.");
     }
@@ -207,6 +215,43 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
     setError(null);
     setNotice(null);
     setImportSession(null);
+    setGeneratorOpen(false);
+  }
+
+  function openGenerator() {
+    stopCompact();
+    setSelectedId(null);
+    setDraft(emptyDraft());
+    setTitleFocused(false);
+    setTitleText("");
+    setError(null);
+    setNotice(null);
+    setImportSession(null);
+    setGeneratorOpen(true);
+    setGeneratorKey((key) => key + 1);
+  }
+
+  function applyGenerated(card: GeneratedCharacter) {
+    setDraft((current) => ({
+      ...emptyDraft(),
+      portraitDataUrl: current?.id ? "" : (current?.portraitDataUrl ?? ""),
+      name: card.name,
+      middleName: card.middleName,
+      familyName: card.familyName,
+      approximateAge: card.approximateAge,
+      personality: card.personality,
+      appearance: card.appearance,
+      mood: card.mood,
+      speech: card.speech,
+      pronoun: card.pronoun,
+      tags: card.tags.join(", "),
+      source: "player"
+    }));
+    setSelectedId(null);
+    setTitleFocused(false);
+    setTitleText("");
+    setError(null);
+    setNotice("Draft is on the sheet. Edit it, then Save.");
   }
 
   async function persistDraft(current: Draft, quiet = false): Promise<boolean> {
@@ -226,6 +271,7 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
       middleName: current.middleName.trim(),
       ...(years != null && years >= 1 && years <= 130 ? { approximateAge: years } : {}),
       personality: current.personality,
+      speech: current.speech.trim(),
       appearance: current.appearance,
       mood: current.mood,
       tags: parseTagList(current.tags),
@@ -437,14 +483,19 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
         newLabel="Create new"
         empty={library.length === 0 ? "No one in the archive yet." : "No one matches."}
         secondaryAction={
-          <button
-            type="button"
-            className="studio-list__btn"
-            onClick={() => fileRef.current?.click()}
-            disabled={busy}
-          >
-            Import SillyTavern
-          </button>
+          <>
+            <button
+              type="button"
+              className="studio-list__btn"
+              onClick={() => fileRef.current?.click()}
+              disabled={busy}
+            >
+              Import SillyTavern
+            </button>
+            <button type="button" className="studio-list__btn" onClick={openGenerator} disabled={busy}>
+              Generate
+            </button>
+          </>
         }
         filters={
           <div className="studio-list__filters">
@@ -549,6 +600,9 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
         )}
         {!importSession && draft && (
           <>
+            {generatorOpen && (
+              <CharacterGeneratorPanel key={generatorKey} busy={busy} onApply={applyGenerated} />
+            )}
             <SheetNameField
               ariaLabel="Full name"
               value={
@@ -667,6 +721,14 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
                 value={draft.mood}
                 onChange={(e) => setDraft({ ...draft, mood: e.target.value })}
                 placeholder="not a scene"
+              />
+            </label>
+            <label className="setup-field setup-field--row">
+              <span className="setup-field__label">How they speak</span>
+              <input
+                value={draft.speech}
+                onChange={(e) => setDraft({ ...draft, speech: e.target.value })}
+                placeholder="Clipped. Few words, no padding."
               />
             </label>
             <label className="setup-field setup-field--row">

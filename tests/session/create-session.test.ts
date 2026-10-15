@@ -42,6 +42,36 @@ describe("createSessionFromSetup", () => {
     expect(primaryCharacter(session)).toEqual({ id: "dr-chen", name: "Dr. Chen" });
   });
 
+  it("adds how they speak to the core layer", () => {
+    const session = createSessionFromSetup(
+      {
+        location: "A bar",
+        lighting: "",
+        noise: "",
+        music: false,
+        placeNote: "",
+        characters: [
+          {
+            name: "Inez",
+            personality: "Slow to offer anything personal.",
+            speech: "Speech is clipped. Few words, and no padding.",
+            mood: "wary",
+            position: "here"
+          }
+        ]
+      },
+      "scene-speech"
+    );
+    expect(session.layers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "core",
+          content: "Slow to offer anything personal.\n\nHow they speak: Speech is clipped. Few words, and no padding."
+        })
+      ])
+    );
+  });
+
   it("attaches an optional ground story without turning it into a place note", () => {
     const session = createSessionFromSetup(
       {

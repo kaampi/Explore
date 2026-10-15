@@ -17,6 +17,8 @@ export interface CharacterDraft {
   middleName?: string;
   approximateAge?: number;
   personality: string;
+  /** How they speak. Joined onto the core layer. Empty on older cards. */
+  speech?: string;
   mood: string;
   position: string;
   pronoun?: CharacterPronoun;
@@ -272,12 +274,14 @@ export function createSessionFromSetup(setup: SceneSetup, sessionId: string): Se
     };
 
     const personality = draft.personality.trim();
-    if (personality) {
+    const speech = (draft.speech ?? "").trim();
+    const identity = [personality, speech ? `How they speak: ${speech}` : ""].filter(Boolean).join("\n\n");
+    if (identity) {
       layers.push({
         id: `layer-core-${id}`,
         type: "core",
         priority: 0,
-        content: personality,
+        content: identity,
         active: true,
         aiGenerated: false
       });
