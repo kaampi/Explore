@@ -13,7 +13,8 @@ describe("generateCharacter", () => {
     expect(card.approximateAge).toBeLessThanOrEqual(58);
     expect(["she", "he"]).toContain(card.pronoun);
     expect(card.mood.split(/\s+/).length).toBeLessThanOrEqual(2);
-    expect(card.personality.split(/(?<=[.!?])\s+/).length).toBe(3);
+    expect(card.speech).toMatch(/^Speech /);
+    expect(card.personality.split(/(?<=[.!?])\s+/).length).toBe(2);
     expect(card.appearance).not.toMatch(/jacket|apron|dress|kink|sister|brother/i);
   });
 
@@ -66,6 +67,23 @@ describe("generateCharacter", () => {
     expect(card.mood).toBe("stern");
     expect(card.tags).toContain("soldier");
     expect(card.personality).toMatch(/^(\S+) is /);
-    expect(card.personality).toMatch(/Words are few/);
+    expect(card.speech).toMatch(/^Speech /);
+  });
+
+  it("reads clipped and rambling speech, and a chosen style wins", () => {
+    const clipped = generateCharacter({ brief: "korthugget scholar", seed: 5 });
+    const rambling = generateCharacter({ brief: "en svävande musiker", seed: 5 });
+    const forced = generateCharacter({ brief: "korthugget scholar", speech: "rambling", seed: 5 });
+    const decomposed = generateCharacter({
+      brief: "a dry sailor, " + "svävande".normalize("NFD"),
+      seed: 5
+    });
+    expect(clipped.speech).toMatch(/clipped/i);
+    expect(clipped.tags).toContain("scholar");
+    expect(rambling.speech).toMatch(/wanders/i);
+    expect(decomposed.speech).toMatch(/wanders/i);
+    expect(rambling.tags).toContain("musician");
+    expect(forced.speech).toBe(rambling.speech);
+    expect(forced.name).toBe(clipped.name);
   });
 });

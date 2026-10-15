@@ -40,6 +40,8 @@ export const CharacterTemplateSchema = z.object({
   personality: z.string().default(""),
   /** Typical temperament — not a scene. Room/place is campaign/scene, not archive. */
   mood: z.string().default(""),
+  /** How they speak. Identity, not a scene. Empty on older cards. */
+  speech: z.string().default(""),
   pronoun: CharacterPronounSchema.optional(),
   /** One-line body and face. Not clothes or what they are holding. */
   appearance: z.string().default(""),

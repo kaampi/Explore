@@ -13,6 +13,8 @@ export type CharacterGeneratorRequest = {
   pronoun?: string | null;
   /** Wins over a number in the brief. Empty lets the brief or the roll decide. */
   approximateAge?: number | null;
+  /** Style id. Wins over words in the brief. Empty lets the brief or the roll decide. */
+  speech?: string | null;
   /** Same seed and brief always return the same card. */
   seed: number;
 };
@@ -25,6 +27,8 @@ export type GeneratedCharacter = {
   pronoun: string;
   appearance: string;
   mood: string;
+  /** How they speak. One or two sentences. Not clothes, not a scene. */
+  speech: string;
   personality: string;
   tags: string[];
 };
@@ -34,7 +38,6 @@ type Temperament = {
   keys: string[];
   mood: string;
   core: string;
-  speech: string;
   trust: string;
 };
 
@@ -44,7 +47,6 @@ const TEMPERAMENTS: Temperament[] = [
     keys: ["wary", "cautious", "guarded", "vaksam", "försiktig", "forsiktig"],
     mood: "wary",
     core: "slow to offer anything personal",
-    speech: "Sentences stay short and careful.",
     trust: "Trust is earned in small steps, and silence is not an invitation."
   },
   {
@@ -52,7 +54,6 @@ const TEMPERAMENTS: Temperament[] = [
     keys: ["quiet", "reserved", "still", "tyst", "fåordig", "faordig"],
     mood: "quiet",
     core: "content to listen longer than most people can stand",
-    speech: "Answers use the fewest words that will do.",
     trust: "Warmth shows up late, and only for someone already let in."
   },
   {
@@ -60,7 +61,6 @@ const TEMPERAMENTS: Temperament[] = [
     keys: ["dry", "witty", "sardonic", "torr", "kvick"],
     mood: "dry",
     core: "quick to notice absurdity and slow to explain the joke",
-    speech: "Lines stay precise, and slightly amused.",
     trust: "Affection sounds like teasing, and it stops if someone is actually hurt."
   },
   {
@@ -68,7 +68,6 @@ const TEMPERAMENTS: Temperament[] = [
     keys: ["warm", "kind", "gentle", "varm", "snäll", "snall", "vänlig"],
     mood: "warm",
     core: "easy to be around and hard to fool",
-    speech: "Speech stays plain, without a performance of kindness.",
     trust: "People get a second chance, and a third has to be earned."
   },
   {
@@ -76,7 +75,6 @@ const TEMPERAMENTS: Temperament[] = [
     keys: ["direct", "blunt", "frank", "rak", "direkt"],
     mood: "direct",
     core: "unwilling to dress a fact up",
-    speech: "The point arrives first, and then a pause.",
     trust: "Rudeness is not honesty, but honesty still arrives without a cushion."
   },
   {
@@ -84,7 +82,6 @@ const TEMPERAMENTS: Temperament[] = [
     keys: ["bright", "cheerful", "glad", "gladlynt", "munter"],
     mood: "bright",
     core: "inclined to make a room lighter without taking it over",
-    speech: "Talk comes easily, then makes room when someone else wants the floor.",
     trust: "The cheer is real, and it is not a request to be cheered up in return."
   },
   {
@@ -92,7 +89,6 @@ const TEMPERAMENTS: Temperament[] = [
     keys: ["stern", "severe", "strict", "sträng", "strang"],
     mood: "stern",
     core: "hard to impress and harder to rush",
-    speech: "Words are few, and they are meant to be heard.",
     trust: "Approval is quiet, and disappointment is quieter."
   },
   {
@@ -100,10 +96,56 @@ const TEMPERAMENTS: Temperament[] = [
     keys: ["cheeky", "playful", "mischievous", "lekfull", "busig"],
     mood: "cheeky",
     core: "unable to leave a straight line entirely straight",
-    speech: "A tease comes first. The explanation is optional.",
     trust: "The joke stops at the edge of someone's actual fear."
   }
 ];
+
+export const SPEECH_STYLES = [
+  {
+    id: "clipped",
+    label: "Clipped",
+    line: "Speech is clipped. Few words, and no padding.",
+    keys: ["korthugget", "korthuggen", "clipped", "terse", "curt"]
+  },
+  {
+    id: "rambling",
+    label: "Rambling",
+    line: "Speech wanders. One thought picks up the next before the first one lands.",
+    keys: ["svävande", "svavande", "rambling", "wandering", "meandering"]
+  },
+  {
+    id: "precise",
+    label: "Precise",
+    line: "Speech is exact. Each word is chosen.",
+    keys: ["precise", "exakt"]
+  },
+  {
+    id: "plain",
+    label: "Plain",
+    line: "Speech is plain. Nothing is dressed up.",
+    keys: ["plain", "enkel"]
+  },
+  {
+    id: "formal",
+    label: "Formal",
+    line: "Speech is formal. Full sentences, and no slang.",
+    keys: ["formal", "formell"]
+  },
+  {
+    id: "halting",
+    label: "Halting",
+    line: "Speech stops and starts. The next word is not always ready.",
+    keys: ["halting", "hackig", "stammande"]
+  }
+] as const;
+
+export type SpeechStyleId = (typeof SPEECH_STYLES)[number]["id"];
+
+function speechById(id: string | null | undefined) {
+  const key = id?.trim().toLowerCase();
+  if (!key) return undefined;
+  return SPEECH_STYLES.find((style) => style.id === key);
+}
 
 const ROLES: { keys: string[]; tag: string }[] = [
   { keys: ["bartender", "barkeeper", "krogvärd", "krogvard"], tag: "bartender" },
@@ -189,7 +231,7 @@ function pick<T>(rng: () => number, items: readonly T[]): T {
 }
 
 function haystack(brief: string): string {
-  return brief.toLowerCase().replace(/\s+/g, " ");
+  return brief.normalize("NFC").toLowerCase().replace(/\s+/g, " ");
 }
 
 function hasKey(text: string, key: string): boolean {
@@ -197,7 +239,7 @@ function hasKey(text: string, key: string): boolean {
   return new RegExp(`(?:^|[^\\p{L}])${escaped}(?=[^\\p{L}]|$)`, "iu").test(text);
 }
 
-function firstMatch<T extends { keys: string[] }>(text: string, rows: readonly T[]): T | undefined {
+function firstMatch<T extends { keys: readonly string[] }>(text: string, rows: readonly T[]): T | undefined {
   let best: { row: T; at: number } | undefined;
   for (const row of rows) {
     for (const key of row.keys) {
@@ -267,12 +309,8 @@ function givenPool(pronoun: string): readonly string[] {
 }
 
 function personalityFor(name: string, temperament: Temperament, observant: boolean): string {
-  const lines = [
-    `${name} is ${temperament.core}.`,
-    temperament.speech,
-    observant ? "Notices what changed in a room, and rarely mentions it." : temperament.trust
-  ];
-  return lines.join(" ");
+  const second = observant ? "Notices what changed in a room, and rarely mentions it." : temperament.trust;
+  return `${name} is ${temperament.core}. ${second}`;
 }
 
 export function generateCharacter(request: CharacterGeneratorRequest): GeneratedCharacter {
@@ -287,6 +325,8 @@ export function generateCharacter(request: CharacterGeneratorRequest): Generated
   const hair = firstMatch(text, HAIR_HINTS)?.value ?? pick(rng, HAIR);
   const eyes = firstMatch(text, EYE_HINTS)?.value ?? pick(rng, EYES);
   const mark = firstMatch(text, MARK_HINTS)?.value ?? pick(rng, MARKS);
+  const rolledSpeech = pick(rng, SPEECH_STYLES);
+  const speech = speechById(request.speech) ?? firstMatch(text, SPEECH_STYLES) ?? rolledSpeech;
   const temperament = firstMatch(text, TEMPERAMENTS) ?? pick(rng, TEMPERAMENTS);
   const observant =
     hasKey(text, "observant") ||
@@ -305,6 +345,7 @@ export function generateCharacter(request: CharacterGeneratorRequest): Generated
     pronoun,
     appearance: `${cap(build)} build, ${hair}, ${eyes}. ${mark}`,
     mood: temperament.mood,
+    speech: speech.line,
     personality: personalityFor(name, temperament, observant),
     tags: tags.slice(0, 3)
   };
@@ -321,6 +362,7 @@ export function characterTemplateFromGenerated(generated: GeneratedCharacter, id
     pronoun: generated.pronoun,
     appearance: generated.appearance,
     mood: generated.mood,
+    speech: generated.speech,
     personality: generated.personality,
     tags: generated.tags,
     position: "",

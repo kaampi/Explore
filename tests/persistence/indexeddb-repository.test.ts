@@ -156,6 +156,7 @@ describe("IndexedDBRepository library", () => {
       middleName: "",
       knownAs: "",
       personality: "Curious",
+      speech: "",
       mood: "",
       appearance: "",
       position: "",

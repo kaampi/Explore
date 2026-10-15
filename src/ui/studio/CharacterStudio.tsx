@@ -50,6 +50,7 @@ type Draft = {
   personality: string;
   appearance: string;
   mood: string;
+  speech: string;
   pronoun: CharacterPronoun | null;
   portraitDataUrl: string;
   tags: string;
@@ -67,6 +68,7 @@ function emptyDraft(): Draft {
     personality: "",
     appearance: "",
     mood: "",
+    speech: "",
     pronoun: null,
     portraitDataUrl: "",
     tags: "",
@@ -88,6 +90,7 @@ function draftFrom(template: CharacterTemplate): Draft {
     personality: template.personality ?? "",
     appearance: template.appearance ?? "",
     mood: template.mood ?? "",
+    speech: template.speech ?? "",
     pronoun:
       template.pronoun && template.pronoun.length <= 32 ? template.pronoun : null,
     portraitDataUrl: portraitSrc(template.portraitDataUrl) ?? "",
@@ -239,6 +242,7 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
       personality: card.personality,
       appearance: card.appearance,
       mood: card.mood,
+      speech: card.speech,
       pronoun: card.pronoun,
       tags: card.tags.join(", "),
       source: "player"
@@ -267,6 +271,7 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
       middleName: current.middleName.trim(),
       ...(years != null && years >= 1 && years <= 130 ? { approximateAge: years } : {}),
       personality: current.personality,
+      speech: current.speech.trim(),
       appearance: current.appearance,
       mood: current.mood,
       tags: parseTagList(current.tags),
@@ -716,6 +721,14 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
                 value={draft.mood}
                 onChange={(e) => setDraft({ ...draft, mood: e.target.value })}
                 placeholder="not a scene"
+              />
+            </label>
+            <label className="setup-field setup-field--row">
+              <span className="setup-field__label">How they speak</span>
+              <input
+                value={draft.speech}
+                onChange={(e) => setDraft({ ...draft, speech: e.target.value })}
+                placeholder="Clipped. Few words, no padding."
               />
             </label>
             <label className="setup-field setup-field--row">
