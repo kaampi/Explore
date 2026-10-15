@@ -1786,6 +1786,32 @@ textarea.setup-field__story {
   margin-bottom: 2px;
 }
 
+.character-generator__thread {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 0;
+}
+
+.character-generator__turn {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.character-generator__turn--guide {
+  color: var(--text-dim);
+}
+
+.character-generator__turn--user {
+  color: var(--text);
+}
+
+.character-generator__note {
+  margin: 0 0 10px;
+  color: var(--text-faint);
+  line-height: 1.4;
+}
+
 .studio-list__filters {
   display: flex;
   flex-wrap: wrap;

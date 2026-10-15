@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { generateCharacter, SPEECH_STYLES, type GeneratedCharacter } from "@library/characterGenerator";
 import { BUILTIN_PRONOUNS, pronounLabel } from "@state/pronouns";
+import { CharacterInterviewPanel } from "./CharacterInterviewPanel";
 
 const PRONOUNS = [...BUILTIN_PRONOUNS, "they"] as const;
 
@@ -15,7 +16,7 @@ export function CharacterGeneratorPanel({
   busy: boolean;
   onApply: (card: GeneratedCharacter) => void;
 }) {
-  const [mode, setMode] = useState<"explain" | "surprise">("explain");
+  const [mode, setMode] = useState<"explain" | "surprise" | "talk">("explain");
   const [brief, setBrief] = useState("");
   const [pronoun, setPronoun] = useState<string | null>(null);
   const [speech, setSpeech] = useState<string | null>(null);
@@ -47,7 +48,7 @@ export function CharacterGeneratorPanel({
     <div className="character-generator">
       <p className="setup-kicker">Character generator</p>
       <p className="form-section__lede">
-        Explain who they are, or take a person at random. Accept puts the card on the sheet. Reject asks for another. Save is still yours.
+        Explain who they are, take a person at random, or talk it through. Accept puts the card on the sheet. Save is still yours.
       </p>
       <div className="setup-chips" role="radiogroup" aria-label="How to make them">
         <div className={`setup-chip ${mode === "explain" ? "setup-chip--active" : ""}`}>
@@ -60,7 +61,13 @@ export function CharacterGeneratorPanel({
             Surprise me
           </button>
         </div>
+        <div className={`setup-chip ${mode === "talk" ? "setup-chip--active" : ""}`}>
+          <button type="button" className="setup-chip__pick" onClick={() => setMode("talk")}>
+            Talk it through
+          </button>
+        </div>
       </div>
+      {mode === "talk" && <CharacterInterviewPanel busy={busy} onApply={onApply} />}
       {mode === "explain" && (
         <label className="setup-field">
           <span className="setup-field__label">Who are they?</span>
@@ -72,6 +79,8 @@ export function CharacterGeneratorPanel({
           />
         </label>
       )}
+      {mode !== "talk" && (
+      <>
       <div className="setup-field">
         <span className="setup-field__label">Pronoun</span>
         <div className="setup-chips" role="radiogroup" aria-label="Generator pronoun">
@@ -153,6 +162,8 @@ export function CharacterGeneratorPanel({
             </button>
           </div>
         </div>
+      )}
+      </>
       )}
     </div>
   );

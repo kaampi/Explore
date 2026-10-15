@@ -313,6 +313,68 @@ function personalityFor(name: string, temperament: Temperament, observant: boole
   return `${name} is ${temperament.core}. ${second}`;
 }
 
+export type CastingCues = {
+  speechLine?: string;
+  pronoun?: string;
+  approximateAge?: number;
+  mood?: string;
+  core?: string;
+  trust?: string;
+  observant: boolean;
+  build?: string;
+  hair?: string;
+  eyes?: string;
+  mark?: string;
+  tags: string[];
+};
+
+/** Words the brief actually said. Missing fields stay unset so a revision can keep the rolled card. */
+export function readCastingCues(brief: string): CastingCues {
+  const text = haystack(brief);
+  const speech = firstMatch(text, SPEECH_STYLES);
+  const temperament = firstMatch(text, TEMPERAMENTS);
+  const pronoun = readPronoun(text);
+  const approximateAge = readAge(text);
+  const build = firstMatch(text, BUILD_HINTS)?.value;
+  const hair = firstMatch(text, HAIR_HINTS)?.value;
+  const eyes = firstMatch(text, EYE_HINTS)?.value;
+  const mark = firstMatch(text, MARK_HINTS)?.value;
+  return {
+    ...(speech ? { speechLine: speech.line } : {}),
+    ...(pronoun ? { pronoun } : {}),
+    ...(approximateAge != null ? { approximateAge } : {}),
+    ...(temperament
+      ? { mood: temperament.mood, core: temperament.core, trust: temperament.trust }
+      : {}),
+    observant:
+      hasKey(text, "observant") ||
+      hasKey(text, "notices") ||
+      hasKey(text, "notice") ||
+      hasKey(text, "uppmärksam") ||
+      hasKey(text, "uppmarksam"),
+    ...(build ? { build } : {}),
+    ...(hair ? { hair } : {}),
+    ...(eyes ? { eyes } : {}),
+    ...(mark ? { mark } : {}),
+    tags: allTags(text)
+  };
+}
+
+export function cuesMentionCasting(cues: CastingCues): boolean {
+  return Boolean(
+    cues.speechLine ||
+      cues.pronoun ||
+      cues.approximateAge != null ||
+      cues.mood ||
+      cues.observant ||
+      cues.build ||
+      cues.hair ||
+      cues.eyes ||
+      cues.mark ||
+      cues.tags.length > 0
+  );
+}
+
 export function generateCharacter(request: CharacterGeneratorRequest): GeneratedCharacter {
   const text = haystack(request.brief);
   const rng = mulberry32(request.seed);
