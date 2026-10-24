@@ -1647,3 +1647,23 @@
     padding: 10px 16px;
   }
 }
+
+/* Saved sparks from the play space. */
+.sb-idea-capture { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 8px 16px; border-bottom: 1px solid var(--border); font-size: 12px; background: var(--panel); }
+.sb-idea-capture button { color: var(--text); background: transparent; border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+.sb-idea-capture button:disabled { opacity: .45; cursor: default; }
+.sb-idea-select { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; }
+.sb-idea-fields { border: 0; padding: 0; margin: 20px 0; display: grid; gap: 16px; min-width: 0; }
+.sb-idea-fields textarea, .sb-idea-fields select, .sb-idea-library select { font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px; width: 100%; box-sizing: border-box; }
+.sb-idea-fields textarea { resize: vertical; }
+.sb-idea-source { color: var(--text-dim); font-size: 13px; overflow-wrap: anywhere; }
+.sb-idea-source summary { cursor: pointer; }
+.sb-idea-source blockquote { margin: 12px 0; padding-left: 12px; border-left: 2px solid var(--border); }
+.sb-idea-source p { white-space: pre-wrap; }
+.sb-idea-card > .sb-idea-description { white-space: pre-wrap; display: block; max-height: 240px; overflow: auto; }
+.sb-idea-card { overflow-wrap: anywhere; }
+.sb-idea-help { max-width: 800px; color: var(--text-dim); line-height: 1.65; margin-bottom: 24px; }
+.sb-idea-library select { width: auto; max-width: 100%; }
+.sb-themed-play .chat-panel--ideas, .chat-panel--ideas { grid-template-rows: auto minmax(0, 1fr) auto; }
+.sb-themed-play .sb-idea-capture { color: var(--play-text); background: rgb(var(--play-panel-rgb)); }
+.sb-themed-play .sb-idea-capture button { color: inherit; }

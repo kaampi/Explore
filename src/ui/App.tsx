@@ -1,3 +1,4 @@
+import { IdeaLibrary } from "./ideas/IdeaLibrary";
 import {
   useCallback,
   useEffect,
@@ -70,7 +71,7 @@ function SandboxApp() {
   });
   const [loadError, setLoadError] = useState<string | null>(null);
   const [view, setView] = useState<
-    "home" | "studio" | "play" | "conversations"
+    "home" | "studio" | "play" | "conversations" | "ideas"
   >("home");
   const [studioView, setStudioView] = useState<StudioView>("characters");
   const [generation, setGeneration] = useState(0);
@@ -208,7 +209,7 @@ function SandboxApp() {
       await refreshCatalog();
     });
   }
-  function navigate(destination: "home" | "conversations") {
+  function navigate(destination: "home" | "conversations" | "ideas") {
     report(
       action(async () => {
         await persistCurrent();
@@ -306,6 +307,8 @@ function SandboxApp() {
       )}
       {view === "play" && session ? (
         <PlayWorkspace
+          repo={repo}
+          onIdeas={() => navigate("ideas")}
           title={
             catalog.entries.find((entry) => entry.id === session.id)?.title
           }
@@ -335,6 +338,9 @@ function SandboxApp() {
                 onClick={() => navigate("conversations")}
               >
                 ◷ <span>My conversations</span>
+              </button>
+              <button type="button" className={view === "ideas" ? "is-active" : ""} onClick={() => navigate("ideas")}>
+                ✧ <span>My ideas</span>
               </button>
               <button
                 type="button"
@@ -403,6 +409,8 @@ function SandboxApp() {
                 onStart={(next) => report(startScene(next))}
               />
             </div>
+          ) : view === "ideas" ? (
+            <IdeaLibrary repo={repo} conversations={catalog.entries} onOpen={id => report(openConversation(id))} />
           ) : view === "conversations" ? (
             <ConversationLibrary
               entries={catalog.entries}

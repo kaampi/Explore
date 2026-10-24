@@ -1,3 +1,4 @@
+import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 import { useEffect, useState } from "react";
 import type { Session } from "@state/StateSchema";
 import { primaryCharacter } from "@session/createSession";
@@ -16,7 +17,11 @@ export function PlayWorkspace({
   onHome,
   onAppearance,
   title,
+  repo,
+  onIdeas,
 }: {
+  repo: IndexedDBRepository;
+  onIdeas: () => void;
   title?: string | undefined;
   onHome: (session: Session) => void;
   onAppearance: () => void;
@@ -112,6 +117,9 @@ export function PlayWorkspace({
         {castOpen && <CastPanel />}
         <div className="sb-themed-play" style={playThemeStyle(library.active)}>
           <ChatPanel
+            repo={repo}
+            conversationTitle={title}
+            onIdeas={onIdeas}
             canSend={canSend}
             onCheckConnection={() => setConnectionOpen(true)}
           />
