@@ -1,3 +1,4 @@
+import { LoreStudio } from "../lore/LoreStudio";
 import { useState } from "react";
 import type { IndexedDBRepository, StudioResume } from "@persistence/IndexedDBRepository";
 import type { Session } from "@state/StateSchema";
@@ -14,6 +15,7 @@ import { StudioErrorBoundary } from "./StudioErrorBoundary";
 import { LibraryBackupBar } from "./LibraryBackupBar";
 
 const NAV: { id: StudioView; label: string; group: "library" | "play" }[] = [
+  { id: "lorebooks", label: "Lorebooks", group: "library" },
   { id: "characters", label: "Characters", group: "library" },
   { id: "places", label: "Locations", group: "library" },
   { id: "objects", label: "Objects", group: "library" },
@@ -85,6 +87,7 @@ export function StudioShell({
           {view === "adventure" && (
             <AdventureStudio sessionId={sessionId} repo={repo} onStart={onStart} onOpenShelf={setView} />
           )}
+          {view === "lorebooks" && <LoreStudio repo={repo} />}
           {view === "characters" && <CharacterStudio repo={repo} />}
           {view === "places" && <PlaceStudio repo={repo} />}
           {view === "objects" && <ObjectStudio repo={repo} />}

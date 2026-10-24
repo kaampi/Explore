@@ -46,6 +46,7 @@ export function groupLayersForCompaction(layers: Layer[], characterIds: string[]
   };
 
   for (const layer of layers) {
+    if (layer.loreSource) continue;
     const shown = displayLayerType(layer, characterIds);
     if (shown === "core" || shown === "relationship" || shown === "environment") {
       buckets[shown].push(layer);
@@ -168,3 +169,4 @@ export function selectEstablishedForCompaction(
   const established = layers.filter((layer) => !isPendingAiLayer(layer));
   return groupLayersForCompaction(established, characterIds).filter((group) => group.type === type);
 }
+

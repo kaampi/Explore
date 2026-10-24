@@ -50,6 +50,12 @@ Creating a conversation never replaces an existing one. **new scene** in Setting
 
 Snapshots and their library metadata are saved atomically. The library reads a small index rather than loading every history and background image. Rename and archive state survive autosaves. There is no permanent-delete action in the conversation UI.
 
+## Import lorebooks
+
+**Lorebooks** accepts SillyTavern World Info JSON, embedded V2/V3 character lore (JSON/PNG), and V3 lorebook JSON. Review entries and explicitly select supported ones to use SandboxAI’s existing activation rules. Unsupported/disabled entries stay dormant, and the original is retained. Link a book to a character, campaign or all new conversations; saved conversations keep their own snapshots. Character import offers embedded lore in the same review and saves both together.
+
+Imported lore has a separate context limit and does not establish the world map. Library backups include lorebooks and original data. See [supported behavior and limitations](docs/lore-import.md).
+
 ## Capture ideas
 
 In play, use **Save as idea** on a message or **Capture ideas** to select several messages. Edit the title, description and type (Plot, Character or World), then save. **My ideas** is available from play and the Home sidebar. Ideas keep snapshots of only the selected messages, independent of later edits or archive actions.
@@ -101,7 +107,7 @@ src/
 
 **Rule:** engines never import from `ui/`. Nothing outside `state/` writes session state — everything goes through `StateEngine`.
 
-IndexedDB: session schema version 2; database version 11 includes library stores, a lightweight conversation index and saved ideas. Existing snapshots, including the legacy `demo-session`, are indexed in place without rewriting their history. Unreadable snapshots remain stored and are reported. Invalid records fail load instead of poisoning the DB.
+IndexedDB: session schema version 2; database version 12 includes library stores, a lightweight conversation index, saved ideas and imported lorebooks. Existing snapshots, including the legacy `demo-session`, are indexed in place without rewriting their history. Unreadable snapshots remain stored and are reported. Invalid records fail load instead of poisoning the DB.
 
 ## Using Ollama
 

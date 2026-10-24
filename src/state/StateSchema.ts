@@ -215,6 +215,7 @@ export const ApproximateAgeSchema = z.preprocess((val) => {
 // ---------------------------------------------------------------------------
 
 export const CharacterStateSchema = z.object({
+  sourceLibraryId: z.string().min(1).optional(),
   /** Given name; the record key is a slug. Falls back to a title-cased id in the UI. */
   name: z.string().min(1).optional(),
   /**
@@ -278,6 +279,7 @@ export const LayerTypeSchema = z.enum(["core", "relationship", "environment", "s
 export type LayerType = z.infer<typeof LayerTypeSchema>;
 
 export const LayerSchema = z.object({
+  loreSource: z.object({ bookId: z.string(), entryId: z.string(), bookName: z.string() }).optional(),
   id: z.string(),
   type: LayerTypeSchema,
   priority: z.number().int(),
@@ -553,3 +555,4 @@ function withDefaultPlayer(session: Session): Session {
     }
   };
 }
+

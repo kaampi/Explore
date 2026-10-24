@@ -56,7 +56,7 @@ export function canonSettingText(session: Session): string {
     for (const keyword of room.keywords ?? []) bits.push(keyword);
   }
   for (const layer of session.layers) {
-    if (layer.type === "environment" && isEffectivelyActive(session, layer)) bits.push(layer.content);
+    if (!layer.loreSource && layer.type === "environment" && isEffectivelyActive(session, layer)) bits.push(layer.content);
   }
   for (const object of session.objects ?? []) {
     bits.push(object.name);
@@ -189,3 +189,4 @@ export function collapsesNamedRoomToVenue(
   if (head && (p === head || p === venue)) return true;
   return /\b(?:bar|counter)\b/i.test(proposed) && !/\b(?:bar|counter)\b/i.test(currentRoom);
 }
+
