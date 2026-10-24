@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useEngine } from "../EngineStore";
+import { useAppearance } from "../themes/ThemeProvider";
 import { Dot } from "./Dot";
 import { displayCharacterName, narratorLabel, primaryCharacter } from "@session/createSession";
 import type { Session } from "@state/StateSchema";
@@ -148,7 +149,13 @@ export function ChatPanel() {
   const streamingPortrait = busy
     ? characterPortraitUrl(session, streamingCharacterId ?? speakingAs?.id)
     : undefined;
-  const backdrop = sceneBackdrop(session);
+  const { library: { active: theme } } = useAppearance();
+  const scenePictures = sceneBackdrop(session);
+  const customPictures = theme.backgroundDataUrl ? [{ imageDataUrl: theme.backgroundDataUrl, thumbDataUrl: theme.backgroundDataUrl }] : [];
+  const backdrop = { ...scenePictures,
+    pictures: theme.backgroundMode === "scene" ? scenePictures.pictures : theme.backgroundMode === "custom" ? customPictures : [],
+    picturePlay: theme.backgroundMode === "custom" ? "random" as const : scenePictures.picturePlay
+  };
   const sound = sceneAudio(session);
   const intro = hereIntro(session);
   const playStarted = conversation.length > 0 || busy;
@@ -675,3 +682,4 @@ export function ChatPanel() {
     </div>
   );
 }
+

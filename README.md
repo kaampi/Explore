@@ -32,7 +32,17 @@ npm run dev          # same server, no browser
 
 Play uses a local **Ollama** server. See [Using Ollama](#using-ollama).
 
-First load opens **Studio**: library shelves plus **Campaigns** (Campaign Builder — put a world together, then start a scene). **One-off scene** is still there for a night without a campaign. After a session exists it is restored from IndexedDB; **new scene** clears that night and, if you started from a campaign, opens it again on Scenes.
+First load opens **My space**: continue your saved conversation, create a character with just a name, import a character card through the library, or explore an existing world. **Create & chat** starts without a world file, campaign, rule-set, or prepared storyline. The built-in Emma example offers an immediate first meeting. Library tools and Campaign Builder remain available from the sidebar. A saved session stays available while you browse Home and Studio; starting another conversation asks before replacing it.
+
+## Your space and appearance
+
+The shared header connects SandboxAI with StorybookAI and ComicbookAI. Their introduction panels link to the projects and let you save an installed app's HTTP(S) address. Automatic service discovery is not implemented yet; the UI does not claim that a configured address is running.
+
+In play, the conversation is central. **Cast**, **Settings** (including the model picker), and **Inspector** open on demand. **My space** returns home without deleting the current conversation. Only one conversation is stored by the existing engine; starting another replaces it after confirmation.
+
+Open **Appearance** from Home or play to choose Light/Dark for the app frame and one of four independent play themes: Parchment, Forest dusk, Neon city, and Quiet conversation. Adjust colors, panel opacity, background dimming, font, text size, and reading width with a live preview. Backgrounds can follow the scene, stay on your own uploaded image, or use a plain color. PNG/JPEG/WebP uploads are limited to 10 MB and resized locally to a maximum edge of 1920 pixels.
+
+Named themes and the active appearance are saved in a separate local IndexedDB database (`sandboxai-appearance`), without changing session or library schemas. Appearance never enters AI prompts. Storage errors are visible; clearing browser data removes these local preferences. Theme import/export and sharing are reserved for step 2.
 
 ## What you can do now
 
@@ -80,7 +90,7 @@ import { OllamaProvider } from "@llm/providers/OllamaProvider";
 import { LLMAdapter } from "@llm/LLMAdapter";
 
 const adapter = new LLMAdapter({
-  primary: new OllamaProvider({ model: "llama3.1" })
+  primary: new OllamaProvider({ model: "llama3.1" }),
   // fallbacks: [new OllamaProvider({ model: "smaller-backup-model" })]
 });
 ```
@@ -108,16 +118,25 @@ import { SessionEngine } from "@session/SessionEngine";
 import { createLLMProposalExtractor } from "@session/ProposalExtraction";
 
 const stateEngine = new StateEngine(mySession, new EventLog());
-const pass1Adapter = new LLMAdapter({ primary: new OllamaProvider({ model: "llama3.1" }) });
-const pass2Adapter = new LLMAdapter({ primary: new OllamaProvider({ model: "llama3.1" }) });
+const pass1Adapter = new LLMAdapter({
+  primary: new OllamaProvider({ model: "llama3.1" }),
+});
+const pass2Adapter = new LLMAdapter({
+  primary: new OllamaProvider({ model: "llama3.1" }),
+});
 const proposalExtractor = createLLMProposalExtractor(pass2Adapter, {
-  onFailure: (err) => console.warn("Pass 2 degraded to no proposals:", err)
+  onFailure: (err) => console.warn("Pass 2 degraded to no proposals:", err),
 });
 
-const sessionEngine = new SessionEngine(stateEngine, pass1Adapter, new EventLog(), proposalExtractor);
+const sessionEngine = new SessionEngine(
+  stateEngine,
+  pass1Adapter,
+  new EventLog(),
+  proposalExtractor,
+);
 
 const result = await sessionEngine.runTurn("turn-1", "emma", "Hej Emma!", {
-  onTextDelta: (delta) => process.stdout.write(delta)
+  onTextDelta: (delta) => process.stdout.write(delta),
 });
 console.log(result.mutationsApplied);
 ```
@@ -137,4 +156,4 @@ npm run test
 See [`project_spec.md`](project_spec.md) for the full list. Short version:
 
 - **Phase 6:** PIN/password export (AES-256-GCM), crypto worker, DiagnosticsEngine / SLA, privacy model as a product. `crypto.worker.ts` and `DiagnosticsEngine.ts` are empty stubs. There is no ExportEngine.
-- **Designed, not wired:** attribute *checks* vs *meters*; object weight/difficulty rolls; player stats; live proximity zones (schema only); auto-reject of ungrounded AI environment layers (today they sit inactive until Approve).
+- **Designed, not wired:** attribute _checks_ vs _meters_; object weight/difficulty rolls; player stats; live proximity zones (schema only); auto-reject of ungrounded AI environment layers (today they sit inactive until Approve).

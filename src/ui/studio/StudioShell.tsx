@@ -27,20 +27,22 @@ export function StudioShell({
   sessionId,
   repo,
   resume,
-  onStart
+  onStart,
+  initialView = "campaigns"
 }: {
+  initialView?: StudioView;
   sessionId: string;
   repo: IndexedDBRepository;
   resume: StudioResume | null;
   onStart: (session: Session) => void;
 }) {
-  const [view, setView] = useState<StudioView>("campaigns");
+  const [view, setView] = useState<StudioView>(initialView);
   const [catalogTick, setCatalogTick] = useState(0);
 
   return (
     <div className="studio">
       <nav className="studio-nav" aria-label="Library">
-        <span className="studio-nav__brand">AI SANDBOX ENGINE</span>
+        <span className="studio-nav__brand">Your studio</span>
         {NAV.filter((item) => item.group === "library").map((item) => (
           <button
             key={item.id}
@@ -94,3 +96,4 @@ export function StudioShell({
     </div>
   );
 }
+
