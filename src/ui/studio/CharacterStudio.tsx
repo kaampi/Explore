@@ -23,6 +23,7 @@ import { StudioErrorBoundary } from "./StudioErrorBoundary";
 import { confirmRemove, downloadJson } from "./studioShared";
 import { CharacterGeneratorPanel } from "./CharacterGeneratorPanel";
 import type { GeneratedCharacter } from "@library/characterGenerator";
+import { compactCharacterCardWithOllama, compactFailureMessage } from "./compactCharacterCardWithOllama";
 import type { CompactCardFields } from "@library/compactCharacterCard";
 import {
   EMPTY_CHARACTER_SHELF_FILTERS,
@@ -794,3 +795,4 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
     </div>
   );
 }
+

@@ -7,6 +7,10 @@ import type { Session } from "@state/StateSchema";
 
 function makeSession(overrides: Partial<Session> = {}): Session {
   return {
+    openedRoomIds: [],
+    storyFlags: [],
+    partyHoldIds: [],
+    partyPendingIds: [],
     schemaVersion: 2,
     id: "s1",
     runtime: { model: "test", temperature: 0.7, seed: null, provider: "test" },
@@ -94,7 +98,11 @@ describe("applyLandmarkTravel", () => {
       location: oasis.name,
       lighting: "lanterns",
       note: "Warm sand.",
-      rooms: [{ id: "tent", label: "tent", keywords: [] }],
+      rooms: [{
+        description: "",
+        fromRoomIds: [],
+        gate: "open" as const,
+        id: "tent", label: "tent", keywords: [] }],
       placeLayers: [
         {
           id: "layer-place",
@@ -149,3 +157,4 @@ describe("StateEngine.travelToLandmark", () => {
     expect(engine.getEventLog().last()?.type).toBe("landmark_traveled");
   });
 });
+

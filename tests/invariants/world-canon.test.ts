@@ -4,6 +4,11 @@ import type { Session } from "@state/StateSchema";
 
 function makeSession(overrides: Partial<Session> = {}): Session {
   return {
+    openedRoomIds: [],
+    storyFlags: [],
+    partyIds: [],
+    partyHoldIds: [],
+    partyPendingIds: [],
     schemaVersion: 2,
     id: "s1",
     runtime: { model: "test", temperature: 0.7, seed: null, provider: "test" },
@@ -97,6 +102,8 @@ describe("isUngroundedPlace", () => {
         environment: {},
         rooms: [
           {
+            fromRoomIds: [],
+            gate: "open" as const,
             id: "room-emmas",
             label: "Emma's room",
             keywords: ["staff room"],
@@ -234,12 +241,16 @@ describe("rooms from the place card", () => {
         environment: {},
         rooms: [
           {
+            fromRoomIds: [],
+            gate: "open" as const,
             id: "room-mira",
             label: "Mira's den",
             keywords: ["her den", "staff den", "my den"],
             description: "A bedroll and a lamp."
           },
           {
+            fromRoomIds: [],
+            gate: "open" as const,
             id: "room-crypt",
             label: "the crypt",
             keywords: ["crypt", "ossuary"],
@@ -262,3 +273,4 @@ describe("rooms from the place card", () => {
     expect(isUngroundedPlace("a hotel lobby", session)).toBe(true);
   });
 });
+

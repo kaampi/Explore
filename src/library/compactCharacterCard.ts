@@ -50,7 +50,7 @@ export function extractCompactSource(raw: string): string {
   for (const line of text.split(/\n/)) {
     if (/^\s*[\[\]]\s*$/.test(line)) continue;
     const header = line.match(/^\s*(?:\[\s*)?([A-Za-z][A-Za-z /_-]*)\s*:/);
-    if (header) {
+    if (header?.[1]) {
       const key = header[1].trim();
       if (DROP_HEADER.test(key)) {
         flush();
@@ -218,3 +218,4 @@ export function parseCompactCardJson(text: string): CompactCardFields {
   }
   return cleaned;
 }
+

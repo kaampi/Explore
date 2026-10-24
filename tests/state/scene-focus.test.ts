@@ -4,6 +4,11 @@ import type { Session } from "@state/StateSchema";
 
 function makeSession(): Session {
   return {
+    openedRoomIds: [],
+    storyFlags: [],
+    partyIds: [],
+    partyHoldIds: [],
+    partyPendingIds: [],
     schemaVersion: 2,
     id: "group",
     runtime: { model: "test", temperature: 0.7, seed: null, provider: "test" },
@@ -70,12 +75,12 @@ describe("focusCharacterId", () => {
       position: { value: "Market Streets", lock: "unlocked" },
       status: { value: "awake", lock: "unlocked" }
     };
-    session.characters.emma.position = { value: "Emma's room", lock: "unlocked" };
+    session.characters.emma!.position = { value: "Emma's room", lock: "unlocked" };
     session.conversation = [
       { turn: 1, role: "player", content: "Hi", speaker: undefined },
       { turn: 2, role: "character", speaker: "emma", content: "Stay." }
     ];
-    session.characters.pierre.position = { value: "Market Streets", lock: "unlocked" };
+    session.characters.pierre!.position = { value: "Market Streets", lock: "unlocked" };
     expect(focusCharacterId(session, "I walk to Market Streets.")).toBe("pierre");
   });
 });
@@ -87,8 +92,9 @@ describe("othersInScene", () => {
       position: { value: "Market Streets", lock: "unlocked" },
       status: { value: "awake", lock: "unlocked" }
     };
-    session.characters.emma.position = { value: "Emma's room", lock: "unlocked" };
-    session.characters.pierre.position = { value: "Emma's room", lock: "unlocked" };
+    session.characters.emma!.position = { value: "Emma's room", lock: "unlocked" };
+    session.characters.pierre!.position = { value: "Emma's room", lock: "unlocked" };
     expect(othersInScene(session, "emma")).toEqual([]);
   });
 });
+

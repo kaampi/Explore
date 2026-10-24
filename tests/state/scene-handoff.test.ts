@@ -4,12 +4,17 @@ import type { Session } from "@state/StateSchema";
 
 function makeSession(overrides: Partial<Session> = {}): Session {
   return {
+    openedRoomIds: [],
+    storyFlags: [],
+    partyIds: [],
+    partyHoldIds: [],
+    partyPendingIds: [],
     schemaVersion: 2,
     id: "s1",
     runtime: { model: "test", temperature: 0.7, seed: null, provider: "test" },
     stateVersion: 0,
     characters: {},
-    scene: { location: "The Aurora Room" },
+    scene: { location: "The Aurora Room", environment: {} },
     relationships: {},
     layers: [],
     memory: { episodic: [], semantic: [], relational: [] },
@@ -57,3 +62,4 @@ describe("draftSceneHandoff", () => {
     ).toBe("We fled to the cabin together.");
   });
 });
+

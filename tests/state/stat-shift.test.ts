@@ -6,6 +6,11 @@ import { clampAiStatValue, movableStatsForCharacter } from "@state/statShift";
 
 function makeSession(): Session {
   return parseSession({
+    openedRoomIds: [],
+    storyFlags: [],
+    partyIds: [],
+    partyHoldIds: [],
+    partyPendingIds: [],
     schemaVersion: 2,
     id: "stats-live",
     runtime: { model: "test", temperature: 0.7, seed: null, provider: "test" },
@@ -100,7 +105,7 @@ describe("Pass 2 rule-set stats", () => {
       expectedStateVersion: 0
     });
     expect(result.committed).toBe(true);
-    expect(engine.getSession().characters.emma?.stats?.arousal.value).toBe(55);
+    expect(engine.getSession().characters.emma?.stats?.arousal?.value).toBe(55);
   });
 
   it("nudges boldness a little", () => {
@@ -111,7 +116,7 @@ describe("Pass 2 rule-set stats", () => {
       source: "ai_approved_state_mutation",
       expectedStateVersion: 0
     });
-    expect(engine.getSession().characters.emma?.stats?.boldness.value).toBe(53);
+    expect(engine.getSession().characters.emma?.stats?.boldness?.value).toBe(53);
   });
 
   it("rejects AI writes on a frozen field", () => {
@@ -123,7 +128,7 @@ describe("Pass 2 rule-set stats", () => {
       expectedStateVersion: 0
     });
     expect(result.committed).toBe(false);
-    expect(engine.getSession().characters.emma?.stats?.strength.value).toBe(12);
+    expect(engine.getSession().characters.emma?.stats?.strength?.value).toBe(12);
   });
 
   it("lets the player set a frozen field anyway", () => {
@@ -135,6 +140,7 @@ describe("Pass 2 rule-set stats", () => {
       expectedStateVersion: 0
     });
     expect(result.committed).toBe(true);
-    expect(engine.getSession().characters.emma?.stats?.strength.value).toBe(16);
+    expect(engine.getSession().characters.emma?.stats?.strength?.value).toBe(16);
   });
 });
+

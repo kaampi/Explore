@@ -370,7 +370,7 @@ describe("library form mapping", () => {
       saveToLibrary: true
     });
     expect(built?.knownAs).toBe("");
-    expect(characterDraftFromTemplate(built!).knownAs).toBeUndefined();
+    expect(characterDraftFromTemplate(built!)).not.toHaveProperty("knownAs");
   });
 
   it("round-trips a middle name", () => {
@@ -464,3 +464,4 @@ describe("library form mapping", () => {
     expect(voice?.instruction).toContain("Spelledare");
   });
 });
+

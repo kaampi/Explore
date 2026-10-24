@@ -20,12 +20,12 @@ export type LandmarkTravelPatch = {
   note?: string;
   brief?: string;
   rooms?: SceneRoom[];
-  thumbDataUrl?: string;
-  imageDataUrl?: string;
+  thumbDataUrl?: string | undefined;
+  imageDataUrl?: string | undefined;
   gallery?: NonNullable<Session["scene"]>["gallery"];
   picturePlay?: NonNullable<Session["scene"]>["picturePlay"];
-  audioDataUrl?: string;
-  audioGallery?: string[];
+  audioDataUrl?: string | undefined;
+  audioGallery?: string[] | undefined;
   audioPlay?: NonNullable<Session["scene"]>["audioPlay"];
   placeLayers: Array<Pick<Layer, "id" | "type" | "priority" | "content" | "active" | "aiGenerated"> & {
     keywords?: string[];
@@ -120,3 +120,4 @@ export function applyLandmarkTravel(session: Session, patch: LandmarkTravelPatch
     }
   }
 }
+

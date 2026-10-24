@@ -103,7 +103,7 @@ function genderedFocus(session: Session, text: string): string | undefined {
 export function lastCharacterSpeaker(session: Session): string | undefined {
   for (let i = session.conversation.length - 1; i >= 0; i--) {
     const turn = session.conversation[i];
-    if (turn.role === "character" && turn.speaker && session.characters[turn.speaker]) {
+    if (turn && typeof turn === "object" && "role" in turn && turn.role === "character" && "speaker" in turn && typeof turn.speaker === "string" && session.characters[turn.speaker]) {
       return turn.speaker;
     }
   }
@@ -159,3 +159,4 @@ export function focusCharacterId(session: Session, playerText: string): string |
   if (here.length > 0) return here[0];
   return last ?? ids[0];
 }
+

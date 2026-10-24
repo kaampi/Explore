@@ -5,6 +5,11 @@ import type { Session } from "@state/StateSchema";
 
 function makeSession(overrides: Partial<Session> = {}): Session {
   return {
+    openedRoomIds: [],
+    storyFlags: [],
+    partyIds: [],
+    partyHoldIds: [],
+    partyPendingIds: [],
     schemaVersion: 2,
     id: "s1",
     runtime: { model: "test", temperature: 0.7, seed: null, provider: "test" },
@@ -58,3 +63,4 @@ describe("inspectPromptBudget", () => {
     expect(withChat.promptTokens).toBeGreaterThan(empty.promptTokens);
   });
 });
+

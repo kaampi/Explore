@@ -6,6 +6,11 @@ import type { Session } from "@state/StateSchema";
 
 function makeSession(overrides: Partial<Session> = {}): Session {
   return {
+    openedRoomIds: [],
+    storyFlags: [],
+    partyIds: [],
+    partyHoldIds: [],
+    partyPendingIds: [],
     schemaVersion: 2,
     id: "s1",
     runtime: { model: "test", temperature: 0.7, seed: null, provider: "test" },
@@ -232,7 +237,7 @@ describe("spatialWritesForTurn", () => {
           content: "Aye, I'm in. Emma's room is just through that door. She nods towards the staff door."
         }
       ],
-      objects: [{ id: "key", name: "Guest-house key", note: "Unlocks Emma's room behind the staff door." }]
+      objects: [{ tags: [], id: "key", name: "Guest-house key", note: "Unlocks Emma's room behind the staff door." }]
     });
     expect(spatialWritesForTurn(session, "Vikky are you in?", "vikky")).toEqual([]);
     expect(spatialWritesForTurn(session, "Let's go.", "vikky")).toEqual([]);
@@ -416,6 +421,8 @@ describe("return to the bar", () => {
         environment: {},
         rooms: [
           {
+            fromRoomIds: [],
+            gate: "open" as const,
             id: "crypt",
             label: "the crypt",
             keywords: ["crypt"],
@@ -444,8 +451,12 @@ describe("return to the bar", () => {
 
 describe("Reachable from", () => {
   const cabinRooms = [
-    { id: "main", label: "Main room", keywords: [], description: "" },
     {
+      fromRoomIds: [],
+      gate: "open" as const,
+      id: "main", label: "Main room", keywords: [], description: "" },
+    {
+      gate: "open" as const,
       id: "cellar",
       label: "Cellar",
       keywords: ["secret hatch", "hidden hatch"],
@@ -476,3 +487,4 @@ describe("Reachable from", () => {
     expect(destinationRoomFromPlayerText("I go through the secret hatch", session)).toBe("Cellar");
   });
 });
+

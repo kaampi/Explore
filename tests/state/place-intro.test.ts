@@ -4,6 +4,11 @@ import type { Session } from "@state/StateSchema";
 
 function makeSession(overrides: Partial<Session> = {}): Session {
   return {
+    openedRoomIds: [],
+    storyFlags: [],
+    partyIds: [],
+    partyHoldIds: [],
+    partyPendingIds: [],
     schemaVersion: 2,
     id: "s1",
     runtime: { model: "test", temperature: 0.7, seed: null, provider: "test" },
@@ -20,6 +25,8 @@ function makeSession(overrides: Partial<Session> = {}): Session {
       note: "A quiet late-night bar. Jazz on the speakers.",
       rooms: [
         {
+          fromRoomIds: [],
+          gate: "open" as const,
           id: "room-emmas",
           label: "Emma's room",
           keywords: ["staff room"],
@@ -75,7 +82,11 @@ describe("hereIntro", () => {
         location: "The Aurora Room — a quiet late-night bar",
         environment: { lighting: "low" },
         note: "A quiet late-night bar.",
-        rooms: [{ id: "room-emmas", label: "Emma's room", keywords: ["staff room"] }]
+        rooms: [{
+          description: "",
+          fromRoomIds: [],
+          gate: "open" as const,
+          id: "room-emmas", label: "Emma's room", keywords: ["staff room"] }]
       }
     });
     expect(hereIntro(session)).toBeUndefined();
@@ -93,6 +104,8 @@ describe("herePrompt", () => {
           "The Aurora Room is a hidden, atmospheric jazz bar with subdued lighting, weathered wooden surfaces and dark doors lurking in the shadows.",
         rooms: [
           {
+            fromRoomIds: [],
+            gate: "open" as const,
             id: "room-emmas",
             label: "Emma's room",
             keywords: ["staff room"],
@@ -125,6 +138,8 @@ describe("herePrompt", () => {
         note: "A quiet late-night bar. Jazz on the speakers.",
         rooms: [
           {
+            fromRoomIds: [],
+            gate: "open" as const,
             id: "room-emmas",
             label: "Emma's room",
             keywords: ["staff room"],
@@ -142,3 +157,4 @@ describe("herePrompt", () => {
     });
   });
 });
+

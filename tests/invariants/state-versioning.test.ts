@@ -4,6 +4,11 @@ import type { Session } from "@state/StateSchema";
 
 function baseSession(): Session {
   return {
+    openedRoomIds: [],
+    storyFlags: [],
+    partyIds: [],
+    partyHoldIds: [],
+    partyPendingIds: [],
     schemaVersion: 2,
     id: "s1",
     runtime: { model: "test", temperature: 0.7, seed: null, provider: "test" },
@@ -65,3 +70,4 @@ describe("StateVersioning", () => {
     expect(() => new Date(snapshot.takenAt).toISOString()).not.toThrow();
   });
 });
+

@@ -4,6 +4,11 @@ import type { Session } from "@state/StateSchema";
 
 function makeSession(overrides: Partial<Session> = {}): Session {
   return {
+    openedRoomIds: [],
+    storyFlags: [],
+    partyIds: [],
+    partyHoldIds: [],
+    partyPendingIds: [],
     schemaVersion: 2,
     id: "s1",
     runtime: { model: "test", temperature: 0.7, seed: null, provider: "test" },
@@ -21,6 +26,9 @@ function makeSession(overrides: Partial<Session> = {}): Session {
       imageDataUrl: "data:image-venue",
       rooms: [
         {
+          description: "",
+          fromRoomIds: [],
+          gate: "open" as const,
           id: "room-emmas",
           label: "Emma's room",
           keywords: ["staff room", "emmas room"],
@@ -103,7 +111,11 @@ describe("sceneBackdrop", () => {
         location: "The Aurora Room — a quiet late-night bar",
         environment: { lighting: "low" },
         imageDataUrl: "data:image-venue",
-        rooms: [{ id: "room-emmas", label: "Emma's room", keywords: ["staff room"] }]
+        rooms: [{
+          description: "",
+          fromRoomIds: [],
+          gate: "open" as const,
+          id: "room-emmas", label: "Emma's room", keywords: ["staff room"] }]
       }
     });
     expect(sceneBackdrop(session)).toEqual({ pictures: [], picturePlay: "fade" });
@@ -139,6 +151,9 @@ describe("sceneBackdrop", () => {
         imageDataUrl: "data:image-venue",
         rooms: [
           {
+            description: "",
+            fromRoomIds: [],
+            gate: "open" as const,
             id: "room-emmas",
             label: "Emma's room",
             keywords: ["staff room"],
@@ -179,3 +194,4 @@ describe("sceneBackdrop", () => {
     expect(sceneBackdrop(session).imageDataUrl).toBe("data:image-realm");
   });
 });
+

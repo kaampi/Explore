@@ -33,6 +33,10 @@ const rooms = [
 
 function makeSession(overrides: Partial<Session> = {}): Session {
   return {
+    storyFlags: [],
+    partyIds: [],
+    partyHoldIds: [],
+    partyPendingIds: [],
     schemaVersion: 2,
     id: "s1",
     runtime: { model: "test", temperature: 0.7, seed: null, provider: "test" },
@@ -167,3 +171,4 @@ describe("locked and hidden walks", () => {
     expect(destinationRoomFromPlayerText("I walk back to the Main room", session)).toBe("Main room");
   });
 });
+

@@ -541,7 +541,6 @@ export function newCharacterTemplate(
 export function newPlaceTemplate(
   fields: Omit<z.input<typeof PlaceTemplateSchema>, "id" | "createdAt" | "updatedAt" | "realmId"> & {
     id?: string;
-    rooms?: PlaceTemplate["rooms"];
     realmId?: string;
   }
 ): PlaceTemplate {
@@ -734,3 +733,4 @@ export function deriveStoryTitle(title: string, premise: string): string {
   if (first.length <= 48) return first;
   return `${first.slice(0, 45).trimEnd()}…`;
 }
+

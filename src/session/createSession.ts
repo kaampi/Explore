@@ -83,6 +83,7 @@ export interface SceneSetup {
   /** Carried forward from the campaign's own `storyFlags`, set by earlier Starts. */
   storyFlags?: string[];
   /** Why they arrived — from the last scene. Trusted Pass 1. */
+  handoff?: string;
   /** Who you play tonight. Not an NPC. */
   playerIdentity?: {
     name?: string;
@@ -491,3 +492,4 @@ export function createSessionFromSetup(setup: SceneSetup, sessionId: string): Se
     diagnostics: []
   });
 }
+

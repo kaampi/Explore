@@ -11,6 +11,11 @@ import type { CompletionRequest, LLMProvider, StreamChunk } from "@llm/types";
 
 function makeSession(): Session {
   return {
+    openedRoomIds: [],
+    storyFlags: [],
+    partyIds: [],
+    partyHoldIds: [],
+    partyPendingIds: [],
     schemaVersion: 2,
     id: "s1",
     runtime: { model: "test", temperature: 0.7, seed: null, provider: "test" },
@@ -110,6 +115,8 @@ describe("SessionEngine.runTurn — happy path", () => {
       environment: {},
       rooms: [
         {
+          fromRoomIds: [],
+          gate: "open" as const,
           id: "room-emmas",
           label: "Emma's room",
           keywords: ["staff room", "emmas room"],
@@ -405,6 +412,8 @@ describe("SessionEngine.runTurn — happy path", () => {
       environment: {},
       rooms: [
         {
+          fromRoomIds: [],
+          gate: "open" as const,
           id: "room-emmas",
           label: "Emma's room",
           description: "A narrow bed.",
@@ -1083,3 +1092,4 @@ describe("SessionEngine — once-beat story flags", () => {
     expect(stateEngine.getSession().storyFlags).toEqual(["emma_bjod_in"]); // still just the one — no duplicate, no re-set
   });
 });
+

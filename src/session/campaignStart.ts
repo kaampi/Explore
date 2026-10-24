@@ -43,19 +43,7 @@ export function sceneStartHere(place: PlaceTemplate, startRoomId: string | undef
 }
 
 /** Pictures, sound, and copy from the parent realm — not Here. */
-export function realmPlayFields(realm: RealmTemplate | undefined): {
-  realmNote?: string;
-  realmBrief?: string;
-  realmVisual?: {
-    thumbDataUrl?: string;
-    imageDataUrl?: string;
-    gallery?: Array<{ thumbDataUrl: string; imageDataUrl: string }>;
-    picturePlay?: "fade" | "random";
-    audioDataUrl?: string;
-    audioGallery?: string[];
-    audioPlay?: "fade" | "random";
-  };
-} {
+export function realmPlayFields(realm: RealmTemplate | undefined): Pick<SceneSetup, "realmNote" | "realmBrief" | "realmVisual"> {
   if (!realm) return {};
   const note = realm.note.trim();
   const brief = realm.brief?.trim();
@@ -243,3 +231,4 @@ export function sessionFromCampaignScene(
   if (!built.ok) return built;
   return { ok: true, session: createSessionFromSetup(built.setup, sessionId) };
 }
+

@@ -36,11 +36,13 @@ First load opens **My space**: continue your saved conversation, create a charac
 
 ## Your space and appearance
 
-The shared header connects SandboxAI with StorybookAI and ComicbookAI. Their introduction panels link to the projects and let you save an installed app's HTTP(S) address. Automatic service discovery is not implemented yet; the UI does not claim that a configured address is running.
+The shared header connects SandboxAI with StorybookAI and ComicbookAI. When running locally with `npm start` or `npm run preview`, it checks StorybookAI at `http://localhost:5175/` and ComicbookAI at `http://localhost:5176/`. A verified running app opens directly from its header link; otherwise its presentation offers installation information, Try again, and a configurable address. Checks repeat every 30 seconds while visible and when the window receives focus. Unreachable means the app cannot be reached, not that it is uninstalled. Remote addresses can be opened manually; automatic probes stay on loopback. The hosted/static preview has no local status backend and keeps the presentation available.
 
 In play, the conversation is central. **Cast**, **Settings** (including the model picker), and **Inspector** open on demand. **My space** returns home without deleting the current conversation. Only one conversation is stored by the existing engine; starting another replaces it after confirmation.
 
 Open **Appearance** from Home or play to choose Light/Dark for the app frame and one of four independent play themes: Parchment, Forest dusk, Neon city, and Quiet conversation. Adjust colors, panel opacity, background dimming, font, text size, and reading width with a live preview. Backgrounds can follow the scene, stay on your own uploaded image, or use a plain color. PNG/JPEG/WebP uploads are limited to 10 MB and resized locally to a maximum edge of 1920 pixels.
+
+The status server first checks `/.well-known/storycore-app.json` for a matching `appId` and optional `version`. Existing sibling releases are recognized by their exact page titles as a compatibility fallback. SandboxAI exposes its own identity at the same path.
 
 Named themes and the active appearance are saved in a separate local IndexedDB database (`sandboxai-appearance`), without changing session or library schemas. Appearance never enters AI prompts. Storage errors are visible; clearing browser data removes these local preferences. Theme import/export and sharing are reserved for step 2.
 

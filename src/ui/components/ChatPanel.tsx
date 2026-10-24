@@ -43,7 +43,7 @@ function speakerLabel(turn: DisplayTurn, session: Session, fallback: string): st
     : displayCharacterName(turn.speaker);
 }
 
-function CardFace({ src, narrator }: { src?: string; narrator?: boolean }) {
+function CardFace({ src, narrator }: { src?: string | undefined; narrator?: boolean }) {
   if (narrator) {
     return <span className="message__portrait message__portrait--narrator" aria-hidden="true" />;
   }

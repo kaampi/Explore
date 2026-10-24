@@ -5,6 +5,11 @@ import type { Session } from "@state/StateSchema";
 
 function makeSession(overrides: Partial<Session> = {}): Session {
   return {
+    openedRoomIds: [],
+    storyFlags: [],
+    partyIds: [],
+    partyHoldIds: [],
+    partyPendingIds: [],
     schemaVersion: 2,
     id: "s1",
     runtime: { model: "test", temperature: 0.7, seed: null, provider: "test" },
@@ -21,6 +26,9 @@ function makeSession(overrides: Partial<Session> = {}): Session {
       audioDataUrl: "data:audio/mpeg;base64,venue",
       rooms: [
         {
+          description: "",
+          fromRoomIds: [],
+          gate: "open" as const,
           id: "room-emmas",
           label: "Emma's room",
           keywords: ["staff room", "emmas room"],
@@ -93,7 +101,11 @@ describe("sceneAudio", () => {
         location: "The Aurora Room — a quiet late-night bar",
         environment: { lighting: "low" },
         audioDataUrl: "data:audio/mpeg;base64,venue",
-        rooms: [{ id: "room-emmas", label: "Emma's room", keywords: ["staff room"] }]
+        rooms: [{
+          description: "",
+          fromRoomIds: [],
+          gate: "open" as const,
+          id: "room-emmas", label: "Emma's room", keywords: ["staff room"] }]
       }
     });
     expect(sceneAudio(session)).toEqual({ clips: [], audioPlay: "fade" });
@@ -111,6 +123,9 @@ describe("sceneAudio", () => {
         audioDataUrl: "data:audio/mpeg;base64,venue",
         rooms: [
           {
+            description: "",
+            fromRoomIds: [],
+            gate: "open" as const,
             id: "room-emmas",
             label: "Emma's room",
             keywords: ["staff room"],
@@ -127,3 +142,4 @@ describe("sceneAudio", () => {
     });
   });
 });
+
