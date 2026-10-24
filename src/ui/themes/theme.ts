@@ -78,6 +78,8 @@ export const PRESET_THEMES: PlayTheme[] = [
 export const ThemeLibrarySchema = z.object({
   version: z.literal(1),
   active: PlayThemeSchema,
+  defaultPlay: PlayThemeSchema.optional(),
+  conversations: z.record(PlayThemeSchema).default({}),
   saved: z.array(PlayThemeSchema).max(50),
   shell: z.enum(["light", "dark"]),
 });
@@ -87,6 +89,7 @@ export function defaultThemeLibrary(): ThemeLibrary {
     version: 1,
     active: { ...PRESET_THEMES[0]! },
     saved: [],
+    conversations: {},
     shell: "light",
   };
 }

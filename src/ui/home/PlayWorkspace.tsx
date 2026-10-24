@@ -15,7 +15,9 @@ import { playThemeStyle, useAppearance } from "../themes/ThemeProvider";
 export function PlayWorkspace({
   onHome,
   onAppearance,
+  title,
 }: {
+  title?: string | undefined;
   onHome: (session: Session) => void;
   onAppearance: () => void;
 }) {
@@ -51,7 +53,7 @@ export function PlayWorkspace({
         </button>
         <div className="sb-play-title">
           <strong>
-            {primaryCharacter(session)?.name ?? "Your exploration"}
+            {title || primaryCharacter(session)?.name || "Your exploration"}
           </strong>
           <span>{session.scene?.location}</span>
         </div>

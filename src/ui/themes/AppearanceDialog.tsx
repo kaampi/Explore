@@ -5,8 +5,17 @@ import { playThemeStyle, useAppearance } from "./ThemeProvider";
 import { backgroundFromFile } from "./themeStorage";
 
 export function AppearanceDialog({ onClose }: { onClose: () => void }) {
-  const { library, ready, error, update, select, save, remove, setShell } =
-    useAppearance();
+  const {
+    library,
+    conversationId,
+    ready,
+    error,
+    update,
+    select,
+    save,
+    remove,
+    setShell,
+  } = useAppearance();
   const [name, setName] = useState("");
   const [imageError, setImageError] = useState<string | null>(null);
   const [loadingImage, setLoadingImage] = useState(false);
@@ -39,7 +48,9 @@ export function AppearanceDialog({ onClose }: { onClose: () => void }) {
   return (
     <Modal title="Make yourself at home" onClose={onClose} wide>
       <p className="sb-muted">
-        A familiar workspace. A different atmosphere for every conversation.
+        {conversationId
+          ? "Changes apply to this conversation. Other conversations keep their own appearance."
+          : "Choose your default play appearance. Each conversation keeps its own theme."}
       </p>
       <fieldset disabled={!ready} className="sb-appearance-fieldset">
         <div className="sb-field sb-inline">

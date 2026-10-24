@@ -1,10 +1,27 @@
-import React, { createContext, useContext, useMemo, useRef, useState, useCallback, useEffect, useSyncExternalStore } from "react";
+import React, {
+  createContext,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+  useEffect,
+  useSyncExternalStore,
+} from "react";
 import { StateEngine } from "@state/StateEngine";
 import type { Session } from "@state/StateSchema";
 import { EventLog, type StateEvent } from "@events/EventLog";
 import { LLMAdapter } from "@llm/LLMAdapter";
-import { OllamaProvider, DEFAULT_OLLAMA_MODEL } from "@llm/providers/OllamaProvider";
-import { SessionEngine, TurnFailedError, WhatNowRequiredError, ReplayNoBeatError } from "@session/SessionEngine";
+import {
+  OllamaProvider,
+  DEFAULT_OLLAMA_MODEL,
+} from "@llm/providers/OllamaProvider";
+import {
+  SessionEngine,
+  TurnFailedError,
+  WhatNowRequiredError,
+  ReplayNoBeatError,
+} from "@session/SessionEngine";
 import { createLLMProposalExtractor } from "@session/ProposalExtraction";
 import { createLLMLayerProposalExtractor } from "@layers/LayerProposalExtraction";
 import { createLLMConversationSummarizer } from "@memory/RollingMemory";
@@ -15,12 +32,17 @@ import {
   keywordsForCompactedGroup,
   selectEstablishedForCompaction,
   selectPendingForCompaction,
-  type CompactableType
+  type CompactableType,
 } from "@layers/LayerCompaction";
-import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
-import { examplePlaceTemplate, mergeWithExamples } from "@library/exampleTemplates";
+import type {
+  IndexedDBRepository,
+  StudioResume,
+} from "@persistence/IndexedDBRepository";
+import {
+  examplePlaceTemplate,
+  mergeWithExamples,
+} from "@library/exampleTemplates";
 import type { PlaceTemplate } from "@library/LibrarySchema";
-import { resetSession as resetSessionInRepo } from "./persistence";
 import { primaryCharacter } from "@session/createSession";
 import { landmarkTravelPatch } from "@session/landmarkTravel";
 import { mapLandmarkTravels } from "@state/landmarkTravel";
@@ -28,7 +50,6 @@ import { foldPlace } from "@state/roomMatch";
 import { focusCharacterId, lastCharacterSpeaker } from "@state/sceneFocus";
 import { isLeftBehind } from "@state/party";
 import { draftSceneHandoff } from "@state/sceneHandoff";
-import { storyFlagsDiffer } from "@state/storyFlags";
 
 /**
  * This is the seam between the engine layer (fully tested in isolation,
@@ -49,7 +70,10 @@ interface EngineContextValue {
   streamingCharacterId: string | null;
   streamingNarrator: boolean;
   lastError: string | null;
-  sendMessage: (text: string, options?: { goTo?: string; travelPlaceId?: string }) => Promise<void>;
+  sendMessage: (
+    text: string,
+    options?: { goTo?: string; travelPlaceId?: string },
+  ) => Promise<void>;
   regenerate: (note?: string) => Promise<void>;
   replay: (conversationTurn: number, note?: string) => Promise<void>;
   inspectTurn: number | null;
@@ -65,9 +89,14 @@ interface EngineContextValue {
   }) => void;
   setLayerKeywords: (layerId: string, keywords: string[]) => void;
   removeLayer: (layerId: string) => void;
-  compactLayers: (scope: "pending" | CompactableType) => Promise<{ ok: boolean; reason?: string }>;
+  compactLayers: (
+    scope: "pending" | CompactableType,
+  ) => Promise<{ ok: boolean; reason?: string }>;
   compacting: boolean;
-  editMessage: (turnNumber: number, newContent: string) => { ok: boolean; reason?: string };
+  editMessage: (
+    turnNumber: number,
+    newContent: string,
+  ) => { ok: boolean; reason?: string };
   undo: () => { ok: boolean; reason?: string };
   ollamaModel: string;
   setOllamaModel: (model: string) => void;
@@ -95,33 +124,44 @@ export function useEngine(): EngineContextValue {
 export function EngineProvider({
   initialSession,
   repo,
-  children
+  children,
+  onNewConversation,
 }: {
   initialSession: Session;
   repo: IndexedDBRepository;
   children: React.ReactNode;
+  onNewConversation: (
+    session: Session,
+    resume: StudioResume | null,
+  ) => Promise<void>;
 }) {
   const [ollamaModel, setOllamaModelState] = useState(
-    () => initialSession.runtime.model.trim() || DEFAULT_OLLAMA_MODEL
+    () => initialSession.runtime.model.trim() || DEFAULT_OLLAMA_MODEL,
   );
   const [phase, setPhase] = useState<ChatPhase>("idle");
   const [streamingText, setStreamingText] = useState("");
-  const [streamingCharacterId, setStreamingCharacterId] = useState<string | null>(null);
+  const [streamingCharacterId, setStreamingCharacterId] = useState<
+    string | null
+  >(null);
   const [streamingNarrator, setStreamingNarrator] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
   const [hasCompletedTurn, setHasCompletedTurn] = useState(false);
   const [inspectTurn, setInspectTurn] = useState<number | null>(null);
   const [compacting, setCompacting] = useState(false);
-  const [travelPlaces, setTravelPlaces] = useState<Array<{ id: string; name: string; realmId: string }>>([]);
+  const [travelPlaces, setTravelPlaces] = useState<
+    Array<{ id: string; name: string; realmId: string }>
+  >([]);
   const placesRef = useRef<PlaceTemplate[]>([]);
 
   const pass1Adapter = useMemo(
-    () => new LLMAdapter({ primary: new OllamaProvider({ model: ollamaModel }) }),
-    [ollamaModel]
+    () =>
+      new LLMAdapter({ primary: new OllamaProvider({ model: ollamaModel }) }),
+    [ollamaModel],
   );
   const pass2Adapter = useMemo(
-    () => new LLMAdapter({ primary: new OllamaProvider({ model: ollamaModel }) }),
-    [ollamaModel]
+    () =>
+      new LLMAdapter({ primary: new OllamaProvider({ model: ollamaModel }) }),
+    [ollamaModel],
   );
 
   // Engines are constructed once and held in refs — they're stateful
@@ -134,21 +174,27 @@ export function EngineProvider({
   const sharedEventLog = sharedEventLogRef.current;
 
   const stateEngineRef = useRef<StateEngine>();
-  if (!stateEngineRef.current) stateEngineRef.current = new StateEngine(initialSession, sharedEventLog);
+  if (!stateEngineRef.current)
+    stateEngineRef.current = new StateEngine(initialSession, sharedEventLog);
   const stateEngine = stateEngineRef.current;
 
   const proposalExtractor = useMemo(
     () => createLLMProposalExtractor(pass2Adapter, { onFailure: () => {} }),
-    [pass2Adapter]
+    [pass2Adapter],
   );
   const layerProposalExtractor = useMemo(
-    () => createLLMLayerProposalExtractor(pass2Adapter, { onFailure: () => {} }),
-    [pass2Adapter]
+    () =>
+      createLLMLayerProposalExtractor(pass2Adapter, { onFailure: () => {} }),
+    [pass2Adapter],
   );
-  const layerCompactor = useMemo(() => createLLMLayerCompactor(pass2Adapter), [pass2Adapter]);
+  const layerCompactor = useMemo(
+    () => createLLMLayerCompactor(pass2Adapter),
+    [pass2Adapter],
+  );
   const conversationSummarizer = useMemo(
-    () => createLLMConversationSummarizer(pass2Adapter, { onFailure: () => {} }),
-    [pass2Adapter]
+    () =>
+      createLLMConversationSummarizer(pass2Adapter, { onFailure: () => {} }),
+    [pass2Adapter],
   );
   const sessionEngineRef = useMemo(
     () =>
@@ -158,9 +204,16 @@ export function EngineProvider({
         sharedEventLog,
         proposalExtractor,
         { summarizer: conversationSummarizer },
-        layerProposalExtractor
+        layerProposalExtractor,
       ),
-    [stateEngine, pass1Adapter, sharedEventLog, proposalExtractor, conversationSummarizer, layerProposalExtractor]
+    [
+      stateEngine,
+      pass1Adapter,
+      sharedEventLog,
+      proposalExtractor,
+      conversationSummarizer,
+      layerProposalExtractor,
+    ],
   );
 
   // A fresh SessionEngine instance (e.g. after changing the Ollama model)
@@ -172,17 +225,32 @@ export function EngineProvider({
 
   useEffect(() => {
     let cancelled = false;
-    repo.listPlaces().then((listed) => {
-      if (cancelled) return;
-      const merged = mergeWithExamples(listed, [examplePlaceTemplate()]);
-      placesRef.current = merged;
-      setTravelPlaces(merged.map((item) => ({ id: item.id, name: item.name, realmId: item.realmId })));
-    }).catch(() => {
-      if (cancelled) return;
-      const fallback = [examplePlaceTemplate()];
-      placesRef.current = fallback;
-      setTravelPlaces(fallback.map((item) => ({ id: item.id, name: item.name, realmId: item.realmId })));
-    });
+    repo
+      .listPlaces()
+      .then((listed) => {
+        if (cancelled) return;
+        const merged = mergeWithExamples(listed, [examplePlaceTemplate()]);
+        placesRef.current = merged;
+        setTravelPlaces(
+          merged.map((item) => ({
+            id: item.id,
+            name: item.name,
+            realmId: item.realmId,
+          })),
+        );
+      })
+      .catch(() => {
+        if (cancelled) return;
+        const fallback = [examplePlaceTemplate()];
+        placesRef.current = fallback;
+        setTravelPlaces(
+          fallback.map((item) => ({
+            id: item.id,
+            name: item.name,
+            realmId: item.realmId,
+          })),
+        );
+      });
     return () => {
       cancelled = true;
     };
@@ -191,10 +259,6 @@ export function EngineProvider({
   // --- Reactive session snapshot via useSyncExternalStore -------------
   const sessionListeners = useRef(new Set<() => void>()).current;
   const sessionSnapshotRef = useRef<Session>(stateEngine.getSession());
-  // Story flags as seeded from the campaign at Start — the baseline to
-  // diff against so we only touch the campaign record when play actually
-  // changes a flag, not on every unrelated turn.
-  const syncedStoryFlagsRef = useRef<string[]>(sessionSnapshotRef.current.storyFlags ?? []);
   const notifySession = useCallback(() => {
     sessionSnapshotRef.current = stateEngine.getSession();
     sessionListeners.forEach((l) => l());
@@ -206,19 +270,21 @@ export function EngineProvider({
         sessionListeners.add(onStoreChange);
         return () => sessionListeners.delete(onStoreChange);
       },
-      () => sessionSnapshotRef.current
+      () => sessionSnapshotRef.current,
     );
   }, [sessionListeners]);
 
   // --- Reactive event log snapshot -------------------------------------
-  const eventLogSnapshotRef = useRef<readonly StateEvent[]>(sharedEventLog.all());
+  const eventLogSnapshotRef = useRef<readonly StateEvent[]>(
+    sharedEventLog.all(),
+  );
   const useEventLog = useCallback((): readonly StateEvent[] => {
     return useSyncExternalStore(
       (onStoreChange) => {
         sessionListeners.add(onStoreChange);
         return () => sessionListeners.delete(onStoreChange);
       },
-      () => eventLogSnapshotRef.current
+      () => eventLogSnapshotRef.current,
     );
   }, [sessionListeners]);
 
@@ -233,25 +299,14 @@ export function EngineProvider({
     repo.saveSession(session).catch((err) => {
       console.warn("Autosave failed:", err);
     });
-    // Story flags carry forward across separate scene Starts in the same
-    // campaign (unlike chat and trust, which reset). Sync the campaign's
-    // stored copy whenever play actually changes a flag, so the next Start
-    // — even of a different scene — sees it.
-    const campaignId = session.campaignId?.trim();
-    const liveFlags = session.storyFlags ?? [];
-    if (campaignId && storyFlagsDiffer(syncedStoryFlagsRef.current, liveFlags)) {
-      syncedStoryFlagsRef.current = liveFlags;
-      repo
-        .loadCampaign(campaignId)
-        .then((campaign) => repo.saveCampaign({ ...campaign, storyFlags: liveFlags, updatedAt: new Date().toISOString() }))
-        .catch((err) => {
-          console.warn("Story flag sync failed:", err);
-        });
-    }
+    // Runtime story flags stay in this conversation; the reusable campaign is authored input.
   }, [notifySession, sharedEventLog, repo, stateEngine]);
 
   const sendMessage = useCallback(
-    async (text: string, options?: { goTo?: string; travelPlaceId?: string }) => {
+    async (
+      text: string,
+      options?: { goTo?: string; travelPlaceId?: string },
+    ) => {
       setPhase("streaming");
       setStreamingText("");
       setLastError(null);
@@ -259,7 +314,8 @@ export function EngineProvider({
 
       try {
         const session = stateEngine.getSession();
-        const speakingAsId = focusCharacterId(session, text) ?? primaryCharacter(session)?.id;
+        const speakingAsId =
+          focusCharacterId(session, text) ?? primaryCharacter(session)?.id;
         if (!speakingAsId) {
           throw new Error("There is no character in this scene to speak.");
         }
@@ -270,26 +326,31 @@ export function EngineProvider({
           const live = stateEngine.getSession();
           setStreamingNarrator(isLeftBehind(live, speakingAsId));
         };
-        let travel =
-          options?.travelPlaceId?.trim()
-            ? (() => {
-                const place = placesRef.current.find((item) => item.id === options.travelPlaceId?.trim());
-                return place ? landmarkTravelPatch(place) : undefined;
-              })()
-            : undefined;
+        let travel = options?.travelPlaceId?.trim()
+          ? (() => {
+              const place = placesRef.current.find(
+                (item) => item.id === options.travelPlaceId?.trim(),
+              );
+              return place ? landmarkTravelPatch(place) : undefined;
+            })()
+          : undefined;
         if (!travel && !options?.goTo?.trim()) {
           const exits = mapLandmarkTravels(session, placesRef.current);
           const hay = foldPlace(text);
           if (/\b(?:walk|go|gå|head|leave)\b/i.test(text)) {
             const hit = exits.find((exit) => {
-              const place = placesRef.current.find((item) => item.id === exit.id);
+              const place = placesRef.current.find(
+                (item) => item.id === exit.id,
+              );
               return (
                 hay.includes(foldPlace(exit.label)) ||
                 (place ? hay.includes(foldPlace(place.name)) : false)
               );
             });
             if (hit) {
-              const place = placesRef.current.find((item) => item.id === hit.id);
+              const place = placesRef.current.find(
+                (item) => item.id === hit.id,
+              );
               if (place) travel = landmarkTravelPatch(place);
             }
           }
@@ -301,12 +362,12 @@ export function EngineProvider({
           {
             onTextDelta: (delta) => setStreamingText((prev) => prev + delta),
             onPlayerMessageAppended: refreshSnapshots,
-            onSessionUpdated: syncStreamingFace
+            onSessionUpdated: syncStreamingFace,
           },
           {
             ...(options?.goTo?.trim() ? { goTo: options.goTo.trim() } : {}),
-            ...(travel ? { travel } : {})
-          }
+            ...(travel ? { travel } : {}),
+          },
         );
         setPhase("idle");
         setStreamingText("");
@@ -328,53 +389,68 @@ export function EngineProvider({
         setStreamingCharacterId(null);
         setStreamingNarrator(false);
         console.error("Turn failed:", err); // full cause chain visible in DevTools, even though the UI message is short
-        const message = err instanceof TurnFailedError ? err.message : "Something went wrong with this turn.";
+        const message =
+          err instanceof TurnFailedError
+            ? err.message
+            : "Something went wrong with this turn.";
         setLastError(message);
         refreshSnapshots(); // the player message may have committed even if the turn later failed
       }
     },
-    [refreshSnapshots, sessionEngineRef]
+    [refreshSnapshots, sessionEngineRef],
   );
 
-  const regenerate = useCallback(async (note?: string) => {
-    setPhase("streaming");
-    setStreamingText("");
-    setLastError(null);
-    const turnId = crypto.randomUUID();
+  const regenerate = useCallback(
+    async (note?: string) => {
+      setPhase("streaming");
+      setStreamingText("");
+      setLastError(null);
+      const turnId = crypto.randomUUID();
 
-    try {
-      const session = stateEngine.getSession();
-      const speakingAsId = lastCharacterSpeaker(session) ?? primaryCharacter(session)?.id ?? null;
-      setStreamingCharacterId(speakingAsId);
-      setStreamingNarrator(Boolean(speakingAsId && isLeftBehind(session, speakingAsId)));
-      const trimmed = note?.trim();
-      await sessionEngineRef.regenerateLastTurn(
-        turnId,
-        {
-          onTextDelta: (delta) => setStreamingText((prev) => prev + delta),
-          onSessionUpdated: () => {
-            refreshSnapshots();
-            if (speakingAsId) setStreamingNarrator(isLeftBehind(stateEngine.getSession(), speakingAsId));
-          }
-        },
-        trimmed ? { note: trimmed } : {}
-      );
-      setPhase("idle");
-      setStreamingText("");
-      setStreamingCharacterId(null);
-      setStreamingNarrator(false);
-      refreshSnapshots();
-    } catch (err) {
-      setPhase("error");
-      setStreamingText("");
-      setStreamingCharacterId(null);
-      setStreamingNarrator(false);
-      console.error("Regeneration failed:", err);
-      const message = err instanceof TurnFailedError ? err.message : "Regeneration failed.";
-      setLastError(message);
-      refreshSnapshots();
-    }
-  }, [refreshSnapshots, sessionEngineRef]);
+      try {
+        const session = stateEngine.getSession();
+        const speakingAsId =
+          lastCharacterSpeaker(session) ??
+          primaryCharacter(session)?.id ??
+          null;
+        setStreamingCharacterId(speakingAsId);
+        setStreamingNarrator(
+          Boolean(speakingAsId && isLeftBehind(session, speakingAsId)),
+        );
+        const trimmed = note?.trim();
+        await sessionEngineRef.regenerateLastTurn(
+          turnId,
+          {
+            onTextDelta: (delta) => setStreamingText((prev) => prev + delta),
+            onSessionUpdated: () => {
+              refreshSnapshots();
+              if (speakingAsId)
+                setStreamingNarrator(
+                  isLeftBehind(stateEngine.getSession(), speakingAsId),
+                );
+            },
+          },
+          trimmed ? { note: trimmed } : {},
+        );
+        setPhase("idle");
+        setStreamingText("");
+        setStreamingCharacterId(null);
+        setStreamingNarrator(false);
+        refreshSnapshots();
+      } catch (err) {
+        setPhase("error");
+        setStreamingText("");
+        setStreamingCharacterId(null);
+        setStreamingNarrator(false);
+        console.error("Regeneration failed:", err);
+        const message =
+          err instanceof TurnFailedError ? err.message : "Regeneration failed.";
+        setLastError(message);
+        refreshSnapshots();
+      }
+    },
+    [refreshSnapshots, sessionEngineRef],
+  );
 
   const replay = useCallback(
     async (conversationTurn: number, note?: string) => {
@@ -386,9 +462,14 @@ export function EngineProvider({
 
       try {
         const session = stateEngine.getSession();
-        const speakingAsId = lastCharacterSpeaker(session) ?? primaryCharacter(session)?.id ?? null;
+        const speakingAsId =
+          lastCharacterSpeaker(session) ??
+          primaryCharacter(session)?.id ??
+          null;
         setStreamingCharacterId(speakingAsId);
-        setStreamingNarrator(Boolean(speakingAsId && isLeftBehind(session, speakingAsId)));
+        setStreamingNarrator(
+          Boolean(speakingAsId && isLeftBehind(session, speakingAsId)),
+        );
         const trimmed = note?.trim();
         await sessionEngineRef.replayTurn(
           turnId,
@@ -397,10 +478,13 @@ export function EngineProvider({
             onTextDelta: (delta) => setStreamingText((prev) => prev + delta),
             onSessionUpdated: () => {
               refreshSnapshots();
-              if (speakingAsId) setStreamingNarrator(isLeftBehind(stateEngine.getSession(), speakingAsId));
-            }
+              if (speakingAsId)
+                setStreamingNarrator(
+                  isLeftBehind(stateEngine.getSession(), speakingAsId),
+                );
+            },
           },
-          trimmed ? { note: trimmed } : {}
+          trimmed ? { note: trimmed } : {},
         );
         setHasCompletedTurn(true);
         setPhase("idle");
@@ -424,16 +508,21 @@ export function EngineProvider({
         refreshSnapshots();
       }
     },
-    [refreshSnapshots, sessionEngineRef, stateEngine]
+    [refreshSnapshots, sessionEngineRef, stateEngine],
   );
 
   const toggleLayer = useCallback(
     (layerId: string, active: boolean) => {
       const currentVersion = stateEngine.getSession().stateVersion;
-      stateEngine.setLayerActive(layerId, active, "player_manual_state", currentVersion);
+      stateEngine.setLayerActive(
+        layerId,
+        active,
+        "player_manual_state",
+        currentVersion,
+      );
       refreshSnapshots();
     },
-    [stateEngine, refreshSnapshots]
+    [stateEngine, refreshSnapshots],
   );
 
   const addPlayerLayer = useCallback(
@@ -453,23 +542,28 @@ export function EngineProvider({
           keywords: params.keywords ?? [],
           ...(params.once ? { once: true } : {}),
           ...(params.trigger ? { trigger: params.trigger } : {}),
-          active: true
+          active: true,
         },
         "player_manual_state",
-        currentVersion
+        currentVersion,
       );
       refreshSnapshots();
     },
-    [stateEngine, refreshSnapshots]
+    [stateEngine, refreshSnapshots],
   );
 
   const setLayerKeywords = useCallback(
     (layerId: string, keywords: string[]) => {
       const currentVersion = stateEngine.getSession().stateVersion;
-      stateEngine.setLayerKeywords(layerId, keywords, "player_manual_state", currentVersion);
+      stateEngine.setLayerKeywords(
+        layerId,
+        keywords,
+        "player_manual_state",
+        currentVersion,
+      );
       refreshSnapshots();
     },
-    [stateEngine, refreshSnapshots]
+    [stateEngine, refreshSnapshots],
   );
 
   const removeLayer = useCallback(
@@ -478,11 +572,13 @@ export function EngineProvider({
       stateEngine.removeLayer(layerId, "player_manual_state", currentVersion);
       refreshSnapshots();
     },
-    [stateEngine, refreshSnapshots]
+    [stateEngine, refreshSnapshots],
   );
 
   const compactLayers = useCallback(
-    async (scope: "pending" | CompactableType): Promise<{ ok: boolean; reason?: string }> => {
+    async (
+      scope: "pending" | CompactableType,
+    ): Promise<{ ok: boolean; reason?: string }> => {
       if (compacting) return { ok: false, reason: "Already compacting." };
       const session = stateEngine.getSession();
       const characterIds = Object.keys(session.characters);
@@ -492,7 +588,10 @@ export function EngineProvider({
           : selectEstablishedForCompaction(session.layers, characterIds, scope);
 
       if (groups.length === 0) {
-        return { ok: false, reason: "Need at least two similar notes to compact." };
+        return {
+          ok: false,
+          reason: "Need at least two similar notes to compact.",
+        };
       }
 
       setCompacting(true);
@@ -513,7 +612,9 @@ export function EngineProvider({
           if (!merged || !compactionIsUseful(contents, merged)) continue;
           const flags = flagsForCompactedGroup(group.layers);
           const keywords = keywordsForCompactedGroup(group.layers);
-          const priority = Math.min(...group.layers.map((layer) => layer.priority));
+          const priority = Math.min(
+            ...group.layers.map((layer) => layer.priority),
+          );
           removeIds.push(...group.layers.map((layer) => layer.id));
           for (const content of merged) {
             replacements.push({
@@ -522,64 +623,93 @@ export function EngineProvider({
               active: flags.active,
               aiGenerated: flags.aiGenerated,
               priority,
-              keywords
+              keywords,
             });
           }
         }
 
         if (removeIds.length < 2 || replacements.length === 0) {
-          return { ok: false, reason: "The model did not find a tighter version." };
+          return {
+            ok: false,
+            reason: "The model did not find a tighter version.",
+          };
         }
 
         const result = stateEngine.compactReplaceLayers(
           removeIds,
           replacements,
           "player_manual_state",
-          stateEngine.getSession().stateVersion
+          stateEngine.getSession().stateVersion,
         );
         refreshSnapshots();
         return result.committed
           ? { ok: true }
-          : { ok: false, reason: result.reason ?? "Could not compact these notes." };
+          : {
+              ok: false,
+              reason: result.reason ?? "Could not compact these notes.",
+            };
       } finally {
         setCompacting(false);
       }
     },
-    [compacting, layerCompactor, refreshSnapshots, stateEngine]
+    [compacting, layerCompactor, refreshSnapshots, stateEngine],
   );
 
   const editMessage = useCallback(
-    (turnNumber: number, newContent: string): { ok: boolean; reason?: string } => {
+    (
+      turnNumber: number,
+      newContent: string,
+    ): { ok: boolean; reason?: string } => {
       const currentVersion = stateEngine.getSession().stateVersion;
-      const result = stateEngine.editConversationTurn(turnNumber, newContent, "player_manual_state", currentVersion);
+      const result = stateEngine.editConversationTurn(
+        turnNumber,
+        newContent,
+        "player_manual_state",
+        currentVersion,
+      );
       refreshSnapshots();
-      return result.committed ? { ok: true } : { ok: false, reason: result.reason };
+      return result.committed
+        ? { ok: true }
+        : { ok: false, reason: result.reason };
     },
-    [stateEngine, refreshSnapshots]
+    [stateEngine, refreshSnapshots],
   );
 
   const undo = useCallback((): { ok: boolean; reason?: string } => {
     const currentVersion = stateEngine.getSession().stateVersion;
-    const result = stateEngine.undoLastMutation("player_manual_state", currentVersion);
+    const result = stateEngine.undoLastMutation(
+      "player_manual_state",
+      currentVersion,
+    );
     refreshSnapshots();
-    return result.committed ? { ok: true } : { ok: false, reason: result.reason };
+    return result.committed
+      ? { ok: true }
+      : { ok: false, reason: result.reason };
   }, [stateEngine, refreshSnapshots]);
 
   const resetSession = useCallback(async () => {
+    if (phase === "streaming") return;
     const current = stateEngine.getSession();
-    if (current.campaignId) {
-      const handoff = draftSceneHandoff(current);
-      await repo.saveStudioResume({
-        campaignId: current.campaignId,
-        ...(current.sceneId ? { sceneId: current.sceneId } : {}),
-        ...(handoff ? { handoff } : {})
-      });
-    } else {
-      await repo.clearStudioResume();
+    const handoff = draftSceneHandoff(current);
+    const resume: StudioResume | null = current.campaignId
+      ? {
+          conversationId: current.id,
+          campaignId: current.campaignId,
+          ...(current.sceneId ? { sceneId: current.sceneId } : {}),
+          ...(handoff ? { handoff } : {}),
+        }
+      : null;
+    try {
+      await onNewConversation(current, resume);
+    } catch (err) {
+      setLastError(
+        err instanceof Error
+          ? err.message
+          : "Could not save this conversation.",
+      );
+      setPhase("error");
     }
-    await resetSessionInRepo(repo);
-    window.location.reload();
-  }, [repo, stateEngine]);
+  }, [stateEngine, phase, onNewConversation]);
 
   const setOllamaModel = useCallback(
     (model: string) => {
@@ -587,7 +717,7 @@ export function EngineProvider({
       stateEngine.setRuntimeModel(model);
       refreshSnapshots();
     },
-    [stateEngine, refreshSnapshots]
+    [stateEngine, refreshSnapshots],
   );
 
   const setMaxReplyTokens = useCallback(
@@ -595,7 +725,7 @@ export function EngineProvider({
       stateEngine.setRuntimeMaxReplyTokens(tokens);
       refreshSnapshots();
     },
-    [stateEngine, refreshSnapshots]
+    [stateEngine, refreshSnapshots],
   );
 
   const setFieldLock = useCallback(
@@ -605,11 +735,11 @@ export function EngineProvider({
         path,
         requestedLock: lock,
         source: "player_manual_state",
-        expectedStateVersion: currentVersion
+        expectedStateVersion: currentVersion,
       });
       refreshSnapshots();
     },
-    [stateEngine, refreshSnapshots]
+    [stateEngine, refreshSnapshots],
   );
 
   const setHandoff = useCallback(
@@ -617,7 +747,7 @@ export function EngineProvider({
       stateEngine.setHandoff(text);
       refreshSnapshots();
     },
-    [stateEngine, refreshSnapshots]
+    [stateEngine, refreshSnapshots],
   );
 
   const setOutgoingHandoff = useCallback(
@@ -625,7 +755,7 @@ export function EngineProvider({
       stateEngine.setOutgoingHandoff(text);
       refreshSnapshots();
     },
-    [stateEngine, refreshSnapshots]
+    [stateEngine, refreshSnapshots],
   );
 
   const setRoomOpened = useCallback(
@@ -633,7 +763,7 @@ export function EngineProvider({
       stateEngine.setRoomOpened(roomId, opened);
       refreshSnapshots();
     },
-    [stateEngine, refreshSnapshots]
+    [stateEngine, refreshSnapshots],
   );
 
   const acceptParty = useCallback(
@@ -641,7 +771,7 @@ export function EngineProvider({
       stateEngine.acceptParty(characterId);
       refreshSnapshots();
     },
-    [stateEngine, refreshSnapshots]
+    [stateEngine, refreshSnapshots],
   );
 
   const leaveParty = useCallback(
@@ -649,7 +779,7 @@ export function EngineProvider({
       stateEngine.leaveParty(characterId);
       refreshSnapshots();
     },
-    [stateEngine, refreshSnapshots]
+    [stateEngine, refreshSnapshots],
   );
 
   const holdParty = useCallback(
@@ -657,7 +787,7 @@ export function EngineProvider({
       stateEngine.holdParty(characterId);
       refreshSnapshots();
     },
-    [stateEngine, refreshSnapshots]
+    [stateEngine, refreshSnapshots],
   );
 
   const followParty = useCallback(
@@ -665,7 +795,7 @@ export function EngineProvider({
       stateEngine.followParty(characterId);
       refreshSnapshots();
     },
-    [stateEngine, refreshSnapshots]
+    [stateEngine, refreshSnapshots],
   );
 
   const value: EngineContextValue = {
@@ -702,8 +832,10 @@ export function EngineProvider({
     holdParty,
     followParty,
     travelPlaces,
-    resetSession
+    resetSession,
   };
 
-  return <EngineContext.Provider value={value}>{children}</EngineContext.Provider>;
+  return (
+    <EngineContext.Provider value={value}>{children}</EngineContext.Provider>
+  );
 }

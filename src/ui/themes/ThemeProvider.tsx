@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useRef,
@@ -13,10 +14,13 @@ import {
   type PlayTheme,
   type ThemeLibrary,
 } from "./theme";
+import { activatePlayTheme, applyPlayTheme } from "./conversationTheme";
 import { loadThemeLibrary, saveThemeLibrary } from "./themeStorage";
 
 interface Appearance {
   library: ThemeLibrary;
+  conversationId: string | null;
+  activateConversation: (id: string | null) => void;
   ready: boolean;
   error: string | null;
   update: (patch: Partial<PlayTheme>) => void;
@@ -31,6 +35,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const queue = useRef(Promise.resolve());
+  const scope = useRef<string | null | undefined>(undefined);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const activateConversation = useCallback((id: string | null) => {
+    if (scope.current === id) return;
+    scope.current = id;
+    setConversationId(id);
+    setLibrary((library) => activatePlayTheme(library, id));
+  }, []);
   useEffect(() => {
     let cancelled = false;
     loadThemeLibrary()
@@ -68,15 +80,22 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [library, ready]);
   const value: Appearance = {
     library,
+    conversationId,
+    activateConversation,
     ready,
     error,
     update: (patch) =>
-      setLibrary((state) => ({
-        ...state,
-        active: { ...state.active, ...patch },
-      })),
+      setLibrary((state) =>
+        applyPlayTheme(
+          state,
+          { ...state.active, ...patch },
+          scope.current ?? null,
+        ),
+      ),
     select: (theme) =>
-      setLibrary((state) => ({ ...state, active: { ...theme } })),
+      setLibrary((state) =>
+        applyPlayTheme(state, theme, scope.current ?? null),
+      ),
     save: (name) =>
       setLibrary((state) => {
         if (!name.trim() || state.saved.length >= 50) return state;
@@ -85,7 +104,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
           id: crypto.randomUUID(),
           name: name.trim().slice(0, 60),
         };
-        return { ...state, active: theme, saved: [...state.saved, theme] };
+        return applyPlayTheme(
+          { ...state, saved: [...state.saved, theme] },
+          theme,
+          scope.current ?? null,
+        );
       }),
     remove: (id) =>
       setLibrary((state) => ({

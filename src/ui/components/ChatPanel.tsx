@@ -133,7 +133,8 @@ export function ChatPanel({ canSend = true, onCheckConnection }: { canSend?: boo
   const speakingAs = primaryCharacter(session);
   const characterName = speakingAs ? speakingAs.name : "someone";
   const toldBy = narratorLabel(session) ?? characterName;
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useState(() => { try { return sessionStorage.getItem(`sandboxai-draft:${session.id}`) ?? ""; } catch { return ""; } });
+  useEffect(() => { try { if (draft) sessionStorage.setItem(`sandboxai-draft:${session.id}`, draft); else sessionStorage.removeItem(`sandboxai-draft:${session.id}`); } catch { /* Draft remains in the composer. */ } }, [draft, session.id]);
   const [editingTurn, setEditingTurn] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState("");
   const [editError, setEditError] = useState<string | null>(null);

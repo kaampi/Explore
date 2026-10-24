@@ -1,17 +1,25 @@
-import { useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { EngineProvider, useEngine, type ChatPhase } from "./EngineStore";
 import { StudioShell } from "./studio/StudioShell";
 import { ConnectionProvider } from "./connection/ConnectionProvider";
 import { HomeScreen } from "./home/HomeScreen";
 import { AppSwitcher } from "./home/AppSwitcher";
 import { PlayWorkspace } from "./home/PlayWorkspace";
-import { ThemeProvider } from "./themes/ThemeProvider";
+import { ConversationLibrary } from "./conversations/ConversationLibrary";
+import { ThemeProvider, useAppearance } from "./themes/ThemeProvider";
 import { AppearanceDialog } from "./themes/AppearanceDialog";
 import {
   getRepository,
   loadExistingSession,
   UI_SESSION_ID,
 } from "./persistence";
+import type { ConversationCatalog } from "@persistence/ConversationSchema";
 import type { StudioResume } from "@persistence/IndexedDBRepository";
 import type { Session } from "@state/StateSchema";
 import type { StudioView } from "./studio/types";
@@ -27,87 +35,213 @@ function LiveSessionBridge({
 }) {
   const { useSession, phase } = useEngine();
   const live = useSession();
-  useEffect(() => {
+  useLayoutEffect(() => {
     onSession(live);
   }, [live, onSession]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     onPhase(phase);
   }, [phase, onPhase]);
   return null;
 }
-
+function ConversationAppearance({ id }: { id: string | null }) {
+  const { ready, activateConversation } = useAppearance();
+  useLayoutEffect(() => {
+    if (ready) activateConversation(id);
+  }, [ready, id, activateConversation]);
+  return null;
+}
+function sceneResume(session: Session): StudioResume | null {
+  return session.campaignId
+    ? {
+        conversationId: session.id,
+        campaignId: session.campaignId,
+        ...(session.sceneId ? { sceneId: session.sceneId } : {}),
+      }
+    : null;
+}
 function SandboxApp() {
   const [repo] = useState(() => getRepository());
   const [session, setSession] = useState<Session | null | undefined>(undefined);
+  const live = useRef<Session | null>(null);
   const [resume, setResume] = useState<StudioResume | null>(null);
+  const [catalog, setCatalog] = useState<ConversationCatalog>({
+    entries: [],
+    unreadable: 0,
+  });
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [view, setView] = useState<"home" | "studio" | "play">("home");
+  const [view, setView] = useState<
+    "home" | "studio" | "play" | "conversations"
+  >("home");
   const [studioView, setStudioView] = useState<StudioView>("characters");
   const [generation, setGeneration] = useState(0);
   const [phase, setPhase] = useState<ChatPhase>("idle");
+  const currentPhase = useRef<ChatPhase>("idle");
+  const actionPending = useRef(false);
+  const [working, setWorking] = useState(false);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
-  const [startError, setStartError] = useState<string | null>(null);
-
+  const [operationError, setOperationError] = useState<string | null>(null);
+  const setLive = useCallback((next: Session | null) => {
+    live.current = next;
+    setSession(next);
+  }, []);
+  const synchronizePhase = useCallback((next: ChatPhase) => {
+    currentPhase.current = next;
+    setPhase(next);
+  }, []);
   useEffect(() => {
     let cancelled = false;
-    Promise.all([loadExistingSession(repo), repo.loadStudioResume()])
-      .then(([loaded, studioResume]) => {
-        if (!cancelled) {
-          setSession(loaded);
-          setResume(studioResume);
-        }
-      })
-      .catch((err: unknown) => {
-        if (!cancelled)
-          setLoadError(err instanceof Error ? err.message : String(err));
-      });
+    void (async () => {
+      const loaded = await loadExistingSession(repo);
+      const [studioResume, conversations] = await Promise.all([
+        repo.loadStudioResume(),
+        repo.listConversations(),
+      ]);
+      if (cancelled) return;
+      setLive(loaded);
+      setCatalog(conversations);
+      setResume(
+        loaded
+          ? studioResume?.conversationId === loaded.id ||
+            (loaded.id === UI_SESSION_ID && !studioResume?.conversationId)
+            ? studioResume
+            : sceneResume(loaded)
+          : studioResume,
+      );
+    })().catch((err: unknown) => {
+      if (!cancelled)
+        setLoadError(err instanceof Error ? err.message : String(err));
+    });
     return () => {
       cancelled = true;
     };
-  }, [repo]);
+  }, [repo, setLive]);
 
-  async function startScene(next: Session) {
-    if (phase === "streaming")
-      throw new Error(
-        "Wait for the current reply to finish before starting another conversation.",
-      );
-    if (
-      session &&
-      !window.confirm(
-        "Start a new conversation? This replaces your current conversation. Your characters, worlds, and themes are kept.",
-      )
-    )
-      return;
-    // Persist before replacing the live engine. A failed save leaves the old conversation intact.
-    await repo.saveSession(next);
+  async function refreshCatalog() {
     try {
-      if (next.campaignId) {
-        const nextResume = {
-          campaignId: next.campaignId,
-          ...(next.sceneId ? { sceneId: next.sceneId } : {}),
-        };
-        await repo.saveStudioResume(nextResume);
-        setResume(nextResume);
-      } else {
-        await repo.clearStudioResume();
-        setResume(null);
-      }
+      setCatalog(await repo.listConversations());
     } catch (err) {
-      console.warn("Could not save the studio return point:", err);
+      setOperationError(
+        err instanceof Error
+          ? err.message
+          : "Could not refresh your conversations.",
+      );
     }
-    setSession(next);
-    setGeneration((value) => value + 1);
-    setView("play");
-    setStartError(null);
+  }
+  async function action(work: () => Promise<void>) {
+    if (actionPending.current)
+      throw new Error("Please wait while the conversation opens.");
+    if (currentPhase.current === "streaming")
+      throw new Error(
+        "Wait for the current reply to finish before changing conversations.",
+      );
+    actionPending.current = true;
+    setWorking(true);
+    setOperationError(null);
+    try {
+      await work();
+    } finally {
+      actionPending.current = false;
+      setWorking(false);
+    }
+  }
+  function report(work: Promise<void>) {
+    void work.catch((err: unknown) =>
+      setOperationError(
+        err instanceof Error
+          ? err.message
+          : "Could not update your conversations.",
+      ),
+    );
+  }
+  async function persistCurrent() {
+    if (live.current) await repo.saveSession(live.current);
+  }
+  async function startScene(next: Session) {
+    await action(async () => {
+      await persistCurrent();
+      const fresh = { ...next, id: crypto.randomUUID() };
+      await repo.createConversation(fresh);
+      const nextResume = sceneResume(fresh);
+      try {
+        if (nextResume) await repo.saveStudioResume(nextResume);
+        else await repo.clearStudioResume();
+      } catch (err) {
+        console.warn("Could not save the studio return point:", err);
+      }
+      setResume(nextResume);
+      setLive(fresh);
+      setGeneration((value) => value + 1);
+      setView("play");
+      await refreshCatalog();
+    });
+  }
+  async function openConversation(id: string) {
+    await action(async () => {
+      await persistCurrent();
+      const next =
+        live.current?.id === id ? live.current : await repo.loadSession(id);
+      await repo.activateConversation(id);
+      if (live.current?.id !== id) {
+        setResume(sceneResume(next));
+        setLive(next);
+        setGeneration((value) => value + 1);
+      }
+      setView("play");
+      await refreshCatalog();
+    });
+  }
+  async function archiveConversation(id: string, archived: boolean) {
+    await action(async () => {
+      await persistCurrent();
+      await repo.archiveConversation(id, archived);
+      if (archived && live.current?.id === id) {
+        setLive(null);
+        setGeneration((value) => value + 1);
+        setView("conversations");
+      }
+      await refreshCatalog();
+    });
+  }
+  async function renameConversation(id: string, title: string) {
+    await action(async () => {
+      await repo.renameConversation(id, title);
+      await refreshCatalog();
+    });
+  }
+  function navigate(destination: "home" | "conversations") {
+    report(
+      action(async () => {
+        await persistCurrent();
+        setView(destination);
+        await refreshCatalog();
+      }),
+    );
   }
   function openStudio(next: StudioView) {
+    if (actionPending.current || currentPhase.current === "streaming") {
+      setOperationError(
+        "Wait for the current reply to finish before opening the studio.",
+      );
+      return;
+    }
     setStudioView(next);
     setView("studio");
-    setStartError(null);
+    setOperationError(null);
   }
-  function goHome() {
-    setView("home");
-    setStartError(null);
+  async function newConversation(
+    current: Session,
+    nextResume: StudioResume | null,
+  ) {
+    await action(async () => {
+      await repo.saveSession(current);
+      if (nextResume) await repo.saveStudioResume(nextResume);
+      else await repo.clearStudioResume();
+      setLive(current);
+      setResume(nextResume);
+      setStudioView(current.campaignId ? "campaigns" : "adventure");
+      setView("studio");
+      await refreshCatalog();
+    });
   }
   if (loadError)
     return (
@@ -129,14 +263,16 @@ function SandboxApp() {
         Opening your creative space…
       </div>
     );
-
   const workspace = (
     <>
+      <ConversationAppearance
+        id={view === "play" ? (session?.id ?? null) : null}
+      />
       <header className="sb-header">
         <button
           type="button"
           className="sb-brand"
-          onClick={goHome}
+          onClick={() => navigate("home")}
           aria-label="SandboxAI home"
         >
           <span aria-hidden="true">✧</span>
@@ -145,7 +281,7 @@ function SandboxApp() {
             <small>YOUR CREATIVE UNIVERSE</small>
           </span>
         </button>
-        <AppSwitcher onHome={goHome} />
+        <AppSwitcher onHome={() => navigate("home")} />
         <button
           type="button"
           className="sb-header-appearance"
@@ -155,11 +291,27 @@ function SandboxApp() {
           ◐ <span>Appearance</span>
         </button>
       </header>
+      {operationError && (
+        <div className="sb-operation-error" role="alert">
+          <span>{operationError}</span>
+          <button
+            type="button"
+            className="sb-link"
+            onClick={() => setOperationError(null)}
+            aria-label="Dismiss notification"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       {view === "play" && session ? (
         <PlayWorkspace
-          onHome={(live) => {
-            setSession(live);
-            goHome();
+          title={
+            catalog.entries.find((entry) => entry.id === session.id)?.title
+          }
+          onHome={(current) => {
+            setLive(current);
+            navigate("home");
           }}
           onAppearance={() => setAppearanceOpen(true)}
         />
@@ -173,9 +325,16 @@ function SandboxApp() {
               <button
                 type="button"
                 className={view === "home" ? "is-active" : ""}
-                onClick={goHome}
+                onClick={() => navigate("home")}
               >
                 ◈ <span>My space</span>
+              </button>
+              <button
+                type="button"
+                className={view === "conversations" ? "is-active" : ""}
+                onClick={() => navigate("conversations")}
+              >
+                ◷ <span>My conversations</span>
               </button>
               <button
                 type="button"
@@ -211,8 +370,12 @@ function SandboxApp() {
                 ◇ <span>Adventures</span>
               </button>
               {session && (
-                <button type="button" onClick={() => setView("play")}>
-                  ◷ <span>Continue exploring</span>
+                <button
+                  type="button"
+                  disabled={working}
+                  onClick={() => report(openConversation(session.id))}
+                >
+                  ↗ <span>Continue exploring</span>
                 </button>
               )}
             </nav>
@@ -231,37 +394,42 @@ function SandboxApp() {
           </aside>
           {view === "studio" ? (
             <div className="sb-studio-wrap">
-              {startError && (
-                <p className="sb-error" role="alert">
-                  {startError}
-                </p>
-              )}
               <StudioShell
                 key={studioView}
                 initialView={studioView}
                 sessionId={UI_SESSION_ID}
                 repo={repo}
                 resume={resume}
-                onStart={(next) => {
-                  void startScene(next).catch((err: unknown) =>
-                    setStartError(
-                      err instanceof Error
-                        ? err.message
-                        : "Could not save the new scene.",
-                    ),
-                  );
-                }}
+                onStart={(next) => report(startScene(next))}
               />
             </div>
+          ) : view === "conversations" ? (
+            <ConversationLibrary
+              entries={catalog.entries}
+              unreadable={catalog.unreadable}
+              busy={working || phase === "streaming"}
+              onOpen={(id) => report(openConversation(id))}
+              onRename={renameConversation}
+              onArchive={(id, archived) =>
+                report(archiveConversation(id, archived))
+              }
+              onNew={() => navigate("home")}
+            />
           ) : (
             <HomeScreen
               key={generation}
               repo={repo}
               session={session}
               sessionId={UI_SESSION_ID}
-              onResume={() => setView("play")}
+              onResume={() => {
+                if (session) report(openConversation(session.id));
+              }}
               onStart={startScene}
               onStudio={openStudio}
+              conversations={catalog.entries}
+              onOpenConversation={(id) => report(openConversation(id))}
+              onShowConversations={() => navigate("conversations")}
+              navigationBusy={working}
             />
           )}
         </div>
@@ -271,10 +439,14 @@ function SandboxApp() {
       )}
     </>
   );
-  // Keep the live engine mounted while browsing Home and Studio; navigation never clears the scene.
   return session ? (
-    <EngineProvider key={generation} initialSession={session} repo={repo}>
-      <LiveSessionBridge onSession={setSession} onPhase={setPhase} />
+    <EngineProvider
+      key={generation}
+      initialSession={session}
+      repo={repo}
+      onNewConversation={newConversation}
+    >
+      <LiveSessionBridge onSession={setLive} onPhase={synchronizePhase} />
       {workspace}
     </EngineProvider>
   ) : (

@@ -22,6 +22,11 @@ import { Modal } from "../components/Modal";
 import { quickCharacterSession } from "./quickStart";
 import { useConnection } from "../connection/ConnectionProvider";
 import { initialModel } from "../connection/connection";
+import { ConversationCard } from "../conversations/ConversationLibrary";
+import {
+  recentConversations,
+  type ConversationEntry,
+} from "@persistence/ConversationSchema";
 import { HomeConnection } from "../connection/ConnectionHelp";
 import { WorldArtwork } from "./WorldArtwork";
 
@@ -32,7 +37,15 @@ export function HomeScreen({
   onResume,
   onStart,
   onStudio,
+  conversations = [],
+  onOpenConversation,
+  onShowConversations,
+  navigationBusy = false,
 }: {
+  conversations?: ConversationEntry[];
+  onOpenConversation?: (id: string) => void;
+  onShowConversations?: () => void;
+  navigationBusy?: boolean;
   repo: IndexedDBRepository;
   session: Session | null;
   sessionId: string;
@@ -47,7 +60,8 @@ export function HomeScreen({
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { discovery, preferredModel, refresh } = useConnection();
-  const [busy, setBusy] = useState(false);
+  const [starting, setBusy] = useState(false);
+  const busy = starting || navigationBusy;
   const [creating, setCreating] = useState(false);
   const [quickName, setQuickName] = useState("");
   const [quickPersonality, setQuickPersonality] = useState("");
@@ -149,6 +163,9 @@ export function HomeScreen({
     }
   }
   const person = session ? primaryCharacter(session) : null;
+  const currentTitle = conversations.find(
+    (entry) => entry.id === session?.id,
+  )?.title;
   const lastTurn = session?.conversation.at(-1);
   const recent =
     lastTurn &&
@@ -226,7 +243,8 @@ export function HomeScreen({
               </span>
               <h2>
                 {session
-                  ? session.scene?.realm ||
+                  ? currentTitle ||
+                    session.scene?.realm ||
                     session.scene?.location ||
                     `A conversation with ${person?.name ?? "your characters"}`
                   : "Every conversation opens a door."}
@@ -252,7 +270,10 @@ export function HomeScreen({
                   className="sb-button sb-button--cream"
                   onClick={openCreate}
                 >
-                  Create your first character <span>＋</span>
+                  {characters.length
+                    ? "Create a character"
+                    : "Create your first character"}{" "}
+                  <span>＋</span>
                 </button>
               )}
               <div className="sb-hero__foot">
@@ -264,6 +285,34 @@ export function HomeScreen({
             <span className="sb-hero__caption">The beginning is yours.</span>
           </section>
           <HomeConnection />
+          {recentConversations(conversations).length > 0 &&
+            onOpenConversation && (
+              <section className="sb-home-section">
+                <div className="sb-section-heading">
+                  <h2>Pick up a conversation</h2>
+                  <button
+                    type="button"
+                    className="sb-link"
+                    onClick={onShowConversations}
+                  >
+                    All conversations →
+                  </button>
+                </div>
+                <div className="sb-conversation-grid sb-conversation-grid--recent">
+                  {recentConversations(conversations)
+                    .slice(0, 3)
+                    .map((entry) => (
+                      <ConversationCard
+                        key={entry.id}
+                        entry={entry}
+                        compact
+                        busy={busy}
+                        onOpen={onOpenConversation}
+                      />
+                    ))}
+                </div>
+              </section>
+            )}
           <section className="sb-home-section">
             <div className="sb-section-heading">
               <h2>Someone to talk to</h2>
