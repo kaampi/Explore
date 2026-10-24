@@ -1,3 +1,4 @@
+import type { materializeWorld } from "../lore/materializeWorld";
 import { LorebookSchema, type Lorebook } from "../lore/LorebookSchema";
 import { IdeaSchema, type Idea } from "../ideas/IdeaSchema";
 import {
@@ -794,6 +795,28 @@ export class IndexedDBRepository {
 
   async saveLorebook(book: Lorebook): Promise<void> {
     await this.putRecord(LOREBOOKS_STORE, LorebookSchema.parse(book));
+  }
+
+  /** Import as one atomic unit; add() prevents replacing existing library cards. */
+  async saveWorldImport(result: ReturnType<typeof materializeWorld>): Promise<void> {
+    const book = LorebookSchema.parse(result.book);
+    const realm = parseRealmTemplate(result.realm);
+    const characters = result.characters.map(person => parseCharacterTemplate(person));
+    const places = result.places.map(place => parsePlaceTemplate(place));
+    if (book.materializedRealmId !== realm.id || book.binding.kind !== "realm" || book.binding.targetId !== realm.id || places.some(place => place.realmId !== realm.id))
+      throw new Error("The imported world links are inconsistent.");
+    const db = await this.open();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction([LOREBOOKS_STORE, REALMS_STORE, CHARACTERS_STORE, PLACES_STORE], "readwrite");
+      try {
+        tx.objectStore(LOREBOOKS_STORE).add(cloneRecord(book));
+        tx.objectStore(REALMS_STORE).add(cloneRecord(realm));
+        characters.forEach(person => tx.objectStore(CHARACTERS_STORE).add(cloneRecord(person)));
+        places.forEach(place => tx.objectStore(PLACES_STORE).add(cloneRecord(place)));
+      } catch (err) { tx.abort(); reject(err); }
+      tx.oncomplete = () => resolve();
+      tx.onerror = tx.onabort = () => reject(tx.error ?? new Error("Could not save the imported world. Nothing was replaced."));
+    });
   }
 
   async listLorebooks(): Promise<{ entries: Lorebook[]; unreadable: number }> {
