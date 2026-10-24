@@ -108,7 +108,7 @@ function MessageBody({ text }: { text: string }) {
   );
 }
 
-export function ChatPanel() {
+export function ChatPanel({ canSend = true, onCheckConnection }: { canSend?: boolean; onCheckConnection?: () => void }) {
   const {
     useSession,
     phase,
@@ -191,7 +191,7 @@ export function ChatPanel() {
   const youLabel = session.player?.name?.trim() || "You";
 
   useEffect(() => {
-    if (busy || editingTurn !== null || fork) return;
+    if (busy || editingTurn !== null || fork || !canSend) return;
     const input = inputRef.current;
     if (!input) return;
     const active = document.activeElement;
@@ -204,11 +204,11 @@ export function ChatPanel() {
       return;
     }
     input.focus();
-  }, [busy, editingTurn, fork]);
+  }, [busy, editingTurn, fork, canSend]);
 
   async function handleSend() {
     const text = draft.trim();
-    if (!text || busy || fork) return;
+    if (!text || busy || fork || !canSend) return;
     setDraft("");
     inputRef.current?.focus();
     await sendMessage(text);
@@ -216,7 +216,7 @@ export function ChatPanel() {
   }
 
   async function handleWhatNow(label: string, room: string) {
-    if (busy || editingTurn !== null) return;
+    if (busy || editingTurn !== null || !canSend) return;
     if (isWhatNowStay(room)) {
       await sendMessage(label, { goTo: WHAT_NOW_STAY });
       return;
@@ -231,7 +231,7 @@ export function ChatPanel() {
     dest: string,
     kind: "landmark" | "room" | "travel"
   ) {
-    if (busy || editingTurn !== null || fork) return;
+    if (busy || editingTurn !== null || fork || !canSend) return;
     if (kind === "travel") {
       await sendMessage(`I walk to ${label}.`, { travelPlaceId: dest });
       return;
@@ -276,14 +276,14 @@ export function ChatPanel() {
   }
 
   async function handleRegenerate() {
-    if (busy || !canRegenerate) return;
+    if (busy || !canRegenerate || !canSend) return;
     const note = regenNote.trim();
     setRegenNote("");
     await regenerate(note || undefined);
   }
 
   async function handleReplay(turn: DisplayTurn) {
-    if (busy) return;
+    if (busy || !canSend) return;
     const turns = parseLiveTurns(session.conversation);
     const beat = chatBeatFor(turns, turn.turn);
     if (!beat) return;
@@ -459,6 +459,7 @@ export function ChatPanel() {
                   <button
                     type="button"
                     className="message__act"
+                    disabled={!canSend || busy}
                     onClick={() => void handleRegenerate()}
                     title="Regenerate this reply — undoes it and re-runs Pass 1 with the same message"
                   >
@@ -471,6 +472,7 @@ export function ChatPanel() {
                   <button
                     type="button"
                     className="message__act"
+                    disabled={!canSend}
                     onClick={() => void handleReplay(turn)}
                     title="Replay this beat — later chat is undone, then Pass 1 runs again"
                   >
@@ -507,7 +509,8 @@ export function ChatPanel() {
       </div>
 
       <div className="chat-composer">
-        {lastError && phase === "error" && <div className="chat-error">{lastError}</div>}
+        {!canSend && <p className="sb-chat-connection-hint" id="sb-chat-connection-hint">You can write a draft while AI connects. {onCheckConnection && <button type="button" className="sb-link" onClick={onCheckConnection}>Set up AI</button>}</p>}
+        {lastError && phase === "error" && <div className="chat-error">{lastError} {onCheckConnection && <button type="button" className="sb-link" onClick={onCheckConnection}>AI connection</button>}</div>}
         {fork && editingTurn === null ? (
           <div className="chat-what-now">
             <p className="chat-what-now__label">Pre-defined Replies</p>
@@ -520,7 +523,7 @@ export function ChatPanel() {
                     key={choice.id}
                     type="button"
                     className="chat-what-now__chip"
-                    disabled={busy || (!dest && !stay)}
+                    disabled={busy || !canSend || (!dest && !stay)}
                     onClick={() => void handleWhatNow(choice.label, choice.room)}
                   >
                     {choice.label}
@@ -628,7 +631,7 @@ export function ChatPanel() {
                   key={exit.id}
                   type="button"
                   className={exit.enabled ? "chat-exits__chip" : "chat-exits__chip chat-exits__chip--shut"}
-                  disabled={busy || fork || editingTurn !== null || !exit.enabled}
+                  disabled={busy || !canSend || fork || editingTurn !== null || !exit.enabled}
                   title={
                     exit.kind === "travel"
                       ? "Leave this landmark"
@@ -657,6 +660,8 @@ export function ChatPanel() {
         {fork ? null : (
         <>
         <input
+          aria-label="Your message"
+          aria-describedby={!canSend ? "sb-chat-connection-hint" : undefined}
           ref={inputRef}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -671,7 +676,7 @@ export function ChatPanel() {
                 : `Say something to ${characterName}…`
           }
         />
-        <button onClick={() => void handleSend()} disabled={busy || !draft.trim()}>
+        <button onClick={() => void handleSend()} disabled={busy || !canSend || !draft.trim()}>
           {busy ? "…" : "Send"}
         </button>
         </>

@@ -34,6 +34,14 @@ Play uses a local **Ollama** server. See [Using Ollama](#using-ollama).
 
 First load opens **My space**: continue your saved conversation, create a character with just a name, import a character card through the library, or explore an existing world. **Create & chat** starts without a world file, campaign, rule-set, or prepared storyline. The built-in Emma example offers an immediate first meeting. Library tools and Campaign Builder remain available from the sidebar. A saved session stays available while you browse Home and Studio; starting another conversation asks before replacing it.
 
+## First conversation
+
+Home offers **Create & chat** with only a name, character-card import, and the built-in Emma example. Creating characters and exploring themes work without an AI connection. A shared connection check finds Ollama, lists chat-capable models when capability metadata is available, and explains an unreachable server, an empty model list, or a missing saved model. Older Ollama releases without capability metadata remain compatible.
+
+A ready connection stays out of the conversation's way. Otherwise **Set up AI** offers installation/start instructions, a retry, and an installed-model selector. You can write a draft while disconnected; sending, replaying, regenerating, and AI-driven travel wait for a usable connection. Reconnecting and changing models never automatically sends the draft. Model preferences are saved locally, and an existing conversation keeps its own model until you explicitly change it.
+
+The connection check inspects model metadata, not a sample conversation, and does not download a model. Actual reply generation still depends on the selected model running successfully on your computer.
+
 ## Your space and appearance
 
 The shared header connects SandboxAI with StorybookAI and ComicbookAI. When running locally with `npm start` or `npm run preview`, it checks StorybookAI at `http://localhost:5175/` and ComicbookAI at `http://localhost:5176/`. A verified running app opens directly from its header link; otherwise its presentation offers installation information, Try again, and a configurable address. Checks repeat every 30 seconds while visible and when the window receives focus. Unreachable means the app cannot be reached, not that it is uninstalled. Remote addresses can be opened manually; automatic probes stay on loopback. The hosted/static preview has no local status backend and keeps the presentation available.
@@ -50,7 +58,7 @@ Named themes and the active appearance are saved in a separate local IndexedDB d
 
 Phases 1–5 of the Master Spec are in the product. Studio, Adventure, world canon, objects, player-agency, closeness, and UI pictures grew on top of that roadmap.
 
-- **Play.** Three zones: **Cast** (layers, meters, place thumb for the current room, objects) · **Chat** (streamed Pass 1, character portraits, optional place/room backdrop and looping sound) · **Inspector** (canonical snapshot, prompt size vs budget, mutation chain, undo). Status bar: prompt estimate, model picker (default `stheno-custom:latest`), new scene.
+- **Play.** Three zones: **Cast** (layers, meters, place thumb for the current room, objects) · **Chat** (streamed Pass 1, character portraits, optional place/room backdrop and looping sound) · **Inspector** (canonical snapshot, prompt size vs budget, mutation chain, undo). Status bar: prompt estimate, model picker (your saved model choice), new scene.
 - **Studio library.** Characters (given / middle / family name, identity, looks, keyword lore, optional portrait; pronoun is She/He/It plus `+`; tags for the campaign lens), Places (venue + named rooms, intro on the picture, compact prompt for the model, optional pictures and looping sound — pictures and sound are UI only; tags), Objects (tags already filter the shelf), Voices, Stories, Rule-sets (high/low/mid meanings; `{{char}}` / `{{they}}` expand per NPC; text choices are chips with `+`). Stats stay on the campaign / scene, not the archive card. SillyTavern character import on the character shelf.
 - **Campaign Builder.** Pick a realm on General (all its landmarks belong), fill **You** if the player has a name and looks tonight, then people and things. Each remaining shelf has its own tags (a person is not a harbour). **Look for** filters that shelf while you pick — it does not change who already belongs. A scene is a place the player can enter: a landmark in the campaign realm, who is here, what is in the room, and optional Pre-defined Replies (several triggers, each with its own buttons) / come-back events. Start copies that scene onto a live session. **new scene** comes back to that campaign's Scenes; chat and trust from the last night do not carry. A short **From last scene** agreement does (why they arrived). Empty = a new meeting. One-off Adventure remains for a night without a campaign.
 - **Turns.** Player line is committed and shown before tokens stream. Pass 1 writes third person, present tense, one beat — not a chapter or epilogue. In a group, the turn’s focus is who you named, a unique he/she pointer, or the last speaker — that person’s portrait and meters. High trust + Värme is a warm beat (kiss/hug when asked). Favor is rooms and objects only. Pass 2 may propose lockable mutations; failure never fails a turn whose prose already reached the player. AI-proposed layers stay **inactive** until Approve. Approved layers with keywords stay out of the prompt until recent chat mentions them. Standing personality (no wake words) stays in even when chat overflows. Player Compact merges similar notes. Undo, regenerate, inline edit of dialogue.
@@ -83,9 +91,9 @@ IndexedDB: session schema version 2; library stores through DB v6 (characters, p
 
 ## Using Ollama
 
-1. Install Ollama and have a model listed (`ollama list`). The UI defaults to `stheno-custom:latest`; the picker uses the first installed name if that tag is missing.
+1. Install Ollama and have a model listed (`ollama list`). On first setup, the UI discovers installed chat models and makes an initial choice you can change. Saved model choices are preserved; a missing saved model requires an explicit selection.
 2. Start the server: `ollama serve` (often already running as a service)
-3. In the UI, pick the model from the status bar. Programmatically:
+3. Use **Set up AI** on Home or in a conversation to check the connection and choose a model. The model picker is also under **Settings** in play. Programmatically:
 
 ```ts
 import { OllamaProvider } from "@llm/providers/OllamaProvider";

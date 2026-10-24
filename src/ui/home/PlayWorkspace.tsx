@@ -1,10 +1,14 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Session } from "@state/StateSchema";
 import { primaryCharacter } from "@session/createSession";
 import { useEngine } from "../EngineStore";
 import { CastPanel } from "../components/CastPanel";
 import { ChatPanel } from "../components/ChatPanel";
 import { InspectorPanel } from "../components/InspectorPanel";
+import { useConnection } from "../connection/ConnectionProvider";
+import { modelReadiness } from "../connection/connection";
+import { ConnectionHelp } from "../connection/ConnectionHelp";
+import { Modal } from "../components/Modal";
 import { StatusBar } from "../components/StatusBar";
 import { playThemeStyle, useAppearance } from "../themes/ThemeProvider";
 
@@ -15,13 +19,20 @@ export function PlayWorkspace({
   onHome: (session: Session) => void;
   onAppearance: () => void;
 }) {
-  const { useSession, phase } = useEngine();
+  const { useSession, phase, setOllamaModel } = useEngine();
+  const { discovery, refresh, chooseModel } = useConnection();
+  const [connectionOpen, setConnectionOpen] = useState(false);
   const session = useSession();
   const { library } = useAppearance();
   const [castOpen, setCastOpen] = useState(false);
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const streaming = phase === "streaming";
+  const readiness = modelReadiness(discovery, session.runtime.model);
+  const canSend = readiness === "ready";
+  useEffect(() => {
+    if (phase === "error") void refresh();
+  }, [phase, refresh]);
   return (
     <div className="sb-play-workspace">
       <div className="sb-play-toolbar">
@@ -75,15 +86,57 @@ export function PlayWorkspace({
         </div>
       </div>
       {settingsOpen && <StatusBar />}
+      {!canSend && (
+        <div className="sb-play-connection" role="status">
+          <span>
+            {readiness === "checking"
+              ? "Checking your local AI…"
+              : readiness === "missing-model"
+                ? "Choose an installed model to hear a reply."
+                : "Your conversation is ready. Connect local AI to hear a reply."}
+          </span>
+          <button
+            type="button"
+            className="sb-link"
+            onClick={() => setConnectionOpen(true)}
+          >
+            Set up AI
+          </button>
+        </div>
+      )}
       <div
         className={`sb-play-layout${castOpen ? " sb-play-layout--cast" : ""}${inspectorOpen ? " sb-play-layout--inspector" : ""}`}
       >
         {castOpen && <CastPanel />}
         <div className="sb-themed-play" style={playThemeStyle(library.active)}>
-          <ChatPanel />
+          <ChatPanel
+            canSend={canSend}
+            onCheckConnection={() => setConnectionOpen(true)}
+          />
         </div>
         {inspectorOpen && <InspectorPanel />}
       </div>
+      {connectionOpen && (
+        <Modal title="Your local AI" onClose={() => setConnectionOpen(false)}>
+          <ConnectionHelp
+            model={session.runtime.model}
+            disabled={streaming}
+            onModelChange={(model) => {
+              chooseModel(model);
+              setOllamaModel(model);
+            }}
+          />
+          <div className="sb-dialog__actions">
+            <button
+              type="button"
+              className="sb-button"
+              onClick={() => setConnectionOpen(false)}
+            >
+              {canSend ? "Back to the conversation" : "Keep exploring"}
+            </button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { EngineProvider, useEngine, type ChatPhase } from "./EngineStore";
 import { StudioShell } from "./studio/StudioShell";
+import { ConnectionProvider } from "./connection/ConnectionProvider";
 import { HomeScreen } from "./home/HomeScreen";
 import { AppSwitcher } from "./home/AppSwitcher";
 import { PlayWorkspace } from "./home/PlayWorkspace";
@@ -283,7 +284,9 @@ function SandboxApp() {
 export default function App() {
   return (
     <ThemeProvider>
-      <SandboxApp />
+      <ConnectionProvider>
+        <SandboxApp />
+      </ConnectionProvider>
     </ThemeProvider>
   );
 }

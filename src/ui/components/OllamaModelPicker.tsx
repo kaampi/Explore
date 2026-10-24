@@ -1,75 +1,59 @@
-import { useEffect, useRef, useState } from "react";
-import { listOllamaModels, pickListedOllamaModel } from "@llm/providers/OllamaProvider";
+import { installedModelName } from "../connection/connection";
+import { useConnection } from "../connection/ConnectionProvider";
 
+/** Discovery is shared with onboarding; opening Settings never silently changes a saved model. */
 export function OllamaModelPicker({
   model,
   onChange,
-  variant = "chip"
+  variant = "chip",
 }: {
   model: string;
   onChange: (model: string) => void;
   variant?: "chip" | "field";
 }) {
-  const modelRef = useRef(model);
-  modelRef.current = model;
-  const [listed, setListed] = useState<string[] | null>(null);
-
-  useEffect(() => {
-    const ac = new AbortController();
-    listOllamaModels({ signal: ac.signal })
-      .then((names) => {
-        if (names.length === 0) {
-          setListed(null);
-          return;
-        }
-        setListed(names);
-        const picked = pickListedOllamaModel(modelRef.current, names);
-        if (picked && picked !== modelRef.current) onChange(picked);
-      })
-      .catch((err) => {
-        if (err instanceof DOMException && err.name === "AbortError") return;
-        setListed(null);
-      });
-    return () => ac.abort();
-  }, [onChange]);
-
-  if (listed && listed.length > 0) {
-    const options = listed.includes(model) ? listed : [model, ...listed];
-    const select = (
-      <select
-        className={variant === "chip" ? "chip__field" : undefined}
-        value={model}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        {options.map((name) => (
-          <option key={name} value={name}>
-            {name}
-          </option>
-        ))}
-      </select>
-    );
-    if (variant === "field") return select;
-    return (
-      <label className="chip" title="Installed Ollama models">
-        ollama:
-        {select}
-      </label>
-    );
+  const { discovery, chooseModel } = useConnection();
+  function change(value: string) {
+    chooseModel(value);
+    onChange(value);
   }
-
-  const input = (
+  const models = discovery.models;
+  const input = models.length ? (
+    <select
+      aria-label="Ollama model"
+      className={variant === "chip" ? "chip__field" : undefined}
+      value={installedModelName(model, models) ?? ""}
+      onChange={(event) => change(event.target.value)}
+    >
+      <option value="" disabled>
+        {model ? `${model} · not installed` : "Choose an installed model"}
+      </option>
+      {models.map((name) => (
+        <option key={name} value={name}>
+          {name}
+        </option>
+      ))}
+    </select>
+  ) : (
     <input
+      aria-label="Ollama model"
       className={variant === "chip" ? "chip__field" : undefined}
       value={model}
-      onChange={(e) => onChange(e.target.value)}
+      onChange={(event) => change(event.target.value)}
       placeholder="model name"
     />
   );
-  if (variant === "field") return input;
-  return (
-    <label className="chip" title="Ollama unreachable — type a model name">
-      ollama:
-      {input}
+  return variant === "field" ? (
+    input
+  ) : (
+    <label
+      className="chip"
+      title={
+        discovery.state === "available"
+          ? "Your Ollama model"
+          : "Use Set up AI to connect Ollama"
+      }
+    >
+      ollama: {input}
     </label>
   );
 }

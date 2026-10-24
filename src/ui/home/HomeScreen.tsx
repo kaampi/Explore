@@ -20,6 +20,9 @@ import type { StudioView } from "../studio/types";
 import { portraitSrc } from "../studio/portrait";
 import { Modal } from "../components/Modal";
 import { quickCharacterSession } from "./quickStart";
+import { useConnection } from "../connection/ConnectionProvider";
+import { initialModel } from "../connection/connection";
+import { HomeConnection } from "../connection/ConnectionHelp";
 import { WorldArtwork } from "./WorldArtwork";
 
 export function HomeScreen({
@@ -43,6 +46,7 @@ export function HomeScreen({
   const [campaigns, setCampaigns] = useState<CampaignTemplate[]>([]);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { discovery, preferredModel, refresh } = useConnection();
   const [busy, setBusy] = useState(false);
   const [creating, setCreating] = useState(false);
   const [quickName, setQuickName] = useState("");
@@ -87,11 +91,16 @@ export function HomeScreen({
     setBusy(true);
     setError(null);
     try {
+      const connection =
+        discovery.state === "checking" ? await refresh() : discovery;
+      const model =
+        initialModel(preferredModel, connection.models) ||
+        session?.runtime.model;
       await onStart(
         quickCharacterSession(character, sessionId, {
           ...(place ? { place } : {}),
           ...(realm ? { realm } : {}),
-          ...(session?.runtime.model ? { model: session.runtime.model } : {}),
+          ...(model ? { model } : {}),
         }),
       );
     } catch (err) {
@@ -254,6 +263,7 @@ export function HomeScreen({
             </div>
             <span className="sb-hero__caption">The beginning is yours.</span>
           </section>
+          <HomeConnection />
           <section className="sb-home-section">
             <div className="sb-section-heading">
               <h2>Someone to talk to</h2>
