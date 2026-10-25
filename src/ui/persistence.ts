@@ -1,36 +1,32 @@
-import { IndexedDBRepository, SessionNotFoundError } from "@persistence/IndexedDBRepository";
+import {
+  IndexedDBRepository,
+  SessionNotFoundError,
+} from "@persistence/IndexedDBRepository";
 import type { Session } from "@state/StateSchema";
 
-/**
- * UI-layer persistence wiring. One fixed session id for this
- * single-session UI — a session picker is out of scope for this pass.
- */
-
+/** Legacy ID remains readable. Every newly created conversation gets a unique ID. */
 export const UI_SESSION_ID = "demo-session";
-
 export function getRepository(): IndexedDBRepository {
   return new IndexedDBRepository();
 }
-
-/**
- * Loads the persisted session if one exists. Missing or unreadable
- * records return null so the UI can show the studio instead of
- * inventing a demo character.
- */
-export async function loadExistingSession(repo: IndexedDBRepository): Promise<Session | null> {
-  try {
-    return await repo.loadSession(UI_SESSION_ID);
-  } catch (err) {
-    if (!(err instanceof SessionNotFoundError)) {
-      console.warn("Failed to load persisted session, opening studio:", err);
+export async function loadExistingSession(
+  repo: IndexedDBRepository,
+): Promise<Session | null> {
+  const catalog = await repo.listConversations();
+  const active = await repo.loadActiveConversationId();
+  const entries = catalog.entries.filter((entry) => !entry.archived);
+  const ids = [
+    ...new Set([active, UI_SESSION_ID, ...entries.map((entry) => entry.id)]),
+  ].filter(
+    (id): id is string => !!id && entries.some((entry) => entry.id === id),
+  );
+  for (const id of ids) {
+    try {
+      return await repo.loadSession(id);
+    } catch (err) {
+      if (!(err instanceof SessionNotFoundError))
+        console.warn("Could not read a saved conversation:", err);
     }
-    return null;
   }
-}
-
-export async function resetSession(repo: IndexedDBRepository): Promise<void> {
-  await repo.deleteSession(UI_SESSION_ID).catch(() => {
-    // Nothing to delete, or delete failed — either way, reloading will
-    // fall through to the studio.
-  });
+  return null;
 }

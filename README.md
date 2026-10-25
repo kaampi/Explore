@@ -32,7 +32,7 @@ npm run dev          # same server, no browser
 
 Play uses a local **Ollama** server. See [Using Ollama](#using-ollama).
 
-First load opens **My space**: continue your saved conversation, create a character with just a name, import a character card through the library, or explore an existing world. **Create & chat** starts without a world file, campaign, rule-set, or prepared storyline. The built-in Emma example offers an immediate first meeting. Library tools and Campaign Builder remain available from the sidebar. A saved session stays available while you browse Home and Studio; starting another conversation asks before replacing it.
+First load opens **My space**: continue your saved conversation, create a character with just a name, import a character card through the library, or explore an existing world. **Create & chat** starts without a world file, campaign, rule-set, or prepared storyline. The built-in Emma example offers an immediate first meeting. Library tools and Campaign Builder remain available from the sidebar. Saved conversations stay available while you browse Home and Studio. Starting another creates a separate conversation and keeps the previous one.
 
 ## First conversation
 
@@ -42,17 +42,25 @@ A ready connection stays out of the conversation's way. Otherwise **Set up AI** 
 
 The connection check inspects model metadata, not a sample conversation, and does not download a model. Actual reply generation still depends on the selected model running successfully on your computer.
 
+## Conversation library
+
+Every new conversation gets a unique ID. Home shows recent conversations; **My conversations** adds search, custom names, and reversible archive/restore. Continuing a conversation restores its own history, relationships, story flags, model, and appearance. Unsent drafts are kept per conversation for the current browser tab when switching. The last selected non-archived conversation is available after reloading.
+
+Creating a conversation never replaces an existing one. **new scene** in Settings keeps the current conversation and opens scene setup. If you explicitly continue into another campaign scene, its handoff can be drafted from the conversation you just left. Runtime story flags stay with their conversation and are no longer written back into the reusable campaign template; separate explorations start from the authored campaign settings.
+
+Snapshots and their library metadata are saved atomically. The library reads a small index rather than loading every history and background image. Rename and archive state survive autosaves. There is no permanent-delete action in the conversation UI.
+
 ## Your space and appearance
 
 The shared header connects SandboxAI with StorybookAI and ComicbookAI. When running locally with `npm start` or `npm run preview`, it checks StorybookAI at `http://localhost:5175/` and ComicbookAI at `http://localhost:5176/`. A verified running app opens directly from its header link; otherwise its presentation offers installation information, Try again, and a configurable address. Checks repeat every 30 seconds while visible and when the window receives focus. Unreachable means the app cannot be reached, not that it is uninstalled. Remote addresses can be opened manually; automatic probes stay on loopback. The hosted/static preview has no local status backend and keeps the presentation available.
 
-In play, the conversation is central. **Cast**, **Settings** (including the model picker), and **Inspector** open on demand. **My space** returns home without deleting the current conversation. Only one conversation is stored by the existing engine; starting another replaces it after confirmation.
+In play, the conversation is central. **Cast**, **Settings** (including the model picker), and **Inspector** open on demand. **My space** returns home without deleting the current conversation. **My conversations** lists your active and archived conversations. Starting another keeps the current history, relationships, and state in its own saved snapshot.
 
 Open **Appearance** from Home or play to choose Light/Dark for the app frame and one of four independent play themes: Parchment, Forest dusk, Neon city, and Quiet conversation. Adjust colors, panel opacity, background dimming, font, text size, and reading width with a live preview. Backgrounds can follow the scene, stay on your own uploaded image, or use a plain color. PNG/JPEG/WebP uploads are limited to 10 MB and resized locally to a maximum edge of 1920 pixels.
 
 The status server first checks `/.well-known/storycore-app.json` for a matching `appId` and optional `version`. Existing sibling releases are recognized by their exact page titles as a compatibility fallback. SandboxAI exposes its own identity at the same path.
 
-Named themes and the active appearance are saved in a separate local IndexedDB database (`sandboxai-appearance`), without changing session or library schemas. Appearance never enters AI prompts. Storage errors are visible; clearing browser data removes these local preferences. Theme import/export and sharing are reserved for step 2.
+Named themes, default appearance, and each conversation’s appearance are saved in a separate local IndexedDB database (`sandboxai-appearance`). Theme choices for one conversation do not change another. Appearance never enters AI prompts. Storage errors are visible; clearing browser data removes these local preferences. Theme import/export and sharing are reserved for step 2.
 
 ## What you can do now
 
@@ -87,7 +95,7 @@ src/
 
 **Rule:** engines never import from `ui/`. Nothing outside `state/` writes session state — everything goes through `StateEngine`.
 
-IndexedDB: session schema version 2; library stores through DB v6 (characters, places, stories, voices, rule-sets, objects). Invalid records fail load instead of poisoning the DB.
+IndexedDB: session schema version 2; database version 10 includes library stores and a lightweight conversation index. Existing snapshots, including the legacy `demo-session`, are indexed in place without rewriting their history. Unreadable snapshots remain stored and are reported. Invalid records fail load instead of poisoning the DB.
 
 ## Using Ollama
 

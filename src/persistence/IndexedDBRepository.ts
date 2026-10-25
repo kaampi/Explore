@@ -1,3 +1,10 @@
+import {
+  ConversationEntrySchema,
+  conversationEntry,
+  recentConversations,
+  type ConversationEntry,
+  type ConversationCatalog,
+} from "./ConversationSchema";
 import { safeParseSession, type Session } from "@state/StateSchema";
 import {
   parseCampaignTemplate,
@@ -16,10 +23,13 @@ import {
   type RealmTemplate,
   type RulesetTemplate,
   type StoryTemplate,
-  type VoiceTemplate
+  type VoiceTemplate,
 } from "@library/LibrarySchema";
 import { migrate, needsMigration } from "./MigrationEngine";
-import { dropOversizedPortrait, dropOversizedPortraitFromRaw } from "@library/slimPortrait";
+import {
+  dropOversizedPortrait,
+  dropOversizedPortraitFromRaw,
+} from "@library/slimPortrait";
 
 /**
  * Persistence Layer — Master Spec §39.
@@ -32,6 +42,7 @@ import { dropOversizedPortrait, dropOversizedPortraitFromRaw } from "@library/sl
  * rule-sets. v6 adds objects (named things that can be placed in a scene).
  * v7 adds campaigns (picks from the library; scenes are what you Start).
  * v8 adds studio prefs (which campaign to open after "new scene").
+ * v10 adds conversation metadata; existing session records stay in place.
  * v9 adds realms (City of Dunbaar owns landmarks; focals stay on the place).
  * Templates live independently of any one session so they
  * survive "new scene".
@@ -53,16 +64,28 @@ const CAMPAIGNS_STORE = "campaigns";
 const REALMS_STORE = "realms";
 const PREFS_STORE = "prefs";
 const STUDIO_RESUME_ID = "studio-resume";
-const DB_VERSION = 9;
+const CONVERSATIONS_STORE = "conversations";
+const ACTIVE_CONVERSATION_ID = "active-conversation";
+const CONVERSATION_INDEX_ID = "conversation-index-v1";
+const DB_VERSION = 10;
 
 export type StudioResume = {
+  conversationId?: string;
   campaignId: string;
   sceneId?: string;
   /** Agreement from the last session. Survives new scene. Not the chat log. */
   handoff?: string;
 };
 
-type LibraryKind = "character" | "place" | "story" | "voice" | "ruleset" | "object" | "campaign" | "realm";
+type LibraryKind =
+  | "character"
+  | "place"
+  | "story"
+  | "voice"
+  | "ruleset"
+  | "object"
+  | "campaign"
+  | "realm";
 
 export class SessionNotFoundError extends Error {
   constructor(id: string) {
@@ -73,7 +96,7 @@ export class SessionNotFoundError extends Error {
 
 export class SchemaValidationError extends Error {
   constructor(id: string, issues: string) {
-    super(`Session ${id} failed schema validation on load: ${issues}`);
+    super(`Session ${id} failed schema validation: ${issues}`);
     this.name = "SchemaValidationError";
   }
 }
@@ -93,6 +116,8 @@ export class TemplateValidationError extends Error {
 }
 
 function ensureStores(db: IDBDatabase): void {
+  if (!db.objectStoreNames.contains(CONVERSATIONS_STORE))
+    db.createObjectStore(CONVERSATIONS_STORE, { keyPath: "id" });
   if (!db.objectStoreNames.contains(STORE_NAME)) {
     db.createObjectStore(STORE_NAME, { keyPath: "id" });
   }
@@ -132,7 +157,7 @@ export class IndexedDBRepository {
   constructor(
     private idbFactory: IDBFactory = globalThis.indexedDB,
     private dbName: string = DB_NAME,
-    private dbVersion: number = DB_VERSION
+    private dbVersion: number = DB_VERSION,
   ) {}
 
   private async open(): Promise<IDBDatabase> {
@@ -185,7 +210,8 @@ export class IndexedDBRepository {
         this.db = db;
         resolve(db);
       };
-      request.onerror = () => reject(request.error ?? new Error("Failed to open IndexedDB."));
+      request.onerror = () =>
+        reject(request.error ?? new Error("Failed to open IndexedDB."));
     });
   }
 
@@ -195,16 +221,228 @@ export class IndexedDBRepository {
    * single readwrite transaction — it either commits in full or not at all.
    */
   async saveSession(session: Session): Promise<void> {
+    return this.writeConversation(session, false);
+  }
+
+  /** New IDs use add(), so creating a conversation can never overwrite another. */
+  async createConversation(session: Session): Promise<void> {
+    return this.writeConversation(session, true);
+  }
+
+  private async writeConversation(
+    session: Session,
+    create: boolean,
+  ): Promise<void> {
+    const parsed = safeParseSession(session);
+    if (!parsed.success)
+      throw new SchemaValidationError(session.id, parsed.error.message);
+    const snapshot = parsed.data;
     const db = await this.open();
     return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, "readwrite");
-      const store = tx.objectStore(STORE_NAME);
-      store.put(session);
-
+      const tx = db.transaction(
+        [STORE_NAME, CONVERSATIONS_STORE, PREFS_STORE],
+        "readwrite",
+      );
+      const sessions = tx.objectStore(STORE_NAME),
+        metadata = tx.objectStore(CONVERSATIONS_STORE);
+      if (create) sessions.add(snapshot);
+      else sessions.put(snapshot);
+      const existing = metadata.get(snapshot.id);
+      existing.onsuccess = () => {
+        const parsed = ConversationEntrySchema.safeParse(existing.result);
+        metadata.put(
+          conversationEntry(snapshot, parsed.success ? parsed.data : undefined),
+        );
+      };
+      if (create)
+        tx.objectStore(PREFS_STORE).put({
+          id: ACTIVE_CONVERSATION_ID,
+          conversationId: snapshot.id,
+        });
       tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error ?? new Error(`Failed to save session ${session.id}.`));
-      tx.onabort = () => reject(tx.error ?? new Error(`Save transaction aborted for session ${session.id}.`));
+      tx.onerror = () =>
+        reject(tx.error ?? new Error("Could not save this conversation."));
+      tx.onabort = () =>
+        reject(tx.error ?? new Error("Conversation save was cancelled."));
     });
+  }
+
+  /** Index legacy snapshots in-place. Invalid snapshots remain untouched and are reported. */
+  async listConversations(): Promise<ConversationCatalog> {
+    const db = await this.open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(
+        [STORE_NAME, CONVERSATIONS_STORE, PREFS_STORE],
+        "readwrite",
+      );
+      const metadata = tx.objectStore(CONVERSATIONS_STORE),
+        sessions = tx.objectStore(STORE_NAME),
+        prefs = tx.objectStore(PREFS_STORE);
+      let entries: ConversationEntry[] = [],
+        sessionIds: string[] = [];
+      const marker = prefs.get(CONVERSATION_INDEX_ID);
+      const readIndex = () => {
+        const listed = metadata.getAll();
+        listed.onsuccess = () => {
+          entries = listed.result.flatMap((raw: unknown) => {
+            const parsed = ConversationEntrySchema.safeParse(raw);
+            return parsed.success ? [parsed.data] : [];
+          });
+        };
+        const ids = sessions.getAllKeys();
+        ids.onsuccess = () => {
+          sessionIds = ids.result.map(String);
+        };
+      };
+      marker.onsuccess = () => {
+        if (marker.result) {
+          readIndex();
+          return;
+        }
+        const request = sessions.openCursor();
+        request.onsuccess = () => {
+          const cursor = request.result;
+          if (!cursor) {
+            prefs.put({ id: CONVERSATION_INDEX_ID, version: 1 });
+            readIndex();
+            return;
+          }
+          try {
+            const raw = cursor.value as Record<string, unknown>;
+            const parsed = safeParseSession(
+              needsMigration(raw) ? migrate(raw) : raw,
+            );
+            if (!parsed.success) {
+              cursor.continue();
+              return;
+            }
+            const lookup = metadata.get(parsed.data.id);
+            lookup.onsuccess = () => {
+              const saved = ConversationEntrySchema.safeParse(lookup.result);
+              if (!saved.success) metadata.put(conversationEntry(parsed.data));
+              cursor.continue();
+            };
+          } catch {
+            cursor.continue();
+          }
+        };
+      };
+      tx.oncomplete = () => {
+        const validIds = new Set(entries.map((entry) => entry.id));
+        resolve({
+          entries: [
+            ...recentConversations(entries),
+            ...entries
+              .filter((entry) => entry.archived)
+              .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+          ],
+          unreadable: sessionIds.filter((id) => !validIds.has(id)).length,
+        });
+      };
+      tx.onerror = () =>
+        reject(
+          tx.error ?? new Error("Could not open your conversation library."),
+        );
+      tx.onabort = () =>
+        reject(
+          tx.error ?? new Error("Could not open your conversation library."),
+        );
+    });
+  }
+
+  async renameConversation(id: string, title: string): Promise<void> {
+    const trimmed = title.trim();
+    if (!trimmed || trimmed.length > 120)
+      throw new Error("Use a conversation name between 1 and 120 characters.");
+    return this.updateConversation(id, (entry) => ({
+      ...entry,
+      title: trimmed,
+    }));
+  }
+
+  async archiveConversation(id: string, archived: boolean): Promise<void> {
+    return this.updateConversation(id, (entry) => ({ ...entry, archived }));
+  }
+
+  private async updateConversation(
+    id: string,
+    update: (entry: ConversationEntry) => ConversationEntry,
+  ): Promise<void> {
+    const db = await this.open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(
+        [CONVERSATIONS_STORE, PREFS_STORE],
+        "readwrite",
+      );
+      const store = tx.objectStore(CONVERSATIONS_STORE);
+      const request = store.get(id);
+      request.onsuccess = () => {
+        const parsed = ConversationEntrySchema.safeParse(request.result);
+        if (!parsed.success) {
+          reject(new Error("This conversation is not in the library."));
+          tx.abort();
+          return;
+        }
+        const entry = update(parsed.data);
+        store.put(entry);
+        if (entry.archived) {
+          const active = tx
+            .objectStore(PREFS_STORE)
+            .get(ACTIVE_CONVERSATION_ID);
+          active.onsuccess = () => {
+            if (active.result?.conversationId === id)
+              tx.objectStore(PREFS_STORE).delete(ACTIVE_CONVERSATION_ID);
+          };
+        }
+      };
+      tx.oncomplete = () => resolve();
+      tx.onerror = () =>
+        reject(tx.error ?? new Error("Could not update this conversation."));
+      tx.onabort = () =>
+        reject(tx.error ?? new Error("Could not update this conversation."));
+    });
+  }
+
+  async activateConversation(id: string): Promise<void> {
+    const db = await this.open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(
+        [CONVERSATIONS_STORE, PREFS_STORE],
+        "readwrite",
+      );
+      const request = tx.objectStore(CONVERSATIONS_STORE).get(id);
+      request.onsuccess = () => {
+        const parsed = ConversationEntrySchema.safeParse(request.result);
+        if (!parsed.success || parsed.data.archived) {
+          reject(new Error("Restore this conversation before continuing."));
+          tx.abort();
+          return;
+        }
+        tx.objectStore(CONVERSATIONS_STORE).put({
+          ...parsed.data,
+          lastOpenedAt: new Date().toISOString(),
+        });
+        tx.objectStore(PREFS_STORE).put({
+          id: ACTIVE_CONVERSATION_ID,
+          conversationId: id,
+        });
+      };
+      tx.oncomplete = () => resolve();
+      tx.onerror = () =>
+        reject(tx.error ?? new Error("Could not open this conversation."));
+      tx.onabort = () =>
+        reject(tx.error ?? new Error("Could not open this conversation."));
+    });
+  }
+
+  async loadActiveConversationId(): Promise<string | null> {
+    const raw = await this.getRecord(PREFS_STORE, ACTIVE_CONVERSATION_ID);
+    return raw &&
+      typeof raw === "object" &&
+      "conversationId" in raw &&
+      typeof raw.conversationId === "string"
+      ? raw.conversationId
+      : null;
   }
 
   /**
@@ -224,7 +462,8 @@ export class IndexedDBRepository {
       const store = tx.objectStore(STORE_NAME);
       const request = store.get(id);
       request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error ?? new Error(`Failed to load session ${id}.`));
+      request.onerror = () =>
+        reject(request.error ?? new Error(`Failed to load session ${id}.`));
     });
 
     if (raw === undefined) {
@@ -244,10 +483,20 @@ export class IndexedDBRepository {
   async deleteSession(id: string): Promise<void> {
     const db = await this.open();
     return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, "readwrite");
+      const tx = db.transaction(
+        [STORE_NAME, CONVERSATIONS_STORE, PREFS_STORE],
+        "readwrite",
+      );
       tx.objectStore(STORE_NAME).delete(id);
+      tx.objectStore(CONVERSATIONS_STORE).delete(id);
+      const active = tx.objectStore(PREFS_STORE).get(ACTIVE_CONVERSATION_ID);
+      active.onsuccess = () => {
+        if (active.result?.conversationId === id)
+          tx.objectStore(PREFS_STORE).delete(ACTIVE_CONVERSATION_ID);
+      };
       tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error ?? new Error(`Failed to delete session ${id}.`));
+      tx.onerror = () =>
+        reject(tx.error ?? new Error(`Failed to delete session ${id}.`));
     });
   }
 
@@ -257,7 +506,8 @@ export class IndexedDBRepository {
       const tx = db.transaction(STORE_NAME, "readonly");
       const request = tx.objectStore(STORE_NAME).getAllKeys();
       request.onsuccess = () => resolve(request.result as string[]);
-      request.onerror = () => reject(request.error ?? new Error("Failed to list session ids."));
+      request.onerror = () =>
+        reject(request.error ?? new Error("Failed to list session ids."));
     });
   }
 
@@ -270,7 +520,11 @@ export class IndexedDBRepository {
   }
 
   async saveCharacter(template: CharacterTemplate): Promise<void> {
-    const parsed = parseLibraryTemplate("character", dropOversizedPortrait(template), parseCharacterTemplate);
+    const parsed = parseLibraryTemplate(
+      "character",
+      dropOversizedPortrait(template),
+      parseCharacterTemplate,
+    );
     await this.putRecord(CHARACTERS_STORE, parsed);
   }
 
@@ -289,9 +543,13 @@ export class IndexedDBRepository {
   }
 
   /** Includes rows that fail schema, so Studio can say the archive is not empty. */
-  async listCharacterCatalog(): Promise<{ items: CharacterTemplate[]; skipped: number }> {
+  async listCharacterCatalog(): Promise<{
+    items: CharacterTemplate[];
+    skipped: number;
+  }> {
     return this.withDb(async (db) => {
-      if (!db.objectStoreNames.contains(CHARACTERS_STORE)) return { items: [], skipped: 0 };
+      if (!db.objectStoreNames.contains(CHARACTERS_STORE))
+        return { items: [], skipped: 0 };
       return new Promise((resolve, reject) => {
         const tx = db.transaction(CHARACTERS_STORE, "readwrite");
         const store = tx.objectStore(CHARACTERS_STORE);
@@ -312,12 +570,14 @@ export class IndexedDBRepository {
           }
           cursor.continue();
         };
-        request.onerror = () => reject(request.error ?? new Error("Failed to list character."));
+        request.onerror = () =>
+          reject(request.error ?? new Error("Failed to list character."));
         tx.oncomplete = () => {
           parsed.sort((a, b) => a.name.localeCompare(b.name));
           resolve({ items: parsed, skipped });
         };
-        tx.onerror = () => reject(tx.error ?? new Error("Failed to list characters."));
+        tx.onerror = () =>
+          reject(tx.error ?? new Error("Failed to list characters."));
       });
     });
   }
@@ -403,7 +663,11 @@ export class IndexedDBRepository {
   }
 
   async saveRuleset(template: RulesetTemplate): Promise<void> {
-    const parsed = parseLibraryTemplate("ruleset", template, parseRulesetTemplate);
+    const parsed = parseLibraryTemplate(
+      "ruleset",
+      template,
+      parseRulesetTemplate,
+    );
     await this.putRecord(RULESETS_STORE, parsed);
   }
 
@@ -423,7 +687,11 @@ export class IndexedDBRepository {
   }
 
   async saveObject(template: ObjectTemplate): Promise<void> {
-    const parsed = parseLibraryTemplate("object", template, parseObjectTemplate);
+    const parsed = parseLibraryTemplate(
+      "object",
+      template,
+      parseObjectTemplate,
+    );
     await this.putRecord(OBJECTS_STORE, parsed);
   }
 
@@ -443,7 +711,11 @@ export class IndexedDBRepository {
   }
 
   async saveCampaign(template: CampaignTemplate): Promise<void> {
-    const parsed = parseLibraryTemplate("campaign", template, parseCampaignTemplate);
+    const parsed = parseLibraryTemplate(
+      "campaign",
+      template,
+      parseCampaignTemplate,
+    );
     await this.putRecord(CAMPAIGNS_STORE, parsed);
   }
 
@@ -472,23 +744,38 @@ export class IndexedDBRepository {
     const handoff = resume.handoff?.trim();
     await this.putRecord(PREFS_STORE, {
       id: STUDIO_RESUME_ID,
+      ...(resume.conversationId
+        ? { conversationId: resume.conversationId }
+        : {}),
       campaignId,
       ...(sceneId ? { sceneId } : {}),
-      ...(handoff ? { handoff } : {})
+      ...(handoff ? { handoff } : {}),
     });
   }
 
   async loadStudioResume(): Promise<StudioResume | null> {
     const raw = await this.getRecord(PREFS_STORE, STUDIO_RESUME_ID);
     if (!raw || typeof raw !== "object") return null;
-    const campaignId = "campaignId" in raw && typeof raw.campaignId === "string" ? raw.campaignId.trim() : "";
+    const campaignId =
+      "campaignId" in raw && typeof raw.campaignId === "string"
+        ? raw.campaignId.trim()
+        : "";
     if (!campaignId) return null;
-    const sceneId = "sceneId" in raw && typeof raw.sceneId === "string" ? raw.sceneId.trim() : "";
-    const handoff = "handoff" in raw && typeof raw.handoff === "string" ? raw.handoff.trim() : "";
+    const sceneId =
+      "sceneId" in raw && typeof raw.sceneId === "string"
+        ? raw.sceneId.trim()
+        : "";
+    const handoff =
+      "handoff" in raw && typeof raw.handoff === "string"
+        ? raw.handoff.trim()
+        : "";
     return {
+      ...("conversationId" in raw && typeof raw.conversationId === "string"
+        ? { conversationId: raw.conversationId }
+        : {}),
       campaignId,
       ...(sceneId ? { sceneId } : {}),
-      ...(handoff ? { handoff } : {})
+      ...(handoff ? { handoff } : {}),
     };
   }
 
@@ -529,7 +816,8 @@ export class IndexedDBRepository {
         const tx = db.transaction(storeName, "readonly");
         const request = tx.objectStore(storeName).get(id);
         request.onsuccess = () => resolve(cloneRecord(request.result));
-        request.onerror = () => reject(request.error ?? new Error(`Failed to read ${storeName}.`));
+        request.onerror = () =>
+          reject(request.error ?? new Error(`Failed to read ${storeName}.`));
       });
     });
   }
@@ -551,7 +839,8 @@ export class IndexedDBRepository {
           rows.push(cloneRecord(cursor.value));
           cursor.continue();
         };
-        request.onerror = () => reject(request.error ?? new Error(`Failed to list ${storeName}.`));
+        request.onerror = () =>
+          reject(request.error ?? new Error(`Failed to list ${storeName}.`));
       });
     });
   }
@@ -563,7 +852,8 @@ export class IndexedDBRepository {
         const tx = db.transaction(storeName, "readwrite");
         tx.objectStore(storeName).delete(id);
         tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error ?? new Error(`Failed to delete from ${storeName}.`));
+        tx.onerror = () =>
+          reject(tx.error ?? new Error(`Failed to delete from ${storeName}.`));
       });
     });
   }
@@ -574,7 +864,7 @@ function isStaleConnection(err: unknown): boolean {
     err &&
       typeof err === "object" &&
       "name" in err &&
-      (err.name === "InvalidStateError" || err.name === "InvalidAccessError")
+      (err.name === "InvalidStateError" || err.name === "InvalidAccessError"),
   );
 }
 
@@ -597,30 +887,40 @@ function dropSessionPortraits(session: Session): Session {
 }
 
 function writeError(storeName: string, err: unknown): Error {
-  if (err && typeof err === "object" && "name" in err && err.name === "QuotaExceededError") {
+  if (
+    err &&
+    typeof err === "object" &&
+    "name" in err &&
+    err.name === "QuotaExceededError"
+  ) {
     return new Error(
-      "Not enough storage for that picture. Remove a picture or sound from another card and try again."
+      "Not enough storage for that picture. Remove a picture or sound from another card and try again.",
     );
   }
-  return err instanceof Error ? err : new Error(`Failed to write to ${storeName}.`);
+  return err instanceof Error
+    ? err
+    : new Error(`Failed to write to ${storeName}.`);
 }
 
 function parseLibraryTemplate<T>(
   kind: LibraryKind,
   input: unknown,
-  parse: (value: unknown) => T
+  parse: (value: unknown) => T,
 ): T {
   try {
     return parse(input);
   } catch (err) {
-    throw new TemplateValidationError(kind, err instanceof Error ? err.message : String(err));
+    throw new TemplateValidationError(
+      kind,
+      err instanceof Error ? err.message : String(err),
+    );
   }
 }
 
 function parseLibraryList<T extends { name: string }>(
   kind: LibraryKind,
   rows: unknown[],
-  parse: (value: unknown) => T
+  parse: (value: unknown) => T,
 ): T[] {
   const parsed: T[] = [];
   for (const row of rows) {

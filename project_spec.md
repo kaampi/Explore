@@ -25,6 +25,13 @@ UI is English. Engines are framework-free TypeScript; React (`src/ui/`) consumes
 
 ## What we have now
 
+### Conversation workspace
+
+Home and **My conversations** support multiple saved conversations with unique IDs, recent entries, search, custom names, reversible archive/restore, and a separately retained theme/background per conversation. Switching restores the snapshot into a fresh engine instance; histories, relationships, and runtime story flags stay isolated. Runtime flags do not update the shared campaign template. Starting a new scene keeps the old conversation; an explicitly drafted handoff is scoped to its source conversation.
+
+Database v10 adds a lightweight conversation index. The existing `demo-session` and other older snapshots are indexed in place. Unreadable records are retained and reported. Appearance preferences gain additive per-conversation snapshots; sharing remains step 2.
+
+
 ### Engine (Master Spec Phases 1–5)
 
 **State.** Zod canonical session: characters (lockable position, mood, pose, energy, clothing, holding, optional stats, pronouns, UI portrait), scene (location, environment, optional venue/room pictures), story, narrator voice, rule-set, player (lockable position/status plus optional name, looks, who they are, pronoun, UI portrait, rule-set labels), party (`partyIds` max 3, `partyPendingIds` max 2, `partyHoldIds`), Pre-defined Replies, relationships (lockable trust / familiarity / tension), layers, memory, conversation, events. Proximity zones exist on the schema; they are not used as live spatial logic in play.
@@ -153,3 +160,4 @@ Encryption, workers, privacy model, SLA, diagnostics. Migration engine for *sess
 ## Tests
 
 Vitest covers engines in isolation (invariants, session turns, context, layers, memory, persistence, library, spatial writes, party, scene backdrop). Each new surface extends that suite. Phase 6 still needs integration/SLA tests when those components exist.
+
