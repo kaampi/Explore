@@ -1,3 +1,4 @@
+import { LorebookSchema, type Lorebook } from "../lore/LorebookSchema";
 import {
   parseCampaignTemplate,
   parseObjectTemplate,
@@ -18,7 +19,7 @@ import {
 } from "./LibrarySchema";
 
 export const LIBRARY_BACKUP_KIND = "ai-sandbox-library";
-export const LIBRARY_BACKUP_FORMAT = 1;
+export const LIBRARY_BACKUP_FORMAT = 2;
 
 export type LibraryBackup = {
   kind: typeof LIBRARY_BACKUP_KIND;
@@ -32,9 +33,12 @@ export type LibraryBackup = {
   rulesets: RulesetTemplate[];
   objects: ObjectTemplate[];
   campaigns: CampaignTemplate[];
+  lorebooks?: Lorebook[];
 };
 
 export type LibraryBackupStore = {
+  listLorebooks?(): Promise<{ entries: Lorebook[]; unreadable: number }>;
+  saveLorebook?(book: Lorebook): Promise<void>;
   listCharacters(): Promise<CharacterTemplate[]>;
   listPlaces(): Promise<PlaceTemplate[]>;
   listRealms(): Promise<RealmTemplate[]>;
@@ -81,12 +85,13 @@ function emptyBackup(exportedAt: string): LibraryBackup {
     voices: [],
     rulesets: [],
     objects: [],
+    lorebooks: [],
     campaigns: []
   };
 }
 
 export async function collectLibraryBackup(store: LibraryBackupStore): Promise<LibraryBackup> {
-  const [characters, places, realms, stories, voices, rulesets, objects, campaigns] = await Promise.all([
+  const [characters, places, realms, stories, voices, rulesets, objects, campaigns, lorebooks] = await Promise.all([
     store.listCharacters(),
     store.listPlaces(),
     store.listRealms(),
@@ -94,9 +99,12 @@ export async function collectLibraryBackup(store: LibraryBackupStore): Promise<L
     store.listVoices(),
     store.listRulesets(),
     store.listObjects(),
-    store.listCampaigns()
+    store.listCampaigns(),
+    store.listLorebooks?.() ?? Promise.resolve({ entries: [], unreadable: 0 })
   ]);
+  if (lorebooks.unreadable) throw new LibraryBackupError("Some lorebooks could not be read. Export originals individually before replacing storage.");
   return {
+    lorebooks: lorebooks.entries,
     kind: LIBRARY_BACKUP_KIND,
     format: LIBRARY_BACKUP_FORMAT,
     exportedAt: new Date().toISOString(),
@@ -137,6 +145,7 @@ export function parseLibraryBackup(input: unknown): { backup: LibraryBackup; ski
     return out;
   };
 
+  backup.lorebooks = take(row.lorebooks, item => LorebookSchema.parse(item));
   backup.characters = take(row.characters, recoverCharacterTemplate);
   backup.places = take(row.places, (item) => parsePlaceTemplate(item));
   backup.realms = take(row.realms, (item) => parseRealmTemplate(item));
@@ -172,6 +181,10 @@ export async function restoreLibraryBackup(
   for (const item of backup.rulesets) await write(() => store.saveRuleset(item));
   for (const item of backup.objects) await write(() => store.saveObject(item));
   for (const item of backup.campaigns) await write(() => store.saveCampaign(item));
+  for (const item of backup.lorebooks ?? []) await write(async () => {
+    if (!store.saveLorebook) throw new Error("Lorebook storage is not available.");
+    await store.saveLorebook(item);
+  });
 
   return { saved, skipped };
 }
@@ -180,3 +193,4 @@ export function backupFilename(exportedAt: string): string {
   const day = exportedAt.slice(0, 10) || new Date().toISOString().slice(0, 10);
   return `sandbox-library-${day}.json`;
 }
+

@@ -1,3 +1,4 @@
+import { attachLorebooks } from "../lore/attachLorebooks";
 import { IdeaLibrary } from "./ideas/IdeaLibrary";
 import {
   useCallback,
@@ -160,7 +161,9 @@ function SandboxApp() {
   async function startScene(next: Session) {
     await action(async () => {
       await persistCurrent();
-      const fresh = { ...next, id: crypto.randomUUID() };
+      const books = await repo.listLorebooks();
+      if (books.unreadable) setOperationError("Some lorebooks could not be read and were skipped. Their original stored records have been kept; review Lorebooks when convenient.");
+      const fresh = attachLorebooks({ ...next, id: crypto.randomUUID() }, books.entries);
       await repo.createConversation(fresh);
       const nextResume = sceneResume(fresh);
       try {
@@ -353,6 +356,7 @@ function SandboxApp() {
               >
                 ♧ <span>Characters</span>
               </button>
+              <button type="button" className={view === "studio" && studioView === "lorebooks" ? "is-active" : ""} onClick={() => openStudio("lorebooks")}>▤ <span>Lorebooks</span></button>
               <button
                 type="button"
                 className={

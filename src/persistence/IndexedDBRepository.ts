@@ -1,3 +1,4 @@
+import { LorebookSchema, type Lorebook } from "../lore/LorebookSchema";
 import { IdeaSchema, type Idea } from "../ideas/IdeaSchema";
 import {
   ConversationEntrySchema,
@@ -43,6 +44,7 @@ import {
  * rule-sets. v6 adds objects (named things that can be placed in a scene).
  * v7 adds campaigns (picks from the library; scenes are what you Start).
  * v8 adds studio prefs (which campaign to open after "new scene").
+ * v12 adds imported lorebooks with original data and explicit approvals.
  * v11 adds saved ideas with source-message snapshots.
  * v10 adds conversation metadata; existing session records stay in place.
  * v9 adds realms (City of Dunbaar owns landmarks; focals stay on the place).
@@ -70,7 +72,8 @@ const CONVERSATIONS_STORE = "conversations";
 const ACTIVE_CONVERSATION_ID = "active-conversation";
 const CONVERSATION_INDEX_ID = "conversation-index-v1";
 const IDEAS_STORE = "ideas";
-const DB_VERSION = 11;
+const LOREBOOKS_STORE = "lorebooks";
+const DB_VERSION = 12;
 
 export type StudioResume = {
   conversationId?: string;
@@ -119,6 +122,7 @@ export class TemplateValidationError extends Error {
 }
 
 function ensureStores(db: IDBDatabase): void {
+  if (!db.objectStoreNames.contains(LOREBOOKS_STORE)) db.createObjectStore(LOREBOOKS_STORE, { keyPath: "id" });
   if (!db.objectStoreNames.contains(IDEAS_STORE))
     db.createObjectStore(IDEAS_STORE, { keyPath: "id" });
   if (!db.objectStoreNames.contains(CONVERSATIONS_STORE))
@@ -786,6 +790,34 @@ export class IndexedDBRepository {
 
   async clearStudioResume(): Promise<void> {
     await this.deleteRecord(PREFS_STORE, STUDIO_RESUME_ID);
+  }
+
+  async saveLorebook(book: Lorebook): Promise<void> {
+    await this.putRecord(LOREBOOKS_STORE, LorebookSchema.parse(book));
+  }
+
+  async listLorebooks(): Promise<{ entries: Lorebook[]; unreadable: number }> {
+    const entries: Lorebook[] = [];
+    let unreadable = 0;
+    for (const raw of await this.getAllRecords(LOREBOOKS_STORE)) {
+      const parsed = LorebookSchema.safeParse(raw);
+      if (parsed.success) entries.push(parsed.data);
+      else unreadable++;
+    }
+    return { entries, unreadable };
+  }
+
+  async saveCharacterWithLorebook(character: CharacterTemplate, book: Lorebook): Promise<void> {
+    const person = parseCharacterTemplate(character);
+    const lore = LorebookSchema.parse(book);
+    const db = await this.open();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction([CHARACTERS_STORE, LOREBOOKS_STORE], "readwrite");
+      tx.objectStore(CHARACTERS_STORE).put(cloneRecord(person));
+      tx.objectStore(LOREBOOKS_STORE).put(cloneRecord(lore));
+      tx.oncomplete = () => resolve();
+      tx.onerror = tx.onabort = () => reject(tx.error ?? new Error("Could not save character and lorebook."));
+    });
   }
 
   /** Ideas survive conversation edits, archive and deletion. */

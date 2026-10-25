@@ -56,7 +56,7 @@ describe("saved ideas", () => {
         await repo.saveIdea(idea);
         expect((await repo.loadSession("source")).conversation).toHaveLength(3);
         await repo.close();
-        const db = await new Promise<IDBDatabase>((resolve, reject) => { const req = factory.open("idea-upgrade", 11); req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error); });
+        const db = await new Promise<IDBDatabase>((resolve, reject) => { const req = factory.open("idea-upgrade"); req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error); });
         await new Promise<void>((resolve, reject) => { const tx = db.transaction("ideas", "readwrite"); tx.objectStore("ideas").put({ id: "damaged", title: 7 }); tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); });
         db.close();
         const result = await repo.listIdeas();

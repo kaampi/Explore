@@ -1667,3 +1667,13 @@
 .sb-themed-play .chat-panel--ideas, .chat-panel--ideas { grid-template-rows: auto minmax(0, 1fr) auto; }
 .sb-themed-play .sb-idea-capture { color: var(--play-text); background: rgb(var(--play-panel-rgb)); }
 .sb-themed-play .sb-idea-capture button { color: inherit; }
+.sb-lore-studio { padding: 24px; width: 100%; max-width: 1100px; box-sizing: border-box; overflow: auto; }
+.sb-lore-review { margin-top: 20px; }
+.sb-lore-review > p { color: var(--text-dim); line-height: 1.6; max-width: 850px; }
+.sb-lore-review > button { margin-right: 8px; margin-bottom: 12px; }
+.sb-lore-entries { max-height: 55vh; overflow: auto; border: 1px solid var(--border); border-radius: 8px; }
+.sb-lore-entries article { padding: 14px; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+.sb-lore-entries label { display: block; font-weight: 600; margin-bottom: 6px; }
+.sb-lore-entries details p { white-space: pre-wrap; }
+.sb-lore-entries li { font-size: 13px; color: var(--text-dim); }
+.sb-embedded-lore { padding: 20px; }

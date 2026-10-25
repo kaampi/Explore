@@ -34,7 +34,8 @@ export function LibraryBackupBar({
         backup.voices.length +
         backup.rulesets.length +
         backup.objects.length +
-        backup.campaigns.length;
+        backup.campaigns.length +
+        (backup.lorebooks?.length ?? 0);
       setNotice(count === 0 ? "Nothing saved to export yet." : `Exported ${count} saved cards.`);
     } catch (err) {
       setNotice(err instanceof Error ? err.message : "Could not export the library.");
@@ -93,3 +94,4 @@ export function LibraryBackupBar({
     </div>
   );
 }
+

@@ -1,3 +1,6 @@
+import { importEmbeddedLore } from "../../lore/sillyTavernLore";
+import type { Lorebook } from "../../lore/LorebookSchema";
+import { LoreReview } from "../lore/LoreReview";
 import { useEffect, useRef, useState } from "react";
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 import {
@@ -107,6 +110,7 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
   const draftRef = useRef<Draft | null>(null);
   const compactAbortRef = useRef<AbortController | null>(null);
   const importSessionRef = useRef<{
+    lorebook?: Lorebook;
     rawText: string;
     fileLabel: string;
     remaining: File[];
@@ -121,6 +125,7 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
   const [titleText, setTitleText] = useState("");
   const [titleFocused, setTitleFocused] = useState(false);
   const [importSession, setImportSession] = useState<{
+    lorebook?: Lorebook;
     rawText: string;
     fileLabel: string;
     remaining: File[];
@@ -255,7 +260,7 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
     setNotice("Draft is on the sheet. Edit it, then Save.");
   }
 
-  async function persistDraft(current: Draft, quiet = false): Promise<boolean> {
+  async function persistDraft(current: Draft, quiet = false, lorebook?: Lorebook): Promise<boolean> {
     const name = current.name.trim();
     if (!name) {
       setError("Give them a given name.");
@@ -288,7 +293,8 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
       built,
       previous ?? (current.createdAt ? { createdAt: current.createdAt } : undefined)
     );
-    await repo.saveCharacter(saved);
+    if (lorebook) await repo.saveCharacterWithLorebook(saved, { ...lorebook, binding: { kind: "character", targetId: saved.id } });
+    else await repo.saveCharacter(saved);
     await refresh();
     setSelectedId(saved.id);
     setDraft(draftFrom(saved));
@@ -368,6 +374,7 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
     }
     setCompactUndo(null);
     setImportSession({
+      ...(review.embeddedLore ? { lorebook: importEmbeddedLore(review.embeddedLore, `${first.name} lore`) } : {}),
       rawText: review.rawText,
       fileLabel: first.name,
       remaining,
@@ -397,7 +404,7 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
     setBusy(true);
     setError(null);
     try {
-      const ok = await persistDraft({ ...importSession.draft, source: "sillytavern" }, true);
+      const ok = await persistDraft({ ...importSession.draft, source: "sillytavern" }, true, importSession.lorebook);
       if (!ok) return;
       const remaining = importSession.remaining;
       if (remaining.length > 0) {
@@ -571,13 +578,14 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
           }}
         >
         {importSession && (
+          <>
           <SillyTavernImportReview
             rawText={importSession.rawText}
             fileLabel={importSession.fileLabel}
             draft={importSession.draft}
             busy={busy}
             error={error}
-            notice={notice}
+            notice={importSession.lorebook ? `${notice ?? ""} Included lorebook: ${importSession.lorebook.entries.length} entries. Review the lore section below; no entries are selected automatically.` : notice}
             onChange={(next) => setImportSession({ ...importSession, draft: { ...importSession.draft, ...next } })}
             onPickPortrait={() => portraitRef.current?.click()}
             onRemovePortrait={() =>
@@ -598,6 +606,8 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
             onCompact={() => void compactCard()}
             onUndoCompact={undoCompact}
           />
+          {importSession.lorebook && <section className="sb-embedded-lore"><h2>Included lorebook</h2><p>Saved with this character. Choose entries to use in new conversations.</p><LoreReview book={importSession.lorebook} disabled={busy} onChange={lorebook => setImportSession({ ...importSession, lorebook })} /></section>}
+          </>
         )}
         {!importSession && draft && (
           <>

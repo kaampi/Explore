@@ -1,3 +1,4 @@
+import { estimateTokens } from "@context/tokenEstimate";
 import type { Session, Layer } from "@state/StateSchema";
 import { PRIORITY, type ContextBlock } from "@context/ContextBlock";
 import { layerHasKeywordGate, keywordsMatchConversation, tokenKnownInPlay } from "./keywords";
@@ -116,14 +117,22 @@ function priorityFor(layer: Layer): number {
  * An authored once-beat is required the turn it fires.
  */
 export function buildLayerBlocks(session: Session, hints: TriggerHints = {}): ContextBlock[] {
+  let importedTokens = 0;
   return getEffectiveActiveLayers(session, hints)
+    .filter(layer => {
+      if (!layer.loreSource) return true;
+      const tokens = estimateTokens(layer.content);
+      if (importedTokens + tokens > 1200) return false;
+      importedTokens += tokens;
+      return true;
+    })
     .filter((layer) => !isDuplicatePlaceLayer(session, layer))
     .map((layer) => ({
       id: `layer-${layer.id}`,
       source: "active_layer" as const,
       content: layer.content,
       priority: priorityFor(layer),
-      required: (layer.type === "core" && !layerHasKeywordGate(layer)) || Boolean(layer.once)
+      required: !layer.loreSource && ((layer.type === "core" && !layerHasKeywordGate(layer)) || Boolean(layer.once))
     }));
 }
 
@@ -137,3 +146,4 @@ function isDuplicatePlaceLayer(session: Session, layer: Layer): boolean {
   const note = session.scene?.note?.trim();
   return Boolean((brief && text === brief) || (note && text === note));
 }
+

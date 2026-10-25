@@ -57,6 +57,7 @@ function identityTextFromData(data: Record<string, unknown>): string {
 export type SillyTavernReview = {
   rawText: string;
   character: CharacterTemplate;
+  embeddedLore?: unknown;
 };
 
 /**
@@ -107,7 +108,7 @@ export function reviewFromCardData(raw: unknown): SillyTavernReview {
     ...(pronoun ? { pronoun } : {}),
     ...(approximateAge != null ? { approximateAge } : {})
   });
-  return { rawText: rawText || displayName, character };
+  return { rawText: rawText || displayName, character, ...(data.character_book ? { embeddedLore: data.character_book } : {}) };
 }
 
 function decodeTextPayload(text: string): unknown {
@@ -119,7 +120,12 @@ function decodeTextPayload(text: string): unknown {
   }
   try {
     const decoded = atob(trimmed);
-    return JSON.parse(decoded);
+    try {
+      const bytes = Uint8Array.from(decoded, char => char.charCodeAt(0));
+      return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+    } catch {
+      return JSON.parse(decoded); // Compatibility with older Latin-1 cards.
+    }
   } catch {
     throw new SillyTavernImportError("PNG character chunk is not valid JSON or Base64 JSON.");
   }
@@ -233,3 +239,4 @@ export async function importSillyTavernFile(file: File): Promise<SillyTavernRevi
   }
   return importSillyTavernCard({ jsonText: await file.text() });
 }
+
