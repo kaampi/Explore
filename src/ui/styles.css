@@ -1778,7 +1778,7 @@ textarea.setup-field__story {
 .character-generator__name {
   font-size: 18px;
   font-weight: 600;
-  color: #fff;
+  color: var(--text);
 }
 
 .character-generator__proposal .setup-field__label {
@@ -1928,7 +1928,7 @@ textarea.setup-field__story {
   font-size: 22px;
   font-weight: 600;
   letter-spacing: -0.02em;
-  color: #fff;
+  color: var(--text);
 }
 
 .studio-list--portraits .studio-list__head .setup-start {
@@ -1939,7 +1939,7 @@ textarea.setup-field__story {
 
 .studio-list--portraits .studio-list__name {
   font-size: 18px;
-  color: #fff;
+  color: var(--text);
   text-align: center;
 }
 
@@ -3112,3 +3112,4 @@ textarea.setup-field__story {
     max-height: 40vh;
   }
 }
+
