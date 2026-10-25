@@ -8,7 +8,7 @@ export function ageBandOf(years: number | undefined): AgeBand | undefined {
   return "elder";
 }
 
-export function matchesAgeBand(item: { approximateAge?: number }, band: AgeBand | null): boolean {
+export function matchesAgeBand(item: { approximateAge?: number | undefined }, band: AgeBand | null): boolean {
   if (!band) return true;
   return ageBandOf(item.approximateAge) === band;
 }
@@ -18,3 +18,4 @@ export const AGE_BANDS: Array<{ id: AgeBand; label: string }> = [
   { id: "adult", label: "Adult" },
   { id: "elder", label: "Elder" }
 ];
+

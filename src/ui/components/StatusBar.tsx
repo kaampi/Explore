@@ -14,7 +14,7 @@ export function StatusBar() {
 
   return (
     <div className="status-bar">
-      <span className="status-bar__brand">AI SANDBOX ENGINE</span>
+      <span className="status-bar__brand">Session settings</span>
 
       <span className="chip">
         <span className={`chip__dot ${dotClass}`} />
@@ -70,3 +70,4 @@ export function StatusBar() {
     </div>
   );
 }
+

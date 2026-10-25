@@ -1,0 +1,266 @@
+import { useEffect, useState } from "react";
+import { Modal } from "../components/Modal";
+import {
+  checkCompanionApp,
+  DEFAULT_APP_ADDRESSES,
+  safeAppAddress,
+  type AppStatus,
+  type CompanionAppId,
+} from "../../integrations/localApps";
+
+const APPS = {
+  storybook: {
+    name: "StorybookAI",
+    symbol: "▤",
+    title: "Give your world a story.",
+    description:
+      "Build your world, develop your characters, and write the stories that make it real. StorybookAI is the home of your established story and your next idea.",
+    repository: "https://github.com/ocedo-apps/StoryBook-AI",
+  },
+  comicbook: {
+    name: "ComicbookAI",
+    symbol: "▦",
+    title: "See your story come to life.",
+    description:
+      "Turn moments, characters, and scenes into comics. Explore a visual way to tell the stories from your creative universe.",
+    repository: "https://github.com/ocedo-apps/ComicBook-AI",
+  },
+};
+function readAddress(key: CompanionAppId): string {
+  try {
+    return (
+      safeAppAddress(localStorage.getItem(`sandboxai-app-${key}`) ?? "") ||
+      DEFAULT_APP_ADDRESSES[key]
+    );
+  } catch {
+    return DEFAULT_APP_ADDRESSES[key];
+  }
+}
+export const safeAddress = safeAppAddress;
+const STATUS_COPY: Record<AppStatus["state"], string> = {
+  available: "The app is running and ready to open.",
+  unreachable:
+    "The app cannot be reached. It may be installed but not running. Start it and try again.",
+  "wrong-app":
+    "A different service answered at this address. Check the app's address and try again.",
+  unknown:
+    "Automatic checks are available when SandboxAI runs locally. You can still open the address yourself.",
+};
+
+export function AppSwitcher({ onHome }: { onHome: () => void }) {
+  const [addresses, setAddresses] = useState(() => ({
+    storybook: readAddress("storybook"),
+    comicbook: readAddress("comicbook"),
+  }));
+  const [statuses, setStatuses] = useState<
+    Partial<Record<CompanionAppId, AppStatus>>
+  >({});
+  const [selected, setSelected] = useState<CompanionAppId | null>(null);
+  const [address, setAddress] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    let cancelled = false;
+    async function refresh() {
+      if (document.visibilityState === "hidden") return;
+      const results = await Promise.all(
+        (Object.keys(APPS) as CompanionAppId[]).map((appId) =>
+          checkCompanionApp(appId, addresses[appId], controller.signal),
+        ),
+      );
+      if (!cancelled)
+        setStatuses(
+          Object.fromEntries(results.map((status) => [status.appId, status])),
+        );
+    }
+    void refresh();
+    const timer = window.setInterval(() => {
+      void refresh();
+    }, 30000);
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      cancelled = true;
+      controller.abort();
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [addresses]);
+  function open(key: CompanionAppId) {
+    setSelected(key);
+    setAddress(addresses[key]);
+    setError(null);
+  }
+  async function checkSelected() {
+    if (!selected) return;
+    setError(null);
+    setChecking(true);
+    const checkedAddress = address;
+    try {
+      const valid = safeAppAddress(address) || DEFAULT_APP_ADDRESSES[selected];
+      const status = await checkCompanionApp(selected, valid);
+      setAddress((current) => current === checkedAddress ? valid : current);
+      setStatuses((previous) => ({ ...previous, [selected]: status }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Check the app address.");
+    } finally {
+      setChecking(false);
+    }
+  }
+  function savedStatus(key: CompanionAppId) {
+    const status = statuses[key];
+    return status?.address === addresses[key] ? status : undefined;
+  }
+  function appLink(key: CompanionAppId) {
+    const app = APPS[key],
+      status = savedStatus(key);
+    return status?.state === "available" ? (
+      <span className="sb-companion-link">
+        <a
+          href={status.address}
+          target="_blank"
+          rel="noreferrer"
+          title={`Open ${app.name}`}
+        >
+          <span aria-hidden="true">{app.symbol}</span> {app.name}
+          <i className="sb-app-online" aria-label="Available" />
+        </a>
+        <button
+          type="button"
+          className="sb-app-config"
+          aria-label={`${app.name} information and address`}
+          onClick={() => open(key)}
+        >
+          ⌄
+        </button>
+      </span>
+    ) : (
+      <button
+        type="button"
+        onClick={() => open(key)}
+        title={`About ${app.name}`}
+      >
+        <span aria-hidden="true">{app.symbol}</span> {app.name}
+      </button>
+    );
+  }
+  let validAddress = "";
+  try {
+    validAddress = selected
+      ? safeAppAddress(address) || DEFAULT_APP_ADDRESSES[selected]
+      : "";
+  } catch {
+    /* Validation appears on save/check. */
+  }
+  const selectedStatus =
+    selected && statuses[selected]?.address === validAddress
+      ? statuses[selected]
+      : undefined;
+  return (
+    <>
+      <nav className="sb-apps" aria-label="Your creative apps">
+        {appLink("storybook")}
+        <button
+          type="button"
+          className="is-active"
+          aria-current="page"
+          onClick={onHome}
+        >
+          <span aria-hidden="true">✧</span> SandboxAI
+        </button>
+        {appLink("comicbook")}
+      </nav>
+      {selected && (
+        <Modal title={APPS[selected].name} onClose={() => setSelected(null)}>
+          <span className="sb-app-symbol" aria-hidden="true">
+            {APPS[selected].symbol}
+          </span>
+          <h3 className="sb-app-title">{APPS[selected].title}</h3>
+          <p className="sb-muted">{APPS[selected].description}</p>
+          <a
+            className="sb-button"
+            href={APPS[selected].repository}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Get the app & installation guide ↗
+          </a>
+          <hr className="sb-rule" />
+          <label className="sb-field">
+            App address
+            <input
+              type="url"
+              placeholder={DEFAULT_APP_ADDRESSES[selected]}
+              value={address}
+              onChange={(event) => setAddress(event.target.value)}
+            />
+          </label>
+          <p className="sb-muted" role="status">
+            {checking
+              ? "Checking the app…"
+              : selectedStatus
+                ? STATUS_COPY[selectedStatus.state]
+                : "Use the address shown when you start the app, then check its status."}
+            {selectedStatus?.version
+              ? ` Version ${selectedStatus.version}.`
+              : ""}
+          </p>
+          {error && (
+            <p className="sb-error" role="alert">
+              {error}
+            </p>
+          )}
+          <div className="sb-dialog__actions sb-app-actions">
+            <button
+              type="button"
+              className="sb-link"
+              disabled={checking}
+              onClick={() => {
+                void checkSelected();
+              }}
+            >
+              Try again
+            </button>
+            <button
+              type="button"
+              className="sb-link"
+              onClick={() => {
+                try {
+                  const valid =
+                    safeAppAddress(address) || DEFAULT_APP_ADDRESSES[selected];
+                  localStorage.setItem(`sandboxai-app-${selected}`, valid);
+                  setAddresses((previous) => ({
+                    ...previous,
+                    [selected]: valid,
+                  }));
+                  setAddress(valid);
+                  setError(null);
+                } catch (err) {
+                  setError(
+                    err instanceof Error
+                      ? err.message
+                      : "Could not save the address.",
+                  );
+                }
+              }}
+            >
+              Save address
+            </button>
+            {validAddress && (
+              <a
+                className="sb-button"
+                href={validAddress}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Open app ↗
+              </a>
+            )}
+          </div>
+        </Modal>
+      )}
+    </>
+  );
+}

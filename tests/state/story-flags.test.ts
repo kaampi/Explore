@@ -13,6 +13,10 @@ import type { Session } from "@state/StateSchema";
 
 function makeSession(overrides: Partial<Session> = {}): Session {
   return {
+    openedRoomIds: [],
+    partyIds: [],
+    partyHoldIds: [],
+    partyPendingIds: [],
     schemaVersion: 2,
     id: "s1",
     runtime: { model: "test", temperature: 0.7, seed: null, provider: "test" },
@@ -138,3 +142,4 @@ describe("StateEngine story flags", () => {
     expect(engine.getSession().stateVersion).toBe(before);
   });
 });
+

@@ -13,8 +13,9 @@ export function dropOversizedPortraitFromRaw(raw: unknown): unknown {
   return rest;
 }
 
-export function dropOversizedPortrait<T extends { portraitDataUrl?: string }>(row: T): T {
+export function dropOversizedPortrait<T extends { portraitDataUrl?: string | undefined }>(row: T): T {
   if (!portraitIsOversized(row.portraitDataUrl)) return row;
   const { portraitDataUrl: _dropped, ...rest } = row;
   return rest as T;
 }
+

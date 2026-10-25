@@ -10,17 +10,17 @@ type State = { error: Error | null };
 
 /** Keeps the rest of the app visible when a view throws while rendering. */
 export class StudioErrorBoundary extends Component<Props, State> {
-  state: State = { error: null };
+  override state: State = { error: null };
 
   static getDerivedStateFromError(error: unknown): State {
     return { error: error instanceof Error ? error : new Error(String(error)) };
   }
 
-  componentDidCatch(error: Error, info: ErrorInfo) {
+  override componentDidCatch(error: Error, info: ErrorInfo) {
     console.error(error, info.componentStack);
   }
 
-  render() {
+  override render() {
     if (!this.state.error) return this.props.children;
     const message = this.state.error.message || String(this.state.error);
     return (
@@ -66,3 +66,4 @@ export class StudioErrorBoundary extends Component<Props, State> {
     );
   }
 }
+

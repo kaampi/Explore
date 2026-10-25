@@ -5,6 +5,11 @@ import type { Session } from "@state/StateSchema";
 
 function makeSession(overrides: Partial<Session> = {}): Session {
   return {
+    openedRoomIds: [],
+    storyFlags: [],
+    partyIds: [],
+    partyHoldIds: [],
+    partyPendingIds: [],
     schemaVersion: 2,
     id: "s1",
     runtime: { model: "test", temperature: 0.7, seed: null, provider: "test" },
@@ -114,7 +119,13 @@ describe("ContextEngine.assembleContext", () => {
       makeSession({
         ruleset: {
           name: "Klassisk fantasy",
-          attributes: [{ id: "wisdom", name: "Visdom", kind: "number", min: 1, max: 18, description: "" }]
+          attributes: [{
+            highMeaning: "",
+            lowMeaning: "",
+            midMeaning: "",
+            options: [],
+            maxShift: 0,
+            id: "wisdom", name: "Visdom", kind: "number", min: 1, max: 18, description: "" }]
         },
         characters: {
           emma: {
@@ -136,6 +147,11 @@ describe("ContextEngine.assembleContext", () => {
         name: "NSFW",
         attributes: [
           {
+            highMeaning: "",
+            lowMeaning: "",
+            midMeaning: "",
+            options: [],
+            maxShift: 0,
             id: "boldness",
             name: "Boldness",
             kind: "number",
@@ -187,6 +203,10 @@ describe("ContextEngine.assembleContext", () => {
         name: "NSFW",
         attributes: [
           {
+            description: "",
+            midMeaning: "",
+            options: [],
+            maxShift: 0,
             id: "boldness",
             name: "Boldness",
             kind: "number",
@@ -212,7 +232,7 @@ describe("ContextEngine.assembleContext", () => {
     expect(mid).toContain("high would mean She initiates, she stays in the scene.");
     expect(mid).toContain("low would mean She waits, she does not start it.");
 
-    session.characters.emma!.stats!.boldness.value = 72;
+    session.characters.emma!.stats!.boldness!.value = 72;
     const high = assembleContext(session).includedBlocks.find((b) => b.source === "state_summary")?.content ?? "";
     expect(high).toContain("- Emma Boldness 72/100 (high): She initiates, she stays in the scene.");
   });
@@ -220,6 +240,8 @@ describe("ContextEngine.assembleContext", () => {
   it("expands shared trait tokens from that character's name and pronoun", () => {
     const attributes = [
       {
+        options: [],
+        maxShift: 0,
         id: "boldness",
         name: "Boldness",
         kind: "number" as const,
@@ -298,7 +320,11 @@ describe("ContextEngine.assembleContext", () => {
           environment: { lighting: "dim" },
           imageDataUrl: venue,
           gallery: [{ thumbDataUrl: venue, imageDataUrl: venue }],
-          rooms: [{ id: "r1", label: "Emma's room", keywords: ["staff room"], imageDataUrl: room }]
+          rooms: [{
+            description: "",
+            fromRoomIds: [],
+            gate: "open" as const,
+            id: "r1", label: "Emma's room", keywords: ["staff room"], imageDataUrl: room }]
         }
       })
     );
@@ -322,7 +348,11 @@ describe("ContextEngine.assembleContext", () => {
           environment: { lighting: "dim" },
           audioDataUrl: clip,
           audioGallery: [clip],
-          rooms: [{ id: "r1", label: "Emma's room", keywords: ["staff room"], audioDataUrl: clip }]
+          rooms: [{
+            description: "",
+            fromRoomIds: [],
+            gate: "open" as const,
+            id: "r1", label: "Emma's room", keywords: ["staff room"], audioDataUrl: clip }]
         }
       })
     );
@@ -529,6 +559,8 @@ describe("ContextEngine.assembleContext", () => {
           note: "A quiet late-night bar.",
           rooms: [
             {
+              fromRoomIds: [],
+              gate: "open" as const,
               id: "room-emmas",
               label: "Emma's room",
               keywords: ["staff room"],
@@ -620,6 +652,8 @@ describe("ContextEngine.assembleContext", () => {
         environment: {},
         rooms: [
           {
+            fromRoomIds: [],
+            gate: "open" as const,
             id: "room-emmas",
             label: "Emma's room",
             keywords: ["staff room"],
@@ -1258,9 +1292,27 @@ describe("buildPass1Messages", () => {
       ruleset: {
         name: "Närhet",
         attributes: [
-          { id: "safety", name: "Trygghet", kind: "number", min: 0, max: 100, description: "" },
-          { id: "jealousy", name: "Svartsjuka", kind: "number", min: 0, max: 100, description: "" },
-          { id: "desire", name: "Längtan", kind: "number", min: 0, max: 100, description: "", role: "desire" }
+          {
+            highMeaning: "",
+            lowMeaning: "",
+            midMeaning: "",
+            options: [],
+            maxShift: 0,
+            id: "safety", name: "Trygghet", kind: "number", min: 0, max: 100, description: "" },
+          {
+            highMeaning: "",
+            lowMeaning: "",
+            midMeaning: "",
+            options: [],
+            maxShift: 0,
+            id: "jealousy", name: "Svartsjuka", kind: "number", min: 0, max: 100, description: "" },
+          {
+            highMeaning: "",
+            lowMeaning: "",
+            midMeaning: "",
+            options: [],
+            maxShift: 0,
+            id: "desire", name: "Längtan", kind: "number", min: 0, max: 100, description: "", role: "desire" }
         ]
       }
     });
@@ -1299,3 +1351,4 @@ describe("buildPass1Messages", () => {
     expect(assembled.includedBlocks.find((b) => b.source === "state_summary")?.content).toContain("lighting: dim");
   });
 });
+

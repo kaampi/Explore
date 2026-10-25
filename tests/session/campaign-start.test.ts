@@ -187,7 +187,7 @@ describe("sessionFromCampaignScene", () => {
         ]
       }
     ]);
-    expect(result.session.player.position.value).toBe(place.name);
+    expect(result.session.player?.position.value).toBe(place.name);
   });
 
   it("carries a Trigger's requiresFlags / requiresAbsentFlags / setsFlags onto its once-beat layer", () => {
@@ -435,7 +435,7 @@ describe("sessionFromCampaignScene", () => {
     );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.session.player.position.value).toBe("Emma's room");
+    expect(result.session.player?.position.value).toBe("Emma's room");
     expect(result.session.scene?.location).toBe(place.name);
   });
 
@@ -588,3 +588,4 @@ describe("createSession once-beats", () => {
     expect(session.layers.some((layer) => layer.once)).toBe(false);
   });
 });
+

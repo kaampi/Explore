@@ -4,6 +4,11 @@ import type { Session, MemoryEntry } from "@state/StateSchema";
 
 function makeSession(overrides: Partial<Session["memory"]> = {}): Session {
   return {
+    openedRoomIds: [],
+    storyFlags: [],
+    partyIds: [],
+    partyHoldIds: [],
+    partyPendingIds: [],
     schemaVersion: 2,
     id: "s1",
     runtime: { model: "test", temperature: 0.7, seed: null, provider: "test" },
@@ -122,3 +127,4 @@ describe("buildMemoryBlocks", () => {
     expect(blocks.some((b) => b.id === "memory-other")).toBe(true);
   });
 });
+

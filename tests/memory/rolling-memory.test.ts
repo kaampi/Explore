@@ -19,6 +19,11 @@ import type { CompletionRequest, LLMProvider, StreamChunk } from "@llm/types";
 
 function makeSession(overrides: Partial<Session> = {}): Session {
   return {
+    openedRoomIds: [],
+    storyFlags: [],
+    partyIds: [],
+    partyHoldIds: [],
+    partyPendingIds: [],
     schemaVersion: 2,
     id: "s1",
     runtime: { model: "test", temperature: 0.7, seed: null, provider: "test" },
@@ -338,3 +343,4 @@ describe("runRollingMemoryCondensation", () => {
     expect(stateEngine.getSession().memory.episodic.length).toBe(condensed.length);
   });
 });
+

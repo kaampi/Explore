@@ -165,8 +165,20 @@ describe("createSessionFromSetup", () => {
         ruleset: {
           name: "Klassisk fantasy",
           attributes: [
-            { id: "wisdom", name: "Visdom", kind: "number", min: 1, max: 18, description: "" },
-            { id: "oath", name: "Ed", kind: "text", description: "" }
+            {
+              highMeaning: "",
+              lowMeaning: "",
+              midMeaning: "",
+              options: [],
+              maxShift: 0,
+              id: "wisdom", name: "Visdom", kind: "number", min: 1, max: 18, description: "" },
+            {
+              highMeaning: "",
+              lowMeaning: "",
+              midMeaning: "",
+              options: [],
+              maxShift: 0,
+              id: "oath", name: "Ed", kind: "text", description: "" }
           ]
         },
         characters: [
@@ -406,6 +418,8 @@ describe("createSessionFromSetup", () => {
           audioPlay: "fade",
           rooms: [
             {
+              fromRoomIds: [],
+              gate: "open" as const,
               id: "room-emmas",
               label: "Emma's room",
               keywords: ["staff room"],
@@ -468,6 +482,8 @@ describe("createSessionFromSetup", () => {
         placeVisual: {
           rooms: [
             {
+              fromRoomIds: [],
+              gate: "open" as const,
               id: "room-emmas",
               label: "Emma's room",
               keywords: ["staff room"],
@@ -521,3 +537,4 @@ describe("slugifyCharacterId / displayCharacterName", () => {
     );
   });
 });
+

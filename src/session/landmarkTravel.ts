@@ -7,6 +7,7 @@ import {
 import type { PlaceTemplate, RealmTemplate } from "@library/LibrarySchema";
 import { placeVisualFromTemplate } from "@session/campaignStart";
 import type { LandmarkTravelPatch } from "@state/landmarkTravel";
+import { SceneRoomSchema } from "@state/StateSchema";
 import { copyAudioFields } from "@state/placeAudio";
 import { copyPictureFields } from "@state/placePictures";
 
@@ -52,7 +53,8 @@ export function landmarkTravelPatch(place: PlaceTemplate, _realm?: RealmTemplate
     ...(brief ? { brief } : {}),
     ...copyPictureFields(visual),
     ...copyAudioFields(visual),
-    ...(visual.rooms && visual.rooms.length > 0 ? { rooms: visual.rooms } : {}),
+    ...(visual.rooms && visual.rooms.length > 0 ? { rooms: visual.rooms.map((room) => SceneRoomSchema.parse(room)) } : {}),
     placeLayers
   };
 }
+

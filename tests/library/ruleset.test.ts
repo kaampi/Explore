@@ -7,7 +7,12 @@ describe("ruleset templates", () => {
     const template = newRulesetTemplate({
       name: "Närhet",
       attributes: [
-        { id: "safety", name: "Trygghet", kind: "number", min: 0, max: 100, highMeaning: "{{char}} can stay open.", lowMeaning: "{{char}} keeps distance." }
+        {
+          description: "",
+          midMeaning: "",
+          options: [],
+          maxShift: 0,
+          id: "safety", name: "Trygghet", kind: "number", min: 0, max: 100, highMeaning: "{{char}} can stay open.", lowMeaning: "{{char}} keeps distance." }
       ],
       source: "player"
     });
@@ -21,6 +26,10 @@ describe("ruleset templates", () => {
       name: "Närhet",
       attributes: [
         {
+          highMeaning: "",
+          lowMeaning: "",
+          midMeaning: "",
+          maxShift: 0,
           id: "orientation",
           name: "Orientation",
           kind: "text",
@@ -55,7 +64,14 @@ describe("ruleset templates", () => {
     const template = newRulesetTemplate({
       name: "Custom",
       attributes: [
-        { id: "passion", name: "Passion", kind: "number", min: 1, max: 18, role: "desire" }
+        {
+          description: "",
+          highMeaning: "",
+          lowMeaning: "",
+          midMeaning: "",
+          options: [],
+          maxShift: 0,
+          id: "passion", name: "Passion", kind: "number", min: 1, max: 18, role: "desire" }
       ],
       source: "player"
     });
@@ -68,6 +84,11 @@ describe("ruleset templates", () => {
       name: "Närhet",
       attributes: [
         {
+          description: "",
+          highMeaning: "",
+          lowMeaning: "",
+          midMeaning: "",
+          maxShift: 0,
           id: "orientation",
           name: "Orientation",
           kind: "text",
@@ -81,3 +102,4 @@ describe("ruleset templates", () => {
     expect(template.attributes[0]?.options).toEqual(["Hetero", "Bi"]);
   });
 });
+

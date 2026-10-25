@@ -117,6 +117,11 @@ describe("IndexedDBRepository", () => {
     });
 
     const v1Record = {
+      openedRoomIds: [],
+      storyFlags: [],
+      partyIds: [],
+      partyHoldIds: [],
+      partyPendingIds: [],
       schemaVersion: 1,
       id: "legacy",
       runtime: { model: "old", temperature: 0.7, seed: null, provider: "test" },
@@ -261,6 +266,8 @@ describe("IndexedDBRepository library", () => {
     const stamp = "2026-01-01T00:00:00.000Z";
     const portraitDataUrl = `data:image/jpeg;base64,${"A".repeat(4000)}`;
     await repo.saveCharacter({
+      speech: "",
+      tags: [],
       id: "c1",
       name: "Ada",
       familyName: "",
@@ -296,6 +303,8 @@ describe("IndexedDBRepository library", () => {
       brief: "A hidden jazz bar. Weathered wood, dark doors, a bartender who leaves you be.",
         rooms: [
           {
+            fromRoomIds: [],
+            gate: "open" as const,
             id: "room-emmas",
             label: "Emma's room",
             keywords: ["staff room"],
@@ -405,6 +414,8 @@ describe("IndexedDBRepository library", () => {
     const repo = new IndexedDBRepository(factory, "upgrade-db", 2);
     await repo.saveSession(makeSession("kept"));
     await repo.saveCharacter({
+      speech: "",
+      tags: [],
       id: "c1",
       name: "Ada",
       familyName: "",
@@ -611,3 +622,4 @@ describe("IndexedDBRepository library", () => {
     expect((await v9.listRealms())[0]?.name).toBe("City of Dunbaar");
   });
 });
+

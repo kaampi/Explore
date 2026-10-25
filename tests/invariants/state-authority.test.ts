@@ -12,6 +12,11 @@ import { parseSession, type Session } from "@state/StateSchema";
 
 function makeSession(): Session {
   return {
+    openedRoomIds: [],
+    storyFlags: [],
+    partyIds: [],
+    partyHoldIds: [],
+    partyPendingIds: [],
     schemaVersion: 2,
     id: "test-session",
     runtime: { model: "test", temperature: 0.7, seed: null, provider: "test" },
@@ -324,3 +329,4 @@ describe("Player presence is lockable live state", () => {
     expect(engine.getSession().player?.position.value).not.toBe("spare room down the hall");
   });
 });
+

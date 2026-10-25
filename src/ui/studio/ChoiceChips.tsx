@@ -72,7 +72,7 @@ export function PickChips({
   ariaLabel
 }: {
   choices: string[];
-  value?: string;
+  value?: string | undefined;
   onPick: (choice: string) => void;
   onAdd?: (label: string) => void;
   labelFor?: (choice: string) => string;
@@ -155,3 +155,4 @@ export function EditChips({
     </div>
   );
 }
+

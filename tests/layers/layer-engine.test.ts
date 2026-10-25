@@ -4,6 +4,11 @@ import type { Session, Layer } from "@state/StateSchema";
 
 function makeSession(overrides: Partial<Session> = {}): Session {
   return {
+    openedRoomIds: [],
+    storyFlags: [],
+    partyIds: [],
+    partyHoldIds: [],
+    partyPendingIds: [],
     schemaVersion: 2,
     id: "s1",
     runtime: { model: "test", temperature: 0.7, seed: null, provider: "test" },
@@ -338,7 +343,10 @@ describe("once beats", () => {
       scene: {
         location: "The Aurora Room",
         environment: {},
-        rooms: [{ id: "emmas-room", label: "Emma's room", description: "", keywords: [] }]
+        rooms: [{
+          fromRoomIds: [],
+          gate: "open" as const,
+          id: "emmas-room", label: "Emma's room", description: "", keywords: [] }]
       },
       conversation: [{ turn: 1, role: "player", content: "I show her the brooch" }]
     });
@@ -430,3 +438,4 @@ describe("story flag gates", () => {
     expect(isEffectivelyActive(makeSession({ storyFlags: ["curse_lifted"] }), gated)).toBe(false);
   });
 });
+

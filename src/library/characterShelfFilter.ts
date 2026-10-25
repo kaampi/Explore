@@ -12,14 +12,14 @@ export const EMPTY_CHARACTER_SHELF_FILTERS: CharacterShelfFilters = {
   imported: false
 };
 
-export function isImportedCard(item: { tags?: string[]; source?: string }): boolean {
+export function isImportedCard(item: { tags?: string[] | undefined; source?: string | undefined }): boolean {
   if (item.source === "sillytavern") return true;
   return (item.tags ?? []).some((tag) => tag.toLowerCase() === IMPORTED_TAG.toLowerCase());
 }
 
 /** Male / Female constrain pronoun. Imported constrains source. Unchecked = no constraint. */
 export function matchesCharacterShelf(
-  item: { pronoun?: string; tags?: string[]; source?: string },
+  item: { pronoun?: string | undefined; tags?: string[] | undefined; source?: string | undefined },
   filters: CharacterShelfFilters
 ): boolean {
   if (filters.male || filters.female) {
@@ -30,3 +30,4 @@ export function matchesCharacterShelf(
   if (filters.imported && !isImportedCard(item)) return false;
   return true;
 }
+

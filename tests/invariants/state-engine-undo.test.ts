@@ -5,6 +5,11 @@ import type { Session } from "@state/StateSchema";
 
 function makeSession(): Session {
   return {
+    openedRoomIds: [],
+    storyFlags: [],
+    partyIds: [],
+    partyHoldIds: [],
+    partyPendingIds: [],
     schemaVersion: 2,
     id: "test-session",
     runtime: { model: "test", temperature: 0.7, seed: null, provider: "test" },
@@ -365,3 +370,4 @@ describe("StateEngine.editConversationTurn", () => {
     expect(conv(engine, 0).content).toBe("Original text");
   });
 });
+
