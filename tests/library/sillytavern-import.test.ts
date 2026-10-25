@@ -73,7 +73,7 @@ Scenario(She bumps into {{user}} in the school hallways.)
     const raw = { spec: "chara_card_v2", data: { name: "Alice the bully", description, personality: "" } };
     // Both JSON files and embedded PNG cards use the same deterministic mapper.
     for (const review of [await importSillyTavernCard({ jsonText: JSON.stringify(raw) }), await importSillyTavernCard({ pngBytes: pngWithText("chara", btoa(JSON.stringify(raw))) })]) {
-      expect(review.character).toMatchObject({ name: "Alice", approximateAge: 18, pronoun: "she", appearance: "Short black hair + red eyes + fair skin", personality: "Pretends to be mean.\nWhen alone (or with a trusted friend), she is shy and compassionate.", scenario: "" });
+      expect(review.character).toMatchObject({ name: "Alice", approximateAge: 18, pronoun: "she", appearance: "Short black hair, red eyes, and fair skin.", personality: "Pretends to be mean.\nWhen alone (or with a trusted friend), she is shy and compassionate.", scenario: "" });
       expect(review.rawText).toBe(description);
       expect(review.character.appearance).not.toMatch(/Age|Outfit|Occupation|Scenario|orphanage/);
     }

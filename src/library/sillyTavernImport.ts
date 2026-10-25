@@ -10,6 +10,7 @@ import {
   wppLooks
 } from "./cardHints";
 import { splitPersonName } from "./personName";
+import { formatAppearanceList } from "./appearanceText";
 
 export class SillyTavernImportError extends Error {
   constructor(message: string) {
@@ -86,7 +87,8 @@ export function reviewFromCardData(raw: unknown): SillyTavernReview {
     throw new SillyTavernImportError("This character card has no name.");
   }
 
-  const looks = wppLooks(wpp) || (structured ? "" : description);
+  const structuredLooks = wppLooks(wpp);
+  const looks = structuredLooks ? formatAppearanceList(structuredLooks) : (structured ? "" : description);
   const personalitySource = (wpp.personality || personalityField).trim();
   const withoutCharacterPrefix = personalitySource.replace(/^\{\{\s*char\s*\}\}(?:\s+|$)/i, "");
   const personality = withoutCharacterPrefix === personalitySource

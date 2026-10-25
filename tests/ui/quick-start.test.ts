@@ -4,10 +4,32 @@ import {
   exampleCharacterTemplate,
   examplePlaceTemplate,
   exampleRealmDunbaar,
+  exampleFantasyRuleset,
+  exampleFreighterVoice,
 } from "@library/exampleTemplates";
 import { quickCharacterSession } from "../../src/ui/home/quickStart";
 
 describe("start from a character", () => {
+  it("copies optional voice and rules into a fresh scene with neutral numeric traits, without changing library cards", () => {
+    const character = exampleCharacterTemplate(), place = examplePlaceTemplate(), realm = exampleRealmDunbaar();
+    const ruleset = exampleFantasyRuleset(), voice = exampleFreighterVoice();
+    const before = structuredClone({ character, place, realm, ruleset, voice });
+    const session = quickCharacterSession(character, "configured", { place, realm, ruleset, voice });
+    expect(session.ruleset?.name).toBe(ruleset.name);
+    expect(session.voice).toEqual({ title: voice.name, instruction: voice.instruction });
+    expect(session.characters.emma?.stats?.strength?.value).toBe(10);
+    expect(session.player?.stats?.strength).toBe("10");
+    expect(session.scene?.placeId).toBe(place.id);
+    expect(session.story).toBeUndefined();
+    expect(session.campaignId).toBeUndefined();
+    expect({ character, place, realm, ruleset, voice }).toEqual(before);
+    ruleset.attributes[0]!.name = "Edited later";
+    voice.instruction = "Edited later";
+    expect(session.ruleset?.attributes[0]?.name).toBe(before.ruleset.attributes[0]?.name);
+    expect(session.voice?.instruction).toBe(before.voice.instruction);
+    const plain = quickCharacterSession(character, "plain");
+    expect(plain.ruleset).toBeUndefined(); expect(plain.voice).toBeUndefined(); expect(plain.scene?.placeId).toBeUndefined();
+  });
   it("starts a real session without a campaign, place card, story, or rule-set", () => {
     const character = newCharacterTemplate({
       name: "Ari",

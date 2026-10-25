@@ -206,6 +206,8 @@ describe("external world import journeys", () => {
     await waitFor(() => !!container.querySelector('.sb-home-connection'));
     const pip = Array.from(container.querySelectorAll<HTMLButtonElement>('.sb-character-card')).find(card => card.textContent?.includes("Pip"))!;
     await click(pip);
+    await waitFor(() => !!container.querySelector('[aria-label="Conversation rule-set"]'));
+    await click(button("Start conversation →"));
     await waitFor(() => !!container.querySelector('[aria-label="Your message"]'));
     await send("Tell me about The Mill.", "The Mill lies below the keep.");
     const session = await repo.loadSession((await repo.listSessionIds())[0]!);

@@ -7,11 +7,16 @@ import {
   type CharacterTemplate,
   type PlaceTemplate,
   type RealmTemplate,
+  type RulesetTemplate,
+  type VoiceTemplate,
 } from "@library/LibrarySchema";
 import {
   exampleCharacterTemplate,
   examplePlaceTemplate,
   exampleRealmDunbaar,
+  exampleRulesetTemplates,
+  exampleVoiceTemplates,
+  mergeWithExamples,
 } from "@library/exampleTemplates";
 import { formatPersonName } from "@library/personName";
 import type { Session } from "@state/StateSchema";
@@ -21,6 +26,7 @@ import type { StudioView } from "../studio/types";
 import { portraitSrc } from "../studio/portrait";
 import { Modal } from "../components/Modal";
 import { quickCharacterSession } from "./quickStart";
+import { ChatSetupFields } from "./ChatSetupFields";
 import { useConnection } from "../connection/ConnectionProvider";
 import { initialModel } from "../connection/connection";
 import type { ConversationEntry } from "@persistence/ConversationSchema";
@@ -50,6 +56,15 @@ export function HomeScreen({
   const [realms, setRealms] = useState<RealmTemplate[]>([]);
   const [places, setPlaces] = useState<PlaceTemplate[]>([]);
   const [campaigns, setCampaigns] = useState<CampaignTemplate[]>([]);
+  const [voices, setVoices] = useState<VoiceTemplate[]>([]);
+  const [rulesets, setRulesets] = useState<RulesetTemplate[]>([]);
+  const [chatCharacter, setChatCharacter] = useState<CharacterTemplate | null>(null);
+  const [chatPlaceId, setChatPlaceId] = useState("");
+  const [voiceId, setVoiceId] = useState("");
+  const [rulesetId, setRulesetId] = useState("");
+  const chatPlaces = mergeWithExamples(places, [examplePlaceTemplate()]);
+  const chatVoices = mergeWithExamples(voices, exampleVoiceTemplates());
+  const chatRulesets = mergeWithExamples(rulesets, exampleRulesetTemplates());
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { discovery, preferredModel, refresh } = useConnection();
@@ -69,13 +84,17 @@ export function HomeScreen({
       repo.listRealms(),
       repo.listPlaces(),
       repo.listCampaigns(),
+      repo.listVoices(),
+      repo.listRulesets(),
     ])
-      .then(([people, worlds, venues, stories]) => {
+      .then(([people, worlds, venues, stories, narrativeVoices, ruleSets]) => {
         if (cancelled) return;
         setCharacters(people);
         setRealms(worlds);
         setPlaces(venues);
         setCampaigns(stories);
+        setVoices(narrativeVoices);
+        setRulesets(ruleSets);
       })
       .catch((err: unknown) => {
         if (!cancelled)
@@ -103,11 +122,15 @@ export function HomeScreen({
       const model =
         initialModel(preferredModel, connection.models) ||
         session?.runtime.model;
+      const voice = chatVoices.find(item => item.id === voiceId);
+      const ruleset = chatRulesets.find(item => item.id === rulesetId);
       await onStart(
         quickCharacterSession(character, sessionId, {
           ...(place ? { place } : {}),
           ...(realm ? { realm } : {}),
           ...(model ? { model } : {}),
+          ...(voice ? { voice } : {}),
+          ...(ruleset ? { ruleset } : {}),
         }),
       );
     } catch (err) {
@@ -168,6 +191,7 @@ export function HomeScreen({
       ? lastTurn.content
       : undefined;
   function openCreate() {
+    setChatPlaceId(""); setVoiceId(""); setRulesetId("");
     setCreating(true);
     setError(null);
   }
@@ -185,7 +209,8 @@ export function HomeScreen({
       setCreating(false);
       setQuickName("");
       setQuickPersonality("");
-      await startCharacter(character);
+      const place = chatPlaces.find(item => item.id === chatPlaceId);
+      await startCharacter(character, place, realmFor(place));
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Could not save this character.",
@@ -195,11 +220,20 @@ export function HomeScreen({
     }
   }
   function openWorld(realm: RealmTemplate) {
+    setVoiceId(""); setRulesetId("");
     setWorld(realm);
     setPlaceId(places.find((place) => place.realmId === realm.id)?.id ?? "");
     setCharacterId(characters[0]?.id ?? "");
     setError(null);
   }
+  function realmFor(place?: PlaceTemplate): RealmTemplate | undefined {
+    return place ? realms.find(item => item.id === place.realmId) ?? (place.realmId === exampleRealmDunbaar().id ? exampleRealmDunbaar() : undefined) : undefined;
+  }
+  function openChatSetup(character: CharacterTemplate, place?: PlaceTemplate) {
+    setChatCharacter(character); setChatPlaceId(place?.id ?? "");
+    setVoiceId(""); setRulesetId(""); setError(null);
+  }
+  const chatFields = <ChatSetupFields places={chatPlaces} voices={chatVoices} rulesets={chatRulesets} placeId={chatPlaceId} voiceId={voiceId} rulesetId={rulesetId} onPlace={setChatPlaceId} onVoice={setVoiceId} onRuleset={setRulesetId} disabled={busy} />;
   return (
     <main className="sb-home">
       <div className="sb-breadcrumb">
@@ -304,7 +338,7 @@ export function HomeScreen({
                   className="sb-character-card"
                   key={character.id}
                   disabled={busy}
-                  onClick={() => void startCharacter(character)}
+                  onClick={() => openChatSetup(character)}
                 >
                   {portraitSrc(character.portraitDataUrl) ? (
                     <img src={portraitSrc(character.portraitDataUrl)} alt="" />
@@ -352,10 +386,9 @@ export function HomeScreen({
                 className="sb-example-card"
                 disabled={busy}
                 onClick={() =>
-                  void startCharacter(
+                  openChatSetup(
                     exampleCharacterTemplate(),
                     examplePlaceTemplate(),
-                    exampleRealmDunbaar(),
                   )
                 }
               >
@@ -478,11 +511,23 @@ export function HomeScreen({
           </div>
         </>
       )}
-      {error && !world && !campaign && !creating && (
+      {error && !world && !campaign && !creating && !chatCharacter && (
         <p className="sb-error" role="alert">
           {error}
         </p>
       )}
+      {chatCharacter && <Modal title={`Chat with ${formatPersonName(chatCharacter.name, chatCharacter.familyName, chatCharacter.middleName)}`} onClose={() => { if (!busy) setChatCharacter(null); }}>
+        <p className="sb-muted">Choose a setting, or leave everything as None and begin. All three choices are optional.</p>
+        {chatFields}
+        {error && <p className="sb-error" role="alert">{error}</p>}
+        <div className="sb-dialog__actions">
+          <button type="button" className="sb-link" disabled={busy} onClick={() => setChatCharacter(null)}>Cancel</button>
+          <button type="button" className="sb-button" disabled={busy} onClick={() => {
+            const place = chatPlaces.find(item => item.id === chatPlaceId);
+            void startCharacter(chatCharacter, place, realmFor(place));
+          }}>{busy ? "Opening…" : "Start conversation →"}</button>
+        </div>
+      </Modal>}
       {creating && (
         <Modal title="Someone new to meet" onClose={() => setCreating(false)}>
           <p className="sb-muted">
@@ -515,6 +560,7 @@ export function HomeScreen({
                 placeholder="A curious cartographer with a dry sense of humor…"
               />
             </label>
+            {chatFields}
             {error && (
               <p className="sb-error" role="alert">
                 {error}
@@ -583,6 +629,7 @@ export function HomeScreen({
               This world needs a place to visit. Add one in Worlds & places.
             </p>
           )}
+          <ChatSetupFields places={chatPlaces} voices={chatVoices} rulesets={chatRulesets} placeId={placeId} voiceId={voiceId} rulesetId={rulesetId} onPlace={setPlaceId} onVoice={setVoiceId} onRuleset={setRulesetId} disabled={busy} includePlace={false} />
           {characters.length === 0 && (
             <p className="sb-muted">
               Add a character to start a meeting in this world.

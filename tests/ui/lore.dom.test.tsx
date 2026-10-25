@@ -161,13 +161,13 @@ describe("lorebook import journeys", () => {
     await waitFor(() => !!container.querySelector('.st-import'));
     expect(container.querySelector<HTMLInputElement>('.st-import input[type="number"]')?.value).toBe("18");
     const fields = container.querySelectorAll<HTMLTextAreaElement>('.st-import textarea');
-    expect(fields[0]?.value).toBe("Black hair + red eyes");
+    expect(fields[0]?.value).toBe("Black hair and red eyes.");
     expect(fields[1]?.value).toBe("Shy (when alone) and compassionate.");
     expect(container.querySelector('.st-import__text')?.textContent).toBe(description);
     await click(button("Import"));
     await waitFor(() => !container.querySelector('.st-import'));
     const repo = new IndexedDBRepository();
-    expect((await repo.listCharacters())[0]).toMatchObject({ name: "Alice", approximateAge: 18, pronoun: "she", appearance: "Black hair + red eyes", personality: "Shy (when alone) and compassionate.", scenario: "" });
+    expect((await repo.listCharacters())[0]).toMatchObject({ name: "Alice", approximateAge: 18, pronoun: "she", appearance: "Black hair and red eyes.", personality: "Shy (when alone) and compassionate.", scenario: "" });
     await repo.close();
   }, 15000);
 

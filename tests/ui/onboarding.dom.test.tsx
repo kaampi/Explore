@@ -5,6 +5,8 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../../src/ui/App";
+import { IndexedDBRepository } from "@persistence/IndexedDBRepository";
+import { newCharacterTemplate, newPlaceTemplate, newRealmTemplate, newRulesetTemplate, newVoiceTemplate } from "@library/LibrarySchema";
 
 let root: Root;
 let container: HTMLDivElement;
@@ -123,6 +125,55 @@ afterEach(async () => {
 });
 
 describe("first-run conversation flow", () => {
+  it("offers optional chat settings, cancels safely, retains failed choices and keeps each new conversation independent", async () => {
+    online = true;
+    const repo = new IndexedDBRepository();
+    const person = newCharacterTemplate({ name: "Ari" });
+    const realm = newRealmTemplate({ name: "Map world", note: "", source: "player" });
+    const place = newPlaceTemplate({ name: "Map room", realmId: realm.id, note: "A room of maps." });
+    const voice = newVoiceTemplate({ name: "Quiet narrator", instruction: "Narrate quietly.", source: "player" });
+    const ruleset = newRulesetTemplate({ name: "Curiosity", source: "player", attributes: [{ id: "focus", name: "Focus", kind: "number", min: 0, max: 10, description: "Attention", highMeaning: "Attentive", lowMeaning: "Distracted", midMeaning: "", options: [], maxShift: 1 }] });
+    await repo.saveCharacter(person); await repo.saveRealm(realm); await repo.savePlace(place); await repo.saveVoice(voice); await repo.saveRuleset(ruleset);
+    await mount();
+    const open = async () => {
+      const card = Array.from(container.querySelectorAll<HTMLButtonElement>('.sb-character-card')).find(item => item.textContent?.includes("Ari"))!;
+      await click(card);
+      await waitFor(() => !!container.querySelector('[aria-label="Conversation rule-set"]'));
+    };
+    const select = async (label: string, value: string) => {
+      await act(async () => { const element = container.querySelector<HTMLSelectElement>(`[aria-label="${label}"]`)!; element.value = value; element.dispatchEvent(new Event("change", { bubbles: true })); });
+    };
+    await open();
+    expect(Array.from(container.querySelectorAll<HTMLSelectElement>('dialog select')).map(item => item.value)).toEqual(["", "", ""]);
+    await click(button("Cancel"));
+    expect(await repo.listSessionIds()).toHaveLength(0);
+    await open();
+    await select("Conversation rule-set", ruleset.id); await select("Conversation voice", voice.id); await select("Conversation place", place.id);
+    const failed = vi.spyOn(IndexedDBRepository.prototype, "createConversation").mockRejectedValueOnce(new Error("Storage unavailable"));
+    await click(button("Start conversation →"));
+    await waitFor(() => container.querySelector("dialog")?.textContent?.includes("Storage unavailable") === true);
+    expect(container.querySelector<HTMLSelectElement>('[aria-label="Conversation place"]')?.value).toBe(place.id);
+    expect(await repo.listSessionIds()).toHaveLength(0);
+    await click(button("Start conversation →"));
+    await waitFor(() => !!container.querySelector('[aria-label="Your message"]'));
+    expect(failed).toHaveBeenCalledTimes(2);
+    const first = await repo.loadSession((await repo.listSessionIds())[0]!);
+    expect(first.voice).toEqual({ title: voice.name, instruction: voice.instruction });
+    expect(first.ruleset?.name).toBe(ruleset.name);
+    expect(first.scene).toMatchObject({ placeId: place.id, realm: realm.name });
+    expect(first.characters.ari?.stats?.focus?.value).toBe(5);
+    await click(button("← My space")); await waitFor(() => !!container.querySelector('.sb-home-connection'));
+    await open();
+    expect(Array.from(container.querySelectorAll<HTMLSelectElement>('dialog select')).map(item => item.value)).toEqual(["", "", ""]);
+    await click(button("Start conversation →"));
+    await waitFor(() => !!container.querySelector('[aria-label="Your message"]'));
+    const ids = await repo.listSessionIds(); expect(ids).toHaveLength(2);
+    const second = await repo.loadSession(ids.find(id => id !== first.id)!);
+    expect(second.voice).toBeUndefined(); expect(second.ruleset).toBeUndefined(); expect(second.scene?.placeId).toBeUndefined();
+    expect((await repo.loadSession(first.id)).ruleset?.name).toBe(ruleset.name);
+    await repo.close();
+  }, 20000);
+
   it("takes a new user from a name to the first streamed reply without opening model settings", async () => {
     online = true;
     await mount();

@@ -2,9 +2,12 @@ import type {
   CharacterTemplate,
   PlaceTemplate,
   RealmTemplate,
+  RulesetTemplate,
+  VoiceTemplate,
 } from "@library/LibrarySchema";
 import { characterDraftFromTemplate } from "@library/fromForm";
 import { createSessionFromSetup } from "@session/createSession";
+import { attributeRange } from "@state/traitBands";
 import {
   placeVisualFromTemplate,
   realmPlayFields,
@@ -18,12 +21,20 @@ export function quickCharacterSession(
     place?: PlaceTemplate;
     realm?: RealmTemplate;
     model?: string;
+    voice?: VoiceTemplate;
+    ruleset?: RulesetTemplate;
   } = {},
 ) {
   const place = options.place;
+  const stats = Object.fromEntries((options.ruleset?.attributes ?? []).filter(def => def.kind === "number").map(def => {
+    const { min, max } = attributeRange(def);
+    const midpoint = min + (max - min) / 2;
+    return [def.id, String(Number.isInteger(min) && Number.isInteger(max) ? Math.round(midpoint) : midpoint)];
+  }));
   const draft = {
     ...characterDraftFromTemplate(character),
     lore: character.lore,
+    ...(options.ruleset ? { stats } : {}),
   };
   return createSessionFromSetup(
     {
@@ -35,6 +46,9 @@ export function quickCharacterSession(
         place?.note ??
         "A new conversation. There is no goal to reach — begin wherever you like.",
       characters: [draft],
+      ...(options.voice ? { voiceTitle: options.voice.name, voiceInstruction: options.voice.instruction } : {}),
+      ...(options.ruleset ? { ruleset: { name: options.ruleset.name, attributes: options.ruleset.attributes } } : {}),
+      ...(options.ruleset ? { playerIdentity: { stats } } : {}),
       ...(place
         ? {
             placeId: place.id,
