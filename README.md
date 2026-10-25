@@ -56,6 +56,12 @@ Snapshots and their library metadata are saved atomically. The library reads a s
 
 Imported lore has a separate context limit and does not establish the world map. Library backups include lorebooks and original data. See [supported behavior and limitations](docs/lore-import.md).
 
+## Import external worlds
+
+**Lorebooks** also imports AI Dungeon Story Cards, OnlyWorlds world JSON and Azgaar Full/Minimal JSON. Format detection is automatic, with an explicit selector available. Review entries as usual. **Also create a world in my library** optionally creates a new world and only the selected, typed characters/places in one atomic save. Otherwise the file remains optional lore. Existing cards and conversations are preserved.
+
+Choose the imported world, a place and a character from Home to begin exploring. Azgaar contributes places and world knowledge; use or create your own character. Source scripts, combat systems, map geometry and external images are not reproduced. Source IDs and originals remain available. See [formats, mapping and limits](docs/world-imports.md).
+
 ## Capture ideas
 
 In play, use **Save as idea** on a message or **Capture ideas** to select several messages. Edit the title, description and type (Plot, Character or World), then save. **My ideas** is available from play and the Home sidebar. Ideas keep snapshots of only the selected messages, independent of later edits or archive actions.

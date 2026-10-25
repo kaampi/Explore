@@ -22,6 +22,7 @@ export function LoreReview({ book, onChange, disabled = false }: {
           const approved = event.target.checked;
           onChange({ ...book, entries: book.entries.map((e, i) => i === index ? { ...e, approved } : e) });
         }} /> {entry.title}</label>
+      {entry.entity && <span className="sb-eyebrow">{entry.entity.category} · {entry.entity.id}</span>}
       <span className="sb-muted">{entry.mode === "dormant" ? "Dormant" : entry.mode === "always" ? "Always eligible, within budget" : `Keywords: ${entry.keywords.join(", ")}`}</span>
       {entry.reasons.length > 0 && <ul>{entry.reasons.map((reason, i) => <li key={i}>{reason}</li>)}</ul>}
       <details><summary>Read source text</summary><p>{entry.content || "(No content)"}</p></details>

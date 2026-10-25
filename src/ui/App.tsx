@@ -163,7 +163,10 @@ function SandboxApp() {
       await persistCurrent();
       const books = await repo.listLorebooks();
       if (books.unreadable) setOperationError("Some lorebooks could not be read and were skipped. Their original stored records have been kept; review Lorebooks when convenient.");
-      const fresh = attachLorebooks({ ...next, id: crypto.randomUUID() }, books.entries);
+      const place = next.scene?.placeId && books.entries.some(book => book.binding.kind === "realm")
+        ? (await repo.listPlaces()).find(item => item.id === next.scene?.placeId) : undefined;
+      const realmId = place?.realmId ?? (!next.scene?.placeId ? books.entries.find(book => book.materializedRealmId && book.materializedCharacterIds?.some(id => Object.values(next.characters).some(c => c.sourceLibraryId === id)))?.materializedRealmId : undefined);
+      const fresh = attachLorebooks({ ...next, id: crypto.randomUUID() }, books.entries, { realmId });
       await repo.createConversation(fresh);
       const nextResume = sceneResume(fresh);
       try {

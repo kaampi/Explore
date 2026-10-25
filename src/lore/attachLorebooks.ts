@@ -2,11 +2,12 @@ import type { Session } from "@state/StateSchema";
 import type { Lorebook } from "./LorebookSchema";
 
 /** Called only at NEW conversation creation. Existing conversations remain snapshots. */
-export function attachLorebooks(session: Session, books: Lorebook[]): Session {
+export function attachLorebooks(session: Session, books: Lorebook[], scope: { realmId?: string | undefined } = {}): Session {
   const layers = [...session.layers];
   for (const book of books) {
     const binding = book.binding;
     const matches = binding.kind === "all" ||
+      (binding.kind === "realm" && Boolean(binding.targetId) && scope.realmId === binding.targetId) ||
       (binding.kind === "campaign" && Boolean(binding.targetId) && session.campaignId === binding.targetId) ||
       (binding.kind === "character" && Boolean(binding.targetId) && Object.values(session.characters).some(c => c.sourceLibraryId === binding.targetId));
     if (!matches) continue;

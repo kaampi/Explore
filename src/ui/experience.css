@@ -1677,3 +1677,7 @@
 .sb-lore-entries details p { white-space: pre-wrap; }
 .sb-lore-entries li { font-size: 13px; color: var(--text-dim); }
 .sb-embedded-lore { padding: 20px; }
+.sb-world-import-choice { margin: 20px 0; padding: 16px; border: 1px solid var(--border); border-radius: 8px; }
+.sb-world-import-choice label { font-weight: 600; }
+.sb-world-import-choice p { color: var(--text-dim); font-size: 13px; line-height: 1.6; }
+.sb-lore-entries .sb-eyebrow { display: block; margin: 6px 0; }
