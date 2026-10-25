@@ -465,8 +465,6 @@ function SandboxApp() {
               onStart={startScene}
               onStudio={openStudio}
               conversations={catalog.entries}
-              onOpenConversation={(id) => report(openConversation(id))}
-              onShowConversations={() => navigate("conversations")}
               navigationBusy={working}
             />
           )}

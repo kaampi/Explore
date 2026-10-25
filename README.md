@@ -44,7 +44,7 @@ The connection check inspects model metadata, not a sample conversation, and doe
 
 ## Conversation library
 
-Every new conversation gets a unique ID. Home shows recent conversations; **My conversations** adds search, custom names, and reversible archive/restore. Continuing a conversation restores its own history, relationships, story flags, model, and appearance. Unsent drafts are kept per conversation for the current browser tab when switching. The last selected non-archived conversation is available after reloading.
+Every new conversation gets a unique ID. Home offers the current conversation in its illustrated welcome banner; **My conversations** lists saved conversations with search, custom names, and reversible archive/restore. Continuing a conversation restores its own history, relationships, story flags, model, and appearance. Unsent drafts are kept per conversation for the current browser tab when switching. The last selected non-archived conversation is available after reloading.
 
 Creating a conversation never replaces an existing one. **new scene** in Settings keeps the current conversation and opens scene setup. If you explicitly continue into another campaign scene, its handoff can be drafted from the conversation you just left. Runtime story flags stay with their conversation and are no longer written back into the reusable campaign template; separate explorations start from the authored campaign settings.
 
