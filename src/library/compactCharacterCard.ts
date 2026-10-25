@@ -1,3 +1,5 @@
+import { wPlusPlusFields, wppLooks } from "./cardHints";
+
 export type CompactCardFields = {
   appearance: string;
   mood: string;
@@ -37,6 +39,11 @@ export function extractCompactSource(raw: string): string {
     .replace(/\{\{\s*char\s*\}\}/gi, "")
     .replace(/\{\{\s*user\s*\}\}/gi, "")
     .replace(/\u00a0/g, " ");
+  const fields = wPlusPlusFields(text);
+  const looks = wppLooks(fields);
+  if (looks || fields.personality) {
+    return [looks ? `Appearance: ${looks}` : "", fields.personality ? `Personality: ${fields.personality}` : ""].filter(Boolean).join("\n\n");
+  }
   const chunks: string[] = [];
   let keep = false;
   let buf: string[] = [];

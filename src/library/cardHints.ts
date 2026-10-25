@@ -137,10 +137,46 @@ function trimWppValue(value: string): string {
 }
 
 /**
- * SillyTavern W++ / PList keys (`Age=22`, `Body/Appearance=…`).
+ * SillyTavern W++ / PList keys (`Age=22`, `Age(22)`, `Body/Appearance=…`).
+ * Parenthesized values may span lines and contain nested parentheses.
  */
 export function wPlusPlusFields(text: string): Record<string, string> {
-  const lines = text.replace(/\r\n/g, "\n").split("\n");
+  const normalized = text.replace(/\r\n/g, "\n");
+  // Read balanced values first, then hide their lines from the equals parser.
+  // This prevents a nested Age(...) or Personality=... in a value from being
+  // promoted to a separate top-level identity field.
+  const parenthesized: Record<string, string> = {};
+  const spans: Array<{ start: number; end: number }> = [];
+  const headers = normalized.matchAll(/^[\t ]*[\[{]?[\t ]*([A-Za-z][A-Za-z0-9 /&'_-]*?)[\t ]*\(/gm);
+  let consumed = 0;
+  for (const header of headers) {
+    if (header.index < consumed) continue;
+    const opening = header.index + header[0].length - 1;
+    let depth = 1;
+    let quoted = false;
+    let end = opening + 1;
+    for (; end < normalized.length; end++) {
+      if (normalized[end] === "\\") { end++; continue; }
+      if (normalized[end] === '"') { quoted = !quoted; continue; }
+      if (quoted) continue;
+      if (normalized[end] === "(") depth++;
+      if (normalized[end] === ")" && --depth === 0) break;
+    }
+    if (depth !== 0) continue; // Unbalanced source remains available in review.
+    let value = normalized.slice(opening + 1, end).trim();
+    if (value.startsWith('"') && value.endsWith('"') && !value.slice(1, -1).includes('"')) value = value.slice(1, -1);
+    parenthesized[normalizeWppKey(header[1] ?? "")] = value;
+    consumed = end + 1;
+    spans.push({ start: header.index, end: consumed });
+  }
+  let masked = "";
+  let offset = 0;
+  for (const span of spans) {
+    masked += normalized.slice(offset, span.start) + normalized.slice(span.start, span.end).replace(/[^\n]/g, " ");
+    offset = span.end;
+  }
+  masked += normalized.slice(offset);
+  const lines = masked.split("\n");
   const out: Record<string, string> = {};
   let current: string | null = null;
   let buf: string[] = [];
@@ -148,7 +184,7 @@ export function wPlusPlusFields(text: string): Record<string, string> {
   function flush() {
     if (!current) return;
     const value = trimWppValue(buf.join("\n"));
-    if (value) out[current] = value;
+    out[current] = value;
   }
 
   for (const line of lines) {
@@ -162,10 +198,11 @@ export function wPlusPlusFields(text: string): Record<string, string> {
     }
   }
   flush();
-  return out;
+  return { ...out, ...parenthesized };
 }
 
 export function wppLooks(fields: Record<string, string>): string {
   return fields["body/appearance"] || fields.body || fields.looks || fields.appearance || "";
 }
+
 

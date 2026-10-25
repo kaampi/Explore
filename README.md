@@ -56,6 +56,10 @@ Open **♫ Sound** in the play toolbar to add your own MP3, OGG, WAV, M4A, AAC o
 
 Tracks are shared across your local audio library; track selection, volume and loop are saved separately for each conversation. Files are copied into this browser's IndexedDB, so the original does not have to stay in place. They are not uploaded, sent to AI, or included in session/library exports. Keep your own copies: clearing browser data removes this library. Removing a track explicitly clears its selection in all conversations. Existing place/room ambience has separate controls and can play alongside your soundtrack. No bundled tracks or streaming-service integrations are included.
 
+## Import character cards
+
+Character-card review also recognizes line-based W++/PList fields such as `Age=18` and `Age(18)`, including multiline values and nested parentheses. Explicit age and sex/gender fields take precedence over prose hints. Looks receives only the structured body/appearance field, and Personality receives its own field. Clothing, backstory and scenario remain visible in the original review text rather than being dumped into Looks or used as a starting scene. Compact uses only the recognized appearance/personality sections. Previously imported library cards are not rewritten automatically.
+
 ## Import lorebooks
 
 **Lorebooks** accepts SillyTavern World Info JSON, embedded V2/V3 character lore (JSON/PNG), and V3 lorebook JSON. Review entries and explicitly select supported ones to use SandboxAI’s existing activation rules. Unsupported/disabled entries stay dormant, and the original is retained. Link a book to a character, campaign or all new conversations; saved conversations keep their own snapshots. Character import offers embedded lore in the same review and saves both together.

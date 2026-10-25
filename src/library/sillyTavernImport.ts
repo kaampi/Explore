@@ -80,7 +80,7 @@ export function reviewFromCardData(raw: unknown): SillyTavernReview {
   }
 
   const wpp = wPlusPlusFields(rawText);
-  const structured = Boolean(wpp.character || wpp["body/appearance"]);
+  const structured = ["character", "body/appearance", "body", "looks", "appearance", "personality", "age", "gender", "sex"].some(key => key in wpp);
   const displayName = stripHonorific(wpp.character || jsonName);
   if (!displayName) {
     throw new SillyTavernImportError("This character card has no name.");
@@ -90,9 +90,11 @@ export function reviewFromCardData(raw: unknown): SillyTavernReview {
   const personality = (wpp.personality || personalityField).trim();
   const pronoun =
     pronounFromCardData(data) ??
-    (wpp.gender ? pronounFromGenderLabel(wpp.gender) : undefined) ??
+    (wpp.gender || wpp.sex ? pronounFromGenderLabel(wpp.gender || wpp.sex || "") : undefined) ??
     pronounFromText(rawText);
-  const approximateAge = ageFromField(data.age) ?? ageFromField(wpp.age) ?? ageFromText(rawText);
+  // An explicit but unknown age must not become a childhood age from prose.
+  const approximateAge = data.age !== undefined ? ageFromField(data.age)
+    : "age" in wpp ? ageFromField(wpp.age) : ageFromText(rawText);
   const names = splitPersonName(displayName);
   const character = newCharacterTemplate({
     name: names.given,

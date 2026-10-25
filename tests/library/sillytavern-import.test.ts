@@ -7,6 +7,7 @@ import {
 } from "@library/sillyTavernImport";
 import { characterDraftFromTemplate, characterTemplateFromDraft, placeTemplateFromForm, storyTemplateFromForm, voiceTemplateFromForm } from "@library/fromForm";
 import { parseCharacterTemplate } from "@library/LibrarySchema";
+import { extractCompactSource } from "@library/compactCharacterCard";
 
 const v2Card = {
   spec: "chara_card_v2",
@@ -52,6 +53,45 @@ function pngWithText(keyword: string, text: string): Uint8Array {
 }
 
 describe("SillyTavern import", () => {
+  it("maps parenthesized Alice-style fields without mistaking a childhood age for current age", async () => {
+    const description = `[Character(Alice)
+{
+Sex(Female)
+Age(18)
+Occupation(A high school student)
+Appearance(Short black hair + red eyes + fair skin)
+Outfit(White collared shirt + black vest + black skirt)
+Personality(She pretends to be mean.
+When alone (or with a trusted friend), she is shy and compassionate.)
+Likes(Getting praised + sweets)
+Dislikes(bullying (but does it anyway) + bugs)
+Relationship(Her parents left her at an orphanage when she was 4 years old)
+Description(She spends time alone.
+Her parents left her in an orphanage when she was 4 years old.)
+Scenario(She bumps into {{user}} in the school hallways.)
+}]`;
+    const raw = { spec: "chara_card_v2", data: { name: "Alice the bully", description, personality: "" } };
+    // Both JSON files and embedded PNG cards use the same deterministic mapper.
+    for (const review of [await importSillyTavernCard({ jsonText: JSON.stringify(raw) }), await importSillyTavernCard({ pngBytes: pngWithText("chara", btoa(JSON.stringify(raw))) })]) {
+      expect(review.character).toMatchObject({ name: "Alice", approximateAge: 18, pronoun: "she", appearance: "Short black hair + red eyes + fair skin", personality: "She pretends to be mean.\nWhen alone (or with a trusted friend), she is shy and compassionate.", scenario: "" });
+      expect(review.rawText).toBe(description);
+      expect(review.character.appearance).not.toMatch(/Age|Outfit|Occupation|Scenario|orphanage/);
+    }
+    const compact = extractCompactSource(description);
+    expect(compact).toContain("Short black hair");
+    expect(compact).toContain("shy and compassionate");
+    expect(compact).not.toMatch(/Age|Occupation|Outfit|Likes|Dislikes|Relationship|orphanage|hallways/);
+  });
+
+  it("recognizes structured identity without Character(...) and never infers an age from backstory over an unknown age", () => {
+    const character = characterFromCardData({ name: "Rin", description: "Age(unknown)\nSex(Nonbinary)\nAppearance(Green eyes)\nPersonality(Quiet)\nDescription(They moved here at 4 years old.)" });
+    expect(character.approximateAge).toBeUndefined();
+    expect(character.pronoun).toBe("they");
+    expect(character.appearance).toBe("Green eyes");
+    expect(character.personality).toBe("Quiet");
+    expect(characterFromCardData({ name: "Rin", age: 25, description: "Age(18)\nSex(Female)", gender: "they" })).toMatchObject({ approximateAge: 25, pronoun: "they" });
+  });
+
   it("reads a v1 (flat) JSON card", () => {
     const character = characterFromCardData({
       name: "Jules",

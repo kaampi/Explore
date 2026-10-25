@@ -152,6 +152,25 @@ function jsonFile(raw: unknown, name = "Garden.json") {
 const supportedEntry = { keys: ["gate"], content: "The gate opens at dawn.", enabled: true, extensions: {} };
 
 describe("lorebook import journeys", () => {
+  it("shows and saves parenthesized character fields separately while retaining original text in review", async () => {
+    await mount();
+    await click(button("♧ Characters"));
+    await waitFor(() => container.textContent?.includes("Import SillyTavern") ?? false);
+    const description = "[Character(Alice)\n{\nAge(18)\nSex(Female)\nAppearance(Black hair + red eyes)\nOutfit(Black vest)\nPersonality(Shy (when alone) and compassionate.)\nDescription(Her parents left when she was 4 years old.)\nScenario(A school hallway.)\n}]";
+    await upload(jsonFile({ spec: "chara_card_v2", data: { name: "Alice the bully", description } }, "Alice.json"), 'input[accept*=".png"]');
+    await waitFor(() => !!container.querySelector('.st-import'));
+    expect(container.querySelector<HTMLInputElement>('.st-import input[type="number"]')?.value).toBe("18");
+    const fields = container.querySelectorAll<HTMLTextAreaElement>('.st-import textarea');
+    expect(fields[0]?.value).toBe("Black hair + red eyes");
+    expect(fields[1]?.value).toBe("Shy (when alone) and compassionate.");
+    expect(container.querySelector('.st-import__text')?.textContent).toBe(description);
+    await click(button("Import"));
+    await waitFor(() => !container.querySelector('.st-import'));
+    const repo = new IndexedDBRepository();
+    expect((await repo.listCharacters())[0]).toMatchObject({ name: "Alice", approximateAge: 18, pronoun: "she", appearance: "Black hair + red eyes", personality: "Shy (when alone) and compassionate.", scenario: "" });
+    await repo.close();
+  }, 15000);
+
   it("reviews and saves supported lore, keeps advanced entries dormant, and activates only in new conversations", async () => {
     await mount();
     await create("Ari");
