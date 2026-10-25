@@ -48,6 +48,13 @@
 .sandbox-root button {
   color: inherit;
 }
+.sandbox-root .setup-start:not(:disabled) {
+  background: #bdd0a8;
+  color: #18382c;
+}
+.sandbox-root .setup-start:hover:not(:disabled) {
+  background: #cdddbe;
+}
 .sandbox-root button:disabled {
   cursor: not-allowed;
   opacity: 0.48;
