@@ -12,6 +12,7 @@ import { ConnectionHelp } from "../connection/ConnectionHelp";
 import { Modal } from "../components/Modal";
 import { StatusBar } from "../components/StatusBar";
 import { playThemeStyle, useAppearance } from "../themes/ThemeProvider";
+import { GameAudio } from "../audio/GameAudio";
 
 export function PlayWorkspace({
   onHome,
@@ -63,6 +64,7 @@ export function PlayWorkspace({
           <span>{session.scene?.location}</span>
         </div>
         <div className="sb-play-tools">
+          <GameAudio key={session.id} conversationId={session.id} />
           <button
             type="button"
             className="sb-link"

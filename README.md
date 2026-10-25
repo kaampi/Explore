@@ -50,6 +50,12 @@ Creating a conversation never replaces an existing one. **new scene** in Setting
 
 Snapshots and their library metadata are saved atomically. The library reads a small index rather than loading every history and background image. Rename and archive state survive autosaves. There is no permanent-delete action in the conversation UI.
 
+## Your soundtrack
+
+Open **♫ Sound** in the play toolbar to add your own MP3, OGG, WAV, M4A, AAC or WebM tracks (up to 50 MB each). Choose one track, set volume and loop, then press **Play soundtrack**. Adding a file, changing tracks, resuming a conversation or returning from Home never starts soundtrack playback automatically. Playback stops when leaving the play view. Browser codec support determines which files can play.
+
+Tracks are shared across your local audio library; track selection, volume and loop are saved separately for each conversation. Files are copied into this browser's IndexedDB, so the original does not have to stay in place. They are not uploaded, sent to AI, or included in session/library exports. Keep your own copies: clearing browser data removes this library. Removing a track explicitly clears its selection in all conversations. Existing place/room ambience has separate controls and can play alongside your soundtrack. No bundled tracks or streaming-service integrations are included.
+
 ## Import lorebooks
 
 **Lorebooks** accepts SillyTavern World Info JSON, embedded V2/V3 character lore (JSON/PNG), and V3 lorebook JSON. Review entries and explicitly select supported ones to use SandboxAI’s existing activation rules. Unsupported/disabled entries stay dormant, and the original is retained. Link a book to a character, campaign or all new conversations; saved conversations keep their own snapshots. Character import offers embedded lore in the same review and saves both together.
