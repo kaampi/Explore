@@ -87,7 +87,11 @@ export function reviewFromCardData(raw: unknown): SillyTavernReview {
   }
 
   const looks = wppLooks(wpp) || (structured ? "" : description);
-  const personality = (wpp.personality || personalityField).trim();
+  const personalitySource = (wpp.personality || personalityField).trim();
+  const withoutCharacterPrefix = personalitySource.replace(/^\{\{\s*char\s*\}\}(?:\s+|$)/i, "");
+  const personality = withoutCharacterPrefix === personalitySource
+    ? personalitySource
+    : withoutCharacterPrefix.replace(/^\p{L}/u, letter => letter.toUpperCase());
   const pronoun =
     pronounFromCardData(data) ??
     (wpp.gender || wpp.sex ? pronounFromGenderLabel(wpp.gender || wpp.sex || "") : undefined) ??
