@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import conversationsWorld from "../assets/conversations-world.webp";
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 import {
   newCharacterTemplate,
@@ -235,7 +236,7 @@ export function HomeScreen({
       ) : (
         <>
           <section className="sb-hero">
-            <WorldArtwork />
+            <img className="sb-hero__image" src={conversationsWorld} alt="" fetchPriority="high" />
             <div className="sb-hero__shade" />
             <div className="sb-hero__content">
               <span className="sb-eyebrow sb-hero__eyebrow">
