@@ -1,3 +1,4 @@
+import { IdeaSchema, type Idea } from "../ideas/IdeaSchema";
 import {
   ConversationEntrySchema,
   conversationEntry,
@@ -42,6 +43,7 @@ import {
  * rule-sets. v6 adds objects (named things that can be placed in a scene).
  * v7 adds campaigns (picks from the library; scenes are what you Start).
  * v8 adds studio prefs (which campaign to open after "new scene").
+ * v11 adds saved ideas with source-message snapshots.
  * v10 adds conversation metadata; existing session records stay in place.
  * v9 adds realms (City of Dunbaar owns landmarks; focals stay on the place).
  * Templates live independently of any one session so they
@@ -67,7 +69,8 @@ const STUDIO_RESUME_ID = "studio-resume";
 const CONVERSATIONS_STORE = "conversations";
 const ACTIVE_CONVERSATION_ID = "active-conversation";
 const CONVERSATION_INDEX_ID = "conversation-index-v1";
-const DB_VERSION = 10;
+const IDEAS_STORE = "ideas";
+const DB_VERSION = 11;
 
 export type StudioResume = {
   conversationId?: string;
@@ -116,6 +119,8 @@ export class TemplateValidationError extends Error {
 }
 
 function ensureStores(db: IDBDatabase): void {
+  if (!db.objectStoreNames.contains(IDEAS_STORE))
+    db.createObjectStore(IDEAS_STORE, { keyPath: "id" });
   if (!db.objectStoreNames.contains(CONVERSATIONS_STORE))
     db.createObjectStore(CONVERSATIONS_STORE, { keyPath: "id" });
   if (!db.objectStoreNames.contains(STORE_NAME)) {
@@ -781,6 +786,23 @@ export class IndexedDBRepository {
 
   async clearStudioResume(): Promise<void> {
     await this.deleteRecord(PREFS_STORE, STUDIO_RESUME_ID);
+  }
+
+  /** Ideas survive conversation edits, archive and deletion. */
+  async saveIdea(idea: Idea): Promise<void> {
+    await this.putRecord(IDEAS_STORE, IdeaSchema.parse(idea));
+  }
+
+  async listIdeas(): Promise<{ entries: Idea[]; unreadable: number }> {
+    const entries: Idea[] = [];
+    let unreadable = 0;
+    for (const raw of await this.getAllRecords(IDEAS_STORE)) {
+      const parsed = IdeaSchema.safeParse(raw);
+      if (parsed.success) entries.push(parsed.data);
+      else unreadable++;
+    }
+    entries.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.id.localeCompare(b.id));
+    return { entries, unreadable };
   }
 
   private async withDb<T>(work: (db: IDBDatabase) => Promise<T>): Promise<T> {

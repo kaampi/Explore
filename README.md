@@ -50,6 +50,12 @@ Creating a conversation never replaces an existing one. **new scene** in Setting
 
 Snapshots and their library metadata are saved atomically. The library reads a small index rather than loading every history and background image. Rename and archive state survive autosaves. There is no permanent-delete action in the conversation UI.
 
+## Capture ideas
+
+In play, use **Save as idea** on a message or **Capture ideas** to select several messages. Edit the title, description and type (Plot, Character or World), then save. **My ideas** is available from play and the Home sidebar. Ideas keep snapshots of only the selected messages, independent of later edits or archive actions.
+
+**Export JSON** uses StorybookAI’s existing manuscript importer: import the file as a manuscript, then open **Brainstorm**. Each idea becomes a card in a **new, separate idea manuscript**, with no locked facts, synopsis or chapters. Exporting never targets an existing book. To use an idea in an existing manuscript, choose **Copy idea** and paste it into a Brainstorm card there. The JSON includes the saved idea and selected source messages; StorybookAI imports the card text. No StorybookAI changes are required. See [the export contract](docs/idea-export.md).
+
 ## Your space and appearance
 
 The shared header connects SandboxAI with StorybookAI and ComicbookAI. When running locally with `npm start` or `npm run preview`, it checks StorybookAI at `http://localhost:5175/` and ComicbookAI at `http://localhost:5176/`. A verified running app opens directly from its header link; otherwise its presentation offers installation information, Try again, and a configurable address. Checks repeat every 30 seconds while visible and when the window receives focus. Unreachable means the app cannot be reached, not that it is uninstalled. Remote addresses can be opened manually; automatic probes stay on loopback. The hosted/static preview has no local status backend and keeps the presentation available.
@@ -95,7 +101,7 @@ src/
 
 **Rule:** engines never import from `ui/`. Nothing outside `state/` writes session state — everything goes through `StateEngine`.
 
-IndexedDB: session schema version 2; database version 10 includes library stores and a lightweight conversation index. Existing snapshots, including the legacy `demo-session`, are indexed in place without rewriting their history. Unreadable snapshots remain stored and are reported. Invalid records fail load instead of poisoning the DB.
+IndexedDB: session schema version 2; database version 11 includes library stores, a lightweight conversation index and saved ideas. Existing snapshots, including the legacy `demo-session`, are indexed in place without rewriting their history. Unreadable snapshots remain stored and are reported. Invalid records fail load instead of poisoning the DB.
 
 ## Using Ollama
 

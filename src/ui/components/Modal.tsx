@@ -23,7 +23,7 @@ export function Modal({
     <dialog
       ref={ref}
       className={`sb-dialog${wide ? " sb-dialog--wide" : ""}`}
-      onCancel={onClose}
+      onCancel={(event) => { event.preventDefault(); onClose(); }}
       aria-label={title}
       onClick={(event) => {
         if (event.target !== event.currentTarget) return;

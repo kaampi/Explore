@@ -1,3 +1,6 @@
+import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
+import { captureIdea, type Idea } from "../../ideas/IdeaSchema";
+import { IdeaEditor } from "../ideas/IdeaEditor";
 import { useEffect, useRef, useState } from "react";
 import { useEngine } from "../EngineStore";
 import { useAppearance } from "../themes/ThemeProvider";
@@ -108,7 +111,7 @@ function MessageBody({ text }: { text: string }) {
   );
 }
 
-export function ChatPanel({ canSend = true, onCheckConnection }: { canSend?: boolean; onCheckConnection?: () => void }) {
+export function ChatPanel({ canSend = true, onCheckConnection, repo, conversationTitle, onIdeas }: { canSend?: boolean; onCheckConnection?: () => void; repo?: IndexedDBRepository; conversationTitle?: string | undefined; onIdeas?: (() => void) | undefined }) {
   const {
     useSession,
     phase,
@@ -130,6 +133,15 @@ export function ChatPanel({ canSend = true, onCheckConnection }: { canSend?: boo
     travelPlaces
   } = useEngine();
   const session = useSession();
+  const [capturing, setCapturing] = useState(false);
+  const [selectedTurns, setSelectedTurns] = useState<Set<number>>(new Set());
+  const [idea, setIdea] = useState<Idea | null>(null);
+  const [ideaNotice, setIdeaNotice] = useState("");
+  const [ideaError, setIdeaError] = useState("");
+  function capture(turns: Iterable<number>) {
+    try { setIdea(captureIdea(session, turns, conversationTitle || "Your conversation")); setIdeaError(""); }
+    catch (err) { setIdeaError(err instanceof Error ? err.message : "Could not capture this idea."); }
+  }
   const speakingAs = primaryCharacter(session);
   const characterName = speakingAs ? speakingAs.name : "someone";
   const toldBy = narratorLabel(session) ?? characterName;
@@ -296,7 +308,14 @@ export function ChatPanel({ canSend = true, onCheckConnection }: { canSend?: boo
   }
 
   return (
-    <div className="chat-panel">
+    <div className={repo ? "chat-panel chat-panel--ideas" : "chat-panel"}>
+      {repo && <div className="sb-idea-capture">
+        {capturing ? <><span>{selectedTurns.size} selected</span><button type="button" disabled={busy || !selectedTurns.size} onClick={() => capture(selectedTurns)}>Save selection as idea</button><button type="button" onClick={() => { setCapturing(false); setSelectedTurns(new Set()); }}>Cancel selection</button></> : <button type="button" disabled={busy || !conversation.length} onClick={() => { setCapturing(true); setIdeaNotice(""); }}>Capture ideas</button>}
+        {onIdeas && <button type="button" disabled={busy} onClick={onIdeas}>My ideas</button>}
+        {ideaNotice && <span role="status">{ideaNotice}</span>}{ideaError && <span role="alert">{ideaError}</span>}
+      </div>}
+      {idea && repo && <IdeaEditor idea={idea} repo={repo} onClose={() => setIdea(null)} onSaved={() => { setIdea(null); setCapturing(false); setSelectedTurns(new Set()); setIdeaNotice("Idea saved in My ideas."); }} />}
+
       <div className={backdrop.pictures.length > 0 ? "chat-stage chat-stage--backdrop" : "chat-stage"}>
         {backdrop.pictures.length > 0 ? (
           <ChatBackdrop
@@ -347,10 +366,12 @@ export function ChatPanel({ canSend = true, onCheckConnection }: { canSend?: boo
               }`}
             >
               <span className="message__attribution">
+                {repo && capturing && <label className="sb-idea-select"><input type="checkbox" aria-label={`Select message ${turn.turn} for idea`} checked={selectedTurns.has(turn.turn)} disabled={busy} onChange={event => { setSelectedTurns(current => { const next = new Set(current); if (event.target.checked) next.add(turn.turn); else next.delete(turn.turn); return next; }); }} />Select</label>}
                 <Dot kind={turn.role === "player" ? "player" : "ai"} />
                 {speakerLabel(turn, session, characterName)}
                 {!isEditing && !busy && (
                   <>
+                    {repo && <button type="button" className="message__act" onClick={() => capture([turn.turn])}>Save as idea</button>}
                     <button
                       type="button"
                       className="message__act"
