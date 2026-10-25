@@ -339,6 +339,11 @@
 .sb-button:hover {
   filter: brightness(1.08);
 }
+.sb-button--danger {
+  background: #a32d3b;
+  color: #fff !important;
+}
+.sb-delete-conversation.sb-link { color: var(--accent-danger) !important; }
 .sb-button--cream {
   background: #e8eddc;
   color: #294738 !important;

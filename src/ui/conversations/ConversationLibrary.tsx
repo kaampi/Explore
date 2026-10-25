@@ -10,6 +10,7 @@ export function ConversationCard({
   onOpen,
   onRename,
   onArchive,
+  onDelete,
 }: {
   entry: ConversationEntry;
   compact?: boolean;
@@ -17,6 +18,7 @@ export function ConversationCard({
   onOpen: (id: string) => void;
   onRename?: (entry: ConversationEntry) => void;
   onArchive?: (id: string, archived: boolean) => void;
+  onDelete?: (entry: ConversationEntry) => void;
 }) {
   const { library } = useAppearance();
   const theme =
@@ -78,6 +80,7 @@ export function ConversationCard({
             {entry.archived ? "Restore" : "Archive"}
           </button>
         )}
+        {onDelete && <button type="button" className="sb-link sb-delete-conversation" disabled={busy} aria-label={`Delete ${entry.title}`} onClick={() => onDelete(entry)}>Delete</button>}
       </div>
     </article>
   );
@@ -90,6 +93,7 @@ export function ConversationLibrary({
   onOpen,
   onRename,
   onArchive,
+  onDelete,
   onNew,
 }: {
   entries: ConversationEntry[];
@@ -98,11 +102,13 @@ export function ConversationLibrary({
   onOpen: (id: string) => void;
   onRename: (id: string, title: string) => Promise<void>;
   onArchive: (id: string, archived: boolean) => void;
+  onDelete: (id: string) => Promise<void>;
   onNew: () => void;
 }) {
   const [archived, setArchived] = useState(false);
   const [search, setSearch] = useState("");
   const [renaming, setRenaming] = useState<ConversationEntry | null>(null);
+  const [deleting, setDeleting] = useState<ConversationEntry | null>(null);
   const [title, setTitle] = useState("");
   const [error, setError] = useState<string | null>(null);
   const visible = entries.filter(
@@ -177,6 +183,7 @@ export function ConversationLibrary({
               setError(null);
             }}
             onArchive={onArchive}
+            onDelete={entry => { setDeleting(entry); setError(null); }}
           />
         ))}
       </div>
@@ -252,6 +259,18 @@ export function ConversationLibrary({
           </form>
         </Modal>
       )}
+      {deleting && <Modal title="Delete conversation permanently?" onClose={() => { if (!busy) setDeleting(null); }}>
+        <p>Delete <strong>{deleting.title}</strong> and its entire conversation history? This cannot be undone.</p>
+        <p className="sb-muted">Your characters, worlds, saved ideas and shared audio tracks stay in your library. To keep this conversation for later, cancel and choose Archive instead.</p>
+        {error && <p className="sb-error" role="alert">{error}</p>}
+        <div className="sb-dialog__actions">
+          <button type="button" className="sb-link" disabled={busy} autoFocus onClick={() => setDeleting(null)}>Cancel</button>
+          <button type="button" className="sb-button sb-button--danger" disabled={busy} onClick={() => {
+            setError(null);
+            void onDelete(deleting.id).then(() => setDeleting(null)).catch((err: unknown) => setError(err instanceof Error ? err.message : "Could not delete this conversation. Try again."));
+          }}>{busy ? "Deleting…" : "Delete permanently"}</button>
+        </div>
+      </Modal>}
     </main>
   );
 }

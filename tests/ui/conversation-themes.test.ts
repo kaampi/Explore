@@ -9,6 +9,7 @@ import {
 import {
   activatePlayTheme,
   applyPlayTheme,
+  removeConversationTheme,
 } from "../../src/ui/themes/conversationTheme";
 import {
   loadThemeLibrary,
@@ -17,6 +18,16 @@ import {
 beforeEach(() => vi.stubGlobal("indexedDB", new IDBFactory()));
 afterEach(() => vi.unstubAllGlobals());
 describe("per-conversation appearance", () => {
+  it("removes only the deleted conversation's appearance", () => {
+    let library = activatePlayTheme(defaultThemeLibrary(), "deleted");
+    library = applyPlayTheme(library, PRESET_THEMES[1]!, "deleted");
+    library = activatePlayTheme(library, "kept");
+    const result = removeConversationTheme(library, "deleted");
+    expect(result.conversations).not.toHaveProperty("deleted");
+    expect(result.conversations.kept).toEqual(library.conversations.kept);
+    expect(result.defaultPlay).toEqual(library.defaultPlay);
+    expect(result.saved).toEqual(library.saved);
+  });
   it("keeps a theme and custom background for each conversation across a reload", async () => {
     const forest = {
       ...PRESET_THEMES[1]!,

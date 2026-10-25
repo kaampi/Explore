@@ -27,6 +27,31 @@ beforeEach(() => {
 });
 
 describe("conversation library persistence", () => {
+  it("deletes history, metadata and matching active/return pointers while retaining other conversations", async () => {
+    await repo.createConversation(session("kept"));
+    await repo.createConversation(session("deleted"));
+    await repo.saveStudioResume({ conversationId: "deleted", campaignId: "world", sceneId: "scene", handoff: "Private conversation memory" });
+    await repo.deleteSession("deleted");
+    expect(await repo.listSessionIds()).toEqual(["kept"]);
+    expect((await repo.listConversations()).entries.map(entry => entry.id)).toEqual(["kept"]);
+    await expect(repo.loadSession("deleted")).rejects.toThrow();
+    expect(await repo.loadActiveConversationId()).toBeNull();
+    expect(await repo.loadStudioResume()).toBeNull();
+    expect((await loadExistingSession(repo))?.id).toBe("kept");
+    await repo.close();
+  });
+  it("deletes an archived history without clearing another conversation's active and return pointers", async () => {
+    await repo.createConversation(session("archived"));
+    await repo.archiveConversation("archived", true);
+    await repo.createConversation(session("kept"));
+    const resume = { conversationId: "kept", campaignId: "world", sceneId: "next" };
+    await repo.saveStudioResume(resume);
+    await repo.deleteSession("archived");
+    expect(await repo.loadActiveConversationId()).toBe("kept");
+    expect(await repo.loadStudioResume()).toEqual(resume);
+    expect((await repo.listConversations()).entries.map(entry => entry.id)).toEqual(["kept"]);
+    await repo.close();
+  });
   it("rejects an invalid autosave without replacing the existing history or metadata", async () => {
     const original = session("first");
     await repo.createConversation(original);

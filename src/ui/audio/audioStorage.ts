@@ -100,3 +100,7 @@ export async function deleteAudioTrack(id: string): Promise<void> {
     };
   });
 }
+
+export async function deleteAudioPreferences(conversationId: string): Promise<void> {
+  return transaction(["settings"], "readwrite", tx => { tx.objectStore("settings").delete(conversationId); });
+}

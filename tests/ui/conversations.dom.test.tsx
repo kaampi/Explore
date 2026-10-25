@@ -8,6 +8,8 @@ import App from "../../src/ui/App";
 import { createSessionFromSetup } from "@session/createSession";
 import { newCampaignTemplate } from "@library/LibrarySchema";
 import { IndexedDBRepository } from "@persistence/IndexedDBRepository";
+import { loadThemeLibrary } from "../../src/ui/themes/themeStorage";
+import { captureIdea } from "../../src/ideas/IdeaSchema";
 
 let root: Root, container: HTMLDivElement, reply: string;
 function button(label: string): HTMLButtonElement {
@@ -173,6 +175,72 @@ afterEach(async () => {
 });
 
 describe("conversation library journeys", () => {
+  it("confirms deletion by name, preserves on cancel/failure, and never restores the deleted active conversation", async () => {
+    await mount(); await create("Ari");
+    await send("A private note.", "Ari keeps it safe.");
+    await theme("Forest dusk");
+    await input(container.querySelector<HTMLInputElement>('[aria-label="Your message"]')!, "Unsent private draft");
+    await home();
+    await click(button("All conversations →"));
+    await waitFor(() => !!container.querySelector(".sb-conversation-library"));
+    const repo = new IndexedDBRepository();
+    const id = (await repo.listSessionIds())[0]!;
+    await click(named("Delete Conversation with Ari"));
+    expect(container.querySelector("dialog")?.textContent).toContain("Conversation with Ari");
+    expect(container.querySelector("dialog")?.textContent).toContain("cannot be undone");
+    await click(button("Cancel"));
+    expect(await repo.listSessionIds()).toEqual([id]);
+    await click(named("Delete Conversation with Ari"));
+    const remove = vi.spyOn(IndexedDBRepository.prototype, "deleteSession").mockRejectedValueOnce(new Error("Storage unavailable"));
+    await click(button("Delete permanently"));
+    await waitFor(() => container.querySelector("dialog")?.textContent?.includes("Storage unavailable") === true);
+    expect(await repo.listSessionIds()).toEqual([id]);
+    expect(sessionStorage.getItem(`sandboxai-draft:${id}`)).toBe("Unsent private draft");
+    await click(button("Delete permanently"));
+    await waitFor(() => container.querySelectorAll(".sb-conversation-card").length === 0 && !container.querySelector("dialog"));
+    expect(remove).toHaveBeenCalledTimes(2);
+    expect(await repo.listSessionIds()).toEqual([]);
+    expect(await repo.loadActiveConversationId()).toBeNull();
+    expect(sessionStorage.getItem(`sandboxai-draft:${id}`)).toBeNull();
+    await click(named("SandboxAI home"));
+    await waitFor(() => !!container.querySelector(".sb-home-connection"));
+    expect(container.textContent).not.toContain("Continue exploring →");
+    expect(await repo.listSessionIds()).toEqual([]);
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 350)); });
+    expect((await loadThemeLibrary())?.conversations).not.toHaveProperty(id);
+    await act(async () => { root.unmount(); });
+    root = createRoot(container); await mount();
+    expect(container.textContent).not.toContain("Continue exploring →");
+    expect(await repo.listSessionIds()).toEqual([]);
+    await repo.close();
+  }, 20000);
+
+  it("deletes archived conversations while preserving the current conversation, library characters and captured ideas", async () => {
+    await mount(); await create("Ari"); await send("A clue.", "Ari points to the map."); await home();
+    const repo = new IndexedDBRepository();
+    const deleted = (await repo.listSessionIds())[0]!;
+    const original = await repo.loadSession(deleted);
+    const idea = captureIdea(original, new Set([(original.conversation[0] as { turn: number }).turn]), "A saved clue");
+    await repo.saveIdea(idea);
+    await create("Elara"); await home();
+    await click(button("All conversations →"));
+    await waitFor(() => !!container.querySelector(".sb-conversation-library"));
+    await click(named("Archive Conversation with Ari"));
+    await waitFor(() => container.textContent?.includes("Archived (1)") === true);
+    await click(button("Archived (1)"));
+    await click(named("Delete Conversation with Ari"));
+    await click(button("Delete permanently"));
+    await waitFor(() => container.textContent?.includes("Archived (0)") === true);
+    expect(await repo.listSessionIds()).toHaveLength(1);
+    expect((await repo.listCharacters()).map(person => person.name).sort()).toEqual(["Ari", "Elara"]);
+    expect((await repo.listIdeas()).entries[0]).toEqual(idea);
+    await click(button("Conversations (1)"));
+    await click(named("Continue Conversation with Elara"));
+    await waitFor(() => !!container.querySelector('[aria-label="Your message"]'));
+    expect((await repo.loadSession((await repo.listSessionIds())[0]!)).characters.elara?.name).toBe("Elara");
+    await repo.close();
+  }, 20000);
+
   it("keeps the old conversation when starting a new scene from Settings", async () => {
     await mount();
     await create("Ari");

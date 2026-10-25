@@ -15,6 +15,7 @@ import { AppSwitcher } from "./home/AppSwitcher";
 import { PlayWorkspace } from "./home/PlayWorkspace";
 import { ConversationLibrary } from "./conversations/ConversationLibrary";
 import { ThemeProvider, useAppearance } from "./themes/ThemeProvider";
+import { deleteAudioPreferences } from "./audio/audioStorage";
 import { AppearanceDialog } from "./themes/AppearanceDialog";
 import {
   getRepository,
@@ -62,6 +63,7 @@ function sceneResume(session: Session): StudioResume | null {
     : null;
 }
 function SandboxApp() {
+  const { forgetConversation } = useAppearance();
   const [repo] = useState(() => getRepository());
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const live = useRef<Session | null>(null);
@@ -212,6 +214,26 @@ function SandboxApp() {
   async function renameConversation(id: string, title: string) {
     await action(async () => {
       await repo.renameConversation(id, title);
+      await refreshCatalog();
+    });
+  }
+  async function deleteConversation(id: string) {
+    await action(async () => {
+      await persistCurrent();
+      await repo.deleteSession(id);
+      // Detach the live engine before any further awaits: navigation must not
+      // autosave the deleted conversation back into storage.
+      if (live.current?.id === id) {
+        setLive(null);
+        setGeneration(value => value + 1);
+      }
+      setResume(current => current?.conversationId === id || (id === UI_SESSION_ID && current && !current.conversationId) ? null : current);
+      setCatalog(current => ({ ...current, entries: current.entries.filter(entry => entry.id !== id) }));
+      forgetConversation(id);
+      let cleanupFailed = false;
+      try { sessionStorage.removeItem(`sandboxai-draft:${id}`); } catch { cleanupFailed = true; }
+      try { await deleteAudioPreferences(id); } catch { cleanupFailed = true; }
+      if (cleanupFailed) setOperationError("Conversation deleted. Some local playback preferences or draft data could not be cleared.");
       await refreshCatalog();
     });
   }
@@ -425,6 +447,7 @@ function SandboxApp() {
               busy={working || phase === "streaming"}
               onOpen={(id) => report(openConversation(id))}
               onRename={renameConversation}
+              onDelete={deleteConversation}
               onArchive={(id, archived) =>
                 report(archiveConversation(id, archived))
               }

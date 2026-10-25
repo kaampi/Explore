@@ -504,7 +504,13 @@ export class IndexedDBRepository {
         if (active.result?.conversationId === id)
           tx.objectStore(PREFS_STORE).delete(ACTIVE_CONVERSATION_ID);
       };
+      const resume = tx.objectStore(PREFS_STORE).get(STUDIO_RESUME_ID);
+      resume.onsuccess = () => {
+        if (resume.result?.conversationId === id || (id === "demo-session" && resume.result && !resume.result.conversationId))
+          tx.objectStore(PREFS_STORE).delete(STUDIO_RESUME_ID);
+      };
       tx.oncomplete = () => resolve();
+      tx.onabort = () => reject(tx.error ?? new Error(`Failed to delete session ${id}.`));
       tx.onerror = () =>
         reject(tx.error ?? new Error(`Failed to delete session ${id}.`));
     });

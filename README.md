@@ -48,7 +48,7 @@ Every new conversation gets a unique ID. Home shows recent conversations; **My c
 
 Creating a conversation never replaces an existing one. **new scene** in Settings keeps the current conversation and opens scene setup. If you explicitly continue into another campaign scene, its handoff can be drafted from the conversation you just left. Runtime story flags stay with their conversation and are no longer written back into the reusable campaign template; separate explorations start from the authored campaign settings.
 
-Snapshots and their library metadata are saved atomically. The library reads a small index rather than loading every history and background image. Rename and archive state survive autosaves. There is no permanent-delete action in the conversation UI.
+Snapshots and their library metadata are saved atomically. The library reads a small index rather than loading every history and background image. Rename and archive state survive autosaves. **Delete** is available in both Conversations and Archived, with a confirmation naming the conversation. Permanent deletion removes the history, catalog entry, matching active/return pointers, draft and conversation-specific appearance/playback preferences. Shared characters, worlds, captured ideas and audio tracks remain. Archive is still the reversible alternative.
 
 ## Your soundtrack
 

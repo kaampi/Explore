@@ -1,5 +1,11 @@
 import type { PlayTheme, ThemeLibrary } from "./theme";
 
+export function removeConversationTheme(library: ThemeLibrary, id: string): ThemeLibrary {
+  const conversations = { ...library.conversations };
+  delete conversations[id];
+  return { ...library, conversations };
+}
+
 export function applyPlayTheme(
   library: ThemeLibrary,
   theme: PlayTheme,

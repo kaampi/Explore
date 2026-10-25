@@ -1,11 +1,21 @@
 import "fake-indexeddb/auto";
 import { IDBFactory } from "fake-indexeddb";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
-import { addAudioTrack, defaultAudioPreferences, deleteAudioTrack, loadAudioBlob, loadAudioLibrary, MAX_AUDIO_BYTES, saveAudioPreferences } from "../../src/ui/audio/audioStorage";
+import { addAudioTrack, defaultAudioPreferences, deleteAudioTrack, deleteAudioPreferences, loadAudioBlob, loadAudioLibrary, MAX_AUDIO_BYTES, saveAudioPreferences } from "../../src/ui/audio/audioStorage";
 
 beforeEach(() => vi.stubGlobal("indexedDB", new IDBFactory()));
 afterEach(() => vi.unstubAllGlobals());
 describe("local soundtrack library", () => {
+  it("clears conversation playback preferences without deleting shared audio or other selections", async () => {
+    const track = await addAudioTrack(new File(["music"], "bridge.mp3"));
+    await saveAudioPreferences({ ...defaultAudioPreferences("deleted"), trackId: track.id });
+    const kept = { ...defaultAudioPreferences("kept"), trackId: track.id, volume: .2 };
+    await saveAudioPreferences(kept);
+    await deleteAudioPreferences("deleted");
+    expect((await loadAudioLibrary("deleted")).preferences).toEqual(defaultAudioPreferences("deleted"));
+    expect(await loadAudioLibrary("kept")).toEqual({ tracks: [track], preferences: kept });
+    expect(await (await loadAudioBlob(track.id)).text()).toBe("music");
+  });
   it("stores one shared blob and independent conversation preferences across reloads", async () => {
     const track = await addAudioTrack(new File(["own music"], "Bridge.mp3", { type: "audio/mpeg" }));
     const first = { ...defaultAudioPreferences("first"), trackId: track.id, volume: .25, loop: false };

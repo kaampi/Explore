@@ -14,13 +14,14 @@ import {
   type PlayTheme,
   type ThemeLibrary,
 } from "./theme";
-import { activatePlayTheme, applyPlayTheme } from "./conversationTheme";
+import { activatePlayTheme, applyPlayTheme, removeConversationTheme } from "./conversationTheme";
 import { loadThemeLibrary, saveThemeLibrary } from "./themeStorage";
 
 interface Appearance {
   library: ThemeLibrary;
   conversationId: string | null;
   activateConversation: (id: string | null) => void;
+  forgetConversation: (id: string) => void;
   ready: boolean;
   error: string | null;
   update: (patch: Partial<PlayTheme>) => void;
@@ -82,6 +83,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     library,
     conversationId,
     activateConversation,
+    forgetConversation: id => setLibrary(state => removeConversationTheme(state, id)),
     ready,
     error,
     update: (patch) =>
