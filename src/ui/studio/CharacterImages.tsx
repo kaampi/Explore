@@ -69,7 +69,7 @@ export function CharacterImages({ characterId, repo, portrait, onPortrait }: { c
     {open && <div role="dialog" aria-modal="true" aria-label="Morph Studio" style={{position:"fixed",inset:0,zIndex:10000,background:"rgba(0,0,0,.8)",display:"flex",alignItems:"center",justifyContent:"center"}}>
       <div style={{width:"90vw",height:"90vh",overflow:"auto",background:"#1c2524",color:"#f5f5f5",padding:20,borderRadius:12,boxSizing:"border-box"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><h2>Morph Studio</h2><button type="button" onClick={()=>{setOpen(false);void repo.loadCharacterMorph(characterId).then(raw=>setProfile(normalized(raw)));}}>Close ✕</button></div>
-        <MorphStudio characterId={characterId} repo={repo} gallery={gallery.filter(g=>g.kind==="emotion" && g.emotion.trim()).map(g=>({name:g.emotion.trim().toLowerCase(),image:g.image}))}/>
+        <MorphStudio characterId={characterId} repo={repo} gallery={gallery.filter(g=>g.kind==="emotion").map(g=>({name:(g.emotion.trim() || g.name.trim()).toLowerCase(),image:g.image}))}/>
       </div>
     </div>}
   </section>;
