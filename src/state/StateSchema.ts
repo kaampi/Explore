@@ -454,6 +454,8 @@ export const PhysicalRelationSchema = z.object({
   target: z.string().min(1).max(100),
   subjectPart: z.string().max(80).optional(),
   targetPart: z.string().max(80).optional(),
+  /** Only explicit exclusive grips reserve a body part; legacy relations remain nonexclusive. */
+  exclusive: z.boolean().optional(),
   note: z.string().max(300).optional()
 });
 export type PhysicalRelation = z.infer<typeof PhysicalRelationSchema>;
