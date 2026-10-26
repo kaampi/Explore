@@ -4,6 +4,7 @@
   "description": "AI Sandbox Engine — modular, provider-agnostic sandbox platform for interactive AI-driven scenarios (Master Spec v2.2).",
   "type": "module",
   "private": true,
+  "license": "AGPL-3.0-or-later",
   "scripts": {
     "dev": "vite",
     "start": "vite --open",

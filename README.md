@@ -10,6 +10,10 @@ Living status (what is shipped vs still open) lives in [`project_spec.md`](proje
 
 UI is English. Engines are framework-free TypeScript; React (`src/ui/`) consumes them.
 
+## License
+
+SandboxAI is licensed under the **GNU Affero General Public License, version 3 or later** (`AGPL-3.0-or-later`). See [Licens.md](Licens.md) for the full license and warranty disclaimer. Third-party material retains its own licenses. Independent user-created or imported content is not automatically covered by the application's license.
+
 ## Stack
 
 - **TypeScript (strict)** — shared contract across module boundaries.
