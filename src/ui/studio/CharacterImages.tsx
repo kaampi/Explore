@@ -16,6 +16,7 @@ const normalized = (raw: unknown): StoredMorph => {
 export function CharacterImages({ characterId, repo, portrait, onPortrait }: { characterId: string; repo: IndexedDBRepository; portrait: string; onPortrait: (src: string) => Promise<void> }) {
   const [profile, setProfile] = useState<StoredMorph>(blank);
   const [open, setOpen] = useState(false);
+  const [saveRequest,setSaveRequest] = useState<{id:number;mode:"draft"|"profile"}|null>(null);
   const [status, setStatus] = useState("");
   const picker = useRef<HTMLInputElement>(null);
   useEffect(() => { let alive = true; void repo.loadCharacterMorph(characterId).then(raw => { if (alive) setProfile(normalized(raw)); }).catch(() => { if (alive) setStatus("Could not load images."); }); return () => { alive = false; }; }, [characterId, repo]);
@@ -68,8 +69,8 @@ export function CharacterImages({ characterId, repo, portrait, onPortrait }: { c
     {status && <p role="status">{status}</p>}
     {open && <div role="dialog" aria-modal="true" aria-label="Morph Studio" style={{position:"fixed",inset:0,zIndex:10000,background:"rgba(0,0,0,.8)",display:"flex",alignItems:"center",justifyContent:"center"}}>
       <div style={{width:"90vw",height:"90vh",overflow:"auto",background:"#1c2524",color:"#f5f5f5",padding:20,borderRadius:12,boxSizing:"border-box"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><h2>Morph Studio</h2><button type="button" onClick={()=>{setOpen(false);void repo.loadCharacterMorph(characterId).then(raw=>setProfile(normalized(raw)));}}>Close ✕</button></div>
-        <MorphStudio characterId={characterId} repo={repo} gallery={gallery.filter(g=>g.kind==="emotion").map(g=>({name:(g.emotion.trim() || g.name.trim()).toLowerCase(),image:g.image}))}/>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><h2>Morph Studio</h2><div style={{display:"flex",gap:8,alignItems:"center"}}><button type="button" onClick={()=>setSaveRequest(p=>({id:(p?.id??0)+1,mode:"draft"}))}>Save draft</button><button type="button" onClick={()=>setSaveRequest(p=>({id:(p?.id??0)+1,mode:"profile"}))}>Save profile</button><button type="button" onClick={()=>{setOpen(false);void repo.loadCharacterMorph(characterId).then(raw=>setProfile(normalized(raw)));}}>Close ✕</button></div></div>
+        <MorphStudio characterId={characterId} repo={repo} saveRequest={saveRequest} gallery={gallery.filter(g=>g.kind==="emotion").map(g=>({name:(g.emotion.trim() || g.name.trim()).toLowerCase(),image:g.image}))}/>
       </div>
     </div>}
   </section>;
