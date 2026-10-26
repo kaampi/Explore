@@ -34,7 +34,7 @@ function warpTriangle(ctx: CanvasRenderingContext2D, image: HTMLImageElement, so
   ctx.save();ctx.beginPath();ctx.moveTo(d[0],d[1]);ctx.lineTo(e[0],e[1]);ctx.lineTo(f[0],f[1]);ctx.closePath();ctx.clip();
   ctx.transform(A,B,C,D,E,F);ctx.drawImage(image,0,0,width,height);ctx.restore();
 }
-export function MorphStudio({ characterId, repo, gallery = [] }: { characterId: string; repo: IndexedDBRepository; gallery?: { name: string; image: string }[] }) {
+export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { characterId: string; repo: IndexedDBRepository; gallery?: { name: string; image: string }[]; saveRequest?: { id: number; mode: "draft" | "profile" } | null }) {
   const key = "sandboxai:morph:"+characterId;
   const [profile,setProfile] = useState<Profile>(() => load(key));
   const [source,setSource] = useState(0);
@@ -49,6 +49,7 @@ export function MorphStudio({ characterId, repo, gallery = [] }: { characterId: 
   const [showMesh,setShowMesh] = useState(true);
   const [eyeEditMode,setEyeEditMode] = useState(false);
   const [playing,setPlaying] = useState(false);
+  const handledSaveRequest = useRef(0);
   const eyeDragging = useRef<{expression:number; eye:number}|null>(null);
   const meshTriangles = profile.triangles ?? (profile.expressions[0]?.points.length === 17 ? legacyTriangles : profile.expressions[0]?.points.length === 57 ? originalTriangles : triangles);
   const canvases = [useRef<HTMLCanvasElement>(null),useRef<HTMLCanvasElement>(null),useRef<HTMLCanvasElement>(null)] as const;
@@ -137,6 +138,7 @@ export function MorphStudio({ characterId, repo, gallery = [] }: { characterId: 
       setMessage(active ? "Morph profile saved and enabled for future playback (chat integration pending)." : "Morph draft saved in IndexedDB.");
     } catch (err) { setMessage(err instanceof Error ? err.message : "Could not save morph profile."); }
   }
+  useEffect(()=>{if(saveRequest && saveRequest.id!==handledSaveRequest.current){handledSaveRequest.current=saveRequest.id;void save(saveRequest.mode==="profile");}},[saveRequest]);
   function addMeshPoint(index: number, x: number, y: number) {
     const expression=profile.expressions[index];if(!expression)return;
     const barycentric=(a:Point,b:Point,c:Point):[number,number,number] | null=>{
@@ -257,7 +259,7 @@ export function MorphStudio({ characterId, repo, gallery = [] }: { characterId: 
           {i===2 && <div style={{display:"grid",gap:6,padding:"8px 12px",borderTop:"1px solid #596478"}}><button type="button" style={{justifySelf:"start"}} onClick={()=>setPlaying(v=>!v)}>{playing?"Pause":"Play ↔"}</button>{sliderRow("Transition",mix,0,100,"%",n=>{setPlaying(false);setMix(n);})}</div>}
         </div>)}
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"minmax(175px,.8fr) minmax(300px,1.5fr) minmax(330px,1.7fr) minmax(265px,1.25fr) auto",gap:20,alignItems:"start",marginTop:16,padding:"14px 0",borderTop:"1px solid var(--sb-border, #566)"}}>
+      <div style={{display:"grid",gridTemplateColumns:"minmax(175px,.8fr) minmax(300px,1.5fr) minmax(330px,1.7fr) minmax(265px,1.25fr)",gap:20,alignItems:"start",marginTop:16,padding:"14px 0",borderTop:"1px solid var(--sb-border, #566)"}}>
         <div style={{display:"grid",gap:14,paddingTop:7}}>
           <label style={{display:"flex",gap:8,alignItems:"center"}}><input type="checkbox" checked={profile.eyeEnabled??false} onChange={e=>setProfile(p=>({...p,active:false,eyeEnabled:e.target.checked}))}/> Eye correction</label>
           <label style={{display:"flex",gap:8,alignItems:"center"}}><input type="checkbox" checked={profile.eyeGuides??true} onChange={e=>setProfile(p=>({...p,eyeGuides:e.target.checked}))}/> Show eye regions</label>
@@ -271,10 +273,7 @@ export function MorphStudio({ characterId, repo, gallery = [] }: { characterId: 
           {sliderRow("Eye transition duration",profile.eyeDuration??30,5,100,"%",n=>setProfile(p=>({...p,active:false,eyeDuration:n})))}
         </div>
         <div>{sliderRow("Eye strength",profile.eyeStrength??80,0,100,"%",n=>setProfile(p=>({...p,active:false,eyeStrength:n})))}</div>
-        <div style={{display:"flex",gap:8,justifyContent:"flex-end",flexWrap:"wrap"}}>
-          <button type="button" onClick={()=>void save(false)}>Save draft</button>
-          <button type="button" onClick={()=>void save(true)}>Save profile</button>
-        </div>
+
       </div>
     </>}
     {message && <p role="status">{message}</p>}
