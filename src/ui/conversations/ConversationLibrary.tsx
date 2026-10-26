@@ -47,7 +47,7 @@ export function ConversationCard({
         </span>
       </div>
       <div className="sb-conversation-actions">
-        {!entry.archived && (
+        {!entry.archived && !entry.importQuarantined && (
           <button
             type="button"
             className={compact ? "sb-link" : "sb-button"}
@@ -69,7 +69,8 @@ export function ConversationCard({
             Rename
           </button>
         )}
-        {onArchive && (
+        {entry.importQuarantined && <span className="sb-muted">Imported archive · read-only</span>}
+        {onArchive && !entry.importQuarantined && (
           <button
             type="button"
             className="sb-link"
