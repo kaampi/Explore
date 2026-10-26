@@ -11,7 +11,7 @@ export function OllamaModelPicker({
   onChange: (model: string) => void;
   variant?: "chip" | "field";
 }) {
-  const { discovery, chooseModel } = useConnection();
+  const { discovery, chooseModel, backend } = useConnection();
   function change(value: string) {
     chooseModel(value);
     onChange(value);
@@ -19,7 +19,7 @@ export function OllamaModelPicker({
   const models = discovery.models;
   const input = models.length ? (
     <select
-      aria-label="Ollama model"
+      aria-label="AI model"
       className={variant === "chip" ? "chip__field" : undefined}
       value={installedModelName(model, models) ?? ""}
       onChange={(event) => change(event.target.value)}
@@ -49,11 +49,11 @@ export function OllamaModelPicker({
       className="chip"
       title={
         discovery.state === "available"
-          ? "Your Ollama model"
-          : "Use Set up AI to connect Ollama"
+          ? "Your AI model"
+          : "Use Set up AI to connect your AI engine"
       }
     >
-      ollama: {input}
+      {backend}: {input}
     </label>
   );
 }
