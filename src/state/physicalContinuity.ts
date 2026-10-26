@@ -66,7 +66,7 @@ export function applyPhysicalChange(
       (other.relation === "holding" || other.relation === "restraining") &&
       other.subject === relation.subject &&
       other.subjectPart === relation.subjectPart &&
-      (other.target !== relation.target || other.targetPart !== relation.targetPart)
+      other.id !== relation.id
     );
     if (conflict) return {
       ok: false,
@@ -83,7 +83,7 @@ export function describePhysicalState(state: PhysicalState | undefined, limit = 
   if (!state) return [];
   const lines = Object.entries(state.stances).map(([actor, stance]) => `${actor}: ${stance}`);
   for (const r of state.relations) {
-    lines.push(`${r.subject}${r.subjectPart ? `.${r.subjectPart}` : ""} ${r.relation.replaceAll("_", " ")} ${r.target}${r.targetPart ? `.${r.targetPart}` : ""}${r.note ? ` (${r.note})` : ""}`);
+    lines.push(`${r.subject}${r.subjectPart ? `.${r.subjectPart}` : ""} ${r.relation.replaceAll("_", " ")} ${r.target}${r.targetPart ? `.${r.targetPart}` : ""}${r.exclusive && (r.relation === "holding" || r.relation === "restraining") && r.subjectPart ? " [exclusive: part occupied until release]" : ""}${r.note ? ` (${r.note})` : ""}`);
   }
   return lines.slice(0, Math.max(0, limit));
 }
