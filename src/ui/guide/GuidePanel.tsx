@@ -7,12 +7,15 @@ export const GUIDE_TOPICS: Topic[] = [
   { id: "start", label: "Getting started", title: "Your first conversation", intro: "You only need a local AI and a character. You can build a whole world later.", steps: [
     { title: "1. Connect your AI", body: "Open Set up AI on the home page. Choose Ollama or Strata, start its local server, and select an available chat model. If you use Strata, check the API address shown in its settings." },
     { title: "2. Pick a character", body: "Choose a character on the home page, create one, or try the built-in example. A name and a short personality are enough to begin." },
-    { title: "3. Start talking", body: "Write what you say or do. The AI replies as the characters and describes what happens next. Your conversation is saved locally." }
+    { title: "3. Leave the extras empty", body: "For a simple chat, leave Place, Rule-set and Voice set to None. You do not need a world, a storyline or a prepared scene." },
+    { title: "4. Start talking", body: "Start the conversation and write what you say or do. The AI replies as the characters and describes what happens next. Your conversation is saved locally." },
+    { title: "Free Chat — God Mode", body: "In a free chat without a rule-set or storyline, you can steer the story directly. Change the setting, introduce an event or tell the AI to take the story in a new direction. For example: ‘Ignore the previous scene. We are now on a spaceship.’ This kind of creative prompt injection is welcome in God Mode. It changes the story, not the app’s security rules or technical limits. The AI may not always follow your instructions perfectly." }
   ] },
   { id: "play", label: "Playing", title: "Play your way", intro: "You decide what your character attempts. The AI describes the response, while SandboxAI keeps track of important facts.", steps: [
     { title: "Adventure", body: "Follow a prepared story with its rules and scenes. Your choices still matter." },
     { title: "Free exploration", body: "Explore a world using its rules, without having to follow a fixed storyline." },
     { title: "Fan fiction", body: "Meet familiar characters and explore their world more freely, without a fixed storyline or game rules." },
+    { title: "Free Chat and God Mode", body: "If you start with just a character and no rules or storyline, you can give direct creative instructions to change the scene or direction. This is intentional, but it does not bypass application security or technical limits." },
     { title: "Actions and dialogue", body: "Write naturally: ‘I ask where the road leads’ or ‘I open the door.’ If an action is physically impossible, the story should not treat it as successful." }
   ] },
   { id: "characters", label: "Characters", title: "Bring characters to life", intro: "A character can be simple or detailed. Start small and add information when you need it.", steps: [
