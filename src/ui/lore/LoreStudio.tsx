@@ -5,6 +5,7 @@ import type { Lorebook } from "../../lore/LorebookSchema";
 import { IMPORT_FORMAT_LABELS, readWorldFile, type ImportFormat } from "../../lore/worldImports";
 import { materializeWorld, selectedWorldEntries } from "../../lore/materializeWorld";
 import { LoreReview } from "./LoreReview";
+import { aventurasLibraryPreview } from "../../lore/aventurasLibrary";
 import { downloadJson } from "../studio/studioShared";
 
 export function LoreStudio({ repo }: { repo: IndexedDBRepository }) {
@@ -53,6 +54,22 @@ export function LoreStudio({ repo }: { repo: IndexedDBRepository }) {
     } catch (err) { setError(err instanceof Error ? err.message : "Could not save import."); }
     finally { pending.current = false; setBusy(false); }
   }
+  async function saveAventurasLibrary() {
+    if (!draft || pending.current) return;
+    pending.current = true; setBusy(true); setError("");
+    try {
+      const preview = aventurasLibraryPreview(draft);
+      if (!preview.characters.length && !preview.stories.length) throw new Error("Select at least one supported character or scenario entry first.");
+      // Retain original JSON before materializing any derived templates.
+      await repo.saveLorebook(draft);
+      for (const person of preview.characters) await repo.saveCharacter(person);
+      for (const story of preview.stories) await repo.saveStory(story);
+      setMessage(`Saved ${preview.characters.length} characters and ${preview.stories.length} stories to your library. Original JSON retained in Lorebooks.`);
+      setDraft(null);
+      await refresh();
+    } catch (err) { setError(err instanceof Error ? err.message : "Could not save Aventuras library items."); }
+    finally { pending.current = false; setBusy(false); }
+  }
   const selected = draft ? selectedWorldEntries(draft) : [];
   const characterCount = selected.filter(e => e.entity!.kind === "character").length;
   const placeCount = selected.filter(e => e.entity!.kind === "location").length;
@@ -60,7 +77,7 @@ export function LoreStudio({ repo }: { repo: IndexedDBRepository }) {
   const needsTarget = draft && ["character", "campaign", "realm"].includes(draft.binding.kind) && !draft.binding.targetId;
   return <section className="sb-lore-studio">
     <h1>Lorebooks</h1>
-    <p>Import SillyTavern lore, AI Dungeon Story Cards, OnlyWorlds world JSON or Azgaar Full / Minimal JSON.
+    <p>Import SillyTavern lore, AI Dungeon, OnlyWorlds, Azgaar, or Aventuras character, lorebook and scenario JSON.
       Each import creates a separate copy with its original retained.</p>
     <input ref={file} type="file" accept=".json,.png,application/json,image/png" hidden
       onChange={event => { const picked = event.target.files?.[0]; event.target.value = ""; void importFile(picked); }} />
@@ -68,7 +85,7 @@ export function LoreStudio({ repo }: { repo: IndexedDBRepository }) {
       <label className="sb-field">Import format<select disabled={busy} value={format} onChange={e => setFormat(e.target.value as ImportFormat)}>
         {Object.entries(IMPORT_FORMAT_LABELS).map(([value, title]) => <option key={value} value={value}>{title}</option>)}
       </select></label>
-      <button className="sb-button sb-button--primary" disabled={busy} onClick={() => file.current?.click()}>Import lorebook</button>
+      <button className="sb-button sb-button--primary" disabled={busy} onClick={() => file.current?.click()}>Import JSON or lorebook</button>
     </>}
     {error && <p role="alert">{error}</p>}{message && <p role="status">{message}</p>}
     {draft ? <>
@@ -92,6 +109,11 @@ export function LoreStudio({ repo }: { repo: IndexedDBRepository }) {
         </select></label>}
       </>}
       <LoreReview book={draft} onChange={setDraft} disabled={busy} />
+      {draft.origin?.format === "aventuras" && ["character", "scenario"].includes((draft.raw as { entity?: string })?.entity ?? "") && <div className="sb-world-import-choice">
+        <p>Native library preview: {aventurasLibraryPreview(draft).characters.length} characters, {aventurasLibraryPreview(draft).stories.length} stories. Only approved entries are converted; original JSON is retained. Imported prompts and greetings are not executed.</p>
+        {aventurasLibraryPreview(draft).warnings.map(warning => <p className="sb-muted" key={warning}>{warning}</p>)}
+        <button className="sb-button" disabled={busy || !draft.name.trim() || !selected.length} onClick={() => void saveAventurasLibrary()}>Save approved items to library</button>
+      </div>}
       <div className="sb-dialog__actions"><button className="sb-button" disabled={busy} onClick={() => { setDraft(null); setCreateWorld(false); }}>Cancel</button>
         <button className="sb-button sb-button--primary" disabled={busy || !draft.name.trim() || (createWorld ? characterCount + placeCount === 0 : Boolean(needsTarget))} onClick={() => void save()}>{createWorld ? "Save world & lore" : "Save lorebook"}</button></div>
     </> : <div className="sb-conversation-grid">{books.map(book => <article className="sb-conversation-card" key={book.id}>
