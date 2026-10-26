@@ -1,3 +1,4 @@
+import { describePhysicalState } from "@state/physicalContinuity";
 import { StateEngine, type MutationProposal } from "@state/StateEngine";
 import type { AuthoritySource } from "@state/AuthorityResolver";
 import { assembleContext, buildPass1Messages, metersFromSession, parseConversationTurns } from "@context/ContextEngine";
@@ -53,6 +54,7 @@ export interface MutationProposalInput {
 
 /** Live numbers/mood Pass 2 should shift from, not invent. */
 export interface Pass2LiveSnapshot {
+  physicalFacts?: string[];
   mood?: string;
   clothing?: string;
   holding?: string;
@@ -695,6 +697,7 @@ function liveSnapshotFor(session: Session, characterId: string): Pass2LiveSnapsh
   const bond = session.relationships[characterId];
   const stats = movableStatsForCharacter(session, characterId);
   return {
+    physicalFacts: describePhysicalState(session.physical, 20),
     ...(character ? { mood: character.mood.value, position: character.position.value } : {}),
     ...(character?.clothing?.value.trim() ? { clothing: character.clothing.value } : {}),
     ...(character?.holding ? { holding: character.holding.value } : {}),
