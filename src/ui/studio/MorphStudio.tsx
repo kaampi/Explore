@@ -226,6 +226,7 @@ export function MorphStudio({ characterId, repo, gallery = [] }: { characterId: 
   useEffect(()=>{if(!playing)return;let frame=0;let last=0;let progress=mix/100;let direction=1;const tick=(now:number)=>{if(last){progress+=direction*(now-last)/1800;if(progress>=1){progress=1;direction=-1;}if(progress<=0){progress=0;direction=1;}setMix(Math.round(progress*100));}last=now;frame=requestAnimationFrame(tick);};frame=requestAnimationFrame(tick);return()=>cancelAnimationFrame(frame);},[playing]);
   useEffect(()=>{const down=(e:KeyboardEvent)=>{if(e.code==="Space" && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement) && !(e.target instanceof HTMLSelectElement)){e.preventDefault();setSpaceHeld(true);}};const up=(e:KeyboardEvent)=>{if(e.code==="Space")setSpaceHeld(false);};window.addEventListener("keydown",down);window.addEventListener("keyup",up);return()=>{window.removeEventListener("keydown",down);window.removeEventListener("keyup",up);};},[]);
   useEffect(()=>{const nodes=canvases.map(ref=>ref.current).filter((node):node is HTMLCanvasElement=>Boolean(node));const onWheel=(event:WheelEvent)=>{if(!event.ctrlKey)return;event.preventDefault();setZoom(value=>Math.max(100,Math.min(400,value+(event.deltaY<0?25:-25))));};nodes.forEach(node=>node.addEventListener("wheel",onWheel,{passive:false}));return()=>nodes.forEach(node=>node.removeEventListener("wheel",onWheel));},[profile.expressions.length]);
+  const sliderRow=(label:string,value:number,min:number,max:number,unit:string,onChange:(n:number)=>void)=> <label style={{display:"grid",gridTemplateColumns:"minmax(130px,1fr) minmax(90px,1.1fr) 46px",alignItems:"center",gap:8,minHeight:34,fontSize:13}}><span>{label}</span><input style={{width:"100%",margin:0}} type="range" min={min} max={max} value={value} onChange={e=>onChange(Number(e.target.value))}/><span style={{textAlign:"right",fontVariantNumeric:"tabular-nums"}}>{value}{unit}</span></label>;
   const choices=profile.expressions.map((item,i)=><option key={i} value={i}>{item.name}</option>);
   return <section className="setup-field" style={{marginTop:20,padding:16,border:"1px solid var(--sb-border, #566)",borderRadius:12}}>
 
@@ -243,23 +244,29 @@ export function MorphStudio({ characterId, repo, gallery = [] }: { characterId: 
         {canvases.map((ref,i)=><div key={i} ref={viewports[i]} style={{overflow:"auto",maxHeight:"65vh",border:"1px solid #596478",borderRadius:8}}>
           <canvas ref={ref} width={252} height={282} aria-label={["Source mesh","Target mesh","Morph preview"][i]} style={{display:"block",width:`calc(min(100%, 51vh) * ${zoom / 100})`,maxWidth:"none",height:"auto",touchAction:"none",cursor:spaceHeld?"grab":"crosshair"}} onPointerDown={i<2?e=>movePoint(e,i):undefined} onPointerMove={i<2?e=>movePoint(e,i):undefined} onPointerUp={i<2?e=>movePoint(e,i):undefined} onPointerCancel={i<2?e=>movePoint(e,i):undefined}/>
           {i<2 && <div style={{display:"flex",justifyContent:"center",gap:8,alignItems:"center",padding:8}}><button type="button" onClick={()=>i===0?setSource((source+profile.expressions.length-1)%profile.expressions.length):setTarget((target+profile.expressions.length-1)%profile.expressions.length)}>‹</button><select aria-label={i===0?"From":"To"} value={i===0?source:target} onChange={e=>i===0?setSource(Number(e.target.value)):setTarget(Number(e.target.value))}>{choices}</select><button type="button" onClick={()=>i===0?setSource((source+1)%profile.expressions.length):setTarget((target+1)%profile.expressions.length)}>›</button></div>}
+          {i===2 && <div style={{display:"grid",gap:6,padding:"8px 12px",borderTop:"1px solid #596478"}}><button type="button" style={{justifySelf:"start"}} onClick={()=>setPlaying(v=>!v)}>{playing?"Pause":"Play ↔"}</button>{sliderRow("Transition",mix,0,100,"%",n=>{setPlaying(false);setMix(n);})}</div>}
         </div>)}
       </div>
-      <div style={{display:"flex",gap:12,flexWrap:"wrap",marginTop:12}}><button type="button" onClick={()=>setPlaying(v=>!v)}>{playing?"Pause":"Play ↔"}</button>
-        <label><input type="checkbox" checked={profile.eyeEnabled??false} onChange={e=>setProfile(p=>({...p,eyeEnabled:e.target.checked}))}/> Eye correction</label>
-        <label><input type="checkbox" checked={profile.eyeGuides??true} onChange={e=>setProfile(p=>({...p,eyeGuides:e.target.checked}))}/> Show eye regions</label>
-        <label>Eye width <input type="range" min={10} max={50} value={profile.eyeWidth??25} onChange={e=>setProfile(p=>({...p,eyeWidth:Number(e.target.value)}))}/>{profile.eyeWidth??25}px</label>
-        <label>Eye height <input type="range" min={5} max={35} value={profile.eyeHeight??14} onChange={e=>setProfile(p=>({...p,eyeHeight:Number(e.target.value)}))}/>{profile.eyeHeight??14}px</label>
-        <label>Eye strength <input type="range" min={0} max={100} value={profile.eyeStrength??80} onChange={e=>setProfile(p=>({...p,eyeStrength:Number(e.target.value)}))}/>{profile.eyeStrength??80}%</label>
-        <label>Eye transition midpoint <input type="range" min={0} max={100} value={profile.eyeMidpoint ?? 50} onChange={e=>setProfile(p=>({...p,active:false,eyeMidpoint:Number(e.target.value)}))}/></label>
-        <label>Eye transition duration <input type="range" min={5} max={100} value={profile.eyeDuration ?? 30} onChange={e=>setProfile(p=>({...p,active:false,eyeDuration:Number(e.target.value)}))}/></label>
+      <div style={{display:"grid",gridTemplateColumns:"minmax(175px,.8fr) minmax(300px,1.5fr) minmax(330px,1.7fr) minmax(265px,1.25fr) auto",gap:20,alignItems:"start",marginTop:16,padding:"14px 0",borderTop:"1px solid var(--sb-border, #566)"}}>
+        <div style={{display:"grid",gap:14,paddingTop:7}}>
+          <label style={{display:"flex",gap:8,alignItems:"center"}}><input type="checkbox" checked={profile.eyeEnabled??false} onChange={e=>setProfile(p=>({...p,active:false,eyeEnabled:e.target.checked}))}/> Eye correction</label>
+          <label style={{display:"flex",gap:8,alignItems:"center"}}><input type="checkbox" checked={profile.eyeGuides??true} onChange={e=>setProfile(p=>({...p,eyeGuides:e.target.checked}))}/> Show eye regions</label>
+        </div>
+        <div style={{display:"grid",gap:8}}>
+          {sliderRow("Eye width",profile.eyeWidth??25,10,50,"px",n=>setProfile(p=>({...p,active:false,eyeWidth:n})))}
+          {sliderRow("Eye height",profile.eyeHeight??14,5,35,"px",n=>setProfile(p=>({...p,active:false,eyeHeight:n})))}
+        </div>
+        <div style={{display:"grid",gap:8}}>
+          {sliderRow("Eye transition midpoint",profile.eyeMidpoint??50,0,100,"%",n=>setProfile(p=>({...p,active:false,eyeMidpoint:n})))}
+          {sliderRow("Eye transition duration",profile.eyeDuration??30,5,100,"%",n=>setProfile(p=>({...p,active:false,eyeDuration:n})))}
+        </div>
+        <div>{sliderRow("Eye strength",profile.eyeStrength??80,0,100,"%",n=>setProfile(p=>({...p,active:false,eyeStrength:n})))}</div>
+        <div style={{display:"flex",gap:8,justifyContent:"flex-end",flexWrap:"wrap"}}>
+          <button type="button" onClick={()=>void save(false)}>Save draft</button>
+          <button type="button" onClick={()=>void save(true)}>Save profile</button>
+        </div>
       </div>
-      <label style={{display:"block",marginTop:12}}>Transition {mix}% <input type="range" min={0} max={100} value={mix} onChange={e=>setMix(Number(e.target.value))}/></label>
     </>}
-    <div style={{display:"flex",gap:8,marginTop:12}}>
-      <button type="button" onClick={()=>void save(false)}>Save draft</button>
-      <button type="button" disabled={profile.expressions.length<2} onClick={()=>void save(true)}>Save profile</button>
-    </div>
     {message && <p role="status">{message}</p>}
   </section>;
 }
