@@ -39,6 +39,46 @@ describe("physical continuity", () => {
     expect(alien.ok).toBe(true);
   });
 
+
+  it("allows holding two enemies with separate occupied arms", () => {
+    const left = applyPhysicalChange(undefined, { kind: "set_relation", relation: {
+      id: "left", subject: "player", subjectPart: "left_arm", relation: "restraining", target: "enemy_a", exclusive: true
+    } });
+    expect(left.ok).toBe(true);
+    if (!left.ok) return;
+    const right = applyPhysicalChange(left.state, { kind: "set_relation", relation: {
+      id: "right", subject: "player", subjectPart: "right_arm", relation: "restraining", target: "enemy_b", exclusive: true
+    } });
+    expect(right.ok).toBe(true);
+    if (!right.ok) return;
+    expect(right.state.relations).toHaveLength(2);
+
+    const third = applyPhysicalChange(right.state, { kind: "set_relation", relation: {
+      id: "sword", subject: "player", subjectPart: "left_arm", relation: "holding", target: "sword", exclusive: true
+    } });
+    expect(third.ok).toBe(false);
+
+    const freed = applyPhysicalChange(right.state, { kind: "remove_relation", id: "left" });
+    expect(freed.ok).toBe(true);
+    if (!freed.ok) return;
+    const sword = applyPhysicalChange(freed.state, { kind: "set_relation", relation: {
+      id: "sword", subject: "player", subjectPart: "left_arm", relation: "holding", target: "sword", exclusive: true
+    } });
+    expect(sword.ok).toBe(true);
+  });
+
+  it("does not assume human limb count or reserve ordinary contact", () => {
+    const first = applyPhysicalChange(undefined, { kind: "set_relation", relation: {
+      id: "arm8", subject: "alien", subjectPart: "arm_8", relation: "holding", target: "shield", exclusive: true
+    } });
+    expect(first.ok).toBe(true);
+    if (!first.ok) return;
+    const contact = applyPhysicalChange(first.state, { kind: "set_relation", relation: {
+      id: "contact", subject: "alien", subjectPart: "arm_8", relation: "touching", target: "wall"
+    } });
+    expect(contact.ok).toBe(true);
+  });
+
   it("supports mounted motion relative to a horse", () => {
     const state: PhysicalState = { stances: {}, relations: [{
       id: "mount", subject: "player", relation: "beside", target: "horse", note: "hanging from the left side"
