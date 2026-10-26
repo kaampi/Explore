@@ -5,8 +5,10 @@ import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 type Point = [number, number];
 type Expression = { name: string; image: string; points: Point[] };
 type Profile = { version: 1; active: boolean; expressions: Expression[]; triangles?: number[][]; eyeMidpoint?: number; eyeDuration?: number; eyeEnabled?: boolean; eyeWidth?: number; eyeHeight?: number; eyeStrength?: number; eyeGuides?: boolean; eyeCenters?: Record<string, Point[]> };
-const initial: Point[] = [[0,0],[.5,0],[1,0],[0,.5],[.25,.25],[.5,.25],[.75,.25],[1,.5],[.25,.5],[.5,.5],[.75,.5],[.25,.75],[.5,.75],[.75,.75],[0,1],[.5,1],[1,1]];
-const triangles: number[][] = [[0,1,4],[1,5,4],[1,2,6],[1,6,5],[0,4,3],[3,4,8],[4,5,9],[4,9,8],[5,6,10],[5,10,9],[6,2,7],[6,7,10],[3,8,14],[8,11,14],[8,9,12],[8,12,11],[9,10,13],[9,13,12],[10,7,16],[10,16,13],[11,12,15],[11,15,14],[12,13,16],[12,16,15]];
+const GRID_COLS = 7;
+const GRID_ROWS = 9;
+const initial: Point[] = Array.from({length:GRID_ROWS},(_,y)=>Array.from({length:GRID_COLS},(_,x)=>[x/(GRID_COLS-1),y/(GRID_ROWS-1)] as Point)).flat();
+const triangles: number[][] = Array.from({length:(GRID_ROWS-1)*(GRID_COLS-1)},(_,cell)=>{const x=cell%(GRID_COLS-1),y=Math.floor(cell/(GRID_COLS-1)),a=y*GRID_COLS+x,b=a+1,c=a+GRID_COLS,d=c+1;return [[a,b,c],[b,d,c]];}).flat();
 const clone = (points: Point[]) => points.map(([x,y]) => [x,y] as Point);
 function load(key: string): Profile {
   try { const value = JSON.parse(localStorage.getItem(key) || "null") as Profile | null; if (value?.version === 1 && Array.isArray(value.expressions)) return value; } catch { /* invalid local draft */ }
