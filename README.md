@@ -12,7 +12,7 @@ UI is English. Engines are framework-free TypeScript; React (`src/ui/`) consumes
 
 ## License
 
-SandboxAI is licensed under the **GNU Affero General Public License, version 3 or later** (`AGPL-3.0-or-later`). See [Licens.md](Licens.md) for the full license and warranty disclaimer. Third-party material retains its own licenses. Independent user-created or imported content is not automatically covered by the application's license.
+SandboxAI is licensed under the **GNU Affero General Public License, version 3 or later** (`AGPL-3.0-or-later`). See [LICENSE](LICENSE) for the full license and warranty disclaimer. Third-party material retains its own licenses. Independent user-created or imported content is not automatically covered by the application's license.
 
 ## Stack
 
@@ -21,6 +21,12 @@ SandboxAI is licensed under the **GNU Affero General Public License, version 3 o
 - **Zod** — canonical session, library templates, LLM structured output, import.
 - **React** — UI only (`src/ui/`).
 - **fast-check** — property-based tests alongside Vitest examples.
+
+## Quickstart
+
+Windows: double-click **`start.bat`**. macOS: run **`bash starta.command`**. Linux: run **`bash starta.sh`**. The launchers install dependencies on first run. Or run `npm install` and `npm start` from a terminal. The app opens at [http://localhost:5173](http://localhost:5173). Connect a local Ollama or Strata model under **Set up AI**.
+
+See [Installing and running Sandbox AI](docs/running.md) for detailed instructions, first chat, local data and troubleshooting.
 
 ## Getting started
 
