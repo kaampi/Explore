@@ -66,6 +66,21 @@ describe("rankMemories", () => {
       .toBeCloseTo(rankMemories(session, 100, 2).find(row => row.entry.id === "unrelated")!.score);
   });
 
+  it("retrieves a recent speaker's relationship memory without a repeated name", () => {
+    const session = makeSession({
+      relational: [
+        entry({ id: "emma", content: "Emma remembers the broken promise.", createdAtTurn: 90 }),
+        entry({ id: "other", content: "A stranger guards the bridge.", createdAtTurn: 90 })
+      ]
+    });
+    session.characters = { emma: { name: "Emma" } } as Session["characters"];
+    session.conversation = [
+      { turn: 1, role: "character", speaker: "emma", content: "I remember." },
+      { turn: 2, role: "player", content: "We should leave." }
+    ];
+    expect(rankMemories(session, 100, 2)[0]?.entry.id).toBe("emma");
+  });
+
   it("respects the limit parameter", () => {
     const session = makeSession({
       episodic: [
