@@ -198,38 +198,48 @@ export function MorphStudio({ characterId, repo, gallery = [] }: { characterId: 
   function movePoint(event: React.PointerEvent<HTMLCanvasElement>,index:number) {
     const canvas=canvases[index]?.current,expIndex=index===0?source:target,exp=profile.expressions[expIndex];if(!canvas||!exp)return;
     const rect=canvas.getBoundingClientRect(),x=(event.clientX-rect.left)/rect.width,y=(event.clientY-rect.top)/rect.height;
+    if(event.type==="pointerdown" && profile.eyeEnabled && profile.eyeGuides){const centers=profile.eyeCenters?.[exp.name]??[[.37,.39],[.63,.39]];if(event.type==="pointerdown"){const eye=centers.findIndex(p=>Math.hypot(p[0]-x,p[1]-y)<.045);if(eye>=0){eyeDragging.current={expression:expIndex,eye};canvas.setPointerCapture(event.pointerId);return;}}}
+    if(event.type==="pointermove" && eyeDragging.current?.expression===expIndex){const {eye}=eyeDragging.current;setProfile(p=>{const name=p.expressions[expIndex]?.name;if(!name)return p;const centers=(p.eyeCenters?.[name]??[[.37,.39],[.63,.39]]).map((v,i)=>i===eye?[Math.max(0,Math.min(1,x)),Math.max(0,Math.min(1,y))] as Point:v);return {...p,active:false,eyeCenters:{...p.eyeCenters,[name]:centers}};});return;}
+    if(event.type==="pointerup" || event.type==="pointercancel")eyeDragging.current=null;
     if(event.type==="pointerdown" && addingPoint){addMeshPoint(expIndex,x,y);return;}
     if(event.type==="pointerdown"){let best=.04,point=-1;exp.points.forEach((p,i)=>{const d=Math.hypot(p[0]-x,p[1]-y);if(d<best){best=d;point=i;}});if(point>=0){dragging.current={expression:expIndex,point};canvas.setPointerCapture(event.pointerId);}}
     if(event.type==="pointermove" && dragging.current?.expression===expIndex){const {point}=dragging.current;setProfile(p=>({...p,active:false,expressions:p.expressions.map((item,i)=>i===expIndex?{...item,points:item.points.map((v,j)=>j===point?[Math.max(0,Math.min(1,x)),Math.max(0,Math.min(1,y))] as Point:v)}:item)}));}
     if(event.type==="pointerup" || event.type==="pointercancel")dragging.current=null;
   }
+  useEffect(()=>{if(!playing)return;let frame=0;let last=0;let progress=mix/100;let direction=1;const tick=(now:number)=>{if(last){progress+=direction*(now-last)/1800;if(progress>=1){progress=1;direction=-1;}if(progress<=0){progress=0;direction=1;}setMix(Math.round(progress*100));}last=now;frame=requestAnimationFrame(tick);};frame=requestAnimationFrame(tick);return()=>cancelAnimationFrame(frame);},[playing]);
   const choices=profile.expressions.map((item,i)=><option key={i} value={i}>{item.name}</option>);
   return <section className="setup-field" style={{marginTop:20,padding:16,border:"1px solid var(--sb-border, #566)",borderRadius:12}}>
-    <h3>Morph Studio <small style={{fontWeight:400}}>· experimental</small></h3>
-    <p>Attach expressions, adjust matching mesh points, preview transitions and save a character-specific profile. Chat playback is not connected yet.</p>
+
     <input type="file" accept=".json,application/json" aria-label="Import Morph Studio mesh JSON" onChange={e=>{void importMesh(e.target.files?.[0]??null);e.target.value="";}}/>
     <input type="file" multiple accept="image/*" aria-label="Add expression images" onChange={e=>{void addFiles(e.target.files).catch(()=>setMessage("Could not load images."));e.target.value="";}}/>
     {profile.expressions.length>=2 && <>
-      <div style={{display:"flex",gap:12,flexWrap:"wrap",margin:"12px 0"}}>
+      <div style={{display:"none"}}>
         <label>From <select value={source} onChange={e=>setSource(Number(e.target.value))}>{choices}</select></label>
         <button type="button" onClick={()=>setSource((source+profile.expressions.length-1)%profile.expressions.length)}>‹</button>
         <button type="button" onClick={()=>setSource((source+1)%profile.expressions.length)}>›</button>
-        <button type="button" onClick={()=>{setSource(target);setTarget(source);}}>⇄</button>
+
         <label>To <select value={target} onChange={e=>setTarget(Number(e.target.value))}>{choices}</select></label>
         <button type="button" onClick={()=>setTarget((target+profile.expressions.length-1)%profile.expressions.length)}>‹</button>
         <button type="button" onClick={()=>setTarget((target+1)%profile.expressions.length)}>›</button>
       </div>
       <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:10}}>
+        <button type="button" onClick={()=>setShowMesh(v=>!v)}>{showMesh?"Hide mesh":"Show mesh"}</button>
         <button type="button" aria-pressed={addingPoint} onClick={()=>setAddingPoint(v=>!v)}>{addingPoint?"Cancel point":"Add mesh point"}</button>
         <button type="button" onClick={()=>setZoom(v=>Math.max(100,v-25))}>−</button><span>{zoom}%</span><button type="button" onClick={()=>setZoom(v=>Math.min(400,v+25))}>+</button>
         <button type="button" onClick={()=>setZoom(100)}>Fit</button>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(230px,1fr))",gap:12}}>
-        {canvases.map((ref,i)=><div key={i} style={{overflow:"auto",maxHeight:460,border:"1px solid #596478",borderRadius:8}}>
-          <canvas ref={ref} width={252} height={282} aria-label={["Source mesh","Target mesh","Morph preview"][i]} style={{display:"block",width:i===2?"100%":zoom+"%",maxWidth:i===2?"100%":"none",touchAction:"none"}} onPointerDown={i<2?e=>movePoint(e,i):undefined} onPointerMove={i<2?e=>movePoint(e,i):undefined} onPointerUp={i<2?e=>movePoint(e,i):undefined} onPointerCancel={i<2?e=>movePoint(e,i):undefined}/>
+        {canvases.map((ref,i)=><div key={i} style={{overflow:"auto",maxHeight:"65vh",border:"1px solid #596478",borderRadius:8}}>
+          <canvas ref={ref} width={252} height={282} aria-label={["Source mesh","Target mesh","Morph preview"][i]} style={{display:"block",width:i===2?"100%":zoom+"%",maxWidth:i===2?"100%":"none",height:"auto",touchAction:"none"}} onPointerDown={i<2?e=>movePoint(e,i):undefined} onPointerMove={i<2?e=>movePoint(e,i):undefined} onPointerUp={i<2?e=>movePoint(e,i):undefined} onPointerCancel={i<2?e=>movePoint(e,i):undefined}/>
+          {i<2 && <div style={{display:"flex",justifyContent:"center",gap:8,alignItems:"center",padding:8}}><button type="button" onClick={()=>i===0?setSource((source+profile.expressions.length-1)%profile.expressions.length):setTarget((target+profile.expressions.length-1)%profile.expressions.length)}>‹</button><select aria-label={i===0?"From":"To"} value={i===0?source:target} onChange={e=>i===0?setSource(Number(e.target.value)):setTarget(Number(e.target.value))}>{choices}</select><button type="button" onClick={()=>i===0?setSource((source+1)%profile.expressions.length):setTarget((target+1)%profile.expressions.length)}>›</button></div>}
         </div>)}
       </div>
-      <div style={{display:"flex",gap:12,flexWrap:"wrap",marginTop:12}}>
+      <div style={{display:"flex",gap:12,flexWrap:"wrap",marginTop:12}}><button type="button" onClick={()=>setPlaying(v=>!v)}>{playing?"Pause":"Play ↔"}</button>
+        <label><input type="checkbox" checked={profile.eyeEnabled??false} onChange={e=>setProfile(p=>({...p,eyeEnabled:e.target.checked}))}/> Eye correction</label>
+        <label><input type="checkbox" checked={profile.eyeGuides??true} onChange={e=>setProfile(p=>({...p,eyeGuides:e.target.checked}))}/> Show eye regions</label>
+        <label>Eye width <input type="range" min={10} max={50} value={profile.eyeWidth??25} onChange={e=>setProfile(p=>({...p,eyeWidth:Number(e.target.value)}))}/>{profile.eyeWidth??25}px</label>
+        <label>Eye height <input type="range" min={5} max={35} value={profile.eyeHeight??14} onChange={e=>setProfile(p=>({...p,eyeHeight:Number(e.target.value)}))}/>{profile.eyeHeight??14}px</label>
+        <label>Eye strength <input type="range" min={0} max={100} value={profile.eyeStrength??80} onChange={e=>setProfile(p=>({...p,eyeStrength:Number(e.target.value)}))}/>{profile.eyeStrength??80}%</label>
         <label>Eye transition midpoint <input type="range" min={0} max={100} value={profile.eyeMidpoint ?? 50} onChange={e=>setProfile(p=>({...p,active:false,eyeMidpoint:Number(e.target.value)}))}/></label>
         <label>Eye transition duration <input type="range" min={5} max={100} value={profile.eyeDuration ?? 30} onChange={e=>setProfile(p=>({...p,active:false,eyeDuration:Number(e.target.value)}))}/></label>
       </div>
