@@ -73,7 +73,7 @@ describe("rankMemories", () => {
         entry({ id: "other", content: "A stranger guards the bridge.", createdAtTurn: 90 })
       ]
     });
-    session.characters = { emma: { name: "Emma" } } as Session["characters"];
+    session.characters = { emma: { name: "Emma", position: { value: "room", lock: "unlocked" }, mood: { value: "calm", lock: "unlocked" } } };
     session.conversation = [
       { turn: 1, role: "character", speaker: "emma", content: "I remember." },
       { turn: 2, role: "player", content: "We should leave." }
