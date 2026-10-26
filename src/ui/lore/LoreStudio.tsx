@@ -153,7 +153,8 @@ export function LoreStudio({ repo }: { repo: IndexedDBRepository }) {
         {migrationReview.candidates.length > 40 && <p>Showing first 40 candidates only.</p>}
         {migrationReview.warnings.map((warning, index) => <p className="sb-muted" key={index}>{warning}</p>)}
       </section>}
-      <button className="sb-button sb-button--primary" disabled={busy || avtSelected.length === 0} onClick={() => void startAvtSession()}>Create new playable session from selected identities</button>
+      <button className="sb-button sb-button--primary" disabled={busy || avtSelected.length === 0 || avtSelected.filter(item => item.kind === "location").length > 1} onClick={() => void startAvtSession()}>Create new playable session from selected identities</button>
+      {avtSelected.filter(item => item.kind === "location").length > 1 && <p role="alert">Select only one starting location.</p>}
       <button className="sb-button" disabled={busy || avtPreview.lines.some(line => line.role === "other")} onClick={() => void archiveAvt()}>Save as archived conversation</button>
       <button className="sb-button" disabled={busy} onClick={() => { setAvtPreview(null); setMigrationReview(null); }}>Close preview</button>
     </section>}
