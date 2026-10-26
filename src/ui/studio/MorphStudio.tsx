@@ -77,6 +77,30 @@ export function MorphStudio({ characterId, repo }: { characterId: string; repo: 
       const layers=[document.createElement("canvas"),document.createElement("canvas")];
       for(let k=0;k<2;k++){const layer=layers[k]!;layer.width=canvas.width;layer.height=canvas.height;const context=layer.getContext("2d");if(!context)continue;const exp=k===0?a:b;for(const tri of meshTriangles){const src=tri.map(i=>exp.points[i]!),dst=tri.map(i=>blended[i]!);warpTriangle(context,images[k===0?source:target]!,src,dst,canvas.width,canvas.height);}}
       ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(layers[0]!,0,0);ctx.globalAlpha=t;ctx.drawImage(layers[1]!,0,0);ctx.globalAlpha=1;
+      // Accelerate texture crossfade in a soft eye-region mask to reduce ghosted eyelids.
+      const duration=Math.max(.05,(profile.eyeDuration ?? 30)/100);
+      const midpoint=(profile.eyeMidpoint ?? 50)/100;
+      const eyeT=Math.max(0,Math.min(1,(t-(midpoint-duration/2))/duration));
+      if(Math.abs(eyeT-t)>.001){
+        const mask=document.createElement("canvas");mask.width=canvas.width;mask.height=canvas.height;
+        const maskCtx=mask.getContext("2d");
+        if(maskCtx){
+          maskCtx.drawImage(layers[0]!,0,0);maskCtx.globalAlpha=eyeT;maskCtx.drawImage(layers[1]!,0,0);maskCtx.globalAlpha=1;
+          const region=document.createElement("canvas");region.width=canvas.width;region.height=canvas.height;
+          const regionCtx=region.getContext("2d");
+          if(regionCtx){
+            regionCtx.fillStyle="black";
+            // Default normalized eye positions for front-facing portraits.
+            for(const x of [.36,.64]){
+              const gradient=regionCtx.createRadialGradient(x*canvas.width,.39*canvas.height,2,x*canvas.width,.39*canvas.height,.15*canvas.width);
+              gradient.addColorStop(0,"rgba(0,0,0,1)");gradient.addColorStop(1,"rgba(0,0,0,0)");
+              regionCtx.fillStyle=gradient;regionCtx.beginPath();regionCtx.ellipse(x*canvas.width,.39*canvas.height,.15*canvas.width,.105*canvas.height,0,0,Math.PI*2);regionCtx.fill();
+            }
+            maskCtx.globalCompositeOperation="destination-in";maskCtx.drawImage(region,0,0);
+            ctx.drawImage(mask,0,0);
+          }
+        }
+      }
     };
     images.forEach(img=>img.addEventListener("load",render));render();
     return ()=>{cancelled=true;images.forEach(img=>img.removeEventListener("load",render));};
