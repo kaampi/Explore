@@ -79,7 +79,7 @@ export function applyPhysicalChange(
 }
 
 /** A deterministic, compact scene summary without an extra model call. */
-export function describePhysicalState(state: PhysicalState | undefined, limit = 30): string[] {
+export function describePhysicalState(state: PhysicalState | undefined, limit = 30, focus?: readonly string[]): string[] {
   if (!state) return [];
   const lines = Object.entries(state.stances).map(([actor, stance]) => `${actor}: ${stance}`);
   for (const r of state.relations) {
