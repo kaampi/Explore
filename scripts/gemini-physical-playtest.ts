@@ -23,7 +23,7 @@ async function selectModel(): Promise<string> {
     if (!available.includes(requested)) throw new Error("Configured Gemini model is unavailable: " + requested + ". Available: " + available.join(", "));
     return requested;
   }
-  const preferred = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash-lite"];
+  const preferred = ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-3-flash", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash-lite"];
   return preferred.find((name) => available.includes(name)) ?? available.find((name) => /flash/i.test(name)) ?? available[0]!;
 }
 let model = "";
