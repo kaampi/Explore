@@ -5,6 +5,7 @@ import type { Session } from "@state/StateSchema";
 import type { StudioView } from "./types";
 import { CampaignStudio } from "./CampaignStudio";
 import { AdventureStudio } from "./AdventureStudio";
+import { AnatomyStudio } from "./AnatomyStudio";
 import { CharacterStudio } from "./CharacterStudio";
 import { PlaceStudio } from "./PlaceStudio";
 import { ObjectStudio } from "./ObjectStudio";
@@ -17,6 +18,7 @@ import { LibraryBackupBar } from "./LibraryBackupBar";
 const NAV: { id: StudioView; label: string; group: "library" | "play" }[] = [
   { id: "lorebooks", label: "Lorebooks", group: "library" },
   { id: "characters", label: "Characters", group: "library" },
+  { id: "anatomy", label: "Anatomy", group: "library" },
   { id: "places", label: "Locations", group: "library" },
   { id: "objects", label: "Objects", group: "library" },
   { id: "voices", label: "Voices", group: "library" },
@@ -89,6 +91,7 @@ export function StudioShell({
           )}
           {view === "lorebooks" && <LoreStudio repo={repo} />}
           {view === "characters" && <CharacterStudio repo={repo} />}
+          {view === "anatomy" && <AnatomyStudio repo={repo} />}
           {view === "places" && <PlaceStudio repo={repo} />}
           {view === "objects" && <ObjectStudio repo={repo} />}
           {view === "voices" && <VoiceStudio repo={repo} />}
