@@ -21,6 +21,7 @@ import { slugifyCharacterId } from "@session/createSession";
 import { formatPersonName, namesFromStored, splitPersonName } from "@library/personName";
 import { portraitDataUrlFromFile, PortraitError, portraitSrc } from "./portrait";
 import { StudioList } from "./StudioList";
+import { MorphStudio } from "./MorphStudio";
 import { SheetNameField } from "./SheetNameField";
 import { SillyTavernImportReview } from "./SillyTavernImportReview";
 import { StudioErrorBoundary } from "./StudioErrorBoundary";
@@ -776,6 +777,7 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
                 placeholder="Dry-witted, slow to open up, speaks in short sentences…"
               />
             </label>
+            {saved && draft.id && <MorphStudio key={draft.id} characterId={draft.id} />}
             {notice && <p className="setup-notice">{notice}</p>}
             {error && <p className="setup-error">{error}</p>}
             <div className="studio-sheet__actions">
