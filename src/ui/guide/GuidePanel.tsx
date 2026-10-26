@@ -1,3 +1,4 @@
+import "./guide.css";
 import { useState } from "react";
 
 type Topic = { id: string; label: string; title: string; intro: string; steps: Array<{ title: string; body: string }> };
