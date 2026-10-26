@@ -41,9 +41,37 @@ function scoreMemory(entry: MemoryEntry, currentTurn: number): number {
  * requires some notion of semantic similarity this engine doesn't have
  * yet — importance + recency is the honest baseline for now.
  */
+/**
+ * Original Sandbox AI lexical relevance model. It is intentionally local,
+ * deterministic and bounded: no embeddings, network calls or external code.
+ * The scene and most recent player utterance supply optional query terms.
+ */
+function terms(text: string): Set<string> {
+  return new Set((text.toLocaleLowerCase().match(/[\\p{L}\\p{N}]{3,}/gu) ?? []).slice(0, 100));
+}
+
+function sceneQuery(session: Session): Set<string> {
+  const lastPlayer = [...session.conversation].reverse().find((value) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+    return (value as Record<string, unknown>).role === "player";
+  });
+  const utterance = lastPlayer && typeof lastPlayer === "object" && !Array.isArray(lastPlayer)
+    ? (lastPlayer as Record<string, unknown>).content : "";
+  return terms([session.scene?.location ?? "", typeof utterance === "string" ? utterance.slice(0, 1200) : ""].join(" "));
+}
+
+function relevanceBonus(entry: MemoryEntry, query: Set<string>): number {
+  if (!query.size) return 0;
+  const words = terms(entry.content.slice(0, 3000));
+  let matches = 0;
+  for (const word of query) if (words.has(word)) matches++;
+  return Math.min(0.3, matches * 0.075);
+}
+
 export function rankMemories(session: Session, currentTurn: number, limit: number): RankedMemory[] {
+  const query = sceneQuery(session);
   const all: RankedMemory[] = (["episodic", "semantic", "relational"] as MemoryType[]).flatMap((type) =>
-    session.memory[type].map((entry) => ({ type, entry, score: scoreMemory(entry, currentTurn) }))
+    session.memory[type].map((entry) => ({ type, entry, score: scoreMemory(entry, currentTurn) + relevanceBonus(entry, query) }))
   );
 
   return all.sort((a, b) => b.score - a.score).slice(0, limit);
