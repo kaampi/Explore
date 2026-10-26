@@ -580,6 +580,7 @@ export class IndexedDBRepository {
 
   async deleteCharacter(id: string): Promise<void> {
     await this.deleteRecord(CHARACTERS_STORE, id);
+    await this.deleteCharacterMorph(id);
   }
 
   async listCharacters(): Promise<CharacterTemplate[]> {
@@ -776,6 +777,23 @@ export class IndexedDBRepository {
   async listCampaigns(): Promise<CampaignTemplate[]> {
     const rows = await this.getAllRecords(CAMPAIGNS_STORE);
     return parseLibraryList("campaign", rows, parseCampaignTemplate);
+  }
+
+  /** Character morph profiles are UI-only assets kept in the existing IndexedDB prefs store. */
+  async saveCharacterMorph(characterId: string, profile: unknown): Promise<void> {
+    if (!characterId.trim()) throw new Error("Character ID is required.");
+    await this.putRecord(PREFS_STORE, { id: `character-morph:${characterId}`, profile });
+  }
+
+  async loadCharacterMorph(characterId: string): Promise<unknown | null> {
+    if (!characterId.trim()) return null;
+    const record = await this.getRecord(PREFS_STORE, `character-morph:${characterId}`);
+    if (!record || typeof record !== "object" || !("profile" in record)) return null;
+    return record.profile;
+  }
+
+  async deleteCharacterMorph(characterId: string): Promise<void> {
+    if (characterId.trim()) await this.deleteRecord(PREFS_STORE, `character-morph:${characterId}`);
   }
 
   async saveStudioResume(resume: StudioResume): Promise<void> {
