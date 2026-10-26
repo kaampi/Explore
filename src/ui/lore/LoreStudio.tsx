@@ -6,6 +6,7 @@ import { IMPORT_FORMAT_LABELS, readWorldFile, type ImportFormat } from "../../lo
 import { materializeWorld, selectedWorldEntries } from "../../lore/materializeWorld";
 import { LoreReview } from "./LoreReview";
 import { aventurasLibraryPreview } from "../../lore/aventurasLibrary";
+import { previewAvtHistory, type AvtHistoryPreview } from "../../lore/avtHistoryPreview";
 import { downloadJson } from "../studio/studioShared";
 
 export function LoreStudio({ repo }: { repo: IndexedDBRepository }) {
@@ -15,6 +16,8 @@ export function LoreStudio({ repo }: { repo: IndexedDBRepository }) {
   const [campaigns, setCampaigns] = useState<CampaignTemplate[]>([]);
   const [realms, setRealms] = useState<RealmTemplate[]>([]);
   const [format, setFormat] = useState<ImportFormat>("auto");
+  const [avtPreview, setAvtPreview] = useState<AvtHistoryPreview | null>(null);
+  const avtFile = useRef<HTMLInputElement>(null);
   const [createWorld, setCreateWorld] = useState(false);
   const [busy, setBusy] = useState(false);
   const pending = useRef(false);
@@ -32,6 +35,17 @@ export function LoreStudio({ repo }: { repo: IndexedDBRepository }) {
     pending.current = true; setBusy(true); setError(""); setMessage("");
     try { setDraft(await readWorldFile(picked, format)); setCreateWorld(false); }
     catch (err) { setError(err instanceof Error ? err.message : "Could not read import file."); }
+    finally { pending.current = false; setBusy(false); }
+  }
+  async function importAvt(picked?: File) {
+    if (!picked || pending.current) return;
+    pending.current = true; setBusy(true); setError(""); setMessage("");
+    try {
+      if (!picked.name.toLowerCase().endsWith(".avt")) throw new Error("Choose an .avt story export.");
+      if (picked.size > 20 * 1024 * 1024) throw new Error("This preview supports .avt archives up to 20 MB.");
+      const raw: unknown = JSON.parse(await picked.text());
+      setAvtPreview(previewAvtHistory(raw));
+    } catch (err) { setError(err instanceof Error ? err.message : "Could not inspect archive."); }
     finally { pending.current = false; setBusy(false); }
   }
   async function save() {
@@ -81,13 +95,26 @@ export function LoreStudio({ repo }: { repo: IndexedDBRepository }) {
       Each import creates a separate copy with its original retained.</p>
     <input ref={file} type="file" accept=".json,.png,application/json,image/png" hidden
       onChange={event => { const picked = event.target.files?.[0]; event.target.value = ""; void importFile(picked); }} />
-    {!draft && <>
+    {!draft && !avtPreview && <>
       <label className="sb-field">Import format<select disabled={busy} value={format} onChange={e => setFormat(e.target.value as ImportFormat)}>
         {Object.entries(IMPORT_FORMAT_LABELS).map(([value, title]) => <option key={value} value={value}>{title}</option>)}
       </select></label>
       <button className="sb-button sb-button--primary" disabled={busy} onClick={() => file.current?.click()}>Import lorebook</button>
+      <input ref={avtFile} type="file" accept=".avt" hidden onChange={event => { const picked = event.target.files?.[0]; event.target.value = ""; void importAvt(picked); }} />
+      <button className="sb-button" disabled={busy} onClick={() => avtFile.current?.click()}>Preview Aventuras .avt story</button>
     </>}
     {error && <p role="alert">{error}</p>}{message && <p role="status">{message}</p>}
+    {avtPreview && <section className="sb-world-import-choice">
+      <h2>{avtPreview.title} — read-only archive preview</h2>
+      <p>{avtPreview.lines.length} conversation entries · {avtPreview.idPlan.overview.characterCount} characters · {avtPreview.idPlan.overview.locationCount} locations · {avtPreview.idPlan.overview.chapterCount} chapters · {avtPreview.idPlan.overview.worldStateRecordCount} world-state records.</p>
+      <p>Source content is historical data, never executed. This preview does not save or resume a conversation.</p>
+      {avtPreview.warnings.map((warning, i) => <p className="sb-muted" key={i}>{warning}</p>)}
+      <div className="sb-conversation-grid">{avtPreview.lines.slice(0, 30).map(line => <article className="sb-conversation-card" key={line.targetId}>
+        <h3>{line.role}</h3><p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{line.content.slice(0, 1500)}</p>
+      </article>)}</div>
+      {avtPreview.lines.length > 30 && <p>Showing first 30 entries only.</p>}
+      <button className="sb-button" disabled={busy} onClick={() => setAvtPreview(null)}>Close preview</button>
+    </section>}
     {draft ? <>
       {draft.origin && <p className="sb-eyebrow">{IMPORT_FORMAT_LABELS[draft.origin.format]}</p>}
       {draft.importNotes?.map(note => <p className="sb-muted" key={note}>{note}</p>)}
