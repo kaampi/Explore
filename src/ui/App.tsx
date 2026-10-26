@@ -1,5 +1,6 @@
 import { attachLorebooks } from "../lore/attachLorebooks";
 import { IdeaLibrary } from "./ideas/IdeaLibrary";
+import { GuidePanel } from "./guide/GuidePanel";
 import {
   useCallback,
   useEffect,
@@ -74,7 +75,7 @@ function SandboxApp() {
   });
   const [loadError, setLoadError] = useState<string | null>(null);
   const [view, setView] = useState<
-    "home" | "studio" | "play" | "conversations" | "ideas"
+    "home" | "studio" | "play" | "conversations" | "ideas" | "guide"
   >("home");
   const [studioView, setStudioView] = useState<StudioView>("characters");
   const [generation, setGeneration] = useState(0);
@@ -237,7 +238,7 @@ function SandboxApp() {
       await refreshCatalog();
     });
   }
-  function navigate(destination: "home" | "conversations" | "ideas") {
+  function navigate(destination: "home" | "conversations" | "ideas" | "guide") {
     report(
       action(async () => {
         await persistCurrent();
@@ -404,6 +405,7 @@ function SandboxApp() {
               >
                 ◇ <span>Adventures</span>
               </button>
+              <button type="button" className={view === "guide" ? "is-active" : ""} onClick={() => navigate("guide")}>? <span>Guide</span></button>
               {session && (
                 <button
                   type="button"
@@ -438,6 +440,8 @@ function SandboxApp() {
                 onStart={(next) => report(startScene(next))}
               />
             </div>
+          ) : view === "guide" ? (
+            <GuidePanel />
           ) : view === "ideas" ? (
             <IdeaLibrary repo={repo} conversations={catalog.entries} onOpen={id => report(openConversation(id))} />
           ) : view === "conversations" ? (
