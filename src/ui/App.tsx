@@ -84,7 +84,6 @@ function SandboxApp() {
   const actionPending = useRef(false);
   const [working, setWorking] = useState(false);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const [operationError, setOperationError] = useState<string | null>(null);
   const setLive = useCallback((next: Session | null) => {
@@ -408,13 +407,7 @@ function SandboxApp() {
                 ◇ <span>Adventures</span>
               </button>
               <button type="button" className={view === "guide" ? "is-active" : ""} onClick={() => navigate("guide")}>? <span>Guide</span></button>
-              <button type="button" aria-expanded={settingsOpen} aria-controls="sb-settings-links" onClick={() => setSettingsOpen((value) => !value)}>
-                ⚙ <span>Settings</span>
-              </button>
-              {settingsOpen && <div id="sb-settings-links" className="sb-settings-links" style={{ display: "grid", gap: 4, paddingLeft: 22 }}>
-                <button type="button" onClick={() => setAppearanceOpen(true)}>◐ <span>Appearance &amp; Themes</span></button>
-                <button type="button" onClick={() => setAppearanceOpen(true)}>✧ <span>AI Settings</span></button>
-              </div>}
+              <button type="button" onClick={() => setAppearanceOpen(true)}>⚙ <span>Settings</span></button>
               {session && (
                 <button
                   type="button"
