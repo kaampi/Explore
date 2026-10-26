@@ -8,8 +8,26 @@ import { applyPhysicalChange, describePhysicalState } from "../src/state/physica
 
 const key = process.env.GEMINI_API_KEY;
 if (!key) throw new Error("GEMINI_API_KEY is missing. Configure it as an Actions secret.");
-const model = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
-const endpoint = "https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent";
+const apiRoot = "https://generativelanguage.googleapis.com/v1beta";
+async function selectModel(): Promise<string> {
+  const requested = process.env.GEMINI_MODEL?.trim();
+  const response = await fetch(apiRoot + "/models?pageSize=100", {
+    headers: { "x-goog-api-key": key! },
+    signal: AbortSignal.timeout(15000)
+  });
+  if (!response.ok) throw new Error("Gemini model discovery failed: HTTP " + response.status + " (check API key and Gemini API access).");
+  const data = await response.json() as { models?: Array<{ name: string; supportedGenerationMethods?: string[] }> };
+  const available = (data.models ?? []).filter((m) => m.supportedGenerationMethods?.includes("generateContent")).map((m) => m.name.replace(/^models\//, ""));
+  if (!available.length) throw new Error("Gemini API returned no models supporting generateContent.");
+  if (requested) {
+    if (!available.includes(requested)) throw new Error("Configured Gemini model is unavailable: " + requested + ". Available: " + available.join(", "));
+    return requested;
+  }
+  const preferred = ["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-2.0-flash-lite", "gemini-2.0-flash"];
+  return preferred.find((name) => available.includes(name)) ?? available.find((name) => /flash/i.test(name)) ?? available[0]!;
+}
+let model = "";
+let endpoint = "";
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function ask(prompt: string): Promise<string> {
@@ -37,6 +55,9 @@ async function ask(prompt: string): Promise<string> {
 }
 
 async function main() {
+  model = await selectModel();
+  endpoint = apiRoot + "/models/" + encodeURIComponent(model) + ":generateContent";
+  console.log("Selected Gemini model: " + model);
   let state = applyPhysicalChange(undefined, { kind: "set_relation", relation: {
     id: "left", subject: "player", subjectPart: "left_arm", relation: "restraining", target: "guard_a", exclusive: true
   } });
