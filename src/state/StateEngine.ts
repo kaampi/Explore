@@ -102,7 +102,7 @@ export class StateEngine {
     if (proposal.path === "physical.change") {
       if (isStale(proposal.expectedStateVersion, this.session.stateVersion))
         return { committed: false, reason: "Stale physical state proposal." };
-      if (proposal.source !== "ai_approved_state_mutation" && proposal.source !== "player" && proposal.source !== "system")
+      if (proposal.source !== "ai_approved_state_mutation" && proposal.source !== "player_manual_state" && proposal.source !== "immutable_system_constraint")
         return { committed: false, reason: "Unauthorized physical state proposal." };
       let change: PhysicalChange;
       try {
