@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
+import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 
 /** Character-scoped, local-first morph authoring. Experimental: activation is not yet wired to chat. */
 type Point = [number, number];
 type Expression = { name: string; image: string; points: Point[] };
-type Profile = { version: 1; active: boolean; expressions: Expression[] };
+type Profile = { version: 1; active: boolean; expressions: Expression[]; triangles?: number[][]; eyeMidpoint?: number; eyeDuration?: number };
 const initial: Point[] = [[0,0],[.5,0],[1,0],[0,.5],[.25,.25],[.5,.25],[.75,.25],[1,.5],[.25,.5],[.5,.5],[.75,.5],[.25,.75],[.5,.75],[.75,.75],[0,1],[.5,1],[1,1]];
 const triangles: number[][] = [[0,1,4],[1,5,4],[1,2,6],[1,6,5],[0,4,3],[3,4,8],[4,5,9],[4,9,8],[5,6,10],[5,10,9],[6,2,7],[6,7,10],[3,8,14],[8,11,14],[8,9,12],[8,12,11],[9,10,13],[9,13,12],[10,7,16],[10,16,13],[11,12,15],[11,15,14],[12,13,16],[12,16,15]];
 const clone = (points: Point[]) => points.map(([x,y]) => [x,y] as Point);
@@ -29,7 +30,7 @@ function warpTriangle(ctx: CanvasRenderingContext2D, image: HTMLImageElement, so
   ctx.save();ctx.beginPath();ctx.moveTo(d[0],d[1]);ctx.lineTo(e[0],e[1]);ctx.lineTo(f[0],f[1]);ctx.closePath();ctx.clip();
   ctx.transform(A,B,C,D,E,F);ctx.drawImage(image,0,0,width,height);ctx.restore();
 }
-export function MorphStudio({ characterId }: { characterId: string }) {
+export function MorphStudio({ characterId, repo }: { characterId: string; repo: IndexedDBRepository }) {
   const key = "sandboxai:morph:"+characterId;
   const [profile,setProfile] = useState<Profile>(() => load(key));
   const [source,setSource] = useState(0);
@@ -37,9 +38,23 @@ export function MorphStudio({ characterId }: { characterId: string }) {
   const [mix,setMix] = useState(50);
   const [zoom,setZoom] = useState(100);
   const [message,setMessage] = useState("");
+  const [addingPoint,setAddingPoint] = useState(false);
+  const meshTriangles = profile.triangles ?? triangles;
   const canvases = [useRef<HTMLCanvasElement>(null),useRef<HTMLCanvasElement>(null),useRef<HTMLCanvasElement>(null)];
   const dragging = useRef<{ expression: number; point: number } | null>(null);
-  useEffect(() => { setProfile(load(key));setSource(0);setTarget(1); }, [key]);
+  useEffect(() => {
+    let cancelled = false;
+    void repo.loadCharacterMorph(characterId).then(saved => {
+      if (cancelled) return;
+      if (saved && typeof saved === "object" && "version" in saved && saved.version === 1 && "expressions" in saved && Array.isArray(saved.expressions)) {
+        setProfile(saved as Profile);
+      } else {
+        setProfile(load(key)); // migrate an earlier experimental draft on next save
+      }
+      setSource(0); setTarget(1);
+    }).catch(() => { if (!cancelled) setMessage("Could not load morph profile."); });
+    return () => { cancelled = true; };
+  }, [characterId, key, repo]);
   useEffect(() => {
     let cancelled=false;
     const images=profile.expressions.map(item => { const img=new Image();img.src=item.image;return img; });
@@ -53,20 +68,54 @@ export function MorphStudio({ characterId }: { characterId: string }) {
         const ctx=canvas.getContext("2d");if(!ctx)return;
         ctx.clearRect(0,0,canvas.width,canvas.height);drawImage(ctx,img,canvas.width,canvas.height);
         ctx.strokeStyle="#29d8df";ctx.lineWidth=1;
-        for(const tri of triangles){const p=tri.map(i=>exp.points[i]);if(p.some(v=>!v))continue;ctx.beginPath();ctx.moveTo(p[0]![0]*canvas.width,p[0]![1]*canvas.height);for(let j=1;j<3;j++)ctx.lineTo(p[j]![0]*canvas.width,p[j]![1]*canvas.height);ctx.closePath();ctx.stroke();}
+        for(const tri of meshTriangles){const p=tri.map(i=>exp.points[i]);if(p.some(v=>!v))continue;ctx.beginPath();ctx.moveTo(p[0]![0]*canvas.width,p[0]![1]*canvas.height);for(let j=1;j<3;j++)ctx.lineTo(p[j]![0]*canvas.width,p[j]![1]*canvas.height);ctx.closePath();ctx.stroke();}
         for(const p of exp.points){ctx.beginPath();ctx.arc(p[0]*canvas.width,p[1]*canvas.height,3,0,Math.PI*2);ctx.fillStyle="#29d8df";ctx.fill();}
       });
       const canvas=canvases[2].current,ctx=canvas?.getContext("2d");
       if(!canvas || !ctx)return;
       const t=mix/100, blended=a.points.map((p,i)=>[p[0]*(1-t)+b.points[i]![0]*t,p[1]*(1-t)+b.points[i]![1]*t] as Point);
       const layers=[document.createElement("canvas"),document.createElement("canvas")];
-      for(let k=0;k<2;k++){const layer=layers[k]!;layer.width=canvas.width;layer.height=canvas.height;const context=layer.getContext("2d");if(!context)continue;const exp=k===0?a:b;for(const tri of triangles){const src=tri.map(i=>exp.points[i]!),dst=tri.map(i=>blended[i]!);warpTriangle(context,images[k===0?source:target]!,src,dst,canvas.width,canvas.height);}}
+      for(let k=0;k<2;k++){const layer=layers[k]!;layer.width=canvas.width;layer.height=canvas.height;const context=layer.getContext("2d");if(!context)continue;const exp=k===0?a:b;for(const tri of meshTriangles){const src=tri.map(i=>exp.points[i]!),dst=tri.map(i=>blended[i]!);warpTriangle(context,images[k===0?source:target]!,src,dst,canvas.width,canvas.height);}}
       ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(layers[0]!,0,0);ctx.globalAlpha=t;ctx.drawImage(layers[1]!,0,0);ctx.globalAlpha=1;
     };
     images.forEach(img=>img.addEventListener("load",render));render();
     return ()=>{cancelled=true;images.forEach(img=>img.removeEventListener("load",render));};
-  },[profile,source,target,mix]);
-  function save(active: boolean) { const next={...profile,active};try{localStorage.setItem(key,JSON.stringify(next));setProfile(next);setMessage(active?"Profile saved as active (chat playback not connected yet).":"Draft saved locally.");}catch{setMessage("Could not save profile. Browser storage may be full.");} }
+  },[profile,source,target,mix,meshTriangles]);
+  async function save(active: boolean) {
+    const next={...profile,active};
+    try {
+      await repo.saveCharacterMorph(characterId,next);
+      setProfile(next);
+      try { localStorage.removeItem(key); } catch { /* migration cleanup is optional */ }
+      setMessage(active ? "Morph profile saved and enabled for future playback (chat integration pending)." : "Morph draft saved in IndexedDB.");
+    } catch (err) { setMessage(err instanceof Error ? err.message : "Could not save morph profile."); }
+  }
+  function addMeshPoint(index: number, x: number, y: number) {
+    const expression=profile.expressions[index];if(!expression)return;
+    const barycentric=(a:Point,b:Point,c:Point):[number,number,number] | null=>{
+      const den=(b[1]-c[1])*(a[0]-c[0])+(c[0]-b[0])*(a[1]-c[1]);
+      if(Math.abs(den)<1e-8)return null;
+      const u=((b[1]-c[1])*(x-c[0])+(c[0]-b[0])*(y-c[1]))/den;
+      const v=((c[1]-a[1])*(x-c[0])+(a[0]-c[0])*(y-c[1]))/den;
+      return [u,v,1-u-v];
+    };
+    for(let k=0;k<meshTriangles.length;k++){
+      const tri=meshTriangles[k]!, a=expression.points[tri[0]!]!,b=expression.points[tri[1]!]!,c=expression.points[tri[2]!]!;
+      const weights=barycentric(a,b,c);
+      if(!weights || weights.some(w=>w<-.0001))continue;
+      const pointId=expression.points.length;
+      const updated=profile.expressions.map(item=>{
+        const [i,j,l]=tri;const p=item.points[i!]!,q=item.points[j!]!,r=item.points[l!]!;
+        return {...item,points:[...item.points,[p[0]*weights[0]+q[0]*weights[1]+r[0]*weights[2],p[1]*weights[0]+q[1]*weights[1]+r[1]*weights[2]] as Point]};
+      });
+      const updatedTriangles=meshTriangles.filter((_,i)=>i!==k).concat([[tri[0]!,tri[1]!,pointId],[tri[1]!,tri[2]!,pointId],[tri[2]!,tri[0]!,pointId]]);
+      setProfile({...profile,active:false,expressions:updated,triangles:updatedTriangles});
+      setAddingPoint(false);
+      setMessage("Control point added to all expressions.");
+      return;
+    }
+    setMessage("Select a position inside a mesh triangle.");
+  }
   async function addFiles(files: FileList | null) {
     if(!files)return;
     const items:Expression[]=[];
@@ -80,6 +129,7 @@ export function MorphStudio({ characterId }: { characterId: string }) {
   function movePoint(event: React.PointerEvent<HTMLCanvasElement>,index:number) {
     const canvas=canvases[index].current,expIndex=index===0?source:target,exp=profile.expressions[expIndex];if(!canvas||!exp)return;
     const rect=canvas.getBoundingClientRect(),x=(event.clientX-rect.left)/rect.width,y=(event.clientY-rect.top)/rect.height;
+    if(event.type==="pointerdown" && addingPoint){addMeshPoint(expIndex,x,y);return;}
     if(event.type==="pointerdown"){let best=.04,point=-1;exp.points.forEach((p,i)=>{const d=Math.hypot(p[0]-x,p[1]-y);if(d<best){best=d;point=i;}});if(point>=0){dragging.current={expression:expIndex,point};canvas.setPointerCapture(event.pointerId);}}
     if(event.type==="pointermove" && dragging.current?.expression===expIndex){const {point}=dragging.current;setProfile(p=>({...p,active:false,expressions:p.expressions.map((item,i)=>i===expIndex?{...item,points:item.points.map((v,j)=>j===point?[Math.max(0,Math.min(1,x)),Math.max(0,Math.min(1,y))] as Point:v)}:item)}));}
     if(event.type==="pointerup" || event.type==="pointercancel")dragging.current=null;
@@ -100,6 +150,7 @@ export function MorphStudio({ characterId }: { characterId: string }) {
         <button type="button" onClick={()=>setTarget((target+1)%profile.expressions.length)}>›</button>
       </div>
       <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:10}}>
+        <button type="button" aria-pressed={addingPoint} onClick={()=>setAddingPoint(v=>!v)}>{addingPoint?"Cancel point":"Add mesh point"}</button>
         <button type="button" onClick={()=>setZoom(v=>Math.max(100,v-25))}>−</button><span>{zoom}%</span><button type="button" onClick={()=>setZoom(v=>Math.min(400,v+25))}>+</button>
         <button type="button" onClick={()=>setZoom(100)}>Fit</button>
       </div>
@@ -108,11 +159,15 @@ export function MorphStudio({ characterId }: { characterId: string }) {
           <canvas ref={ref} width={252} height={282} aria-label={["Source mesh","Target mesh","Morph preview"][i]} style={{display:"block",width:i===2?"100%":zoom+"%",maxWidth:i===2?"100%":"none",touchAction:"none"}} onPointerDown={i<2?e=>movePoint(e,i):undefined} onPointerMove={i<2?e=>movePoint(e,i):undefined} onPointerUp={i<2?e=>movePoint(e,i):undefined} onPointerCancel={i<2?e=>movePoint(e,i):undefined}/>
         </div>)}
       </div>
+      <div style={{display:"flex",gap:12,flexWrap:"wrap",marginTop:12}}>
+        <label>Eye transition midpoint <input type="range" min={0} max={100} value={profile.eyeMidpoint ?? 50} onChange={e=>setProfile(p=>({...p,active:false,eyeMidpoint:Number(e.target.value)}))}/></label>
+        <label>Eye transition duration <input type="range" min={5} max={100} value={profile.eyeDuration ?? 30} onChange={e=>setProfile(p=>({...p,active:false,eyeDuration:Number(e.target.value)}))}/></label>
+      </div>
       <label style={{display:"block",marginTop:12}}>Transition {mix}% <input type="range" min={0} max={100} value={mix} onChange={e=>setMix(Number(e.target.value))}/></label>
     </>}
     <div style={{display:"flex",gap:8,marginTop:12}}>
-      <button type="button" onClick={()=>save(false)}>Save draft</button>
-      <button type="button" disabled={profile.expressions.length<2} onClick={()=>save(true)}>Save profile</button>
+      <button type="button" onClick={()=>void save(false)}>Save draft</button>
+      <button type="button" disabled={profile.expressions.length<2} onClick={()=>void save(true)}>Save profile</button>
       <button type="button" onClick={()=>{const blob=new Blob([JSON.stringify(profile)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="morph-profile.json";a.click();URL.revokeObjectURL(url);}}>Export JSON</button>
     </div>
     {message && <p role="status">{message}</p>}
