@@ -1,4 +1,5 @@
 import { importAventurasLorebook } from "./aventurasImport";
+import { importAventurasOther } from "./aventurasOtherImport";
 import { extractSillyTavernJsonFromPng } from "@library/sillyTavernImport";
 import { importLorebook } from "./sillyTavernLore";
 import { LorebookSchema, type Lorebook, type LoreEntry } from "./LorebookSchema";
@@ -6,7 +7,7 @@ import { LorebookSchema, type Lorebook, type LoreEntry } from "./LorebookSchema"
 export type ImportFormat = "auto" | "ai-dungeon" | "onlyworlds" | "azgaar" | "aventuras" | "sillytavern";
 export const IMPORT_FORMAT_LABELS = {
   auto: "Detect automatically", "ai-dungeon": "AI Dungeon Story Cards", onlyworlds: "OnlyWorlds world JSON",
-  azgaar: "Azgaar Full / Minimal JSON", aventuras: "Aventuras lorebook JSON", sillytavern: "SillyTavern / V2 / V3 lore",
+  azgaar: "Azgaar Full / Minimal JSON", aventuras: "Aventuras exchange JSON", sillytavern: "SillyTavern / V2 / V3 lore",
 };
 const rec = (v: unknown): Record<string, unknown> | null => v !== null && typeof v === "object" && !Array.isArray(v) ? v as Record<string, unknown> : null;
 const str = (v: unknown): string => typeof v === "string" ? v : "";
@@ -136,7 +137,7 @@ export function importWorldData(raw: unknown, sourceName: string, requested: Imp
   if (format === "ai-dungeon") return importAIDungeon(raw, sourceName);
   if (format === "onlyworlds") return importOnlyWorlds(raw, sourceName);
   if (format === "azgaar") return importAzgaar(raw, sourceName);
-  if (format === "aventuras") return importAventurasLorebook(raw, sourceName);
+  if (format === "aventuras") return root?.entity === "lorebook" ? importAventurasLorebook(raw, sourceName) : importAventurasOther(raw, sourceName);
   return importLorebook(raw, sourceName);
 }
 
