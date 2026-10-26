@@ -1800,3 +1800,19 @@
   .sb-settings-layout { grid-template-columns: minmax(0, 1fr); gap: 14px; }
   .sb-settings-column { padding: 14px; }
 }
+
+
+/* Settings: compact appearance heading with shell mode on the right. */
+.sb-settings-appearance-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.sb-settings-appearance-heading .sb-settings-column__title { margin: 0; }
+.sb-settings-appearance-content > .sb-muted,
+.sb-settings-appearance-content > .sb-appearance-fieldset > .sb-field.sb-inline:first-child {
+  display: none;
+}
