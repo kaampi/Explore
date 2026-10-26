@@ -106,6 +106,7 @@ function physicalContinuityLines(session: Session): string[] {
     "Physical continuity: these facts persist until an explicit transition changes them.",
     "Do not silently reverse facing, break contact, move objects or release restraints.",
     "A movement attempt is not automatically a successful change.",
+    "An exclusive occupied body part cannot perform another exclusive grip or weapon hold until released. Other free limbs remain usable; never assume humanoid anatomy.",
     ...facts.map((fact) => `- ${fact}`)
   ];
 }
