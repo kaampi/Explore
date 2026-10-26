@@ -63,7 +63,7 @@ export function MorphStudio({ characterId, repo }: { characterId: string; repo: 
       const a=profile.expressions[source],b=profile.expressions[target];
       if(!a || !b || !images[source]?.complete || !images[target]?.complete || !images[source]?.naturalWidth || !images[target]?.naturalWidth)return;
       [source,target].forEach((index,k)=>{
-        const canvas=canvases[k].current, img=images[index],exp=profile.expressions[index];
+        const canvas=canvases[k]?.current, img=images[index],exp=profile.expressions[index];
         if(!canvas || !img || !exp)return;
         const ctx=canvas.getContext("2d");if(!ctx)return;
         ctx.clearRect(0,0,canvas.width,canvas.height);drawImage(ctx,img,canvas.width,canvas.height);
@@ -183,7 +183,7 @@ export function MorphStudio({ characterId, repo }: { characterId: string; repo: 
     } catch(err) {setMessage(err instanceof Error?err.message:"Mesh import failed.");}
   }
   function movePoint(event: React.PointerEvent<HTMLCanvasElement>,index:number) {
-    const canvas=canvases[index].current,expIndex=index===0?source:target,exp=profile.expressions[expIndex];if(!canvas||!exp)return;
+    const canvas=canvases[index]?.current,expIndex=index===0?source:target,exp=profile.expressions[expIndex];if(!canvas||!exp)return;
     const rect=canvas.getBoundingClientRect(),x=(event.clientX-rect.left)/rect.width,y=(event.clientY-rect.top)/rect.height;
     if(event.type==="pointerdown" && addingPoint){addMeshPoint(expIndex,x,y);return;}
     if(event.type==="pointerdown"){let best=.04,point=-1;exp.points.forEach((p,i)=>{const d=Math.hypot(p[0]-x,p[1]-y);if(d<best){best=d;point=i;}});if(point>=0){dragging.current={expression:expIndex,point};canvas.setPointerCapture(event.pointerId);}}
