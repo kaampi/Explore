@@ -10,7 +10,13 @@ const archiveSchema = z.object({
   story: z.record(z.unknown()).optional(),
   entries: z.array(z.unknown()).max(100_000).optional(),
   characters: z.array(z.unknown()).max(5_000).optional(),
-  lorebooks: z.array(z.unknown()).max(5_000).optional(),
+  lorebookEntries: z.array(z.unknown()).max(5_000).optional(),
+  locations: z.array(z.unknown()).max(5_000).optional(),
+  items: z.array(z.unknown()).max(5_000).optional(),
+  chapters: z.array(z.unknown()).max(5_000).optional(),
+  checkpoints: z.array(z.unknown()).max(5_000).optional(),
+  branches: z.array(z.unknown()).max(5_000).optional(),
+  worldStateRecords: z.array(z.unknown()).max(100_000).optional(),
   embeddedImages: z.array(z.unknown()).max(5_000).optional(),
 }).passthrough();
 export type AvtOverview = {
@@ -18,6 +24,12 @@ export type AvtOverview = {
   entryCount: number;
   characterCount: number;
   lorebookCount: number;
+  locationCount: number;
+  itemCount: number;
+  chapterCount: number;
+  checkpointCount: number;
+  branchCount: number;
+  worldStateRecordCount: number;
   imageCount: number;
   warnings: string[];
 };
@@ -26,12 +38,15 @@ function record(value: unknown): Record<string, unknown> | null {
 }
 export function inspectAvtStructure(raw: unknown): AvtOverview {
   const doc = archiveSchema.parse(raw);
-  if (!doc.story && !doc.entries) throw new Error("No recognizable Aventuras story or entries in this archive.");
+  if (!doc.version || !doc.story || !doc.entries?.length) throw new Error("Missing required Aventuras version, story or story entries.");
   const story = record(doc.story);
   const title = typeof story?.title === "string" ? story.title : typeof story?.name === "string" ? story.name : "Imported Aventuras story";
   return {
     title, entryCount: doc.entries?.length ?? 0, characterCount: doc.characters?.length ?? 0,
-    lorebookCount: doc.lorebooks?.length ?? 0, imageCount: doc.embeddedImages?.length ?? 0,
+    lorebookCount: doc.lorebookEntries?.length ?? 0, imageCount: doc.embeddedImages?.length ?? 0,
+    locationCount: doc.locations?.length ?? 0, itemCount: doc.items?.length ?? 0,
+    chapterCount: doc.chapters?.length ?? 0, checkpointCount: doc.checkpoints?.length ?? 0,
+    branchCount: doc.branches?.length ?? 0, worldStateRecordCount: doc.worldStateRecords?.length ?? 0,
     warnings: [
       "Read-only inspection. No imported history is replayed as instructions.",
       "Image payloads require a separate size-limited import; never embed them in conversation context.",
