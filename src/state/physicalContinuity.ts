@@ -81,8 +81,11 @@ export function applyPhysicalChange(
 /** A deterministic, compact scene summary without an extra model call. */
 export function describePhysicalState(state: PhysicalState | undefined, limit = 30, focus?: readonly string[]): string[] {
   if (!state) return [];
-  const lines = Object.entries(state.stances).map(([actor, stance]) => `${actor}: ${stance}`);
-  for (const r of state.relations) {
+  const active = new Set(focus ?? []);
+  const relevant = focus?.length ? state.relations.filter((r) => active.has(r.subject) || active.has(r.target)) : state.relations;
+  const connected = new Set([...active, ...relevant.flatMap((r) => [r.subject, r.target])]);
+  const lines = Object.entries(state.stances).filter(([actor]) => !focus?.length || connected.has(actor)).map(([actor, stance]) => `${actor}: ${stance}`);
+  for (const r of [...relevant].sort((a, b) => Number(Boolean(b.exclusive)) - Number(Boolean(a.exclusive)))) {
     lines.push(`${r.subject}${r.subjectPart ? `.${r.subjectPart}` : ""} ${r.relation.replaceAll("_", " ")} ${r.target}${r.targetPart ? `.${r.targetPart}` : ""}${r.exclusive && (r.relation === "holding" || r.relation === "restraining") && r.subjectPart ? " [exclusive: part occupied until release]" : ""}${r.note ? ` (${r.note})` : ""}`);
   }
   return lines.slice(0, Math.max(0, limit));
