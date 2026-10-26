@@ -1,3 +1,4 @@
+import { describePhysicalState } from "../state/physicalContinuity";
 import type { ChatMessage } from "@llm/types";
 import {
   ConversationTurnSchema,
@@ -99,20 +100,13 @@ function traitMeaningLines(session: Session): string[] {
 }
 
 function physicalContinuityLines(session: Session): string[] {
-  const physical = session.physical;
-  if (!physical) return [];
-  const stances = Object.entries(physical.stances).slice(0, 30).map(([id, stance]) => `- ${id}: ${stance}`);
-  const relations = physical.relations.slice(0, 60).map((relation) => {
-    const subject = relation.subjectPart ? `${relation.subject} (${relation.subjectPart})` : relation.subject;
-    const target = relation.targetPart ? `${relation.target} (${relation.targetPart})` : relation.target;
-    return `- ${subject} ${relation.relation.replaceAll("_", " ")} ${target}${relation.note ? ` — ${relation.note}` : ""}`;
-  });
-  if (!stances.length && !relations.length) return [];
+  const facts = describePhysicalState(session.physical, 30);
+  if (!facts.length) return [];
   return [
-    "Physical continuity (persistent facts; do not silently change positions, facing, contact or restraints).",
-    "A character may attempt a movement, but its outcome must explicitly account for active physical constraints.",
-    ...stances,
-    ...relations
+    "Physical continuity: these facts persist until an explicit transition changes them.",
+    "Do not silently reverse facing, break contact, move objects or release restraints.",
+    "A movement attempt is not automatically a successful change.",
+    ...facts.map((fact) => `- ${fact}`)
   ];
 }
 
