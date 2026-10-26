@@ -33,9 +33,16 @@ export function buildAvtPlayableSession(
     position: "here",
   }));
   const location = chosen.find(c => c.kind === "location")?.name ?? "Imported world";
+  const objects = chosen.filter(c => c.kind === "item").map((c, index) => ({
+    id: `imported-item-${index + 1}`,
+    name: c.name,
+    note: "",
+    tags: [],
+  }));
   const session = createSessionFromSetup({
     location, lighting: "", noise: "", music: false, placeNote: "",
     characters,
+    objects,
   }, sessionId);
   return parseSession({
     ...session,
