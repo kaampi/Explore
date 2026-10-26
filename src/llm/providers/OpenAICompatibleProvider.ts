@@ -3,7 +3,7 @@ import type { CompletionRequest, LLMProvider, ProviderCapabilities, StreamChunk 
 export const DEFAULT_STRATA_URL = "http://127.0.0.1:8080/v1";
 
 export async function listOpenAIModels(baseUrl: string, signal?: AbortSignal): Promise<string[]> {
-  const response = await fetch(baseUrl.replace(/\/$/, "") + "/models", { signal });
+  const response = await fetch(baseUrl.replace(/\/$/, "") + "/models", { signal: signal ?? null });
   if (!response.ok) throw new Error("Model discovery failed: HTTP " + response.status);
   const data = await response.json() as { data?: Array<{ id?: string }> };
   return (data.data ?? []).map((item) => item.id).filter((id): id is string => Boolean(id));
@@ -19,7 +19,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
     const response = await fetch(this.config.baseUrl.replace(/\/$/, "") + "/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      signal: request.signal,
+      signal: request.signal ?? null,
       body: JSON.stringify({
         model: this.config.model,
         messages: request.messages,
