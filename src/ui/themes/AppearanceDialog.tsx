@@ -18,7 +18,6 @@ export function AppearanceSettingsContent({ onClose }: { onClose: () => void }) 
     select,
     save,
     remove,
-    setShell,
   } = useAppearance();
   const [name, setName] = useState("");
   const [imageError, setImageError] = useState<string | null>(null);
@@ -57,21 +56,6 @@ export function AppearanceSettingsContent({ onClose }: { onClose: () => void }) 
           : "Choose your default play appearance. Each conversation keeps its own theme."}
       </p>
       <fieldset disabled={!ready} className="sb-appearance-fieldset">
-        <div className="sb-field sb-inline">
-          <span>App appearance</span>
-          <div className="sb-segment" aria-label="App appearance">
-            {(["light", "dark"] as const).map((mode) => (
-              <button
-                type="button"
-                key={mode}
-                aria-pressed={library.shell === mode}
-                onClick={() => setShell(mode)}
-              >
-                {mode === "light" ? "Light" : "Dark"}
-              </button>
-            ))}
-          </div>
-        </div>
         <h3 className="sb-section-title">Your play space</h3>
         <div className="sb-preset-grid">
           {PRESET_THEMES.map((preset) => (
