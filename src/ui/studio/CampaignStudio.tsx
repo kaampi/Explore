@@ -1,3 +1,4 @@
+import { pinSessionAnatomy } from "@state/anatomy";
 import { useEffect, useRef, useState } from "react";
 import type { IndexedDBRepository, StudioResume } from "@persistence/IndexedDBRepository";
 import type { Session } from "@state/StateSchema";
@@ -427,7 +428,7 @@ export function CampaignStudio({
         setBusy(false);
         return;
       }
-      onStart(result.session);
+      onStart(pinSessionAnatomy(result.session, await repo.listAnatomyTemplates()));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not start this scene.");
       setBusy(false);
