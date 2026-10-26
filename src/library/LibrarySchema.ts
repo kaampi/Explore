@@ -38,6 +38,8 @@ export const CharacterTemplateSchema = z.object({
   /** Optional middle name(s). Between given and family. */
   middleName: z.string().default(""),
   personality: z.string().default(""),
+  anatomyTemplateId: z.string().min(1).max(100).optional(),
+  anatomyOverrides: z.object({ addedParts: z.array(z.string().min(1).max(80)).default([]), removedParts: z.array(z.string().min(1).max(80)).default([]) }).optional(),
   /** Typical temperament — not a scene. Room/place is campaign/scene, not archive. */
   mood: z.string().default(""),
   /** How they speak. Identity, not a scene. Empty on older cards. */
