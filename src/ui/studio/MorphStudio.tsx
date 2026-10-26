@@ -5,7 +5,7 @@ import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 /** Character-scoped, local-first morph authoring. Experimental: activation is not yet wired to chat. */
 type Point = [number, number];
 type Expression = { name: string; image: string; points: Point[] };
-type Profile = { version: 1; active: boolean; expressions: Expression[]; triangles?: number[][]; eyeMidpoint?: number; eyeDuration?: number; eyeEnabled?: boolean; eyeWidth?: number; eyeHeight?: number; eyeStrength?: number; eyeGuides?: boolean; eyeCenters?: Record<string, Point[]> };
+type Profile = { version: 1; active: boolean; expressions: Expression[]; triangles?: number[][]; eyeMidpoint?: number; eyeDuration?: number; eyeEnabled?: boolean; eyeCorrections?: Record<string, boolean>; eyeWidth?: number; eyeHeight?: number; eyeStrength?: number; eyeGuides?: boolean; eyeCenters?: Record<string, Point[]> };
 const GRID_COLS = 7;
 const GRID_ROWS = 9;
 const initial: Point[] = originalPoints("shy");
@@ -51,6 +51,8 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
   const [playing,setPlaying] = useState(false);
   const handledSaveRequest = useRef(0);
   const eyeDragging = useRef<{expression:number; eye:number}|null>(null);
+  const eyePairKey = JSON.stringify([profile.expressions[source]?.name ?? "",profile.expressions[target]?.name ?? ""]);
+  const eyeCorrectionActive = profile.eyeCorrections?.[eyePairKey] ?? (profile.eyeCorrections ? false : (profile.eyeEnabled ?? false));
   const meshTriangles = profile.triangles ?? (profile.expressions[0]?.points.length === 17 ? legacyTriangles : profile.expressions[0]?.points.length === 57 ? originalTriangles : triangles);
   const canvases = [useRef<HTMLCanvasElement>(null),useRef<HTMLCanvasElement>(null),useRef<HTMLCanvasElement>(null)] as const;
   const meshFileRef = useRef<HTMLInputElement>(null);
@@ -87,7 +89,7 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
         if(showMesh){ctx.strokeStyle="#29d8df";ctx.lineWidth=Math.max(.15,canvas.width/Math.max(1,canvas.getBoundingClientRect().width))*.65;
         for(const tri of meshTriangles){const p=tri.map(i=>exp.points[i]);if(p.some(v=>!v))continue;ctx.beginPath();ctx.moveTo(p[0]![0]*canvas.width,p[0]![1]*canvas.height);for(let j=1;j<3;j++)ctx.lineTo(p[j]![0]*canvas.width,p[j]![1]*canvas.height);ctx.closePath();ctx.stroke();}
         for(const p of exp.points){ctx.beginPath();ctx.arc(p[0]*canvas.width,p[1]*canvas.height,Math.max(.3,canvas.width/Math.max(1,canvas.getBoundingClientRect().width))*2,0,Math.PI*2);ctx.fillStyle="#29d8df";ctx.fill();}}
-        if(profile.eyeGuides && profile.eyeEnabled){const centers=profile.eyeCenters?.[exp.name] ?? [[.37,.39],[.63,.39]];ctx.strokeStyle="#ffffff";ctx.fillStyle="#ffffff";ctx.lineWidth=Math.max(.15,canvas.width/Math.max(1,canvas.getBoundingClientRect().width))*1.5;for(const p of centers){ctx.beginPath();ctx.ellipse(p[0]*canvas.width,p[1]*canvas.height,(profile.eyeWidth??25)/252*canvas.width,(profile.eyeHeight??14)/282*canvas.height,0,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(p[0]*canvas.width,p[1]*canvas.height,Math.max(.3,canvas.width/Math.max(1,canvas.getBoundingClientRect().width))*2,0,Math.PI*2);ctx.fill();}}
+        if(profile.eyeGuides && (profile.eyeCorrections?.[JSON.stringify([profile.expressions[source]?.name ?? "",profile.expressions[target]?.name ?? ""])] ?? (profile.eyeCorrections ? false : (profile.eyeEnabled ?? false)))){const centers=profile.eyeCenters?.[exp.name] ?? [[.37,.39],[.63,.39]];ctx.strokeStyle="#ffffff";ctx.fillStyle="#ffffff";ctx.lineWidth=Math.max(.15,canvas.width/Math.max(1,canvas.getBoundingClientRect().width))*1.5;for(const p of centers){ctx.beginPath();ctx.ellipse(p[0]*canvas.width,p[1]*canvas.height,(profile.eyeWidth??25)/252*canvas.width,(profile.eyeHeight??14)/282*canvas.height,0,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(p[0]*canvas.width,p[1]*canvas.height,Math.max(.3,canvas.width/Math.max(1,canvas.getBoundingClientRect().width))*2,0,Math.PI*2);ctx.fill();}}
       });
       const canvas=canvases[2].current,ctx=canvas?.getContext("2d");
       if(!canvas || !ctx)return;
@@ -99,7 +101,7 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
       const duration=Math.max(.05,(profile.eyeDuration ?? 30)/100);
       const midpoint=(profile.eyeMidpoint ?? 50)/100;
       const eyeT=Math.max(0,Math.min(1,(t-(midpoint-duration/2))/duration));
-      if(profile.eyeEnabled && (profile.eyeStrength??80)>0 && Math.abs(eyeT-t)>.001){
+      if(eyeCorrectionActive && (profile.eyeStrength??80)>0 && Math.abs(eyeT-t)>.001){
         const mask=document.createElement("canvas");mask.width=canvas.width;mask.height=canvas.height;
         const maskCtx=mask.getContext("2d");
         if(maskCtx){
@@ -126,7 +128,7 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
     };
     images.forEach(img=>img.addEventListener("load",render));render();
     return ()=>{cancelled=true;images.forEach(img=>img.removeEventListener("load",render));};
-  },[profile,source,target,mix,meshTriangles,showMesh,zoom]);
+  },[profile,source,target,mix,meshTriangles,showMesh,zoom,eyeCorrectionActive]);
   async function save(active: boolean) {
     const next={...profile,active};
     try {
@@ -219,7 +221,7 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
     if(event.type==="pointermove" && eyeDragging.current?.expression===expIndex){const {eye}=eyeDragging.current;setProfile(p=>{const name=p.expressions[expIndex]?.name;if(!name)return p;const centers=(p.eyeCenters?.[name]??[[.37,.39],[.63,.39]]).map((v,i)=>i===eye?[Math.max(0,Math.min(1,x)),Math.max(0,Math.min(1,y))] as Point:v);return {...p,active:false,eyeCenters:{...p.eyeCenters,[name]:centers}};});return;}
     if(event.type!=="pointerdown")return;
     if(eyeEditMode){
-      if(!profile.eyeEnabled || !profile.eyeGuides)return;
+      if(!eyeCorrectionActive || !profile.eyeGuides)return;
       const centers=profile.eyeCenters?.[exp.name]??[[.37,.39],[.63,.39]];
       // Grab anywhere inside an ellipse, including its border and central handle.
       let closest=Number.POSITIVE_INFINITY,eye=-1;
@@ -261,7 +263,7 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
       </div>
       <div style={{display:"grid",gridTemplateColumns:"minmax(175px,.8fr) minmax(300px,1.5fr) minmax(330px,1.7fr) minmax(265px,1.25fr)",gap:20,alignItems:"start",marginTop:16,padding:"14px 0",borderTop:"1px solid var(--sb-border, #566)"}}>
         <div style={{display:"grid",gap:14,paddingTop:7}}>
-          <label style={{display:"flex",gap:8,alignItems:"center"}}><input type="checkbox" checked={profile.eyeEnabled??false} onChange={e=>setProfile(p=>({...p,active:false,eyeEnabled:e.target.checked}))}/> Eye correction</label>
+          <label style={{display:"flex",gap:8,alignItems:"center"}}><input type="checkbox" checked={eyeCorrectionActive} onChange={e=>setProfile(p=>({...p,active:false,eyeCorrections:{...p.eyeCorrections,[eyePairKey]:e.target.checked}}))}/> Eye correction</label>
           <label style={{display:"flex",gap:8,alignItems:"center"}}><input type="checkbox" checked={profile.eyeGuides??true} onChange={e=>setProfile(p=>({...p,eyeGuides:e.target.checked}))}/> Show eye regions</label>
         </div>
         <div style={{display:"grid",gap:8}}>
