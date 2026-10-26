@@ -4,7 +4,7 @@ export const LorebookSchema = z.object({
   id: z.string().min(1),
   name: z.string().trim().min(1).max(200),
   sourceName: z.string(),
-  origin: z.object({ format: z.enum(["ai-dungeon", "onlyworlds", "azgaar"]), worldId: z.string().optional(), schemaVersion: z.string().optional() }).optional(),
+  origin: z.object({ format: z.enum(["ai-dungeon", "onlyworlds", "azgaar", "aventuras"]), worldId: z.string().optional(), schemaVersion: z.string().optional() }).optional(),
   importNotes: z.array(z.string()).optional(),
   materializedCharacterIds: z.array(z.string()).optional(),
   materializedRealmId: z.string().optional(),
