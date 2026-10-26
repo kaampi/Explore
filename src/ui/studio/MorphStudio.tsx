@@ -9,6 +9,7 @@ const GRID_COLS = 7;
 const GRID_ROWS = 9;
 const initial: Point[] = Array.from({length:GRID_ROWS},(_,y)=>Array.from({length:GRID_COLS},(_,x)=>[x/(GRID_COLS-1),y/(GRID_ROWS-1)] as Point)).flat();
 const triangles: number[][] = Array.from({length:(GRID_ROWS-1)*(GRID_COLS-1)},(_,cell)=>{const x=cell%(GRID_COLS-1),y=Math.floor(cell/(GRID_COLS-1)),a=y*GRID_COLS+x,b=a+1,c=a+GRID_COLS,d=c+1;return [[a,b,c],[b,d,c]];}).flat();
+const legacyTriangles: number[][] = [[0,1,4],[1,5,4],[1,2,6],[1,6,5],[0,4,3],[3,4,8],[4,5,9],[4,9,8],[5,6,10],[5,10,9],[6,2,7],[6,7,10],[3,8,14],[8,11,14],[8,9,12],[8,12,11],[9,10,13],[9,13,12],[10,7,16],[10,16,13],[11,12,15],[11,15,14],[12,13,16],[12,16,15]];
 const clone = (points: Point[]) => points.map(([x,y]) => [x,y] as Point);
 function load(key: string): Profile {
   try { const value = JSON.parse(localStorage.getItem(key) || "null") as Profile | null; if (value?.version === 1 && Array.isArray(value.expressions)) return value; } catch { /* invalid local draft */ }
@@ -44,7 +45,7 @@ export function MorphStudio({ characterId, repo, gallery = [] }: { characterId: 
   const [showMesh,setShowMesh] = useState(true);
   const [playing,setPlaying] = useState(false);
   const eyeDragging = useRef<{expression:number; eye:number}|null>(null);
-  const meshTriangles = profile.triangles ?? triangles;
+  const meshTriangles = profile.triangles ?? (profile.expressions[0]?.points.length === 17 ? legacyTriangles : triangles);
   const canvases = [useRef<HTMLCanvasElement>(null),useRef<HTMLCanvasElement>(null),useRef<HTMLCanvasElement>(null)] as const;
   const meshFileRef = useRef<HTMLInputElement>(null);
   const imageFileRef = useRef<HTMLInputElement>(null);
@@ -77,9 +78,9 @@ export function MorphStudio({ characterId, repo, gallery = [] }: { characterId: 
         if(!canvas || !img || !exp)return;
         const ctx=canvas.getContext("2d");if(!ctx)return;
         ctx.clearRect(0,0,canvas.width,canvas.height);drawImage(ctx,img,canvas.width,canvas.height);
-        if(showMesh){ctx.strokeStyle="#29d8df";ctx.lineWidth=1;
+        if(showMesh){ctx.strokeStyle="#29d8df";ctx.lineWidth=Math.max(.15,canvas.width/Math.max(1,canvas.getBoundingClientRect().width))*.65;
         for(const tri of meshTriangles){const p=tri.map(i=>exp.points[i]);if(p.some(v=>!v))continue;ctx.beginPath();ctx.moveTo(p[0]![0]*canvas.width,p[0]![1]*canvas.height);for(let j=1;j<3;j++)ctx.lineTo(p[j]![0]*canvas.width,p[j]![1]*canvas.height);ctx.closePath();ctx.stroke();}
-        for(const p of exp.points){ctx.beginPath();ctx.arc(p[0]*canvas.width,p[1]*canvas.height,3,0,Math.PI*2);ctx.fillStyle="#29d8df";ctx.fill();}}
+        for(const p of exp.points){ctx.beginPath();ctx.arc(p[0]*canvas.width,p[1]*canvas.height,Math.max(.3,canvas.width/Math.max(1,canvas.getBoundingClientRect().width))*2,0,Math.PI*2);ctx.fillStyle="#29d8df";ctx.fill();}}
         if(profile.eyeGuides && profile.eyeEnabled){const centers=profile.eyeCenters?.[exp.name] ?? [[.37,.39],[.63,.39]];ctx.strokeStyle="#ffad45";ctx.fillStyle="#ffad45";for(const p of centers){ctx.beginPath();ctx.ellipse(p[0]*canvas.width,p[1]*canvas.height,(profile.eyeWidth??25)/252*canvas.width,(profile.eyeHeight??14)/282*canvas.height,0,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(p[0]*canvas.width,p[1]*canvas.height,3,0,Math.PI*2);ctx.fill();}}
       });
       const canvas=canvases[2].current,ctx=canvas?.getContext("2d");
