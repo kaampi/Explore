@@ -1742,3 +1742,60 @@
 .sb-world-import-choice label { font-weight: 600; }
 .sb-world-import-choice p { color: var(--text-dim); font-size: 13px; line-height: 1.6; }
 .sb-lore-entries .sb-eyebrow { display: block; margin: 6px 0; }
+
+
+/* Unified Settings: editorial two-column layout inspired by Storybook. */
+.sb-dialog:has(.sb-settings-layout) {
+  width: min(1100px, calc(100vw - 32px));
+  max-height: min(92dvh, 1000px);
+  padding: 22px 24px;
+}
+.sb-dialog:has(.sb-settings-layout) .sb-dialog__heading {
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.sb-dialog:has(.sb-settings-layout) .sb-dialog__heading h2 {
+  font-size: 23px;
+}
+.sb-settings-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 20px;
+}
+.sb-settings-column {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+}
+.sb-settings-column__title {
+  font: 21px/1.25 Georgia, serif;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--subhead);
+  margin: 0 0 18px;
+}
+.sb-settings-column .sb-field,
+.sb-settings-column .sb-connection-help {
+  min-width: 0;
+}
+.sb-settings-column input,
+.sb-settings-column select,
+.sb-settings-column textarea {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.sb-settings-appearance-content .sb-appearance-fieldset {
+  min-width: 0;
+}
+.sb-settings-appearance-content .sb-preset-grid {
+  grid-template-columns: repeat(auto-fit, minmax(115px, 1fr));
+}
+@media (max-width: 760px) {
+  .sb-dialog:has(.sb-settings-layout) { padding: 16px; }
+  .sb-settings-layout { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .sb-settings-column { padding: 14px; }
+}
