@@ -101,7 +101,7 @@ async function home() {
   await waitFor(() => !!container.querySelector(".sb-home-connection"));
 }
 async function theme(name: string) {
-  await click(named("Appearance and themes"));
+  await click(button("⚙ Settings"));
   await click(button(`Aa ✧${name}`));
   await click(button("Done"));
 }
