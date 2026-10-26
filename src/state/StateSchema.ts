@@ -216,6 +216,10 @@ export const ApproximateAgeSchema = z.preprocess((val) => {
 
 export const CharacterStateSchema = z.object({
   sourceLibraryId: z.string().min(1).optional(),
+  /** Optional reference to a reusable anatomical template. */
+  anatomyTemplateId: z.string().min(1).max(100).optional(),
+  /** Per-character parts added to or removed from the selected template. */
+  anatomyOverrides: z.object({ addedParts: z.array(z.string().min(1).max(80)).max(64).default([]), removedParts: z.array(z.string().min(1).max(80)).max(64).default([]) }).optional(),
   /** Given name; the record key is a slug. Falls back to a title-cased id in the UI. */
   name: z.string().min(1).optional(),
   /**
@@ -466,6 +470,21 @@ export const PhysicalStateSchema = z.object({
 });
 export type PhysicalState = z.infer<typeof PhysicalStateSchema>;
 
+/** Reusable, versioned body plans. Part IDs are arbitrary, not human-specific. */
+export const AnatomyTemplateSchema = z.object({
+  id: z.string().min(1).max(100),
+  name: z.string().min(1).max(120),
+  version: z.number().int().positive(),
+  parts: z.array(z.object({
+    id: z.string().min(1).max(80),
+    label: z.string().min(1).max(120),
+    capabilities: z.array(z.enum(["grasp", "support", "locomote", "sense", "manipulate"])).max(5).default([])
+  })).min(1).max(128)
+}).refine((template) => new Set(template.parts.map((part) => part.id)).size === template.parts.length, {
+  message: "Anatomy part IDs must be unique."
+});
+export type AnatomyTemplate = z.infer<typeof AnatomyTemplateSchema>;
+
 export const SessionSchema = z.object({
   schemaVersion: z.number().int().positive(),
   id: z.string(),
@@ -473,6 +492,8 @@ export const SessionSchema = z.object({
   stateVersion: z.number().int().nonnegative(),
 
   characters: z.record(z.string(), CharacterStateSchema).default({}),
+  /** Session-pinned template snapshots: updates to a library template cannot alter active play. */
+  anatomyTemplates: z.record(z.string(), AnatomyTemplateSchema).optional(),
   /** Canonical physical continuity, independent of chat history. */
   physical: PhysicalStateSchema.optional(),
   scene: WorldStateSchema.optional(),
