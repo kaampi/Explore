@@ -5,11 +5,20 @@ type Topic = { id: string; label: string; title: string; intro: string; steps: A
 
 export const GUIDE_TOPICS: Topic[] = [
   { id: "start", label: "Getting started", title: "Your first conversation", intro: "You only need a local AI and a character. You can build a whole world later.", steps: [
-    { title: "1. Connect your AI", body: "Open Set up AI on the home page. Choose Ollama or Strata, start its local server, and select an available chat model. If you use Strata, check the API address shown in its settings." },
+    { title: "1. Connect your AI", body: "Click Settings in the left sidebar. In the dialog, find AI Settings on the right. Choose Ollama or Strata, start its local server, check the connection, and select an installed chat model." },
     { title: "2. Pick a character", body: "Choose a character on the home page, create one, or try the built-in example. A name and a short personality are enough to begin." },
     { title: "3. Leave the extras empty", body: "For a simple chat, leave Place, Rule-set and Voice set to None. You do not need a world, a storyline or a prepared scene." },
     { title: "4. Start talking", body: "Start the conversation and write what you say or do. The AI replies as the characters and describes what happens next. Your conversation is saved locally." },
     { title: "Free Chat — God Mode", body: "In a free chat without a rule-set or storyline, you can steer the story directly. Change the setting, introduce an event or tell the AI to take the story in a new direction. For example: ‘Ignore the previous scene. We are now on a spaceship.’ This kind of creative prompt injection is welcome in God Mode. It changes the story, not the app’s security rules or technical limits. The AI may not always follow your instructions perfectly." }
+  ] },
+  { id: "ai", label: "AI setup", title: "Connect your local AI", intro: "Open Settings in the left sidebar. AI Settings is in the right column of the dialog.", steps: [
+    { title: "1. Open Settings", body: "Click Settings in the left sidebar. The dialog opens directly: Appearance & Themes is on the left and AI Settings is on the right." },
+    { title: "2. Choose an AI engine", body: "Select Ollama or Strata (OpenAI-compatible) under AI engine. Install and start your chosen local AI server first." },
+    { title: "3. Ollama setup", body: "Install and start Ollama, then download a chat-capable model. SandboxAI checks Ollama at http://localhost:11434 automatically; no server address field is needed. If necessary, start the server with ollama serve." },
+    { title: "4. Strata setup", body: "Enable the OpenAI-compatible HTTP API in Strata. Enter its API URL in the Strata API URL field that appears. Use the address and port configured in Strata, and allow browser access (CORS)." },
+    { title: "5. Connect and select a model", body: "Click Check connection, or Try again if the server is not ready. Once available, choose an installed model under Chat model. If none appears, install a chat model in your AI server and retry." },
+    { title: "6. Start a conversation", body: "Close Settings, choose a character and start chatting. Return to Settings at any time to change the engine or model." },
+    { title: "Troubleshooting", body: "Check that the server is running and the port is correct. Ollama may require the SandboxAI browser origin in OLLAMA_ORIGINS. A hosted SandboxAI page may not be able to reach your local server; running SandboxAI locally is more reliable." }
   ] },
   { id: "play", label: "Playing", title: "Play your way", intro: "You decide what your character attempts. The AI describes the response, while SandboxAI keeps track of important facts.", steps: [
     { title: "Adventure", body: "Follow a prepared story with its rules and scenes. Your choices still matter." },
@@ -43,9 +52,9 @@ export const GUIDE_TOPICS: Topic[] = [
     { title: "Import and export", body: "Use the available library import and backup tools to move or protect your content. Keep a separate backup before testing new alpha versions." }
   ] },
   { id: "help", label: "Troubleshooting", title: "When something does not work", intro: "Most first-run problems come from the local AI connection.", steps: [
-    { title: "No AI reply", body: "Make sure Ollama or Strata is running. Open Set up AI and check the server address and model. Try a smaller model if replies are very slow." },
-    { title: "Cannot connect", body: "Your browser must be allowed to contact the local server. Check its port and CORS settings. A hosted page may not be able to reach your computer's local AI." },
-    { title: "Model not found", body: "Select a model that is installed and available on the chosen server. Refresh the model list after installing a new one." },
+    { title: "No AI reply", body: "Make sure Ollama or Strata is running. Open Settings → AI Settings and check the engine, connection status and Chat model. Try a smaller model if replies are very slow." },
+    { title: "Cannot connect", body: "Open Settings → AI Settings. Check the server is running. For Strata, verify its API URL; for Ollama, check http://localhost:11434. The server must allow browser access (CORS). A hosted page may not be able to reach your local AI." },
+    { title: "Model not found", body: "Open Settings → AI Settings and select an installed chat-capable model. After installing a new model, click Check connection or Try again to refresh the list." },
     { title: "Found a bug?", body: "Include what you clicked, what you expected, what happened, and any visible error. Avoid sharing private conversations or API keys." }
   ] }
 ];
