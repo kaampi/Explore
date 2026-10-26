@@ -39,7 +39,7 @@ async function ask(prompt: string): Promise<string> {
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         generationConfig: { temperature: 0, maxOutputTokens: 300 }
       }),
-      signal: AbortSignal.timeout(45000)
+      signal: AbortSignal.timeout(120000)
     });
     if ((response.status === 429 || response.status >= 500) && attempt < 2) {
       await wait(3000 * (attempt + 1));
@@ -62,6 +62,9 @@ async function main() {
   model = await selectModel();
   endpoint = apiRoot + "/models/" + encodeURIComponent(model) + ":generateContent";
   console.log("Selected Gemini model: " + model);
+  console.log("Starting Gemini connectivity probe");
+  await ask("Reply with READY.");
+  console.log("Gemini connectivity probe passed");
   let state = applyPhysicalChange(undefined, { kind: "set_relation", relation: {
     id: "left", subject: "player", subjectPart: "left_arm", relation: "restraining", target: "guard_a", exclusive: true
   } });
@@ -77,6 +80,7 @@ async function main() {
   ];
   const results: Array<{ scenario: string; passed: boolean; response: string; note: string }> = [];
   for (const scene of scenes) {
+    console.log("Starting scenario: " + scene.name);
     const prompt = [
       "You are narrating a grounded roleplaying scene. State is authoritative.",
       "Do not narrate impossible actions as successful. You may describe an attempted action and why it fails.",
