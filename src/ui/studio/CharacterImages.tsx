@@ -65,9 +65,7 @@ export function CharacterImages({ characterId, repo, portrait, onPortrait }: { c
         <button type="button" aria-label={`Remove ${item.name}`} title="Remove image" onClick={()=>void removePicture(item)} style={{position:"absolute",right:4,top:4,minWidth:24,height:24,padding:0,background:"rgba(30,30,30,.8)",color:"#fff",border:"none",borderRadius:3,cursor:"pointer"}}>×</button>
       </div>)}
       <button type="button" aria-label="Add pictures" title="Add pictures" onClick={()=>picker.current?.click()} style={{width:142,height:150,flex:"0 0 142px",border:"1px dashed var(--sb-border, #778)",borderRadius:6,background:"transparent",fontSize:28,cursor:"pointer",color:"inherit"}}>+</button>
-    </div>
-    <div style={{marginTop:12}}>
-      <button type="button" onClick={()=>setOpen(true)}>Morph Studio{emotion.length ? ` (${emotion.length})` : ""}</button>
+      <button type="button" aria-label="Open Morph Studio" title="Open Morph Studio" onClick={()=>setOpen(true)} style={{width:142,height:150,flex:"0 0 142px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,border:"1px solid #a9e8b4",borderRadius:6,background:"linear-gradient(145deg,#d4f9da,#a7e8b6)",color:"#173b29",fontSize:22,fontWeight:800,lineHeight:1.12,letterSpacing:1.3,textAlign:"center",cursor:"pointer",boxShadow:"0 2px 8px rgba(0,0,0,.12)"}}><span>MORPH</span><span>STUDIO</span>{emotion.length>0 && <span style={{fontSize:12,fontWeight:600,letterSpacing:0,marginTop:8}}>{emotion.length} expressions</span>}</button>
     </div>
     {status && <p role="status">{status}</p>}
     {open && <div role="dialog" aria-modal="true" aria-label="Morph Studio" style={{position:"fixed",inset:0,zIndex:10000,background:"rgba(0,0,0,.8)",display:"flex",alignItems:"center",justifyContent:"center"}}>
