@@ -3,6 +3,7 @@ export type StudioView =
   | "adventure"
   | "lorebooks"
   | "characters"
+  | "anatomy"
   | "places"
   | "objects"
   | "voices"
