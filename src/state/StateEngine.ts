@@ -1,3 +1,4 @@
+import { validateAnatomicalRelation } from "./anatomy";
 import { applyPhysicalChange, type PhysicalChange } from "./physicalContinuity";
 import { EventLog } from "@events/EventLog";
 import { resolveAuthority, type AuthoritySource } from "./AuthorityResolver";
@@ -112,6 +113,10 @@ export class StateEngine {
           throw new Error("Unknown change");
       } catch {
         return { committed: false, reason: "Invalid physical change JSON." };
+      }
+      if (change.kind === "set_relation") {
+        const issue = validateAnatomicalRelation(this.session, change.relation);
+        if (issue) return { committed: false, reason: issue };
       }
       const previousState = structuredClone(this.session.physical);
       let result: ReturnType<typeof applyPhysicalChange>;
