@@ -442,6 +442,28 @@ export type SceneObject = z.infer<typeof SceneObjectSchema>;
 // Session — the root of the Canonical Data Model
 // ---------------------------------------------------------------------------
 
+/**
+ * Persistent physical facts. These are observations, not executable instructions.
+ * All references use canonical actor/object IDs; unknown relationships must not
+ * be inferred from prose. Changes require explicit state updates.
+ */
+export const PhysicalRelationSchema = z.object({
+  id: z.string().min(1).max(100),
+  subject: z.string().min(1).max(100),
+  relation: z.enum(["behind", "in_front_of", "beside", "facing", "holding", "touching", "blocking", "restraining", "on", "inside"]),
+  target: z.string().min(1).max(100),
+  subjectPart: z.string().max(80).optional(),
+  targetPart: z.string().max(80).optional(),
+  note: z.string().max(300).optional()
+});
+export type PhysicalRelation = z.infer<typeof PhysicalRelationSchema>;
+
+export const PhysicalStateSchema = z.object({
+  stances: z.record(z.string(), z.enum(["standing", "sitting", "lying", "kneeling", "crouching", "all_fours", "moving"])).default({}),
+  relations: z.array(PhysicalRelationSchema).max(100).default([])
+});
+export type PhysicalState = z.infer<typeof PhysicalStateSchema>;
+
 export const SessionSchema = z.object({
   schemaVersion: z.number().int().positive(),
   id: z.string(),
@@ -449,6 +471,8 @@ export const SessionSchema = z.object({
   stateVersion: z.number().int().nonnegative(),
 
   characters: z.record(z.string(), CharacterStateSchema).default({}),
+  /** Canonical physical continuity, independent of chat history. */
+  physical: PhysicalStateSchema.optional(),
   scene: WorldStateSchema.optional(),
   /**
    * Buttons showing now. Empty until a Pre-defined Replies trigger opens.
