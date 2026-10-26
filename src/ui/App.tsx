@@ -18,6 +18,7 @@ import { ConversationLibrary } from "./conversations/ConversationLibrary";
 import { ThemeProvider, useAppearance } from "./themes/ThemeProvider";
 import { deleteAudioPreferences } from "./audio/audioStorage";
 import { SettingsDialog } from "./settings/SettingsDialog";
+import { LanguageProvider, languageOptions, useLanguage, type InterfaceLanguage } from "./i18n/LanguageProvider";
 import {
   getRepository,
   loadExistingSession,
@@ -47,9 +48,14 @@ function LiveSessionBridge({
   }, [phase, onPhase]);
   return null;
 }
+function HeaderLanguagePicker() {
+  const { language, setLanguage } = useLanguage();
+  return <select className="sb-header-language" aria-label="Interface language" value={language} onChange={(event) => setLanguage(event.target.value as InterfaceLanguage)}>{languageOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>;
+}
 function HeaderAppearanceToggle() {
   const { library, setShell, ready } = useAppearance();
   const dark = library.shell === "dark";
+  const { t } = useLanguage();
   return (
     <button
       type="button"
@@ -60,7 +66,7 @@ function HeaderAppearanceToggle() {
       onClick={() => setShell(dark ? "light" : "dark")}
     >
       <span aria-hidden="true">{dark ? "☾" : "☀"}</span>
-      <span>{dark ? "Dark" : "Light"}</span>
+      <span>{dark ? t("themeDark") : t("themeLight")}</span>
     </button>
   );
 }
@@ -82,6 +88,7 @@ function sceneResume(session: Session): StudioResume | null {
     : null;
 }
 function SandboxApp() {
+  const { t } = useLanguage();
   const { forgetConversation } = useAppearance();
   const [repo] = useState(() => getRepository());
   const [session, setSession] = useState<Session | null | undefined>(undefined);
@@ -331,7 +338,7 @@ function SandboxApp() {
           </span>
         </button>
         <AppSwitcher onHome={() => navigate("home")} />
-        <HeaderAppearanceToggle />
+        <div className="sb-header-preferences"><HeaderLanguagePicker /><HeaderAppearanceToggle /></div>
       </header>
       {operationError && (
         <div className="sb-operation-error" role="alert">
@@ -364,24 +371,24 @@ function SandboxApp() {
           className={`sb-workspace${view === "studio" ? " sb-workspace--studio" : ""}`}
         >
           <aside className="sb-sidebar">
-            <span className="sb-eyebrow">YOUR CREATIVE SPACE</span>
+            <span className="sb-eyebrow">{t("eyebrow")}</span>
             <nav aria-label="SandboxAI navigation">
               <button
                 type="button"
                 className={view === "home" ? "is-active" : ""}
                 onClick={() => navigate("home")}
               >
-                ◈ <span>My space</span>
+                ◈ <span>{t("space")}</span>
               </button>
               <button
                 type="button"
                 className={view === "conversations" ? "is-active" : ""}
                 onClick={() => navigate("conversations")}
               >
-                ◷ <span>My conversations</span>
+                ◷ <span>{t("conversations")}</span>
               </button>
               <button type="button" className={view === "ideas" ? "is-active" : ""} onClick={() => navigate("ideas")}>
-                ✧ <span>My ideas</span>
+                ✧ <span>{t("ideas")}</span>
               </button>
               <button
                 type="button"
@@ -392,9 +399,9 @@ function SandboxApp() {
                 }
                 onClick={() => openStudio("characters")}
               >
-                ♧ <span>Characters</span>
+                ♧ <span>{t("characters")}</span>
               </button>
-              <button type="button" className={view === "studio" && studioView === "lorebooks" ? "is-active" : ""} onClick={() => openStudio("lorebooks")}>▤ <span>Lorebooks</span></button>
+              <button type="button" className={view === "studio" && studioView === "lorebooks" ? "is-active" : ""} onClick={() => openStudio("lorebooks")}>▤ <span>{t("lorebooks")}</span></button>
               <button
                 type="button"
                 className={
@@ -404,7 +411,7 @@ function SandboxApp() {
                 }
                 onClick={() => openStudio("places")}
               >
-                ⌖ <span>Worlds & places</span>
+                ⌖ <span>{t("places")}</span>
               </button>
               <button
                 type="button"
@@ -415,24 +422,22 @@ function SandboxApp() {
                 }
                 onClick={() => openStudio("campaigns")}
               >
-                ◇ <span>Adventures</span>
+                ◇ <span>{t("adventures")}</span>
               </button>
-              <button type="button" className={view === "guide" ? "is-active" : ""} onClick={() => navigate("guide")}>? <span>Guide</span></button>
-              <button type="button" onClick={() => setAppearanceOpen(true)}>⚙ <span>Settings</span></button>
+              <button type="button" className={view === "guide" ? "is-active" : ""} onClick={() => navigate("guide")}>? <span>{t("guide")}</span></button>
+              <button type="button" onClick={() => setAppearanceOpen(true)}>⚙ <span>{t("settings")}</span></button>
               {session && (
                 <button
                   type="button"
                   disabled={working}
                   onClick={() => report(openConversation(session.id))}
                 >
-                  ↗ <span>Continue exploring</span>
+                  ↗ <span>{t("continue")}</span>
                 </button>
               )}
             </nav>
             <div className="sb-sidebar__quote">
-              <span aria-hidden="true">❧</span>Every story has
-              <br />
-              more to discover.
+              <span aria-hidden="true">❧</span>{t("tagline")}
             </div>
 
           </aside>
@@ -500,10 +505,12 @@ function SandboxApp() {
 }
 export default function App() {
   return (
-    <ThemeProvider>
-      <ConnectionProvider>
-        <SandboxApp />
-      </ConnectionProvider>
-    </ThemeProvider>
+    <LanguageProvider>
+      <ThemeProvider>
+        <ConnectionProvider>
+          <SandboxApp />
+        </ConnectionProvider>
+      </ThemeProvider>
+    </LanguageProvider>
   );
 }
