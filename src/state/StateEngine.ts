@@ -1,3 +1,4 @@
+import { applyPhysicalChange, type PhysicalChange } from "./physicalContinuity";
 import { EventLog } from "@events/EventLog";
 import { resolveAuthority, type AuthoritySource } from "./AuthorityResolver";
 import { resolveLockChange } from "./LockManager";
@@ -47,6 +48,7 @@ export type MutationResult =
  */
 export const UNDOABLE_EVENT_TYPES = new Set([
   "state_mutation_committed",
+  "physical_state_changed",
   "lock_state_changed",
   "conversation_turn_appended",
   "conversation_turn_edited",
@@ -97,6 +99,36 @@ export class StateEngine {
    * Each stage can reject; rejection short-circuits and nothing is committed.
    */
   proposeMutation(proposal: MutationProposal): MutationResult {
+    if (proposal.path === "physical.change") {
+      if (isStale(proposal.expectedStateVersion, this.session.stateVersion))
+        return { committed: false, reason: "Stale physical state proposal." };
+      if (proposal.source !== "ai_approved_state_mutation" && proposal.source !== "player" && proposal.source !== "system")
+        return { committed: false, reason: "Unauthorized physical state proposal." };
+      let change: PhysicalChange;
+      try {
+        if (typeof proposal.value !== "string") throw new Error("Expected JSON string");
+        change = JSON.parse(proposal.value) as PhysicalChange;
+        if (!change || !["stance", "set_relation", "remove_relation"].includes(change.kind))
+          throw new Error("Unknown change");
+      } catch {
+        return { committed: false, reason: "Invalid physical change JSON." };
+      }
+      const previousState = structuredClone(this.session.physical);
+      let result: ReturnType<typeof applyPhysicalChange>;
+      try { result = applyPhysicalChange(previousState, change); }
+      catch { return { committed: false, reason: "Malformed physical change." }; }
+      if (!result.ok) return { committed: false, reason: result.reason };
+      this.session.physical = result.state;
+      this.session.stateVersion = nextVersion(this.session.stateVersion);
+      this.eventLog.append({
+        turn: this.session.stateVersion,
+        timestamp: new Date().toISOString(),
+        type: "physical_state_changed",
+        payload: { previousState, change, source: proposal.source }
+      });
+      return { committed: true, newStateVersion: this.session.stateVersion };
+    }
+
     // 1. Target/Type Validation — does the path resolve to a lockable field?
     const target = this.resolveLockableTarget(proposal.path);
     if (!target) {
@@ -795,6 +827,10 @@ export class StateEngine {
     const p = (event.payload ?? {}) as Record<string, unknown>;
 
     switch (event.type) {
+      case "physical_state_changed": {
+        this.session.physical = p.previousState as Session["physical"];
+        return { ok: true };
+      }
       case "state_mutation_committed": {
         const target = this.resolveLockableTarget(p.path as string);
         if (!target) return { ok: false, reason: `Cannot undo: target path no longer resolvable (${String(p.path)}).` };
