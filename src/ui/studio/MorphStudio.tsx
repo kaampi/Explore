@@ -59,9 +59,9 @@ export function MorphStudio({ characterId, repo }: { characterId: string; repo: 
     let cancelled=false;
     const images=profile.expressions.map(item => { const img=new Image();img.src=item.image;return img; });
     const render=()=> {
-      if(cancelled || images.some(img=>!img.complete || !img.naturalWidth))return;
+      if(cancelled)return;
       const a=profile.expressions[source],b=profile.expressions[target];
-      if(!a || !b)return;
+      if(!a || !b || !images[source]?.complete || !images[target]?.complete || !images[source]?.naturalWidth || !images[target]?.naturalWidth)return;
       [source,target].forEach((index,k)=>{
         const canvas=canvases[k].current, img=images[index],exp=profile.expressions[index];
         if(!canvas || !img || !exp)return;
@@ -145,10 +145,42 @@ export function MorphStudio({ characterId, repo }: { characterId: string; repo: 
     const items:Expression[]=[];
     for(const file of Array.from(files).filter(f=>f.type.startsWith("image/"))) {
       const image=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=()=>reject(new Error("Image read failed"));reader.readAsDataURL(file);});
-      items.push({name:file.name.replace(/\.[^.]+$/,""),image,points:clone(initial)});
+      const reference=profile.expressions[0]?.points ?? initial;
+      items.push({name:file.name.replace(/\.[^.]+$/,"").toLowerCase(),image,points:clone(reference)});
     }
     setProfile(p=>({...p,active:false,expressions:[...p.expressions,...items]}));
     setMessage("Images added. Save to retain changes.");
+  }
+  async function importMesh(file: File | null) {
+    if(!file)return;
+    try {
+      const raw: unknown=JSON.parse(await file.text());
+      if(!raw || typeof raw!=="object")throw new Error("Invalid mesh file.");
+      const obj=raw as Record<string,unknown>;
+      const width=Number(obj.width),height=Number(obj.height);
+      if(!Number.isFinite(width)||width<=0||!Number.isFinite(height)||height<=0)throw new Error("Invalid image dimensions.");
+      const rawPoints=obj.points;
+      if(!rawPoints || typeof rawPoints!=="object" || Array.isArray(rawPoints))throw new Error("Missing expression points.");
+      const rows=rawPoints as Record<string,unknown>;
+      const importedTriangles=obj.triangles;
+      if(!Array.isArray(importedTriangles)||!importedTriangles.every(t=>Array.isArray(t)&&t.length===3&&t.every(i=>Number.isInteger(i)&&i>=0)))throw new Error("Invalid triangles.");
+      const pointCount=Object.values(rows).find(Array.isArray)?.length ?? 0;
+      if(pointCount<3 || !importedTriangles.every(t=>t.every((i:number)=>i<pointCount)))throw new Error("Triangle indices exceed mesh points.");
+      const normalize=(input:unknown):Point[]=>{
+        if(!Array.isArray(input)||input.length!==pointCount)throw new Error("All expressions must share a mesh.");
+        return input.map(p=>{
+          if(!Array.isArray(p)||p.length!==2||!p.every((n:unknown)=>typeof n==="number"&&Number.isFinite(n)))throw new Error("Invalid control point.");
+          return [Math.max(0,Math.min(1,p[0]/width)),Math.max(0,Math.min(1,p[1]/height))] as Point;
+        });
+      };
+      const updated=profile.expressions.map(exp=>{
+        const points=rows[exp.name.toLowerCase()];
+        return {...exp,points:points ? normalize(points):clone(normalize(Object.values(rows)[0]))};
+      });
+      if(updated.length===0)throw new Error("Add expression images before importing mesh.");
+      setProfile(p=>({...p,active:false,expressions:updated,triangles:importedTriangles as number[][]}));
+      setMessage("Mesh imported. Review alignment and save the profile.");
+    } catch(err) {setMessage(err instanceof Error?err.message:"Mesh import failed.");}
   }
   function movePoint(event: React.PointerEvent<HTMLCanvasElement>,index:number) {
     const canvas=canvases[index].current,expIndex=index===0?source:target,exp=profile.expressions[expIndex];if(!canvas||!exp)return;
@@ -162,6 +194,7 @@ export function MorphStudio({ characterId, repo }: { characterId: string; repo: 
   return <section className="setup-field" style={{marginTop:20,padding:16,border:"1px solid var(--sb-border, #566)",borderRadius:12}}>
     <h3>Morph Studio <small style={{fontWeight:400}}>· experimental</small></h3>
     <p>Attach expressions, adjust matching mesh points, preview transitions and save a character-specific profile. Chat playback is not connected yet.</p>
+    <input type="file" accept=".json,application/json" aria-label="Import Morph Studio mesh JSON" onChange={e=>{void importMesh(e.target.files?.[0]??null);e.target.value="";}}/>
     <input type="file" multiple accept="image/*" aria-label="Add expression images" onChange={e=>{void addFiles(e.target.files).catch(()=>setMessage("Could not load images."));e.target.value="";}}/>
     {profile.expressions.length>=2 && <>
       <div style={{display:"flex",gap:12,flexWrap:"wrap",margin:"12px 0"}}>
