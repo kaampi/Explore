@@ -203,13 +203,17 @@ export function MorphStudio({ characterId, repo, gallery = [] }: { characterId: 
   function movePoint(event: React.PointerEvent<HTMLCanvasElement>,index:number) {
     const canvas=canvases[index]?.current,expIndex=index===0?source:target,exp=profile.expressions[expIndex];if(!canvas||!exp)return;
     const rect=canvas.getBoundingClientRect(),x=(event.clientX-rect.left)/rect.width,y=(event.clientY-rect.top)/rect.height;
-    if(event.type==="pointerdown" && profile.eyeEnabled && profile.eyeGuides){const centers=profile.eyeCenters?.[exp.name]??[[.37,.39],[.63,.39]];if(event.type==="pointerdown"){const eye=centers.findIndex(p=>Math.hypot(p[0]-x,p[1]-y)<.045);if(eye>=0){eyeDragging.current={expression:expIndex,eye};canvas.setPointerCapture(event.pointerId);return;}}}
+    if(event.type==="pointerup" || event.type==="pointercancel"){eyeDragging.current=null;dragging.current=null;return;}
+    if(event.type==="pointermove" && dragging.current?.expression===expIndex){const {point}=dragging.current;setProfile(p=>({...p,active:false,expressions:p.expressions.map((item,i)=>i===expIndex?{...item,points:item.points.map((v,j)=>j===point?[Math.max(0,Math.min(1,x)),Math.max(0,Math.min(1,y))] as Point:v)}:item)}));return;}
     if(event.type==="pointermove" && eyeDragging.current?.expression===expIndex){const {eye}=eyeDragging.current;setProfile(p=>{const name=p.expressions[expIndex]?.name;if(!name)return p;const centers=(p.eyeCenters?.[name]??[[.37,.39],[.63,.39]]).map((v,i)=>i===eye?[Math.max(0,Math.min(1,x)),Math.max(0,Math.min(1,y))] as Point:v);return {...p,active:false,eyeCenters:{...p.eyeCenters,[name]:centers}};});return;}
-    if(event.type==="pointerup" || event.type==="pointercancel")eyeDragging.current=null;
-    if(event.type==="pointerdown" && addingPoint){addMeshPoint(expIndex,x,y);return;}
-    if(event.type==="pointerdown"){let best=.04,point=-1;exp.points.forEach((p,i)=>{const d=Math.hypot(p[0]-x,p[1]-y);if(d<best){best=d;point=i;}});if(point>=0){dragging.current={expression:expIndex,point};canvas.setPointerCapture(event.pointerId);}}
-    if(event.type==="pointermove" && dragging.current?.expression===expIndex){const {point}=dragging.current;setProfile(p=>({...p,active:false,expressions:p.expressions.map((item,i)=>i===expIndex?{...item,points:item.points.map((v,j)=>j===point?[Math.max(0,Math.min(1,x)),Math.max(0,Math.min(1,y))] as Point:v)}:item)}));}
-    if(event.type==="pointerup" || event.type==="pointercancel")dragging.current=null;
+    if(event.type!=="pointerdown")return;
+    if(addingPoint){addMeshPoint(expIndex,x,y);return;}
+    // Select the nearest vertex in screen pixels, independent of triangle winding or intersections.
+    let closest=12,point=-1;
+    exp.points.forEach((p,i)=>{const d=Math.hypot((p[0]-x)*rect.width,(p[1]-y)*rect.height);if(d<closest){closest=d;point=i;}});
+    if(point>=0){dragging.current={expression:expIndex,point};canvas.setPointerCapture(event.pointerId);return;}
+    if(profile.eyeEnabled && profile.eyeGuides){const centers=profile.eyeCenters?.[exp.name]??[[.37,.39],[.63,.39]];const eye=centers.findIndex(p=>Math.hypot((p[0]-x)*rect.width,(p[1]-y)*rect.height)<14);if(eye>=0){eyeDragging.current={expression:expIndex,eye};canvas.setPointerCapture(event.pointerId);}}
+
   }
   useEffect(()=>{if(!playing)return;let frame=0;let last=0;let progress=mix/100;let direction=1;const tick=(now:number)=>{if(last){progress+=direction*(now-last)/1800;if(progress>=1){progress=1;direction=-1;}if(progress<=0){progress=0;direction=1;}setMix(Math.round(progress*100));}last=now;frame=requestAnimationFrame(tick);};frame=requestAnimationFrame(tick);return()=>cancelAnimationFrame(frame);},[playing]);
   const choices=profile.expressions.map((item,i)=><option key={i} value={i}>{item.name}</option>);
