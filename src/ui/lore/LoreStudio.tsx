@@ -7,6 +7,7 @@ import { materializeWorld, selectedWorldEntries } from "../../lore/materializeWo
 import { LoreReview } from "./LoreReview";
 import { aventurasLibraryPreview } from "../../lore/aventurasLibrary";
 import { previewAvtHistory, type AvtHistoryPreview } from "../../lore/avtHistoryPreview";
+import { buildAvtArchiveSession } from "../../lore/avtArchiveSession";
 import { downloadJson } from "../studio/studioShared";
 
 export function LoreStudio({ repo }: { repo: IndexedDBRepository }) {
@@ -46,6 +47,16 @@ export function LoreStudio({ repo }: { repo: IndexedDBRepository }) {
       const raw: unknown = JSON.parse(await picked.text());
       setAvtPreview(previewAvtHistory(raw));
     } catch (err) { setError(err instanceof Error ? err.message : "Could not inspect archive."); }
+    finally { pending.current = false; setBusy(false); }
+  }
+  async function archiveAvt() {
+    if (!avtPreview || pending.current) return;
+    pending.current = true; setBusy(true); setError("");
+    try {
+      await repo.createArchivedConversation(buildAvtArchiveSession(avtPreview));
+      setAvtPreview(null);
+      setMessage("Aventuras transcript saved as an archived, inactive conversation. No imported world state or instructions were activated.");
+    } catch (err) { setError(err instanceof Error ? err.message : "Could not archive Aventuras transcript."); }
     finally { pending.current = false; setBusy(false); }
   }
   async function save() {
@@ -113,6 +124,7 @@ export function LoreStudio({ repo }: { repo: IndexedDBRepository }) {
         <h3>{line.role}</h3><p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{line.content.slice(0, 1500)}</p>
       </article>)}</div>
       {avtPreview.lines.length > 30 && <p>Showing first 30 entries only.</p>}
+      <button className="sb-button sb-button--primary" disabled={busy || avtPreview.lines.some(line => line.role === "other")} onClick={() => void archiveAvt()}>Save as archived conversation</button>
       <button className="sb-button" disabled={busy} onClick={() => setAvtPreview(null)}>Close preview</button>
     </section>}
     {draft ? <>
