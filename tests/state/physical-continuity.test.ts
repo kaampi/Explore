@@ -127,7 +127,7 @@ describe("multi-turn occupied-limb continuity", () => {
 
   it("lets an eight-armed creature use an independent arm while two are occupied", () => {
     let state: PhysicalState | undefined;
-    for (const [id, arm] of [["grip-a", "arm_1"], ["grip-b", "arm_2"], ["grip-c", "arm_8"]]) {
+    for (const [id, arm] of [["grip-a", "arm_1"], ["grip-b", "arm_2"], ["grip-c", "arm_8"]] as const) {
       const result = applyPhysicalChange(state, { kind: "set_relation", relation: {
         id, subject: "alien", subjectPart: arm, relation: "holding",
         target: id, exclusive: true
