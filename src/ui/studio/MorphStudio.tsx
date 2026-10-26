@@ -133,8 +133,9 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
     const next={...profile,active};
     try {
       const stored = await repo.loadCharacterMorph(characterId);
-      const galleryData = stored && typeof stored === "object" && "gallery" in stored ? { gallery: stored.gallery } : {};
-      await repo.saveCharacterMorph(characterId,{...next,...galleryData});
+      const existingGallery = stored && typeof stored === "object" && "gallery" in stored && Array.isArray(stored.gallery) ? stored.gallery as {id:string;name:string;image:string;kind:"ordinary"|"emotion";emotion:string}[] : [];
+      const missing = next.expressions.filter(e=>!existingGallery.some(g=>g.image===e.image)).map(e=>({id:crypto.randomUUID(),name:e.name,image:e.image,kind:"emotion" as const,emotion:e.name}));
+      await repo.saveCharacterMorph(characterId,{...next,gallery:[...existingGallery,...missing]});
       setProfile(next);
       try { localStorage.removeItem(key); } catch { /* migration cleanup is optional */ }
       setMessage(active ? "Morph profile saved and enabled for future playback (chat integration pending)." : "Morph draft saved in IndexedDB.");
@@ -172,8 +173,8 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
     const items:Expression[]=[];
     for(const file of Array.from(files).filter(f=>f.type.startsWith("image/"))) {
       const image=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=()=>reject(new Error("Image read failed"));reader.readAsDataURL(file);});
-      const reference=profile.expressions[0]?.points ?? initial;
-      items.push({name:file.name.replace(/\.[^.]+$/,"").toLowerCase(),image,points:clone(reference)});
+      const name=file.name.replace(/\.[^.]+$/,"").toLowerCase();
+      items.push({name,image,points:clone(originalPoints(name))});
     }
     setProfile(p=>({...p,active:false,expressions:[...p.expressions,...items]}));
     setMessage("Images added. Save to retain changes.");

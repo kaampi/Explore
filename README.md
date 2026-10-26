@@ -46,6 +46,10 @@ Play uses a local **Ollama** server. See [Using Ollama](#using-ollama).
 
 First load opens **My space**: continue your saved conversation, create a character with just a name, import a character card through the library, or explore an existing world. **Create & chat** starts without a world file, campaign, rule-set, or prepared storyline. The built-in Emma example offers an immediate first meeting. Library tools and Campaign Builder remain available from the sidebar. Saved conversations stay available while you browse Home and Studio. Starting another creates a separate conversation and keeps the previous one.
 
+## Character pictures and Morph Studio
+
+In **Studio → Characters**, saved characters have a compact picture gallery: three thumbnails, an **+** tile for uploads, and a prominent **MORPH STUDIO** tile. The first picture is the default portrait. **Visa bildarkiv** opens all ordinary pictures for deletion and drag-and-drop reordering; expression images are managed separately in Morph Studio. See the [character pictures and Morph Studio guide](docs/character-pictures.md) for step-by-step instructions and existing-data behavior.
+
 ## First conversation
 
 Home offers **Create & chat** with only a name, character-card import, and the built-in Emma example. Clicking a character opens a short **Chat with…** dialog with optional Rule-set, Voice (narration style) and Place. All default to None; the Emma example preselects its advertised venue, which can be cleared. The same optional choices are available while creating a new character. Built-in and saved library choices are offered. A selected rule-set starts numeric traits at the middle of their range, while text traits stay unset. Each new conversation keeps its own snapshot; resuming a saved conversation bypasses setup and retains its choices. Creating characters and exploring themes work without an AI connection. A shared connection check finds Ollama, lists chat-capable models when capability metadata is available, and explains an unreachable server, an empty model list, or a missing saved model. Older Ollama releases without capability metadata remain compatible.
