@@ -44,6 +44,8 @@ export function MorphStudio({ characterId, repo, gallery = [] }: { characterId: 
   const eyeDragging = useRef<{expression:number; eye:number}|null>(null);
   const meshTriangles = profile.triangles ?? triangles;
   const canvases = [useRef<HTMLCanvasElement>(null),useRef<HTMLCanvasElement>(null),useRef<HTMLCanvasElement>(null)] as const;
+  const meshFileRef = useRef<HTMLInputElement>(null);
+  const imageFileRef = useRef<HTMLInputElement>(null);
   const dragging = useRef<{ expression: number; point: number } | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -210,18 +212,10 @@ export function MorphStudio({ characterId, repo, gallery = [] }: { characterId: 
   const choices=profile.expressions.map((item,i)=><option key={i} value={i}>{item.name}</option>);
   return <section className="setup-field" style={{marginTop:20,padding:16,border:"1px solid var(--sb-border, #566)",borderRadius:12}}>
 
-    <input type="file" accept=".json,application/json" aria-label="Import Morph Studio mesh JSON" onChange={e=>{void importMesh(e.target.files?.[0]??null);e.target.value="";}}/>
-    <input type="file" multiple accept="image/*" aria-label="Add expression images" onChange={e=>{void addFiles(e.target.files).catch(()=>setMessage("Could not load images."));e.target.value="";}}/>
+    <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}><button type="button" onClick={()=>imageFileRef.current?.click()}>Upload more images</button><button type="button" onClick={()=>meshFileRef.current?.click()}>Import JSON</button><button type="button" onClick={()=>{const blob=new Blob([JSON.stringify(profile)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="morph-profile.json";a.click();URL.revokeObjectURL(url);}}>Export JSON</button></div>
+    <input ref={meshFileRef} style={{display:"none"}} type="file" accept=".json,application/json" aria-label="Import Morph Studio mesh JSON" onChange={e=>{void importMesh(e.target.files?.[0]??null);e.target.value="";}}/>
+    <input ref={imageFileRef} style={{display:"none"}} type="file" multiple accept="image/*" aria-label="Add expression images" onChange={e=>{void addFiles(e.target.files).catch(()=>setMessage("Could not load images."));e.target.value="";}}/>
     {profile.expressions.length>=2 && <>
-      <div style={{display:"none"}}>
-        <label>From <select value={source} onChange={e=>setSource(Number(e.target.value))}>{choices}</select></label>
-        <button type="button" onClick={()=>setSource((source+profile.expressions.length-1)%profile.expressions.length)}>‹</button>
-        <button type="button" onClick={()=>setSource((source+1)%profile.expressions.length)}>›</button>
-
-        <label>To <select value={target} onChange={e=>setTarget(Number(e.target.value))}>{choices}</select></label>
-        <button type="button" onClick={()=>setTarget((target+profile.expressions.length-1)%profile.expressions.length)}>‹</button>
-        <button type="button" onClick={()=>setTarget((target+1)%profile.expressions.length)}>›</button>
-      </div>
       <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:10}}>
         <button type="button" onClick={()=>setShowMesh(v=>!v)}>{showMesh?"Hide mesh":"Show mesh"}</button>
         <button type="button" aria-pressed={addingPoint} onClick={()=>setAddingPoint(v=>!v)}>{addingPoint?"Cancel point":"Add mesh point"}</button>
@@ -230,7 +224,7 @@ export function MorphStudio({ characterId, repo, gallery = [] }: { characterId: 
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(230px,1fr))",gap:12}}>
         {canvases.map((ref,i)=><div key={i} style={{overflow:"auto",maxHeight:"65vh",border:"1px solid #596478",borderRadius:8}}>
-          <canvas ref={ref} width={252} height={282} aria-label={["Source mesh","Target mesh","Morph preview"][i]} style={{display:"block",width:i===2?"100%":zoom+"%",maxWidth:i===2?"100%":"none",height:"auto",touchAction:"none"}} onPointerDown={i<2?e=>movePoint(e,i):undefined} onPointerMove={i<2?e=>movePoint(e,i):undefined} onPointerUp={i<2?e=>movePoint(e,i):undefined} onPointerCancel={i<2?e=>movePoint(e,i):undefined}/>
+          <canvas ref={ref} width={252} height={282} aria-label={["Source mesh","Target mesh","Morph preview"][i]} style={{display:"block",width:zoom+"%",maxWidth:"none",height:"auto",maxHeight:zoom===100?"57vh":undefined,objectFit:"contain",touchAction:"none"}} onPointerDown={i<2?e=>movePoint(e,i):undefined} onPointerMove={i<2?e=>movePoint(e,i):undefined} onPointerUp={i<2?e=>movePoint(e,i):undefined} onPointerCancel={i<2?e=>movePoint(e,i):undefined}/>
           {i<2 && <div style={{display:"flex",justifyContent:"center",gap:8,alignItems:"center",padding:8}}><button type="button" onClick={()=>i===0?setSource((source+profile.expressions.length-1)%profile.expressions.length):setTarget((target+profile.expressions.length-1)%profile.expressions.length)}>‹</button><select aria-label={i===0?"From":"To"} value={i===0?source:target} onChange={e=>i===0?setSource(Number(e.target.value)):setTarget(Number(e.target.value))}>{choices}</select><button type="button" onClick={()=>i===0?setSource((source+1)%profile.expressions.length):setTarget((target+1)%profile.expressions.length)}>›</button></div>}
         </div>)}
       </div>
@@ -248,7 +242,6 @@ export function MorphStudio({ characterId, repo, gallery = [] }: { characterId: 
     <div style={{display:"flex",gap:8,marginTop:12}}>
       <button type="button" onClick={()=>void save(false)}>Save draft</button>
       <button type="button" disabled={profile.expressions.length<2} onClick={()=>void save(true)}>Save profile</button>
-      <button type="button" onClick={()=>{const blob=new Blob([JSON.stringify(profile)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="morph-profile.json";a.click();URL.revokeObjectURL(url);}}>Export JSON</button>
     </div>
     {message && <p role="status">{message}</p>}
   </section>;
