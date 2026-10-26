@@ -1,3 +1,4 @@
+import { AnatomyTemplateSchema, type AnatomyTemplate } from "@state/StateSchema";
 import type { materializeWorld } from "../lore/materializeWorld";
 import { LorebookSchema, type Lorebook } from "../lore/LorebookSchema";
 import { IdeaSchema, type Idea } from "../ideas/IdeaSchema";
@@ -74,7 +75,8 @@ const ACTIVE_CONVERSATION_ID = "active-conversation";
 const CONVERSATION_INDEX_ID = "conversation-index-v1";
 const IDEAS_STORE = "ideas";
 const LOREBOOKS_STORE = "lorebooks";
-const DB_VERSION = 12;
+const DB_VERSION = 13;
+const ANATOMY_STORE = "anatomy-templates";
 
 export type StudioResume = {
   conversationId?: string;
@@ -123,6 +125,7 @@ export class TemplateValidationError extends Error {
 }
 
 function ensureStores(db: IDBDatabase): void {
+  if (!db.objectStoreNames.contains(ANATOMY_STORE)) db.createObjectStore(ANATOMY_STORE, { keyPath: "id" });
   if (!db.objectStoreNames.contains(LOREBOOKS_STORE)) db.createObjectStore(LOREBOOKS_STORE, { keyPath: "id" });
   if (!db.objectStoreNames.contains(IDEAS_STORE))
     db.createObjectStore(IDEAS_STORE, { keyPath: "id" });
@@ -546,6 +549,18 @@ export class IndexedDBRepository {
     if (!this.db) return;
     this.db.close();
     this.db = undefined;
+  }
+
+  async listAnatomyTemplates(): Promise<AnatomyTemplate[]> {
+    return (await this.getAllRecords(ANATOMY_STORE)).map((row) => AnatomyTemplateSchema.parse(row));
+  }
+
+  async saveAnatomyTemplate(template: AnatomyTemplate): Promise<void> {
+    await this.putRecord(ANATOMY_STORE, AnatomyTemplateSchema.parse(template));
+  }
+
+  async deleteAnatomyTemplate(id: string): Promise<void> {
+    await this.deleteRecord(ANATOMY_STORE, id);
   }
 
   async saveCharacter(template: CharacterTemplate): Promise<void> {
