@@ -141,7 +141,7 @@
 }
 .sb-workspace {
   display: grid;
-  grid-template-columns: 210px minmax(0, 1fr);
+  grid-template-columns: 340px minmax(0, 1fr);
   min-height: calc(100dvh - 84px);
 }
 .sb-sidebar {
@@ -175,10 +175,11 @@
   background: none;
   text-align: left;
   color: var(--text-dim);
-  font-size: 18px;
+  font-size: 24px;
+  line-height: 1.35;
 }
 .sb-sidebar nav button span {
-  font-size: 12px;
+  font-size: inherit;
 }
 .sb-sidebar nav button.is-active {
   background: var(--panel-raised);
@@ -1118,7 +1119,7 @@
     display: none;
   }
   .sb-workspace {
-    grid-template-columns: 178px minmax(0, 1fr);
+    grid-template-columns: 320px minmax(0, 1fr);
   }
   .sb-sidebar {
     padding: 30px 12px;
@@ -1234,11 +1235,8 @@
   .sb-sidebar nav button {
     padding: 7px 10px;
     white-space: nowrap;
-    font-size: 15px;
+    flex-shrink: 0;
     gap: 6px;
-  }
-  .sb-sidebar nav button span {
-    font-size: 10px;
   }
   .sb-home {
     padding: 24px 20px;
