@@ -98,6 +98,24 @@ function traitMeaningLines(session: Session): string[] {
   return lines;
 }
 
+function physicalContinuityLines(session: Session): string[] {
+  const physical = session.physical;
+  if (!physical) return [];
+  const stances = Object.entries(physical.stances).slice(0, 30).map(([id, stance]) => `- ${id}: ${stance}`);
+  const relations = physical.relations.slice(0, 60).map((relation) => {
+    const subject = relation.subjectPart ? `${relation.subject} (${relation.subjectPart})` : relation.subject;
+    const target = relation.targetPart ? `${relation.target} (${relation.targetPart})` : relation.target;
+    return `- ${subject} ${relation.relation.replaceAll("_", " ")} ${target}${relation.note ? ` — ${relation.note}` : ""}`;
+  });
+  if (!stances.length && !relations.length) return [];
+  return [
+    "Physical continuity (persistent facts; do not silently change positions, facing, contact or restraints).",
+    "A character may attempt a movement, but its outcome must explicitly account for active physical constraints.",
+    ...stances,
+    ...relations
+  ];
+}
+
 function buildStateSummaryBlock(session: Session): ContextBlock {
   const stage = sideRoomStage(session);
   const characterLines = Object.entries(session.characters).map(([id, character]) => {
@@ -138,6 +156,7 @@ function buildStateSummaryBlock(session: Session): ContextBlock {
   });
 
   const sceneParts = [
+    ...physicalContinuityLines(session),
     session.scene
       ? stage
         ? "This beat is not in the public bar."
