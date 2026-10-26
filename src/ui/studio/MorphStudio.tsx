@@ -205,7 +205,7 @@ export function MorphStudio({ characterId, repo, gallery = [] }: { characterId: 
     } catch(err) {setMessage(err instanceof Error?err.message:"Mesh import failed.");}
   }
   function movePoint(event: React.PointerEvent<HTMLCanvasElement>,index:number) {
-    const viewport=viewports[index].current;
+    const viewport=viewports[index]?.current;
     if(event.type==="pointerdown" && spaceHeld && viewport){panning.current={x:event.clientX,y:event.clientY,left:viewport.scrollLeft,top:viewport.scrollTop,index};event.currentTarget.setPointerCapture(event.pointerId);return;}
     if(event.type==="pointermove" && panning.current?.index===index && viewport){viewport.scrollLeft=panning.current.left-(event.clientX-panning.current.x);viewport.scrollTop=panning.current.top-(event.clientY-panning.current.y);return;}
     if((event.type==="pointerup"||event.type==="pointercancel") && panning.current?.index===index){panning.current=null;return;}
