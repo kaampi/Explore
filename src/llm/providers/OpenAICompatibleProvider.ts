@@ -3,7 +3,7 @@ import type { CompletionRequest, LLMProvider, ProviderCapabilities, StreamChunk 
 export const DEFAULT_STRATA_URL = "http://127.0.0.1:8080/v1";
 
 export async function listOpenAIModels(baseUrl: string, signal?: AbortSignal): Promise<string[]> {
-  const response = await fetch(baseUrl.replace(/\\/$/, "") + "/models", { signal });
+  const response = await fetch(baseUrl.replace(/\/$/, "") + "/models", { signal });
   if (!response.ok) throw new Error("Model discovery failed: HTTP " + response.status);
   const data = await response.json() as { data?: Array<{ id?: string }> };
   return (data.data ?? []).map((item) => item.id).filter((id): id is string => Boolean(id));
@@ -16,7 +16,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
     this.name = config.name ?? "openai-compatible:" + config.model;
   }
   async *streamCompletion(request: CompletionRequest): AsyncGenerator<StreamChunk> {
-    const response = await fetch(this.config.baseUrl.replace(/\\/$/, "") + "/chat/completions", {
+    const response = await fetch(this.config.baseUrl.replace(/\/$/, "") + "/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal: request.signal,
@@ -39,8 +39,8 @@ export class OpenAICompatibleProvider implements LLMProvider {
       while (!finished) {
         const part = await reader.read();
         if (part.done) break;
-        buffer += decoder.decode(part.value, { stream: true }).replace(/\\r\\n/g, "\\n");
-        const lines = buffer.split("\\n");
+        buffer += decoder.decode(part.value, { stream: true }).replace(/\r\n/g, "\n");
+        const lines = buffer.split("\n");
         buffer = lines.pop() ?? "";
         for (const line of lines) {
           if (!line.startsWith("data:")) continue;
