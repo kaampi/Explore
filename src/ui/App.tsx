@@ -17,10 +17,7 @@ import { PlayWorkspace } from "./home/PlayWorkspace";
 import { ConversationLibrary } from "./conversations/ConversationLibrary";
 import { ThemeProvider, useAppearance } from "./themes/ThemeProvider";
 import { deleteAudioPreferences } from "./audio/audioStorage";
-import { AppearanceDialog } from "./themes/AppearanceDialog";
-import { ConnectionHelp } from "./connection/ConnectionHelp";
-import { useConnection } from "./connection/ConnectionProvider";
-import { Modal } from "./components/Modal";
+import { SettingsDialog } from "./settings/SettingsDialog";
 import {
   getRepository,
   loadExistingSession,
@@ -88,8 +85,7 @@ function SandboxApp() {
   const [working, setWorking] = useState(false);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
-  const { preferredModel, chooseModel } = useConnection();
+
   const [operationError, setOperationError] = useState<string | null>(null);
   const setLive = useCallback((next: Session | null) => {
     live.current = next;
@@ -417,7 +413,7 @@ function SandboxApp() {
               </button>
               {settingsOpen && <div id="sb-settings-links" className="sb-settings-links" style={{ display: "grid", gap: 4, paddingLeft: 22 }}>
                 <button type="button" onClick={() => setAppearanceOpen(true)}>◐ <span>Appearance &amp; Themes</span></button>
-                <button type="button" onClick={() => setAiSettingsOpen(true)}>✧ <span>AI Settings</span></button>
+                <button type="button" onClick={() => setAppearanceOpen(true)}>✧ <span>AI Settings</span></button>
               </div>}
               {session && (
                 <button
@@ -481,14 +477,7 @@ function SandboxApp() {
           )}
         </div>
       )}
-      {appearanceOpen && (
-        <AppearanceDialog onClose={() => setAppearanceOpen(false)} />
-      )}
-      {aiSettingsOpen && (
-        <Modal title="AI Settings" onClose={() => setAiSettingsOpen(false)}>
-          <ConnectionHelp model={preferredModel} onModelChange={chooseModel} />
-        </Modal>
-      )}
+      {appearanceOpen && <SettingsDialog onClose={() => setAppearanceOpen(false)} />}
     </>
   );
   return session ? (
