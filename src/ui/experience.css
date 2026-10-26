@@ -1746,8 +1746,9 @@
 
 /* Unified Settings: editorial two-column layout inspired by Storybook. */
 .sb-dialog:has(.sb-settings-layout) {
-  width: min(1100px, calc(100vw - 32px));
-  max-height: min(92dvh, 1000px);
+  width: min(1380px, calc(100vw - 40px));
+  max-width: none;
+  max-height: min(92dvh, 1100px);
   padding: 22px 24px;
 }
 .sb-dialog:has(.sb-settings-layout) .sb-dialog__heading {
@@ -1760,9 +1761,9 @@
 }
 .sb-settings-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
   align-items: start;
-  gap: 20px;
+  gap: 24px;
 }
 .sb-settings-column {
   min-width: 0;
