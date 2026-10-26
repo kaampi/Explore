@@ -9,6 +9,8 @@ export const ConversationEntrySchema = z.object({
   updatedAt: z.string().datetime(),
   lastOpenedAt: z.string().datetime().optional(),
   archived: z.boolean().default(false),
+  /** Imported history is quarantined until a dedicated resume migration is approved. */
+  importQuarantined: z.boolean().default(false),
   preview: z.string().max(220).default(""),
   participants: z.array(z.string()).default([]),
   world: z.string().default(""),
