@@ -21,6 +21,7 @@ import { slugifyCharacterId } from "@session/createSession";
 import { formatPersonName, namesFromStored, splitPersonName } from "@library/personName";
 import { portraitDataUrlFromFile, PortraitError, portraitSrc } from "./portrait";
 import { StudioList } from "./StudioList";
+import { CharacterImages } from "./CharacterImages";
 import { SheetNameField } from "./SheetNameField";
 import { SillyTavernImportReview } from "./SillyTavernImportReview";
 import { StudioErrorBoundary } from "./StudioErrorBoundary";
@@ -686,6 +687,7 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
                 {draft.portraitDataUrl ? "Change portrait" : "Add portrait"}
               </button>
             </div>
+            {saved && draft.id && <CharacterImages key={draft.id} characterId={draft.id} repo={repo} portrait={draft.portraitDataUrl} onPortrait={applyPortrait} />}
             <div className="setup-field">
               <span className="setup-field__label">Pronoun</span>
               <PickChips
