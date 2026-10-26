@@ -100,7 +100,7 @@ function traitMeaningLines(session: Session): string[] {
 }
 
 function physicalContinuityLines(session: Session): string[] {
-  const facts = describePhysicalState(session.physical, 30);
+  const facts = describePhysicalState(session.physical, 30, ["player", ...Object.keys(session.characters)]);
   if (!facts.length) return [];
   return [
     "Physical continuity: these facts persist until an explicit transition changes them.",
