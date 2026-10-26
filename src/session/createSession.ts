@@ -28,6 +28,7 @@ export interface CharacterDraft {
   portraitDataUrl?: string;
   lore?: Array<{ id?: string; title?: string; content: string; keywords?: string[] }>;
   libraryId?: string;
+  anatomyTemplateId?: string;
   saveToLibrary?: boolean;
   source?: "player" | "sillytavern" | "example";
   scenario?: string;
@@ -256,6 +257,7 @@ export function createSessionFromSetup(setup: SceneSetup, sessionId: string): Se
     const stats = statsFromDraft(draft, setup.ruleset);
     characters[id] = {
       ...(draft.libraryId ? { sourceLibraryId: draft.libraryId } : {}),
+      ...(draft.anatomyTemplateId ? { anatomyTemplateId: draft.anatomyTemplateId } : {}),
       name,
       position: { value: draft.position.trim() || "here", lock: "unlocked" },
       mood: { value: draft.mood.trim() || "neutral", lock: "unlocked" },
