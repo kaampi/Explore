@@ -87,3 +87,55 @@ describe("physical continuity", () => {
     expect(moved.ok && moved.state.relations[0]?.note).toBe("hanging from the left side");
   });
 });
+
+describe("multi-turn occupied-limb continuity", () => {
+  it("keeps two restraints over unrelated turns and requires release before a sword grip", () => {
+    const left = applyPhysicalChange(undefined, { kind: "set_relation", relation: {
+      id: "left-grip", subject: "player", subjectPart: "left_arm", relation: "restraining",
+      target: "guard_a", exclusive: true
+    } });
+    expect(left.ok).toBe(true);
+    if (!left.ok) return;
+    const right = applyPhysicalChange(left.state, { kind: "set_relation", relation: {
+      id: "right-grip", subject: "player", subjectPart: "right_arm", relation: "restraining",
+      target: "guard_b", exclusive: true
+    } });
+    expect(right.ok).toBe(true);
+    if (!right.ok) return;
+    const nextTurn = applyPhysicalChange(right.state, { kind: "stance", actor: "guard_c", stance: "moving" });
+    expect(nextTurn.ok).toBe(true);
+    if (!nextTurn.ok) return;
+    expect(nextTurn.state.relations).toHaveLength(2);
+    expect(describePhysicalState(nextTurn.state).filter((line) => line.includes("[exclusive: part occupied until release]"))).toHaveLength(2);
+    const sword = { id: "sword-grip", subject: "player", subjectPart: "left_arm",
+      relation: "holding" as const, target: "sword", exclusive: true };
+    const denied = applyPhysicalChange(nextTurn.state, { kind: "set_relation", relation: sword });
+    expect(denied.ok).toBe(false);
+    const duplicate = applyPhysicalChange(nextTurn.state, { kind: "set_relation", relation: {
+      id: "duplicate", subject: "player", subjectPart: "left_arm", relation: "restraining",
+      target: "guard_a", exclusive: true
+    } });
+    expect(duplicate.ok).toBe(false);
+    const released = applyPhysicalChange(nextTurn.state, { kind: "remove_relation", id: "left-grip" });
+    expect(released.ok).toBe(true);
+    if (!released.ok) return;
+    const drawn = applyPhysicalChange(released.state, { kind: "set_relation", relation: sword });
+    expect(drawn.ok).toBe(true);
+    if (!drawn.ok) return;
+    expect(drawn.state.relations.map((relation) => relation.id).sort()).toEqual(["right-grip", "sword-grip"]);
+  });
+
+  it("lets an eight-armed creature use an independent arm while two are occupied", () => {
+    let state: PhysicalState | undefined;
+    for (const [id, arm] of [["grip-a", "arm_1"], ["grip-b", "arm_2"], ["grip-c", "arm_8"]]) {
+      const result = applyPhysicalChange(state, { kind: "set_relation", relation: {
+        id, subject: "alien", subjectPart: arm, relation: "holding",
+        target: id, exclusive: true
+      } });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      state = result.state;
+    }
+    expect(state?.relations).toHaveLength(3);
+  });
+});
