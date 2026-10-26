@@ -57,6 +57,22 @@ export function applyPhysicalChange(
     r.targetPart === relation.targetPart &&
     (r.relation === OPPOSITES[relation.relation] || OPPOSITES[r.relation] === relation.relation)
   )) return { ok: false, reason: "Conflicting spatial relation; remove or update the previous fact explicitly." };
+  // An explicit exclusive grip occupies exactly the named part.
+  // Generic contact, support and unnamed limbs do not reserve capacity.
+  // An unknown body plan must never be assumed to have two arms.
+  if (relation.exclusive && (relation.relation === "holding" || relation.relation === "restraining") && relation.subjectPart) {
+    const conflict = others.find((other) =>
+      other.exclusive &&
+      (other.relation === "holding" || other.relation === "restraining") &&
+      other.subject === relation.subject &&
+      other.subjectPart === relation.subjectPart &&
+      (other.target !== relation.target || other.targetPart !== relation.targetPart)
+    );
+    if (conflict) return {
+      ok: false,
+      reason: `Body part ${relation.subject}.${relation.subjectPart} is already occupied by relation ${conflict.id}; release it explicitly first.`
+    };
+  }
   const next = PhysicalStateSchema.safeParse({ ...current, relations: [...others, relation] });
   if (!next.success) return { ok: false, reason: "Physical state exceeds its limits." };
   return { ok: true, state: next.data };
