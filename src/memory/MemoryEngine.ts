@@ -35,37 +35,39 @@ function scoreMemory(entry: MemoryEntry, currentTurn: number): number {
 }
 
 /**
- * Ranks all memories (across all three categories) by score, descending,
- * and returns the top `limit`. Scene/topic relevance (matching memory
- * content against the current scene) is a natural next refinement but
- * requires some notion of semantic similarity this engine doesn't have
- * yet — importance + recency is the honest baseline for now.
- */
-/**
- * Original Sandbox AI lexical relevance model. It is intentionally local,
- * deterministic and bounded: no embeddings, network calls or external code.
- * The scene and most recent player utterance supply optional query terms.
+ * Sandbox AI continuity retrieval. The current scene is always relevant,
+ * while the last three player messages fade by age. This avoids sudden
+ * topic loss at scene boundaries without pinning stale history forever.
+ * It is a deterministic relevance hint, never an instruction source.
  */
 function terms(text: string): Set<string> {
-  return new Set((text.toLocaleLowerCase().match(/[\\p{L}\\p{N}]{3,}/gu) ?? []).slice(0, 100));
+  return new Set((text.toLocaleLowerCase().match(/[\p{L}\p{N}]{3,}/gu) ?? []).slice(0, 100));
 }
 
-function sceneQuery(session: Session): Set<string> {
-  const lastPlayer = [...session.conversation].reverse().find((value) => {
-    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-    return (value as Record<string, unknown>).role === "player";
-  });
-  const utterance = lastPlayer && typeof lastPlayer === "object" && !Array.isArray(lastPlayer)
-    ? (lastPlayer as Record<string, unknown>).content : "";
-  return terms([session.scene?.location ?? "", typeof utterance === "string" ? utterance.slice(0, 1200) : ""].join(" "));
+function sceneQuery(session: Session): Map<string, number> {
+  const query = new Map<string, number>();
+  const add = (text: string, weight: number) => {
+    for (const word of terms(text)) query.set(word, Math.max(query.get(word) ?? 0, weight));
+  };
+  add(session.scene?.location ?? "", 1);
+  let seen = 0;
+  for (let i = session.conversation.length - 1; i >= 0 && seen < 3; i--) {
+    const value = session.conversation[i];
+    if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+    const row = value as Record<string, unknown>;
+    if (row.role !== "player" || typeof row.content !== "string") continue;
+    add(row.content.slice(0, 1200), [1, 0.6, 0.3][seen] ?? 0);
+    seen++;
+  }
+  return query;
 }
 
-function relevanceBonus(entry: MemoryEntry, query: Set<string>): number {
+function relevanceBonus(entry: MemoryEntry, query: Map<string, number>): number {
   if (!query.size) return 0;
   const words = terms(entry.content.slice(0, 3000));
-  let matches = 0;
-  for (const word of query) if (words.has(word)) matches++;
-  return Math.min(0.3, matches * 0.075);
+  let overlap = 0;
+  for (const word of words) overlap += query.get(word) ?? 0;
+  return Math.min(0.3, overlap * 0.075);
 }
 
 export function rankMemories(session: Session, currentTurn: number, limit: number): RankedMemory[] {
