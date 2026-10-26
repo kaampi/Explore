@@ -646,7 +646,7 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
                 });
               }}
             />
-            <div className="studio-portrait studio-portrait--character">
+            {!saved && <div className="studio-portrait studio-portrait--character">
               <div className="studio-portrait__frame">
                 {portraitSrc(draft.portraitDataUrl) ? (
                   <img className="studio-portrait__img" src={portraitSrc(draft.portraitDataUrl)} alt="" />
@@ -686,7 +686,7 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
               >
                 {draft.portraitDataUrl ? "Change portrait" : "Add portrait"}
               </button>
-            </div>
+            </div>}
             {saved && draft.id && <CharacterImages key={draft.id} characterId={draft.id} repo={repo} portrait={draft.portraitDataUrl} onPortrait={applyPortrait} />}
             <div className="setup-field">
               <span className="setup-field__label">Pronoun</span>
