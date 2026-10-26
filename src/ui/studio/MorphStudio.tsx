@@ -16,8 +16,8 @@ function drawImage(ctx: CanvasRenderingContext2D, image: HTMLImageElement, width
   ctx.drawImage(image, 0, 0, width, height);
 }
 function warpTriangle(ctx: CanvasRenderingContext2D, image: HTMLImageElement, source: Point[], target: Point[], width: number, height: number) {
-  const [a,b,c] = source.map(p => [p[0]*width,p[1]*height]);
-  const [d,e,f] = target.map(p => [p[0]*width,p[1]*height]);
+  const [a,b,c] = source.map(p => [p[0]*width,p[1]*height] as Point);
+  const [d,e,f] = target.map(p => [p[0]*width,p[1]*height] as Point);
   if (!a || !b || !c || !d || !e || !f) return;
   const det = a[0]*(b[1]-c[1])+b[0]*(c[1]-a[1])+c[0]*(a[1]-b[1]);
   if (Math.abs(det)<0.001) return;
@@ -40,7 +40,7 @@ export function MorphStudio({ characterId, repo }: { characterId: string; repo: 
   const [message,setMessage] = useState("");
   const [addingPoint,setAddingPoint] = useState(false);
   const meshTriangles = profile.triangles ?? triangles;
-  const canvases = [useRef<HTMLCanvasElement>(null),useRef<HTMLCanvasElement>(null),useRef<HTMLCanvasElement>(null)];
+  const canvases = [useRef<HTMLCanvasElement>(null),useRef<HTMLCanvasElement>(null),useRef<HTMLCanvasElement>(null)] as const;
   const dragging = useRef<{ expression: number; point: number } | null>(null);
   useEffect(() => {
     let cancelled = false;
