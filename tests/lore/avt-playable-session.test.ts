@@ -30,5 +30,6 @@ describe("AVT explicitly selected playable session", () => {
     expect(() => buildAvtPlayableSession(review(), [{ kind: "character", sourceId: "missing" }], "id")).toThrow(/unapproved/);
     const item = { kind: "character" as const, sourceId: "c1" };
     expect(() => buildAvtPlayableSession(review(), [item, item], "id")).toThrow(/Duplicate/);
+    expect(() => buildAvtPlayableSession(review(), [{ kind: "location", sourceId: "l1" }, { kind: "location", sourceId: "l1" }], "id")).toThrow(/Duplicate/);
   });
 });
