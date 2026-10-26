@@ -4,7 +4,7 @@ import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 /** Character-scoped, local-first morph authoring. Experimental: activation is not yet wired to chat. */
 type Point = [number, number];
 type Expression = { name: string; image: string; points: Point[] };
-type Profile = { version: 1; active: boolean; expressions: Expression[]; triangles?: number[][]; eyeMidpoint?: number; eyeDuration?: number };
+type Profile = { version: 1; active: boolean; expressions: Expression[]; triangles?: number[][]; eyeMidpoint?: number; eyeDuration?: number; eyeEnabled?: boolean; eyeWidth?: number; eyeHeight?: number; eyeStrength?: number; eyeGuides?: boolean; eyeCenters?: Record<string, Point[]> };
 const initial: Point[] = [[0,0],[.5,0],[1,0],[0,.5],[.25,.25],[.5,.25],[.75,.25],[1,.5],[.25,.5],[.5,.5],[.75,.5],[.25,.75],[.5,.75],[.75,.75],[0,1],[.5,1],[1,1]];
 const triangles: number[][] = [[0,1,4],[1,5,4],[1,2,6],[1,6,5],[0,4,3],[3,4,8],[4,5,9],[4,9,8],[5,6,10],[5,10,9],[6,2,7],[6,7,10],[3,8,14],[8,11,14],[8,9,12],[8,12,11],[9,10,13],[9,13,12],[10,7,16],[10,16,13],[11,12,15],[11,15,14],[12,13,16],[12,16,15]];
 const clone = (points: Point[]) => points.map(([x,y]) => [x,y] as Point);
@@ -39,6 +39,9 @@ export function MorphStudio({ characterId, repo, gallery = [] }: { characterId: 
   const [zoom,setZoom] = useState(100);
   const [message,setMessage] = useState("");
   const [addingPoint,setAddingPoint] = useState(false);
+  const [showMesh,setShowMesh] = useState(true);
+  const [playing,setPlaying] = useState(false);
+  const eyeDragging = useRef<{expression:number; eye:number}|null>(null);
   const meshTriangles = profile.triangles ?? triangles;
   const canvases = [useRef<HTMLCanvasElement>(null),useRef<HTMLCanvasElement>(null),useRef<HTMLCanvasElement>(null)] as const;
   const dragging = useRef<{ expression: number; point: number } | null>(null);
@@ -70,9 +73,10 @@ export function MorphStudio({ characterId, repo, gallery = [] }: { characterId: 
         if(!canvas || !img || !exp)return;
         const ctx=canvas.getContext("2d");if(!ctx)return;
         ctx.clearRect(0,0,canvas.width,canvas.height);drawImage(ctx,img,canvas.width,canvas.height);
-        ctx.strokeStyle="#29d8df";ctx.lineWidth=1;
+        if(showMesh){ctx.strokeStyle="#29d8df";ctx.lineWidth=1;
         for(const tri of meshTriangles){const p=tri.map(i=>exp.points[i]);if(p.some(v=>!v))continue;ctx.beginPath();ctx.moveTo(p[0]![0]*canvas.width,p[0]![1]*canvas.height);for(let j=1;j<3;j++)ctx.lineTo(p[j]![0]*canvas.width,p[j]![1]*canvas.height);ctx.closePath();ctx.stroke();}
-        for(const p of exp.points){ctx.beginPath();ctx.arc(p[0]*canvas.width,p[1]*canvas.height,3,0,Math.PI*2);ctx.fillStyle="#29d8df";ctx.fill();}
+        for(const p of exp.points){ctx.beginPath();ctx.arc(p[0]*canvas.width,p[1]*canvas.height,3,0,Math.PI*2);ctx.fillStyle="#29d8df";ctx.fill();}}
+        if(profile.eyeGuides && profile.eyeEnabled){const centers=profile.eyeCenters?.[exp.name] ?? [[.37,.39],[.63,.39]];ctx.strokeStyle="#ffad45";ctx.fillStyle="#ffad45";for(const p of centers){ctx.beginPath();ctx.ellipse(p[0]*canvas.width,p[1]*canvas.height,(profile.eyeWidth??25)/252*canvas.width,(profile.eyeHeight??14)/282*canvas.height,0,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(p[0]*canvas.width,p[1]*canvas.height,3,0,Math.PI*2);ctx.fill();}}
       });
       const canvas=canvases[2].current,ctx=canvas?.getContext("2d");
       if(!canvas || !ctx)return;
@@ -84,7 +88,7 @@ export function MorphStudio({ characterId, repo, gallery = [] }: { characterId: 
       const duration=Math.max(.05,(profile.eyeDuration ?? 30)/100);
       const midpoint=(profile.eyeMidpoint ?? 50)/100;
       const eyeT=Math.max(0,Math.min(1,(t-(midpoint-duration/2))/duration));
-      if(Math.abs(eyeT-t)>.001){
+      if(profile.eyeEnabled && (profile.eyeStrength??80)>0 && Math.abs(eyeT-t)>.001){
         const mask=document.createElement("canvas");mask.width=canvas.width;mask.height=canvas.height;
         const maskCtx=mask.getContext("2d");
         if(maskCtx){
@@ -94,20 +98,24 @@ export function MorphStudio({ characterId, repo, gallery = [] }: { characterId: 
           if(regionCtx){
             regionCtx.fillStyle="black";
             // Default normalized eye positions for front-facing portraits.
-            for(const x of [.36,.64]){
-              const gradient=regionCtx.createRadialGradient(x*canvas.width,.39*canvas.height,2,x*canvas.width,.39*canvas.height,.15*canvas.width);
+            const ac=profile.eyeCenters?.[a.name]??[[.37,.39],[.63,.39]];
+            const bc=profile.eyeCenters?.[b.name]??[[.37,.39],[.63,.39]];
+            for(let i=0;i<2;i++){
+              const x=(ac[i]?.[0]??.37)*(1-t)+(bc[i]?.[0]??.37)*t;
+              const y=(ac[i]?.[1]??.39)*(1-t)+(bc[i]?.[1]??.39)*t;
+              const gradient=regionCtx.createRadialGradient(x*canvas.width,y*canvas.height,2,x*canvas.width,y*canvas.height,(profile.eyeWidth??25)/252*canvas.width);
               gradient.addColorStop(0,"rgba(0,0,0,1)");gradient.addColorStop(1,"rgba(0,0,0,0)");
-              regionCtx.fillStyle=gradient;regionCtx.beginPath();regionCtx.ellipse(x*canvas.width,.39*canvas.height,.15*canvas.width,.105*canvas.height,0,0,Math.PI*2);regionCtx.fill();
+              regionCtx.fillStyle=gradient;regionCtx.beginPath();regionCtx.ellipse(x*canvas.width,y*canvas.height,(profile.eyeWidth??25)/252*canvas.width,(profile.eyeHeight??14)/282*canvas.height,0,0,Math.PI*2);regionCtx.fill();
             }
             maskCtx.globalCompositeOperation="destination-in";maskCtx.drawImage(region,0,0);
-            ctx.drawImage(mask,0,0);
+            ctx.globalAlpha=(profile.eyeStrength??80)/100;ctx.drawImage(mask,0,0);ctx.globalAlpha=1;
           }
         }
       }
     };
     images.forEach(img=>img.addEventListener("load",render));render();
     return ()=>{cancelled=true;images.forEach(img=>img.removeEventListener("load",render));};
-  },[profile,source,target,mix,meshTriangles]);
+  },[profile,source,target,mix,meshTriangles,showMesh]);
   async function save(active: boolean) {
     const next={...profile,active};
     try {
