@@ -239,9 +239,15 @@ export class IndexedDBRepository {
     return this.writeConversation(session, true);
   }
 
+  /** Atomic archive-only import: never activates the new session or overwrites an existing ID. */
+  async createArchivedConversation(session: Session): Promise<void> {
+    return this.writeConversation(session, true, true);
+  }
+
   private async writeConversation(
     session: Session,
     create: boolean,
+    archived = false,
   ): Promise<void> {
     const parsed = safeParseSession(session);
     if (!parsed.success)
@@ -261,10 +267,12 @@ export class IndexedDBRepository {
       existing.onsuccess = () => {
         const parsed = ConversationEntrySchema.safeParse(existing.result);
         metadata.put(
-          conversationEntry(snapshot, parsed.success ? parsed.data : undefined),
+          archived
+            ? { ...conversationEntry(snapshot), archived: true, title: `Imported: ${snapshot.scene?.location ?? "Aventuras"}`.slice(0, 120) }
+            : conversationEntry(snapshot, parsed.success ? parsed.data : undefined),
         );
       };
-      if (create)
+      if (create && !archived)
         tx.objectStore(PREFS_STORE).put({
           id: ACTIVE_CONVERSATION_ID,
           conversationId: snapshot.id,
