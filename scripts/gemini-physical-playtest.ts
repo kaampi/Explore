@@ -23,7 +23,7 @@ async function selectModel(): Promise<string> {
     if (!available.includes(requested)) throw new Error("Configured Gemini model is unavailable: " + requested + ". Available: " + available.join(", "));
     return requested;
   }
-  const preferred = ["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-2.0-flash-lite", "gemini-2.0-flash"];
+  const preferred = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash-lite"];
   return preferred.find((name) => available.includes(name)) ?? available.find((name) => /flash/i.test(name)) ?? available[0]!;
 }
 let model = "";
@@ -45,7 +45,11 @@ async function ask(prompt: string): Promise<string> {
       await wait(3000 * (attempt + 1));
       continue;
     }
-    if (!response.ok) throw new Error("Gemini request failed: HTTP " + response.status + " (check model availability and free-tier quota).");
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null) as { error?: { status?: string; message?: string } } | null;
+      const reason = payload?.error?.message?.slice(0, 500) || payload?.error?.status || "No API error details";
+      throw new Error("Gemini request failed for model " + model + ": HTTP " + response.status + " - " + reason);
+    }
     const json = await response.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
     const answer = json.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join("").trim();
     if (!answer) throw new Error("Gemini returned no narration.");
