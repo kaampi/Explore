@@ -21,7 +21,7 @@ import { slugifyCharacterId } from "@session/createSession";
 import { formatPersonName, namesFromStored, splitPersonName } from "@library/personName";
 import { portraitDataUrlFromFile, PortraitError, portraitSrc } from "./portrait";
 import { StudioList } from "./StudioList";
-import { MorphStudio } from "./MorphStudio";
+import { CharacterImages } from "./CharacterImages";
 import { SheetNameField } from "./SheetNameField";
 import { SillyTavernImportReview } from "./SillyTavernImportReview";
 import { StudioErrorBoundary } from "./StudioErrorBoundary";
@@ -686,6 +686,7 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
               >
                 {draft.portraitDataUrl ? "Change portrait" : "Add portrait"}
               </button>
+              {saved && draft.id && <CharacterImages key={draft.id} characterId={draft.id} repo={repo} portrait={draft.portraitDataUrl} onPortrait={applyPortrait} />}
             </div>
             <div className="setup-field">
               <span className="setup-field__label">Pronoun</span>
@@ -777,7 +778,6 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
                 placeholder="Dry-witted, slow to open up, speaks in short sentences…"
               />
             </label>
-            {saved && draft.id && <MorphStudio key={draft.id} characterId={draft.id} repo={repo} />}
             {notice && <p className="setup-notice">{notice}</p>}
             {error && <p className="setup-error">{error}</p>}
             <div className="studio-sheet__actions">
