@@ -3,7 +3,7 @@ import { AppearanceSettingsContent } from "../themes/AppearanceDialog";
 import { ConnectionHelp } from "../connection/ConnectionHelp";
 import { useConnection } from "../connection/ConnectionProvider";
 
-export function SettingsDialog({ onClose, initialSection = "appearance" }: { onClose: () => void; initialSection?: "appearance" | "ai" }) {
+export function SettingsDialog({ onClose }: { onClose: () => void }) {
   const { preferredModel, chooseModel } = useConnection();
   return <Modal title="Settings" onClose={onClose} wide>
     <div className="sb-settings-layout">
