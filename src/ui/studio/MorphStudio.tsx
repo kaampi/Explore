@@ -51,7 +51,8 @@ export function MorphStudio({ characterId, repo, gallery = [] }: { characterId: 
         const reference = previous.expressions[0]?.points ?? initial;
         setProfile({ ...previous, expressions: gallery.length ? gallery.map(g => ({name:g.name,image:g.image,points:clone(previous.expressions.find(e=>e.name===g.name)?.points ?? reference)})) : previous.expressions });
       } else {
-        setProfile(load(key)); // migrate an earlier experimental draft on next save
+        const previous = load(key);
+        setProfile({ ...previous, expressions: gallery.length ? gallery.map(g => ({name:g.name,image:g.image,points:clone(initial)})) : previous.expressions });
       }
       setSource(0); setTarget(1);
     }).catch(() => { if (!cancelled) setMessage("Could not load morph profile."); });
