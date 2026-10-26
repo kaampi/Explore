@@ -1,4 +1,6 @@
-# AI Sandbox Engine
+# Sandbox AI
+
+> **Public alpha — work in progress.** Features and saved-data formats may change. Back up your browser data before updating. See [installation instructions](docs/running.md) and [alpha release checklist](docs/alpha-release-checklist.md).
 
 Modular, provider-agnostic sandbox for interactive AI-driven scenes.
 Based on Master Specification v2.2. Core rule:
@@ -8,7 +10,7 @@ Based on Master Specification v2.2. Core rule:
 
 Living status (what is shipped vs still open) lives in [`project_spec.md`](project_spec.md).
 
-UI is English. Engines are framework-free TypeScript; React (`src/ui/`) consumes them.
+The UI has an initial language selector (English, Swedish and Norwegian Bokmål); translations are still incomplete. Engines are framework-free TypeScript; React (`src/ui/`) consumes them.
 
 ## License
 
@@ -24,7 +26,7 @@ SandboxAI is licensed under the **GNU Affero General Public License, version 3 o
 
 ## Quickstart
 
-Windows: double-click **`start.bat`**. macOS: run **`bash starta.command`**. Linux: run **`bash starta.sh`**. The launchers install dependencies on first run. Or run `npm install` and `npm start` from a terminal. The app opens at [http://localhost:5173](http://localhost:5173). Connect a local Ollama or Strata model under **Set up AI**.
+Windows: double-click **`start.bat`**. macOS: run **`bash starta.command`**. Linux: run **`bash starta.sh`**. The launchers install dependencies on first run. Or run `npm install` and `npm start` from a terminal. The app opens at [http://localhost:5173](http://localhost:5173). Connect a local Ollama or Strata model via **Settings → AI Settings**.
 
 See [Installing and running Sandbox AI](docs/running.md) for detailed instructions, first chat, local data and troubleshooting.
 
@@ -48,7 +50,7 @@ First load opens **My space**: continue your saved conversation, create a charac
 
 Home offers **Create & chat** with only a name, character-card import, and the built-in Emma example. Clicking a character opens a short **Chat with…** dialog with optional Rule-set, Voice (narration style) and Place. All default to None; the Emma example preselects its advertised venue, which can be cleared. The same optional choices are available while creating a new character. Built-in and saved library choices are offered. A selected rule-set starts numeric traits at the middle of their range, while text traits stay unset. Each new conversation keeps its own snapshot; resuming a saved conversation bypasses setup and retains its choices. Creating characters and exploring themes work without an AI connection. A shared connection check finds Ollama, lists chat-capable models when capability metadata is available, and explains an unreachable server, an empty model list, or a missing saved model. Older Ollama releases without capability metadata remain compatible.
 
-A ready connection stays out of the conversation's way. Otherwise **Set up AI** offers installation/start instructions, a retry, and an installed-model selector. You can write a draft while disconnected; sending, replaying, regenerating, and AI-driven travel wait for a usable connection. Reconnecting and changing models never automatically sends the draft. Model preferences are saved locally, and an existing conversation keeps its own model until you explicitly change it.
+A ready connection stays out of the conversation's way. Otherwise **Settings → AI Settings** offers installation/start instructions, a retry, and an installed-model selector. You can write a draft while disconnected; sending, replaying, regenerating, and AI-driven travel wait for a usable connection. Reconnecting and changing models never automatically sends the draft. Model preferences are saved locally, and an existing conversation keeps its own model until you explicitly change it.
 
 The connection check inspects model metadata, not a sample conversation, and does not download a model. Actual reply generation still depends on the selected model running successfully on your computer.
 
@@ -96,7 +98,7 @@ The shared header connects SandboxAI with StorybookAI and ComicbookAI. When runn
 
 In play, the conversation is central. **Cast**, **Settings** (including the model picker), and **Inspector** open on demand. **My space** returns home without deleting the current conversation. **My conversations** lists your active and archived conversations. Starting another keeps the current history, relationships, and state in its own saved snapshot.
 
-Open **Appearance** from Home or play to choose Light/Dark for the app frame and one of four independent play themes: Parchment, Forest dusk, Neon city, and Quiet conversation. Adjust colors, panel opacity, background dimming, font, text size, and reading width with a live preview. Backgrounds can follow the scene, stay on your own uploaded image, or use a plain color. PNG/JPEG/WebP uploads are limited to 10 MB and resized locally to a maximum edge of 1920 pixels.
+Use the **Light/Dark** control in the top bar for the app frame. Open **Settings → Appearance & Themes** to choose one of four independent play themes: Parchment, Forest dusk, Neon city, and Quiet conversation. Adjust colors, panel opacity, background dimming, font, text size, and reading width with a live preview. Backgrounds can follow the scene, stay on your own uploaded image, or use a plain color. PNG/JPEG/WebP uploads are limited to 10 MB and resized locally to a maximum edge of 1920 pixels.
 
 The status server first checks `/.well-known/storycore-app.json` for a matching `appId` and optional `version`. Existing sibling releases are recognized by their exact page titles as a compatibility fallback. SandboxAI exposes its own identity at the same path.
 
