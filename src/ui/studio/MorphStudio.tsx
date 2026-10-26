@@ -81,7 +81,7 @@ export function MorphStudio({ characterId, repo, gallery = [] }: { characterId: 
         if(showMesh){ctx.strokeStyle="#29d8df";ctx.lineWidth=Math.max(.15,canvas.width/Math.max(1,canvas.getBoundingClientRect().width))*.65;
         for(const tri of meshTriangles){const p=tri.map(i=>exp.points[i]);if(p.some(v=>!v))continue;ctx.beginPath();ctx.moveTo(p[0]![0]*canvas.width,p[0]![1]*canvas.height);for(let j=1;j<3;j++)ctx.lineTo(p[j]![0]*canvas.width,p[j]![1]*canvas.height);ctx.closePath();ctx.stroke();}
         for(const p of exp.points){ctx.beginPath();ctx.arc(p[0]*canvas.width,p[1]*canvas.height,Math.max(.3,canvas.width/Math.max(1,canvas.getBoundingClientRect().width))*2,0,Math.PI*2);ctx.fillStyle="#29d8df";ctx.fill();}}
-        if(profile.eyeGuides && profile.eyeEnabled){const centers=profile.eyeCenters?.[exp.name] ?? [[.37,.39],[.63,.39]];ctx.strokeStyle="#ffad45";ctx.fillStyle="#ffad45";for(const p of centers){ctx.beginPath();ctx.ellipse(p[0]*canvas.width,p[1]*canvas.height,(profile.eyeWidth??25)/252*canvas.width,(profile.eyeHeight??14)/282*canvas.height,0,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(p[0]*canvas.width,p[1]*canvas.height,3,0,Math.PI*2);ctx.fill();}}
+        if(profile.eyeGuides && profile.eyeEnabled){const centers=profile.eyeCenters?.[exp.name] ?? [[.37,.39],[.63,.39]];ctx.strokeStyle="#ffad45";ctx.fillStyle="#ffad45";ctx.lineWidth=Math.max(.15,canvas.width/Math.max(1,canvas.getBoundingClientRect().width))*.7;for(const p of centers){ctx.beginPath();ctx.ellipse(p[0]*canvas.width,p[1]*canvas.height,(profile.eyeWidth??25)/252*canvas.width,(profile.eyeHeight??14)/282*canvas.height,0,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(p[0]*canvas.width,p[1]*canvas.height,Math.max(.3,canvas.width/Math.max(1,canvas.getBoundingClientRect().width))*2,0,Math.PI*2);ctx.fill();}}
       });
       const canvas=canvases[2].current,ctx=canvas?.getContext("2d");
       if(!canvas || !ctx)return;
@@ -120,7 +120,7 @@ export function MorphStudio({ characterId, repo, gallery = [] }: { characterId: 
     };
     images.forEach(img=>img.addEventListener("load",render));render();
     return ()=>{cancelled=true;images.forEach(img=>img.removeEventListener("load",render));};
-  },[profile,source,target,mix,meshTriangles,showMesh]);
+  },[profile,source,target,mix,meshTriangles,showMesh,zoom]);
   async function save(active: boolean) {
     const next={...profile,active};
     try {
