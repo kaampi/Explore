@@ -1,3 +1,4 @@
+import { pinSessionAnatomy } from "@state/anatomy";
 import { useEffect, useState } from "react";
 import { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 import type { Session } from "@state/StateSchema";
@@ -235,8 +236,9 @@ export function AdventureStudio({
       const sceneRooms =
         place.id === EXAMPLE_PLACE_ID ? withAuroraRoomIntros(place.rooms) : place.rooms ?? [];
       const parentRealm = visibleRealms.find((item) => item.id === place.realmId);
+      const anatomyLibrary = await repo.listAnatomyTemplates();
       onStart(
-        createSessionFromSetup(
+        pinSessionAnatomy(createSessionFromSetup(
           {
             location: place.name,
             placeId: place.id,
