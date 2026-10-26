@@ -15,7 +15,7 @@ let completionCalls: number;
 let fetcher: ReturnType<typeof vi.fn<typeof fetch>>;
 function button(label: string): HTMLButtonElement {
   const element = Array.from(container.querySelectorAll("button")).find(
-    (element) => element.textContent?.trim() === label,
+    (element) => (element.getAttribute("aria-label") || element.textContent?.trim()) === label,
   );
   if (!element) throw new Error(`Missing button: ${label}`);
   return element;
@@ -162,7 +162,7 @@ describe("first-run conversation flow", () => {
     expect(first.ruleset?.name).toBe(ruleset.name);
     expect(first.scene).toMatchObject({ placeId: place.id, realm: realm.name });
     expect(first.characters.ari?.stats?.focus?.value).toBe(5);
-    await click(button("← My space")); await waitFor(() => !!container.querySelector('.sb-home-connection'));
+    await click(button("Exit conversation")); await waitFor(() => !!container.querySelector('.sb-home-connection'));
     await open();
     expect(Array.from(container.querySelectorAll<HTMLSelectElement>('dialog select')).map(item => item.value)).toEqual(["", "", ""]);
     await click(button("Start conversation →"));

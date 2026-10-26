@@ -974,6 +974,26 @@
   font-weight: 700;
   text-decoration: underline;
 }
+.sb-play-exit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--accent-active);
+}
+.sb-play-exit:hover:not(:disabled) {
+  background: var(--panel-raised);
+}
+.sb-play-exit:focus-visible {
+  outline: 2px solid var(--accent-active);
+  outline-offset: 2px;
+}
 .sb-play-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

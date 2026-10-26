@@ -14,7 +14,7 @@ import { captureIdea } from "../../src/ideas/IdeaSchema";
 let root: Root, container: HTMLDivElement, reply: string;
 function button(label: string): HTMLButtonElement {
   const element = Array.from(container.querySelectorAll("button")).find(
-    (element) => element.textContent?.trim() === label,
+    (element) => (element.getAttribute("aria-label") || element.textContent?.trim()) === label,
   );
   if (!element)
     throw new Error(
@@ -97,7 +97,7 @@ async function send(text: string, answer: string) {
   await waitFor(() => !container.querySelector(".message--streaming"));
 }
 async function home() {
-  await click(button("← My space"));
+  await click(button("Exit conversation"));
   await waitFor(() => !!container.querySelector(".sb-home-connection"));
 }
 async function theme(name: string) {

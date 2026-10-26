@@ -44,19 +44,6 @@ export function PlayWorkspace({
   return (
     <div className="sb-play-workspace">
       <div className="sb-play-toolbar">
-        <button
-          type="button"
-          className="sb-link"
-          disabled={streaming}
-          title={
-            streaming
-              ? "Wait for the reply to finish"
-              : "Return home; keep this conversation"
-          }
-          onClick={() => onHome(session)}
-        >
-          ← My space
-        </button>
         <div className="sb-play-title">
           <strong>
             {title || primaryCharacter(session)?.name || "Your exploration"}
@@ -91,6 +78,22 @@ export function PlayWorkspace({
             onClick={() => setInspectorOpen(!inspectorOpen)}
           >
             Inspector
+          </button>
+          <button
+            type="button"
+            className="sb-play-exit"
+            aria-label="Exit conversation"
+            disabled={streaming}
+            title={
+              streaming
+                ? "Wait for the reply to finish"
+                : "Return home; keep this conversation"
+            }
+            onClick={() => onHome(session)}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+              <path d="M16 6V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2M10 12h12m-4-4 4 4-4 4" />
+            </svg>
           </button>
         </div>
       </div>

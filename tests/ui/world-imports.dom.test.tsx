@@ -11,7 +11,7 @@ import { newCampaignTemplate } from "@library/LibrarySchema";
 import { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 let root: Root, container: HTMLDivElement, reply: string;
 function button(label: string): HTMLButtonElement {
-    const element = Array.from(container.querySelectorAll("button")).find((element) => element.textContent?.trim() === label);
+    const element = Array.from(container.querySelectorAll("button")).find((element) => (element.getAttribute("aria-label") || element.textContent?.trim()) === label);
     if (!element)
         throw new Error(`Missing button: ${label} in ${container.textContent?.slice(-500)}`);
     return element;
@@ -68,7 +68,7 @@ async function send(text: string, answer: string) {
     await waitFor(() => !container.querySelector(".message--streaming"));
 }
 async function home() {
-    await click(button("← My space"));
+    await click(button("Exit conversation"));
     await waitFor(() => !!container.querySelector(".sb-home-connection"));
 }
 async function theme(name: string) {
