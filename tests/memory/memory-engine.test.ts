@@ -40,6 +40,32 @@ describe("rankMemories", () => {
     expect(ranked[0]?.entry.id).toBe("recent-important");
   });
 
+  it("keeps recent player topics relevant after a scene change, with fading strength", () => {
+    const session = makeSession({
+      episodic: [
+        entry({ id: "old-topic", content: "The ancient compass was hidden.", importance: 0.5, createdAtTurn: 90 }),
+        entry({ id: "unrelated", content: "A distant mountain was visible.", importance: 0.5, createdAtTurn: 90 })
+      ]
+    });
+    session.conversation = [
+      { turn: 1, role: "player", content: "Where is the compass?" },
+      { turn: 2, role: "character", content: "We moved to another room." },
+      { turn: 3, role: "player", content: "Let's go outside." }
+    ];
+    expect(rankMemories(session, 100, 2)[0]?.entry.id).toBe("old-topic");
+    session.conversation = [
+      { turn: 4, role: "player", content: "We are at the harbor." },
+      { turn: 5, role: "player", content: "Look at the boats." },
+      { turn: 6, role: "player", content: "Check the sails." }
+    ];
+    expect(rankMemories(session, 100, 2).map(row => row.score)).toEqual([
+      rankMemories(session, 100, 2)[0]!.score,
+      rankMemories(session, 100, 2)[1]!.score
+    ]);
+    expect(rankMemories(session, 100, 2).find(row => row.entry.id === "old-topic")?.score)
+      .toBeCloseTo(rankMemories(session, 100, 2).find(row => row.entry.id === "unrelated")!.score);
+  });
+
   it("respects the limit parameter", () => {
     const session = makeSession({
       episodic: [
