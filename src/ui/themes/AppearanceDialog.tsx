@@ -5,6 +5,10 @@ import { playThemeStyle, useAppearance } from "./ThemeProvider";
 import { backgroundFromFile } from "./themeStorage";
 
 export function AppearanceDialog({ onClose }: { onClose: () => void }) {
+  return <Modal title="Make yourself at home" onClose={onClose} wide><AppearanceSettingsContent onClose={onClose} /></Modal>;
+}
+
+export function AppearanceSettingsContent({ onClose }: { onClose: () => void }) {
   const {
     library,
     conversationId,
@@ -46,7 +50,7 @@ export function AppearanceDialog({ onClose }: { onClose: () => void }) {
     );
   }
   return (
-    <Modal title="Make yourself at home" onClose={onClose} wide>
+    <div className="sb-settings-appearance-content">
       <p className="sb-muted">
         {conversationId
           ? "Changes apply to this conversation. Other conversations keep their own appearance."
@@ -333,6 +337,6 @@ export function AppearanceDialog({ onClose }: { onClose: () => void }) {
           notice ||
           "Appearance changes apply immediately and are saved locally. Theme sharing is coming in a later step."}
       </p>
-    </Modal>
+    </div>
   );
 }
