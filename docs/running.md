@@ -8,7 +8,7 @@ Install [Node.js](https://nodejs.org/) (including npm). To generate AI replies, 
 
 ## Start Sandbox AI
 
-Download or clone this repository and extract it if necessary. Open the project folder.
+Download the repository as a ZIP from GitHub (**Code → Download ZIP**) and extract it, or clone the repository using Git. Open the extracted project folder. This is an alpha source-code distribution, not a signed desktop installer.
 
 - **Windows:** Double-click `start.bat`. It installs npm dependencies on first run, tries to start Ollama if it is installed but not responding, and opens the app in your browser.
 - **macOS:** Run `bash starta.command` in Terminal from the project folder. The launcher is also intended for Finder double-click where macOS allows it.
@@ -25,7 +25,7 @@ The development server opens **http://localhost:5173**. Leave the terminal or co
 
 ## Connect your local AI
 
-Open **Set up AI** on the home page. Choose **Ollama** or **Strata**, confirm the server address, and select an available chat model. Start the local AI server separately if it is not already running. Ollama commonly uses `http://localhost:11434`; use the address shown by Strata for that backend. If the model list is empty, install or load a model in your local AI server and refresh the connection.
+Click **Settings** in the left sidebar. In the Settings dialog, find **AI Settings** in the right-hand column. Choose **Ollama** or **Strata**, check the connection, and select an available **Chat model**. Start the local AI server separately if it is not already running. Ollama commonly uses `http://localhost:11434`; use the address shown by Strata for that backend. If the model list is empty, install or load a model in your local AI server and refresh the connection.
 
 For Ollama, a typical terminal setup is:
 
@@ -52,8 +52,18 @@ Characters and conversations are saved locally in your browser's storage (Indexe
 
 - **Node/npm not found:** Install Node.js, reopen your terminal, and retry.
 - **Port 5173 is occupied:** Stop the other process using that port. Vite may otherwise select a different port; use the URL printed in your terminal.
-- **No AI reply:** Confirm the AI server is running, select an installed model in **Set up AI**, and retry.
+- **No AI reply:** Confirm the AI server is running, select an installed model in **Settings → AI Settings**, and retry.
 - **Cannot connect:** Check the backend URL and local firewall/CORS settings.
 - **Slow responses:** Try a smaller local model.
 
 For developer checks, run `npm run typecheck`, `npm test`, and `npm run build`.
+
+## Alpha tester notes
+
+- The interface is partly translated into English, Swedish and Norwegian Bokmål; some screens remain in English.
+- This is an early alpha. Please report the operating system, browser, AI engine/model, steps to reproduce, expected result, actual result and relevant console errors for any bug.
+- Your data is stored in your browser profile. Back up your characters and conversations before updating or clearing site data. A ZIP download or Git update does not itself migrate browser storage between different site origins or browser profiles.
+- If a starter anatomy illustration is missing, the image assets may not be included in your checkout; the gallery currently refers to files under `public/anatomy/`.
+- Please avoid posting private character cards, conversations or personal information in public GitHub issues.
+
+[Report a problem](https://github.com/ocedo-apps/Sandbox-AI/issues/new) or [browse known reports](https://github.com/ocedo-apps/Sandbox-AI/issues).
