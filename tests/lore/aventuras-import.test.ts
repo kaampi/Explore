@@ -36,7 +36,7 @@ describe("Aventuras lorebook exchange import", () => {
     expect(book.entries.every(row => row.mode === "dormant" && !row.approved)).toBe(true);
   });
   it("rejects wrong entity and unsupported versions without SillyTavern fallback", () => {
-    expect(() => importWorldData(envelope([], "character"), "char.json")).toThrow();
+    expect(importWorldData(envelope([], "character"), "char.json").origin?.format).toBe("aventuras");
     expect(() => importWorldData(envelope([], "lorebook", "2.0.0"), "lore.json")).toThrow();
   });
   it("rejects more than 5000 entries", () => {
