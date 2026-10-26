@@ -99,6 +99,8 @@ export function buildExtractionMessages(
     current.push(`${stat.label}=${stat.value}`);
   }
 
+  for (const fact of live?.physicalFacts ?? []) current.push(`physical: ${fact}`);
+
   const userContent = playerMessage
     ? [`Player this turn:`, playerMessage, ``, `${characterId} reply:`, dialogueText].join("\n")
     : dialogueText;
@@ -116,6 +118,10 @@ export function buildExtractionMessages(
         "",
         `Respond with ONLY a JSON array — no prose, no markdown fences, no explanation.`,
         `Each element: {"path": "<dot path>", "value": <string or number>}.`,
+        "For physical continuity, use physical.change with a JSON-encoded string value ONLY when a physical change is explicitly established in the narrated outcome. Never infer success from an attempt or a wish.",
+        'Physical change value examples: {"kind":"stance","actor":"enemy","stance":"kneeling"}; {"kind":"set_relation","relation":{"id":"player-behind-enemy","subject":"player","relation":"behind","target":"enemy"}}; {"kind":"remove_relation","id":"player-behind-enemy"}.',
+        "Relations use stable ids and may specify subjectPart, targetPart and note. To reverse a relation, first remove the old id; never silently contradict existing physical facts.",
+        "Use only a few critical physical facts; do not track ordinary gestures. Existing physical facts remain true unless explicitly changed.",
         `Valid paths:`,
         `- characters.${characterId}.position (string) — where they are now; update if they walked`,
         `- characters.${characterId}.mood (string) — only if how they feel actually changed this turn`,
