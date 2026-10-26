@@ -85,7 +85,7 @@ export function LoreStudio({ repo }: { repo: IndexedDBRepository }) {
       <label className="sb-field">Import format<select disabled={busy} value={format} onChange={e => setFormat(e.target.value as ImportFormat)}>
         {Object.entries(IMPORT_FORMAT_LABELS).map(([value, title]) => <option key={value} value={value}>{title}</option>)}
       </select></label>
-      <button className="sb-button sb-button--primary" disabled={busy} onClick={() => file.current?.click()}>Import JSON or lorebook</button>
+      <button className="sb-button sb-button--primary" disabled={busy} onClick={() => file.current?.click()}>Import lorebook</button>
     </>}
     {error && <p role="alert">{error}</p>}{message && <p role="status">{message}</p>}
     {draft ? <>
