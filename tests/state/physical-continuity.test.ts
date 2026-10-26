@@ -44,6 +44,6 @@ describe("physical continuity", () => {
       id: "mount", subject: "player", relation: "beside", target: "horse", note: "hanging from the left side"
     }] };
     const moved = applyPhysicalChange(state, { kind: "stance", actor: "horse", stance: "moving" });
-    expect(moved.ok && moved.state.relations[0].note).toBe("hanging from the left side");
+    expect(moved.ok && moved.state.relations[0]?.note).toBe("hanging from the left side");
   });
 });
