@@ -12,6 +12,8 @@ import { StateEngine } from "@state/StateEngine";
 import type { Session } from "@state/StateSchema";
 import { EventLog, type StateEvent } from "@events/EventLog";
 import { LLMAdapter } from "@llm/LLMAdapter";
+import { OpenAICompatibleProvider } from "@llm/providers/OpenAICompatibleProvider";
+import { useConnection } from "./connection/ConnectionProvider";
 import {
   OllamaProvider,
   DEFAULT_OLLAMA_MODEL,
@@ -135,6 +137,7 @@ export function EngineProvider({
     resume: StudioResume | null,
   ) => Promise<void>;
 }) {
+  const { backend, baseUrl } = useConnection();
   const [ollamaModel, setOllamaModelState] = useState(
     () => initialSession.runtime.model.trim() || DEFAULT_OLLAMA_MODEL,
   );
@@ -155,8 +158,8 @@ export function EngineProvider({
 
   const pass1Adapter = useMemo(
     () =>
-      new LLMAdapter({ primary: new OllamaProvider({ model: ollamaModel }) }),
-    [ollamaModel],
+      new LLMAdapter({ primary: backend === "strata" ? new OpenAICompatibleProvider({ model: ollamaModel, baseUrl, name: "strata:" + ollamaModel }) : new OllamaProvider({ model: ollamaModel }) }),
+    [ollamaModel, backend, baseUrl],
   );
   const pass2Adapter = useMemo(
     () =>
