@@ -19,7 +19,7 @@ describe("Aventuras native library conversion", () => {
     expect(book.raw).toEqual(raw);
   });
   it("does not fetch external portraits", () => {
-    const book = importWorldData(wrap("character", { name: "Mira", portrait: "https://example.org/p.png" }), "mira.json");
+    const book = importWorldData(wrap("character", { name: "Mira", description: "Navigator", portrait: "https://example.org/p.png" }), "mira.json");
     const preview = aventurasLibraryPreview(approve(book, [0]));
     expect(preview.characters[0]?.portraitDataUrl).toBeUndefined();
     expect(preview.warnings.length).toBeGreaterThan(0);
