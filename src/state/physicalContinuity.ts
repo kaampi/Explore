@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { PhysicalRelationSchema, PhysicalStateSchema, type PhysicalRelation, type PhysicalState } from "./StateSchema";
 
 /**
@@ -5,6 +6,12 @@ import { PhysicalRelationSchema, PhysicalStateSchema, type PhysicalRelation, typ
  * subjects and targets may be actors, body parts, equipment or mounts.
  * A caller must explicitly commit the resulting state via the State Engine.
  */
+const PhysicalChangeSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("stance"), actor: z.string().min(1).max(100), stance: z.enum(["standing", "sitting", "lying", "kneeling", "crouching", "all_fours", "moving"]) }),
+  z.object({ kind: z.literal("set_relation"), relation: PhysicalRelationSchema }),
+  z.object({ kind: z.literal("remove_relation"), id: z.string().min(1).max(100) })
+]);
+
 export type PhysicalChange =
   | { kind: "stance"; actor: string; stance: PhysicalState["stances"][string] }
   | { kind: "set_relation"; relation: PhysicalRelation }
@@ -23,6 +30,9 @@ export function applyPhysicalChange(
   input: PhysicalState | undefined,
   change: PhysicalChange
 ): PhysicalChangeResult {
+  const parsedChange = PhysicalChangeSchema.safeParse(change);
+  if (!parsedChange.success) return { ok: false, reason: "Invalid physical change." };
+  change = parsedChange.data;
   const current = PhysicalStateSchema.parse(input ?? {});
   if (change.kind === "stance") {
     if (!change.actor.trim()) return { ok: false, reason: "Actor is required." };
