@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateAnatomicalRelation } from "../../src/state/anatomy";
+import { pinSessionAnatomy, validateAnatomicalRelation } from "../../src/state/anatomy";
 import type { Session } from "../../src/state/StateSchema";
 
 const anatomy = {
@@ -33,5 +33,20 @@ describe("anatomical body part validation", () => {
   });
   it("keeps older characters without a template compatible", () => {
     expect(validateAnatomicalRelation({ characters: {}, anatomyTemplates: {} }, relation("arm_99"))).toBeUndefined();
+  });
+});
+
+describe("session anatomy pinning", () => {
+  it("copies the selected body plan without sharing mutable library objects", () => {
+    const template = anatomy.anatomyTemplates?.alien;
+    expect(template).toBeDefined();
+    if (!template) return;
+    const session = { characters: anatomy.characters } as unknown as Session;
+    const pinned = pinSessionAnatomy(session, [template]);
+    expect(pinned.anatomyTemplates?.alien?.parts).toHaveLength(8);
+    expect(pinned.anatomyTemplates?.alien).not.toBe(template);
+    expect(validateAnatomicalRelation(pinned, {
+      id: "bad", subject: "alien_a", subjectPart: "arm_9", relation: "holding", target: "sword"
+    })).toContain("arm_9");
   });
 });
