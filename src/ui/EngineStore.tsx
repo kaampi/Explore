@@ -163,8 +163,8 @@ export function EngineProvider({
   );
   const pass2Adapter = useMemo(
     () =>
-      new LLMAdapter({ primary: new OllamaProvider({ model: ollamaModel }) }),
-    [ollamaModel],
+      new LLMAdapter({ primary: backend === "strata" ? new OpenAICompatibleProvider({ model: ollamaModel, baseUrl, name: "strata:" + ollamaModel }) : new OllamaProvider({ model: ollamaModel }) }),
+    [ollamaModel, backend, baseUrl],
   );
 
   // Engines are constructed once and held in refs — they're stateful
