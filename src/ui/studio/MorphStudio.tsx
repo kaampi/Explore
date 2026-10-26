@@ -47,7 +47,9 @@ export function MorphStudio({ characterId, repo, gallery = [] }: { characterId: 
     void repo.loadCharacterMorph(characterId).then(saved => {
       if (cancelled) return;
       if (saved && typeof saved === "object" && "version" in saved && saved.version === 1 && "expressions" in saved && Array.isArray(saved.expressions)) {
-        setProfile(saved as Profile);
+        const previous = saved as Profile;
+        const reference = previous.expressions[0]?.points ?? initial;
+        setProfile({ ...previous, expressions: gallery.length ? gallery.map(g => ({name:g.name,image:g.image,points:clone(previous.expressions.find(e=>e.name===g.name)?.points ?? reference)})) : previous.expressions });
       } else {
         setProfile(load(key)); // migrate an earlier experimental draft on next save
       }
