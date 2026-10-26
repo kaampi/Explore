@@ -111,7 +111,9 @@ export function MorphStudio({ characterId, repo, gallery = [] }: { characterId: 
   async function save(active: boolean) {
     const next={...profile,active};
     try {
-      await repo.saveCharacterMorph(characterId,next);
+      const stored = await repo.loadCharacterMorph(characterId);
+      const galleryData = stored && typeof stored === "object" && "gallery" in stored ? { gallery: stored.gallery } : {};
+      await repo.saveCharacterMorph(characterId,{...next,...galleryData});
       setProfile(next);
       try { localStorage.removeItem(key); } catch { /* migration cleanup is optional */ }
       setMessage(active ? "Morph profile saved and enabled for future playback (chat integration pending)." : "Morph draft saved in IndexedDB.");
