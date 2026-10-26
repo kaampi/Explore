@@ -268,7 +268,7 @@ export class IndexedDBRepository {
         const parsed = ConversationEntrySchema.safeParse(existing.result);
         metadata.put(
           archived
-            ? { ...conversationEntry(snapshot), archived: true, title: `Imported: ${snapshot.scene?.location ?? "Aventuras"}`.slice(0, 120) }
+            ? { ...conversationEntry(snapshot), archived: true, importQuarantined: true, title: `Imported: ${snapshot.scene?.location ?? "Aventuras"}`.slice(0, 120) }
             : conversationEntry(snapshot, parsed.success ? parsed.data : undefined),
         );
       };
@@ -379,7 +379,10 @@ export class IndexedDBRepository {
   }
 
   async archiveConversation(id: string, archived: boolean): Promise<void> {
-    return this.updateConversation(id, (entry) => ({ ...entry, archived }));
+    return this.updateConversation(id, (entry) => {
+      if (!archived && entry.importQuarantined) throw new Error("Imported archives cannot be restored to active play until a safe migration is available.");
+      return { ...entry, archived };
+    });
   }
 
   private async updateConversation(
@@ -401,7 +404,9 @@ export class IndexedDBRepository {
           tx.abort();
           return;
         }
-        const entry = update(parsed.data);
+        let entry: ConversationEntry;
+        try { entry = update(parsed.data); }
+        catch (error) { reject(error); tx.abort(); return; }
         store.put(entry);
         if (entry.archived) {
           const active = tx
