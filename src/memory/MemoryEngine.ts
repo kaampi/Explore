@@ -40,8 +40,9 @@ function scoreMemory(entry: MemoryEntry, currentTurn: number): number {
  * topic loss at scene boundaries without pinning stale history forever.
  * It is a deterministic relevance hint, never an instruction source.
  */
+const COMMON_WORDS = new Set(["the", "and", "was", "were", "with", "for", "from", "that", "this", "are", "you", "your", "have", "has", "had", "they", "them", "their", "there", "where", "what", "when", "who", "why", "how", "let", "lets", "our", "all", "not", "but", "och", "att", "det", "den", "som", "med", "för", "har", "var", "jag", "mig", "du", "han", "hon", "vid", "här", "där", "till", "från", "inte", "ska", "kan", "ett", "en", "på"]);
 function terms(text: string): Set<string> {
-  return new Set((text.toLocaleLowerCase().match(/[\p{L}\p{N}]{3,}/gu) ?? []).slice(0, 100));
+  return new Set((text.toLocaleLowerCase().match(/[\\p{L}\\p{N}]{3,}/gu) ?? []).filter(word => !COMMON_WORDS.has(word)).slice(0, 100));
 }
 
 function sceneQuery(session: Session): Map<string, number> {
