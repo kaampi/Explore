@@ -8,9 +8,15 @@ import {
   type ReactNode,
 } from "react";
 import { discoverOllama, initialModel, type Discovery } from "./connection";
+import { DEFAULT_STRATA_URL, listOpenAIModels } from "@llm/providers/OpenAICompatibleProvider";
 
 const PREFERENCE_KEY = "sandboxai-preferred-model";
+export type AIBackend = "ollama" | "strata";
 interface Connection {
+  backend: AIBackend;
+  chooseBackend: (backend: AIBackend) => void;
+  baseUrl: string;
+  setBaseUrl: (url: string) => void;
   discovery: Discovery;
   preferredModel: string;
   chooseModel: (model: string) => void;
@@ -26,6 +32,10 @@ function readPreferred(): string {
   }
 }
 export function ConnectionProvider({ children }: { children: ReactNode }) {
+  const [backend, setBackend] = useState<AIBackend>(() => localStorage.getItem("sandboxai-ai-backend") === "strata" ? "strata" : "ollama");
+  const [baseUrl, setBaseUrlState] = useState(() => localStorage.getItem("sandboxai-strata-url") || DEFAULT_STRATA_URL);
+  const chooseBackend = useCallback((value: AIBackend) => { setBackend(value); localStorage.setItem("sandboxai-ai-backend", value); setPreferredModel(""); }, []);
+  const setBaseUrl = useCallback((value: string) => { setBaseUrlState(value); localStorage.setItem("sandboxai-strata-url", value); }, []);
   const [discovery, setDiscovery] = useState<Discovery>({
     state: "checking",
     models: [],
@@ -52,7 +62,7 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
     const request = new AbortController();
     controller.current = request;
     setDiscovery((previous) => ({ ...previous, state: "checking" }));
-    const promise = discoverOllama({ signal: request.signal })
+    const promise = (backend === "ollama" ? discoverOllama({ signal: request.signal }) : listOpenAIModels(baseUrl, request.signal).then(models => ({ state: "available" as const, models })).catch(() => ({ state: "unavailable" as const, models: [] })))
       .then((result) => {
         if (mounted.current && !request.signal.aborted) setDiscovery(result);
         return result;
@@ -62,7 +72,7 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
       });
     pending.current = promise;
     return promise;
-  }, []);
+  }, [backend, baseUrl]);
   useEffect(() => {
     mounted.current = true;
     void refresh();
@@ -86,6 +96,10 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
     <Context.Provider
       value={{
         discovery,
+        backend,
+        chooseBackend,
+        baseUrl,
+        setBaseUrl,
         preferredModel,
         chooseModel,
         refresh,
