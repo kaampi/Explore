@@ -777,7 +777,7 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
                 placeholder="Dry-witted, slow to open up, speaks in short sentences…"
               />
             </label>
-            {saved && draft.id && <MorphStudio key={draft.id} characterId={draft.id} />}
+            {saved && draft.id && <MorphStudio key={draft.id} characterId={draft.id} repo={repo} />}
             {notice && <p className="setup-notice">{notice}</p>}
             {error && <p className="setup-error">{error}</p>}
             <div className="studio-sheet__actions">
