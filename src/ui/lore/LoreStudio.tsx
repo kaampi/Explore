@@ -9,6 +9,7 @@ import { aventurasLibraryPreview } from "../../lore/aventurasLibrary";
 import { previewAvtHistory, type AvtHistoryPreview } from "../../lore/avtHistoryPreview";
 import { buildAvtArchiveSession } from "../../lore/avtArchiveSession";
 import { reviewAvtMigration, type AvtMigrationReview } from "../../lore/avtMigrationReview";
+import { buildAvtPlayableSession, type AvtSelection } from "../../lore/avtPlayableSession";
 import { downloadJson } from "../studio/studioShared";
 
 export function LoreStudio({ repo }: { repo: IndexedDBRepository }) {
@@ -20,6 +21,7 @@ export function LoreStudio({ repo }: { repo: IndexedDBRepository }) {
   const [format, setFormat] = useState<ImportFormat>("auto");
   const [avtPreview, setAvtPreview] = useState<AvtHistoryPreview | null>(null);
   const [migrationReview, setMigrationReview] = useState<AvtMigrationReview | null>(null);
+  const [avtSelected, setAvtSelected] = useState<AvtSelection[]>([]);
   const avtFile = useRef<HTMLInputElement>(null);
   const [createWorld, setCreateWorld] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -49,6 +51,7 @@ export function LoreStudio({ repo }: { repo: IndexedDBRepository }) {
       const raw: unknown = JSON.parse(await picked.text());
       setAvtPreview(previewAvtHistory(raw));
       setMigrationReview(reviewAvtMigration(raw));
+      setAvtSelected([]);
     } catch (err) { setError(err instanceof Error ? err.message : "Could not inspect archive."); }
     finally { pending.current = false; setBusy(false); }
   }
@@ -60,6 +63,17 @@ export function LoreStudio({ repo }: { repo: IndexedDBRepository }) {
       setAvtPreview(null); setMigrationReview(null);
       setMessage("Aventuras transcript saved as an archived, inactive conversation. No imported world state or instructions were activated.");
     } catch (err) { setError(err instanceof Error ? err.message : "Could not archive Aventuras transcript."); }
+    finally { pending.current = false; setBusy(false); }
+  }
+  async function startAvtSession() {
+    if (!migrationReview || pending.current) return;
+    pending.current = true; setBusy(true); setError("");
+    try {
+      const session = buildAvtPlayableSession(migrationReview, avtSelected, crypto.randomUUID());
+      await repo.createConversation(session);
+      setAvtPreview(null); setMigrationReview(null); setAvtSelected([]);
+      setMessage("Created a new playable Sandbox conversation from approved identities. Imported history, descriptions and world-state were not activated.");
+    } catch (err) { setError(err instanceof Error ? err.message : "Could not create the new session."); }
     finally { pending.current = false; setBusy(false); }
   }
   async function save() {
@@ -133,12 +147,14 @@ export function LoreStudio({ repo }: { repo: IndexedDBRepository }) {
         {migrationReview.candidates.slice(0, 40).map((candidate, index) => <article key={index} className="sb-conversation-card">
           <h4>{candidate.kind}: {candidate.name || "(unnamed)"}</h4>
           {candidate.description && <p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{candidate.description}</p>}
-          <p>{candidate.eligible ? "Ready for manual review" : candidate.reasons.join("; ")}</p>
+          <p>{candidate.eligible ? "Available for explicit selection" : candidate.reasons.join("; ")}</p>
+          {candidate.eligible && <label><input type="checkbox" disabled={busy} checked={avtSelected.some(c => c.kind === candidate.kind && c.sourceId === candidate.sourceId)} onChange={event => setAvtSelected(current => event.target.checked ? [...current, { kind: candidate.kind, sourceId: candidate.sourceId }] : current.filter(c => !(c.kind === candidate.kind && c.sourceId === candidate.sourceId)))} /> Include in new Sandbox session</label>}
         </article>)}
         {migrationReview.candidates.length > 40 && <p>Showing first 40 candidates only.</p>}
         {migrationReview.warnings.map((warning, index) => <p className="sb-muted" key={index}>{warning}</p>)}
       </section>}
-      <button className="sb-button sb-button--primary" disabled={busy || avtPreview.lines.some(line => line.role === "other")} onClick={() => void archiveAvt()}>Save as archived conversation</button>
+      <button className="sb-button sb-button--primary" disabled={busy || avtSelected.length === 0} onClick={() => void startAvtSession()}>Create new playable session from selected identities</button>
+      <button className="sb-button" disabled={busy || avtPreview.lines.some(line => line.role === "other")} onClick={() => void archiveAvt()}>Save as archived conversation</button>
       <button className="sb-button" disabled={busy} onClick={() => { setAvtPreview(null); setMigrationReview(null); }}>Close preview</button>
     </section>}
     {draft ? <>
