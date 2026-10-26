@@ -139,3 +139,31 @@ describe("multi-turn occupied-limb continuity", () => {
     expect(state?.relations).toHaveLength(3);
   });
 });
+
+describe("physical relevance budget", () => {
+  it("keeps occupied limbs ahead of unrelated stances and background contacts", () => {
+    const state: PhysicalState = {
+      stances: Object.fromEntries(Array.from({ length: 25 }, (_, i) => ["extra_" + i, "standing"])),
+      relations: [
+        { id: "distant", subject: "horse", relation: "beside", target: "stable" },
+        { id: "contact", subject: "player", relation: "touching", target: "table" },
+        { id: "grip", subject: "player", subjectPart: "left_arm", relation: "restraining", target: "guard", exclusive: true },
+        { id: "elsewhere", subject: "horse", relation: "holding", target: "rope", exclusive: true, subjectPart: "mouth" }
+      ]
+    };
+    const facts = describePhysicalState(state, 2, ["player"]);
+    expect(facts).toHaveLength(2);
+    expect(facts[0]).toContain("left_arm");
+    expect(facts[1]).toContain("touching");
+    expect(facts.join(" ")).not.toContain("horse");
+    expect(state.relations).toHaveLength(4);
+  });
+  it("keeps relations with a directly involved target", () => {
+    const state: PhysicalState = { stances: {}, relations: [
+      { id: "a", subject: "guard", relation: "holding", target: "player", exclusive: true, subjectPart: "hand" },
+      { id: "b", subject: "stranger", relation: "beside", target: "horse" }
+    ] };
+    expect(describePhysicalState(state, 5, ["player"])).toHaveLength(1);
+    expect(describePhysicalState(state, 5, ["player"])[0]).toContain("guard.hand");
+  });
+});
