@@ -26,12 +26,15 @@ export function buildAvtPlayableSession(
       throw new Error("Selection contains an unapproved or unknown source entity.");
     return candidate;
   });
+  if (chosen.filter(c => c.kind === "character").length > 100) throw new Error("Select at most 100 characters.");
+  if (chosen.filter(c => c.kind === "item").length > 500) throw new Error("Select at most 500 items.");
   const characters: CharacterDraft[] = chosen.filter(c => c.kind === "character").map(c => ({
     name: c.name,
     personality: "",
     mood: "neutral",
     position: "here",
   }));
+  if (chosen.filter(c => c.kind === "location").length > 1) throw new Error("Select only one starting location.");
   const location = chosen.find(c => c.kind === "location")?.name ?? "Imported world";
   const objects = chosen.filter(c => c.kind === "item").map((c, index) => ({
     id: `imported-item-${index + 1}`,
