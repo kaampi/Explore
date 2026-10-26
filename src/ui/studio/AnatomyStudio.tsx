@@ -30,6 +30,8 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
 
   const templates = [...BUILTIN_ANATOMY_TEMPLATES, ...custom.filter((item) => !isBuiltInAnatomy(item.id))];
   const current = draft?.parts.find((part) => part.id === partId);
+  const galleryImages = draft ? (anatomyImages[draft.id] ?? []) : [];
+  const selectedGalleryImage = galleryImages.length ? galleryImages[galleryIndex % galleryImages.length] : undefined;
 
   function open(item: AnatomyTemplate) {
     setDraft(structuredClone(item));
@@ -96,7 +98,19 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
       <h3>{draft.name}</h3>
       <p>{draft.parts.length} body parts · {groupsOf(draft.parts).length} groups {isBuiltInAnatomy(draft.id) ? "· Built-in" : "· Custom"}</p>
       {!editing ? <>
-        <div className="anatomy-gallery" style={{ maxWidth: 760, margin: "20px 0 24px" }}>{(anatomyImages[draft.id] || []).length ? <><div className="anatomy-gallery__main" style={{ padding: 12, borderRadius: 10, background: "var(--surface-muted, rgba(128,128,128,0.06))", textAlign: "center" }}><img src={anatomyImages[draft.id][galleryIndex % anatomyImages[draft.id].length].src} alt={anatomyImages[draft.id][galleryIndex % anatomyImages[draft.id].length ].label} style={{ display: "block", width: "100%", maxHeight: 620, objectFit: "contain" }} /></div><div className="studio-actions" style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 14 }}>{anatomyImages[draft.id].map((image, index) => <button key={image.src} type="button" aria-pressed={galleryIndex === index} onClick={() => setGalleryIndex(index)} style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "start", gap: 7, width: 110, padding: 9, borderRadius: 8, textAlign: "center" }}><img src={image.src} alt="" width="86" height="94" style={{ objectFit: "contain", display: "block" }} /><span style={{ display: "block", fontSize: 12, lineHeight: 1.35 }}>{image.label}</span></button>)}</div></> : <p>Example images can be added to this anatomy template.</p>}</div>
+        <div className="anatomy-gallery" style={{ maxWidth: 760, margin: "20px 0 24px" }}>
+          {selectedGalleryImage ? <>
+            <div className="anatomy-gallery__main" style={{ padding: 12, borderRadius: 10, background: "var(--surface-muted, rgba(128,128,128,0.06))", textAlign: "center" }}>
+              <img src={selectedGalleryImage.src} alt={selectedGalleryImage.label} style={{ display: "block", width: "100%", maxHeight: 620, objectFit: "contain" }} />
+            </div>
+            <div className="studio-actions" style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 14 }}>
+              {galleryImages.map((image, index) => <button key={image.src} type="button" aria-pressed={galleryIndex === index} onClick={() => setGalleryIndex(index)} style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "start", gap: 7, width: 110, padding: 9, borderRadius: 8, textAlign: "center" }}>
+                <img src={image.src} alt="" width="86" height="94" style={{ objectFit: "contain", display: "block" }} />
+                <span style={{ display: "block", fontSize: 12, lineHeight: 1.35 }}>{image.label}</span>
+              </button>)}
+            </div>
+          </> : <p>Example images can be added to this anatomy template.</p>}
+        </div>
         <div className="studio-actions"><button type="button" onClick={() => setEditing(true)}>Open anatomy editor</button></div>
       </> : <>
         {!isBuiltInAnatomy(draft.id) && <label className="setup-field"><span className="setup-field__label">Template name</span><input value={draft.name} onChange={(e) => patch({ name: e.target.value })}/></label>}
@@ -125,7 +139,7 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
       <div className="studio-actions"><button type="button" onClick={() => { const item = { id: crypto.randomUUID(), name: "New anatomy", version: 1, parts: [emptyPart("head", "Head")] }; setDraft(item); setEditing(true); setExpanded("Head"); setPartId("head"); }}>+ New anatomy</button></div>
       <div className="studio-anatomy-library" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: "12px" }}>
         {templates.map((item) => <button type="button" key={item.id} onClick={() => open(item)} onMouseEnter={() => { setHovered(item.id); setHoverIndex(0); }} onMouseLeave={() => setHovered(null)} onFocus={() => setHovered(null)} style={{ textAlign: "left", padding: "16px", minHeight: "115px" }}>
-          {anatomyImages[item.id]?.length ? <img src={anatomyImages[item.id][hovered === item.id ? hoverIndex % anatomyImages[item.id].length : 0].src} alt="" style={{ width: "100%", height: 170, objectFit: "contain" }} /> : <div style={{ height: 170, display: "grid", placeItems: "center" }} aria-hidden="true">◇</div>}
+          {(() => { const images = anatomyImages[item.id] ?? []; const image = images.length ? images[hovered === item.id ? hoverIndex % images.length : 0] : undefined; return image ? <img src={image.src} alt="" style={{ width: "100%", height: 170, objectFit: "contain" }} /> : <div style={{ height: 170, display: "grid", placeItems: "center" }} aria-hidden="true">◇</div>; })()}
           <strong>{item.name}</strong><br/><small>{isBuiltInAnatomy(item.id) ? "Built-in" : "Custom"} · {groupsOf(item.parts).length} groups</small>
         </button>)}
       </div>
