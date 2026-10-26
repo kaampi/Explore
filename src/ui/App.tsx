@@ -47,6 +47,24 @@ function LiveSessionBridge({
   }, [phase, onPhase]);
   return null;
 }
+function HeaderAppearanceToggle() {
+  const { library, setShell, ready } = useAppearance();
+  const dark = library.shell === "dark";
+  return (
+    <button
+      type="button"
+      className="sb-header-appearance"
+      disabled={!ready}
+      aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+      title={dark ? "Switch to light mode" : "Switch to dark mode"}
+      onClick={() => setShell(dark ? "light" : "dark")}
+    >
+      <span aria-hidden="true">{dark ? "☾" : "☀"}</span>
+      <span>{dark ? "Dark" : "Light"}</span>
+    </button>
+  );
+}
+
 function ConversationAppearance({ id }: { id: string | null }) {
   const { ready, activateConversation } = useAppearance();
   useLayoutEffect(() => {
@@ -313,14 +331,7 @@ function SandboxApp() {
           </span>
         </button>
         <AppSwitcher onHome={() => navigate("home")} />
-        <button
-          type="button"
-          className="sb-header-appearance"
-          onClick={() => setAppearanceOpen(true)}
-          aria-label="Appearance and themes"
-        >
-          ◐ <span>Appearance</span>
-        </button>
+        <HeaderAppearanceToggle />
       </header>
       {operationError && (
         <div className="sb-operation-error" role="alert">
