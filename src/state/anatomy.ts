@@ -1,3 +1,4 @@
+import type { AnatomyTemplate } from "./StateSchema";
 import type { Session, PhysicalRelation } from "./StateSchema";
 
 /**
@@ -25,4 +26,19 @@ export function validateAnatomicalRelation(
     }
   }
   return undefined;
+}
+
+/** Pin independent template snapshots to a newly created session. */
+export function pinSessionAnatomy<T extends Session>(
+  session: T,
+  library: AnatomyTemplate[]
+): T {
+  const templates: Record<string, AnatomyTemplate> = {};
+  for (const character of Object.values(session.characters)) {
+    const id = character.anatomyTemplateId;
+    if (!id) continue;
+    const template = library.find((item) => item.id === id);
+    if (template) templates[id] = structuredClone(template);
+  }
+  return Object.keys(templates).length ? { ...session, anatomyTemplates: templates } : session;
 }
