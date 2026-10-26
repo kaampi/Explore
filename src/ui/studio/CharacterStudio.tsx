@@ -686,8 +686,8 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
               >
                 {draft.portraitDataUrl ? "Change portrait" : "Add portrait"}
               </button>
-              {saved && draft.id && <CharacterImages key={draft.id} characterId={draft.id} repo={repo} portrait={draft.portraitDataUrl} onPortrait={applyPortrait} />}
             </div>
+            {saved && draft.id && <CharacterImages key={draft.id} characterId={draft.id} repo={repo} portrait={draft.portraitDataUrl} onPortrait={applyPortrait} />}
             <div className="setup-field">
               <span className="setup-field__label">Pronoun</span>
               <PickChips
