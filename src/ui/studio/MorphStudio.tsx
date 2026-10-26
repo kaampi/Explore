@@ -36,7 +36,6 @@ export function MorphStudio({ characterId }: { characterId: string }) {
   const [target,setTarget] = useState(1);
   const [mix,setMix] = useState(50);
   const [zoom,setZoom] = useState(100);
-  const [editing,setEditing] = useState(false);
   const [message,setMessage] = useState("");
   const canvases = [useRef<HTMLCanvasElement>(null),useRef<HTMLCanvasElement>(null),useRef<HTMLCanvasElement>(null)];
   const dragging = useRef<{ expression: number; point: number } | null>(null);
