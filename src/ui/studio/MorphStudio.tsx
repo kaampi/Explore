@@ -1,3 +1,4 @@
+import { originalPoints, originalTriangles } from "./originalMorphMesh";
 import { useEffect, useRef, useState } from "react";
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 
@@ -7,7 +8,7 @@ type Expression = { name: string; image: string; points: Point[] };
 type Profile = { version: 1; active: boolean; expressions: Expression[]; triangles?: number[][]; eyeMidpoint?: number; eyeDuration?: number; eyeEnabled?: boolean; eyeWidth?: number; eyeHeight?: number; eyeStrength?: number; eyeGuides?: boolean; eyeCenters?: Record<string, Point[]> };
 const GRID_COLS = 7;
 const GRID_ROWS = 9;
-const initial: Point[] = Array.from({length:GRID_ROWS},(_,y)=>Array.from({length:GRID_COLS},(_,x)=>[x/(GRID_COLS-1),y/(GRID_ROWS-1)] as Point)).flat();
+const initial: Point[] = originalPoints("shy");
 const triangles: number[][] = Array.from({length:(GRID_ROWS-1)*(GRID_COLS-1)},(_,cell)=>{const x=cell%(GRID_COLS-1),y=Math.floor(cell/(GRID_COLS-1)),a=y*GRID_COLS+x,b=a+1,c=a+GRID_COLS,d=c+1;return [[a,b,c],[b,d,c]];}).flat();
 const legacyTriangles: number[][] = [[0,1,4],[1,5,4],[1,2,6],[1,6,5],[0,4,3],[3,4,8],[4,5,9],[4,9,8],[5,6,10],[5,10,9],[6,2,7],[6,7,10],[3,8,14],[8,11,14],[8,9,12],[8,12,11],[9,10,13],[9,13,12],[10,7,16],[10,16,13],[11,12,15],[11,15,14],[12,13,16],[12,16,15]];
 const clone = (points: Point[]) => points.map(([x,y]) => [x,y] as Point);
@@ -40,12 +41,15 @@ export function MorphStudio({ characterId, repo, gallery = [] }: { characterId: 
   const [target,setTarget] = useState(1);
   const [mix,setMix] = useState(50);
   const [zoom,setZoom] = useState(100);
+  const [spaceHeld,setSpaceHeld] = useState(false);
+  const panning = useRef<{x:number;y:number;left:number;top:number;index:number}|null>(null);
+  const viewports = [useRef<HTMLDivElement>(null),useRef<HTMLDivElement>(null),useRef<HTMLDivElement>(null)] as const;
   const [message,setMessage] = useState("");
   const [addingPoint,setAddingPoint] = useState(false);
   const [showMesh,setShowMesh] = useState(true);
   const [playing,setPlaying] = useState(false);
   const eyeDragging = useRef<{expression:number; eye:number}|null>(null);
-  const meshTriangles = profile.triangles ?? (profile.expressions[0]?.points.length === 17 ? legacyTriangles : triangles);
+  const meshTriangles = profile.triangles ?? (profile.expressions[0]?.points.length === 17 ? legacyTriangles : profile.expressions[0]?.points.length === 57 ? originalTriangles : triangles);
   const canvases = [useRef<HTMLCanvasElement>(null),useRef<HTMLCanvasElement>(null),useRef<HTMLCanvasElement>(null)] as const;
   const meshFileRef = useRef<HTMLInputElement>(null);
   const imageFileRef = useRef<HTMLInputElement>(null);
@@ -60,7 +64,7 @@ export function MorphStudio({ characterId, repo, gallery = [] }: { characterId: 
         setProfile({ ...previous, expressions: gallery.length ? gallery.map(g => ({name:g.name,image:g.image,points:clone(previous.expressions.find(e=>e.name===g.name)?.points ?? reference)})) : previous.expressions });
       } else {
         const previous = load(key);
-        setProfile({ ...previous, expressions: gallery.length ? gallery.map(g => ({name:g.name,image:g.image,points:clone(initial)})) : previous.expressions });
+        setProfile({ ...previous, expressions: gallery.length ? gallery.map(g => ({name:g.name,image:g.image,points:clone(originalPoints(g.name))})) : previous.expressions });
       }
       setSource(0); setTarget(1);
     }).catch(() => { if (!cancelled) setMessage("Could not load morph profile."); });
@@ -201,6 +205,10 @@ export function MorphStudio({ characterId, repo, gallery = [] }: { characterId: 
     } catch(err) {setMessage(err instanceof Error?err.message:"Mesh import failed.");}
   }
   function movePoint(event: React.PointerEvent<HTMLCanvasElement>,index:number) {
+    const viewport=viewports[index].current;
+    if(event.type==="pointerdown" && spaceHeld && viewport){panning.current={x:event.clientX,y:event.clientY,left:viewport.scrollLeft,top:viewport.scrollTop,index};event.currentTarget.setPointerCapture(event.pointerId);return;}
+    if(event.type==="pointermove" && panning.current?.index===index && viewport){viewport.scrollLeft=panning.current.left-(event.clientX-panning.current.x);viewport.scrollTop=panning.current.top-(event.clientY-panning.current.y);return;}
+    if((event.type==="pointerup"||event.type==="pointercancel") && panning.current?.index===index){panning.current=null;return;}
     const canvas=canvases[index]?.current,expIndex=index===0?source:target,exp=profile.expressions[expIndex];if(!canvas||!exp)return;
     const rect=canvas.getBoundingClientRect(),x=(event.clientX-rect.left)/rect.width,y=(event.clientY-rect.top)/rect.height;
     if(event.type==="pointerup" || event.type==="pointercancel"){eyeDragging.current=null;dragging.current=null;return;}
@@ -216,6 +224,7 @@ export function MorphStudio({ characterId, repo, gallery = [] }: { characterId: 
 
   }
   useEffect(()=>{if(!playing)return;let frame=0;let last=0;let progress=mix/100;let direction=1;const tick=(now:number)=>{if(last){progress+=direction*(now-last)/1800;if(progress>=1){progress=1;direction=-1;}if(progress<=0){progress=0;direction=1;}setMix(Math.round(progress*100));}last=now;frame=requestAnimationFrame(tick);};frame=requestAnimationFrame(tick);return()=>cancelAnimationFrame(frame);},[playing]);
+  useEffect(()=>{const down=(e:KeyboardEvent)=>{if(e.code==="Space" && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement) && !(e.target instanceof HTMLSelectElement)){e.preventDefault();setSpaceHeld(true);}};const up=(e:KeyboardEvent)=>{if(e.code==="Space")setSpaceHeld(false);};window.addEventListener("keydown",down);window.addEventListener("keyup",up);return()=>{window.removeEventListener("keydown",down);window.removeEventListener("keyup",up);};},[]);
   useEffect(()=>{const nodes=canvases.map(ref=>ref.current).filter((node):node is HTMLCanvasElement=>Boolean(node));const onWheel=(event:WheelEvent)=>{if(!event.ctrlKey)return;event.preventDefault();setZoom(value=>Math.max(100,Math.min(400,value+(event.deltaY<0?25:-25))));};nodes.forEach(node=>node.addEventListener("wheel",onWheel,{passive:false}));return()=>nodes.forEach(node=>node.removeEventListener("wheel",onWheel));},[profile.expressions.length]);
   const choices=profile.expressions.map((item,i)=><option key={i} value={i}>{item.name}</option>);
   return <section className="setup-field" style={{marginTop:20,padding:16,border:"1px solid var(--sb-border, #566)",borderRadius:12}}>
@@ -231,8 +240,8 @@ export function MorphStudio({ characterId, repo, gallery = [] }: { characterId: 
         <button type="button" onClick={()=>setZoom(100)}>Fit</button>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(230px,1fr))",gap:12}}>
-        {canvases.map((ref,i)=><div key={i} style={{overflow:"auto",maxHeight:"65vh",border:"1px solid #596478",borderRadius:8}}>
-          <canvas ref={ref} width={252} height={282} aria-label={["Source mesh","Target mesh","Morph preview"][i]} style={{display:"block",width:`calc(min(100%, 51vh) * ${zoom / 100})`,maxWidth:"none",height:"auto",touchAction:"none"}} onPointerDown={i<2?e=>movePoint(e,i):undefined} onPointerMove={i<2?e=>movePoint(e,i):undefined} onPointerUp={i<2?e=>movePoint(e,i):undefined} onPointerCancel={i<2?e=>movePoint(e,i):undefined}/>
+        {canvases.map((ref,i)=><div key={i} ref={viewports[i]} style={{overflow:"auto",maxHeight:"65vh",border:"1px solid #596478",borderRadius:8}}>
+          <canvas ref={ref} width={252} height={282} aria-label={["Source mesh","Target mesh","Morph preview"][i]} style={{display:"block",width:`calc(min(100%, 51vh) * ${zoom / 100})`,maxWidth:"none",height:"auto",touchAction:"none",cursor:spaceHeld?"grab":"crosshair"}} onPointerDown={i<2?e=>movePoint(e,i):undefined} onPointerMove={i<2?e=>movePoint(e,i):undefined} onPointerUp={i<2?e=>movePoint(e,i):undefined} onPointerCancel={i<2?e=>movePoint(e,i):undefined}/>
           {i<2 && <div style={{display:"flex",justifyContent:"center",gap:8,alignItems:"center",padding:8}}><button type="button" onClick={()=>i===0?setSource((source+profile.expressions.length-1)%profile.expressions.length):setTarget((target+profile.expressions.length-1)%profile.expressions.length)}>‹</button><select aria-label={i===0?"From":"To"} value={i===0?source:target} onChange={e=>i===0?setSource(Number(e.target.value)):setTarget(Number(e.target.value))}>{choices}</select><button type="button" onClick={()=>i===0?setSource((source+1)%profile.expressions.length):setTarget((target+1)%profile.expressions.length)}>›</button></div>}
         </div>)}
       </div>
