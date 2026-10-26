@@ -60,6 +60,17 @@ function sceneQuery(session: Session): Map<string, number> {
     add(row.content.slice(0, 1200), [1, 0.6, 0.3][seen] ?? 0);
     seen++;
   }
+  const known = new Map(Object.entries(session.characters).map(([id, character]) => [id, character.name ?? ""]));
+  let distance = 0;
+  for (let i = session.conversation.length - 1; i >= 0 && distance < 8; i--) {
+    const value = session.conversation[i];
+    if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+    const row = value as Record<string, unknown>;
+    if (row.role !== "character" || typeof row.speaker !== "string") continue;
+    const name = known.get(row.speaker);
+    if (name) add(name, Math.max(0.15, 0.7 - distance * 0.08));
+    distance++;
+  }
   return query;
 }
 
