@@ -1,4 +1,4 @@
-import { PhysicalStateSchema, type PhysicalRelation, type PhysicalState } from "./StateSchema";
+import { PhysicalRelationSchema, PhysicalStateSchema, type PhysicalRelation, type PhysicalState } from "./StateSchema";
 
 /**
  * Independent semantic continuity rules. No humanoid anatomy is assumed:
@@ -34,7 +34,7 @@ export function applyPhysicalChange(
     return { ok: true, state: { ...current, relations: current.relations.filter((r) => r.id !== change.id) } };
   }
 
-  const parsed = PhysicalStateSchema.shape.relations.element.safeParse(change.relation);
+  const parsed = PhysicalRelationSchema.safeParse(change.relation);
   if (!parsed.success) return { ok: false, reason: "Invalid physical relation." };
   const relation = parsed.data;
   if (relation.subject === relation.target && !relation.subjectPart && !relation.targetPart)
