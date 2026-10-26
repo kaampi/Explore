@@ -478,6 +478,8 @@ export const AnatomyTemplateSchema = z.object({
   parts: z.array(z.object({
     id: z.string().min(1).max(80),
     label: z.string().min(1).max(120),
+    group: z.string().max(80).optional(),
+    description: z.string().max(1000).optional(),
     capabilities: z.array(z.enum(["grasp", "support", "locomote", "sense", "manipulate"])).max(5).default([])
   })).min(1).max(128)
 }).refine((template) => new Set(template.parts.map((part) => part.id)).size === template.parts.length, {
