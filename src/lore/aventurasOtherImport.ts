@@ -45,12 +45,12 @@ function descriptionParts(data: z.infer<typeof character>): string {
 }
 function makeBook(raw: unknown, sourceName: string, version: string, name: string, drafts: Draft[], notes: string[]): Lorebook {
   const entries = drafts.map((draft, i) => {
-    const reasons = ["Imported character/scenario content requires explicit review before use."];
+    const reasons: string[] = [];
     if (!draft.content.trim()) reasons.push("No usable text content.");
     if (/{{|^\s*@@/m.test(draft.content)) reasons.push("Macros or instructions need manual adaptation.");
     return {
       id: `aventuras:${i}`, title: draft.title, content: draft.content,
-      keywords: [draft.title], mode: "dormant" as const, reasons, approved: false,
+      keywords: [draft.title], mode: (reasons.length ? "dormant" : "keywords") as "dormant" | "keywords", reasons, approved: false,
       raw: draft.raw,
       entity: { id: `aventuras:${i}`, name: draft.title, kind: draft.kind, category: draft.category },
     };
