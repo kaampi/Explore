@@ -30,7 +30,7 @@ function warpTriangle(ctx: CanvasRenderingContext2D, image: HTMLImageElement, so
   ctx.save();ctx.beginPath();ctx.moveTo(d[0],d[1]);ctx.lineTo(e[0],e[1]);ctx.lineTo(f[0],f[1]);ctx.closePath();ctx.clip();
   ctx.transform(A,B,C,D,E,F);ctx.drawImage(image,0,0,width,height);ctx.restore();
 }
-export function MorphStudio({ characterId, repo }: { characterId: string; repo: IndexedDBRepository }) {
+export function MorphStudio({ characterId, repo, gallery = [] }: { characterId: string; repo: IndexedDBRepository; gallery?: { name: string; image: string }[] }) {
   const key = "sandboxai:morph:"+characterId;
   const [profile,setProfile] = useState<Profile>(() => load(key));
   const [source,setSource] = useState(0);
