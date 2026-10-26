@@ -1,0 +1,63 @@
+import { PhysicalStateSchema, type PhysicalRelation, type PhysicalState } from "./StateSchema";
+
+/**
+ * Independent semantic continuity rules. No humanoid anatomy is assumed:
+ * subjects and targets may be actors, body parts, equipment or mounts.
+ * A caller must explicitly commit the resulting state via the State Engine.
+ */
+export type PhysicalChange =
+  | { kind: "stance"; actor: string; stance: PhysicalState["stances"][string] }
+  | { kind: "set_relation"; relation: PhysicalRelation }
+  | { kind: "remove_relation"; id: string };
+
+export type PhysicalChangeResult =
+  | { ok: true; state: PhysicalState }
+  | { ok: false; reason: string };
+
+const OPPOSITES: Record<string, string> = {
+  behind: "in_front_of",
+  in_front_of: "behind"
+};
+
+export function applyPhysicalChange(
+  input: PhysicalState | undefined,
+  change: PhysicalChange
+): PhysicalChangeResult {
+  const current = PhysicalStateSchema.parse(input ?? {});
+  if (change.kind === "stance") {
+    if (!change.actor.trim()) return { ok: false, reason: "Actor is required." };
+    return { ok: true, state: { ...current, stances: { ...current.stances, [change.actor]: change.stance } } };
+  }
+  if (change.kind === "remove_relation") {
+    if (!current.relations.some((r) => r.id === change.id))
+      return { ok: false, reason: "Relation does not exist." };
+    return { ok: true, state: { ...current, relations: current.relations.filter((r) => r.id !== change.id) } };
+  }
+
+  const parsed = PhysicalStateSchema.shape.relations.element.safeParse(change.relation);
+  if (!parsed.success) return { ok: false, reason: "Invalid physical relation." };
+  const relation = parsed.data;
+  if (relation.subject === relation.target && !relation.subjectPart && !relation.targetPart)
+    return { ok: false, reason: "An entity cannot relate spatially to itself." };
+  const others = current.relations.filter((r) => r.id !== relation.id);
+  if (others.some((r) =>
+    r.subject === relation.subject &&
+    r.target === relation.target &&
+    r.subjectPart === relation.subjectPart &&
+    r.targetPart === relation.targetPart &&
+    (r.relation === OPPOSITES[relation.relation] || OPPOSITES[r.relation] === relation.relation)
+  )) return { ok: false, reason: "Conflicting spatial relation; remove or update the previous fact explicitly." };
+  const next = PhysicalStateSchema.safeParse({ ...current, relations: [...others, relation] });
+  if (!next.success) return { ok: false, reason: "Physical state exceeds its limits." };
+  return { ok: true, state: next.data };
+}
+
+/** A deterministic, compact scene summary without an extra model call. */
+export function describePhysicalState(state: PhysicalState | undefined, limit = 30): string[] {
+  if (!state) return [];
+  const lines = Object.entries(state.stances).map(([actor, stance]) => `${actor}: ${stance}`);
+  for (const r of state.relations) {
+    lines.push(`${r.subject}${r.subjectPart ? `.${r.subjectPart}` : ""} ${r.relation.replaceAll("_", " ")} ${r.target}${r.targetPart ? `.${r.targetPart}` : ""}${r.note ? ` (${r.note})` : ""}`);
+  }
+  return lines.slice(0, Math.max(0, limit));
+}
