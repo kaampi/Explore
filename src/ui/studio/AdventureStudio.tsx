@@ -323,7 +323,7 @@ export function AdventureStudio({
             }))
           },
           sessionId
-        )
+        ), anatomyLibrary)
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not start this scene.");
