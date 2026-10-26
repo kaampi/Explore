@@ -26,6 +26,7 @@ export function characterDraftFromTemplate(template: CharacterTemplate): Charact
     mood: template.mood,
     position: "",
     libraryId: template.id,
+    ...(template.anatomyTemplateId ? { anatomyTemplateId: template.anatomyTemplateId } : {}),
     saveToLibrary: false,
     source: template.source,
     scenario: template.scenario,
