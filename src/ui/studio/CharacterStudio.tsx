@@ -1,3 +1,4 @@
+import type { AnatomyTemplate } from "@state/StateSchema";
 import { importEmbeddedLore } from "../../lore/sillyTavernLore";
 import type { Lorebook } from "../../lore/LorebookSchema";
 import { LoreReview } from "../lore/LoreReview";
@@ -53,6 +54,7 @@ type Draft = {
   approximateAge: number | null;
   personality: string;
   appearance: string;
+  anatomyTemplateId: string;
   mood: string;
   speech: string;
   pronoun: CharacterPronoun | null;
@@ -71,6 +73,7 @@ function emptyDraft(): Draft {
     approximateAge: null,
     personality: "",
     appearance: "",
+    anatomyTemplateId: "",
     mood: "",
     speech: "",
     pronoun: null,
@@ -93,6 +96,7 @@ function draftFrom(template: CharacterTemplate): Draft {
         : null,
     personality: template.personality ?? "",
     appearance: template.appearance ?? "",
+    anatomyTemplateId: template.anatomyTemplateId ?? "",
     mood: template.mood ?? "",
     speech: template.speech ?? "",
     pronoun:
@@ -105,6 +109,8 @@ function draftFrom(template: CharacterTemplate): Draft {
 }
 
 export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
+  const [anatomyOptions, setAnatomyOptions] = useState<AnatomyTemplate[]>([]);
+  useEffect(() => { void repo.listAnatomyTemplates().then(setAnatomyOptions).catch(() => {}); }, [repo]);
   const fileRef = useRef<HTMLInputElement>(null);
   const portraitRef = useRef<HTMLInputElement>(null);
   const draftRef = useRef<Draft | null>(null);
@@ -279,6 +285,7 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
       personality: current.personality,
       speech: current.speech.trim(),
       appearance: current.appearance,
+      ...(current.anatomyTemplateId ? { anatomyTemplateId: current.anatomyTemplateId } : {}),
       mood: current.mood,
       tags: parseTagList(current.tags),
       position: "",
@@ -725,6 +732,13 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
                 onChange={(e) => setDraft({ ...draft, appearance: e.target.value })}
                 placeholder="body and face, not clothes"
               />
+            </label>
+            <label className="setup-field setup-field--row">
+              <span className="setup-field__label">Anatomy (optional)</span>
+              <select value={draft.anatomyTemplateId} onChange={(e) => setDraft({ ...draft, anatomyTemplateId: e.target.value })}>
+                <option value="">No anatomy template</option>
+                {anatomyOptions.map((template) => <option key={template.id} value={template.id}>{template.name} (v{template.version})</option>)}
+              </select>
             </label>
             <label className="setup-field setup-field--row">
               <span className="setup-field__label">Typical mood</span>
