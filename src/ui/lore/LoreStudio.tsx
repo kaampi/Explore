@@ -8,6 +8,7 @@ import { LoreReview } from "./LoreReview";
 import { aventurasLibraryPreview } from "../../lore/aventurasLibrary";
 import { previewAvtHistory, type AvtHistoryPreview } from "../../lore/avtHistoryPreview";
 import { buildAvtArchiveSession } from "../../lore/avtArchiveSession";
+import { reviewAvtMigration, type AvtMigrationReview } from "../../lore/avtMigrationReview";
 import { downloadJson } from "../studio/studioShared";
 
 export function LoreStudio({ repo }: { repo: IndexedDBRepository }) {
@@ -18,6 +19,7 @@ export function LoreStudio({ repo }: { repo: IndexedDBRepository }) {
   const [realms, setRealms] = useState<RealmTemplate[]>([]);
   const [format, setFormat] = useState<ImportFormat>("auto");
   const [avtPreview, setAvtPreview] = useState<AvtHistoryPreview | null>(null);
+  const [migrationReview, setMigrationReview] = useState<AvtMigrationReview | null>(null);
   const avtFile = useRef<HTMLInputElement>(null);
   const [createWorld, setCreateWorld] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -46,6 +48,7 @@ export function LoreStudio({ repo }: { repo: IndexedDBRepository }) {
       if (picked.size > 20 * 1024 * 1024) throw new Error("This preview supports .avt archives up to 20 MB.");
       const raw: unknown = JSON.parse(await picked.text());
       setAvtPreview(previewAvtHistory(raw));
+      setMigrationReview(reviewAvtMigration(raw));
     } catch (err) { setError(err instanceof Error ? err.message : "Could not inspect archive."); }
     finally { pending.current = false; setBusy(false); }
   }
@@ -54,7 +57,7 @@ export function LoreStudio({ repo }: { repo: IndexedDBRepository }) {
     pending.current = true; setBusy(true); setError("");
     try {
       await repo.createArchivedConversation(buildAvtArchiveSession(avtPreview));
-      setAvtPreview(null);
+      setAvtPreview(null); setMigrationReview(null);
       setMessage("Aventuras transcript saved as an archived, inactive conversation. No imported world state or instructions were activated.");
     } catch (err) { setError(err instanceof Error ? err.message : "Could not archive Aventuras transcript."); }
     finally { pending.current = false; setBusy(false); }
@@ -124,8 +127,19 @@ export function LoreStudio({ repo }: { repo: IndexedDBRepository }) {
         <h3>{line.role}</h3><p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{line.content.slice(0, 1500)}</p>
       </article>)}</div>
       {avtPreview.lines.length > 30 && <p>Showing first 30 entries only.</p>}
+      {migrationReview && <section aria-label="Migration candidates">
+        <h3>Migration review — source entities</h3>
+        <p>{migrationReview.candidates.length} character, location and item candidates · {migrationReview.chapterCount} chapters · {migrationReview.worldStateCount} state records.</p>
+        {migrationReview.candidates.slice(0, 40).map((candidate, index) => <article key={index} className="sb-conversation-card">
+          <h4>{candidate.kind}: {candidate.name || "(unnamed)"}</h4>
+          {candidate.description && <p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{candidate.description}</p>}
+          <p>{candidate.eligible ? "Ready for manual review" : candidate.reasons.join("; ")}</p>
+        </article>)}
+        {migrationReview.candidates.length > 40 && <p>Showing first 40 candidates only.</p>}
+        {migrationReview.warnings.map((warning, index) => <p className="sb-muted" key={index}>{warning}</p>)}
+      </section>}
       <button className="sb-button sb-button--primary" disabled={busy || avtPreview.lines.some(line => line.role === "other")} onClick={() => void archiveAvt()}>Save as archived conversation</button>
-      <button className="sb-button" disabled={busy} onClick={() => setAvtPreview(null)}>Close preview</button>
+      <button className="sb-button" disabled={busy} onClick={() => { setAvtPreview(null); setMigrationReview(null); }}>Close preview</button>
     </section>}
     {draft ? <>
       {draft.origin && <p className="sb-eyebrow">{IMPORT_FORMAT_LABELS[draft.origin.format]}</p>}
