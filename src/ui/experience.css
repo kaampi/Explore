@@ -390,6 +390,11 @@
 .sb-home-section {
   margin-top: 28px;
 }
+.sb-core-list { list-style: none; padding: 0; display: grid; gap: 8px; max-height: 20rem; overflow: auto; }
+.sb-core-list button { width: 100%; text-align: left; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); color: var(--text); padding: 12px; cursor: pointer; }
+.sb-core-list small { display: block; margin-top: 4px; color: var(--text-dim); }
+.sb-core-preview { max-height: min(65vh, 44rem); overflow: auto; }
+.sb-core-prose { white-space: pre-wrap; overflow-wrap: anywhere; }
 .sb-section-description {
   font-size: 11px;
   color: var(--text-dim);

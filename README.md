@@ -221,3 +221,9 @@ See [`project_spec.md`](project_spec.md) for the full list. Short version:
 
 - **Phase 6:** PIN/password export (AES-256-GCM), crypto worker, DiagnosticsEngine / SLA, privacy model as a product. `crypto.worker.ts` and `DiagnosticsEngine.ts` are empty stubs. There is no ExportEngine.
 - **Designed, not wired:** attribute _checks_ vs _meters_; object weight/difficulty rolls; player stats; live proximity zones (schema only); auto-reject of ungrounded AI environment layers (today they sit inactive until Approve).
+
+# Storybook Core manuscript reading (local pilot)
+
+Sandbox's Home screen can list and preview Storybook manuscripts explicitly shared with Sandbox. This is read-only: opening one does not import it into a session or change Sandbox's IndexedDB data. A separate Core service must be running at `127.0.0.1:43127`, with the shared manuscript catalog endpoint enabled. Provision a `sandbox` app token from Core's CLI (`CORE_DB_PATH=... node packages/core-service/server.mjs provision sandbox`) and supply it to the local Sandbox server process as `SANDBOX_CORE_TOKEN`. Start Sandbox through `npm start` or `npm run preview`; the Vite local server makes authenticated requests to Core. Do not put this token in Vite client variables, localStorage, frontend files or a deployed static site. A production desktop credential bridge remains future work.
+
+The Home screen's **Find shared manuscripts** button checks Core on demand. Core's grant is authoritative: unshared books never enter the catalog; revocation prevents subsequent reads, while prose already displayed in an open browser cannot be retracted. If Core is offline or no token is configured, Sandbox continues to use its local sessions as before. The fixed loopback port is part of this pilot; service discovery and alternate ports remain future work.

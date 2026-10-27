@@ -1,13 +1,14 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { localAppsPlugin } from "./server/localApps";
+import { coreManuscriptsPlugin } from "./server/coreManuscripts";
 import path from "node:path";
 
 // Module boundaries mirror Master Spec §55. UI depends on engines;
 // engines never import from ui/. Enforce this socially for now,
 // consider an eslint import-boundary rule once the surface stabilizes.
 export default defineConfig({
-  plugins: [react(), localAppsPlugin()],
+  plugins: [react(), localAppsPlugin(), coreManuscriptsPlugin()],
   resolve: {
     alias: {
       "@session": path.resolve(__dirname, "src/session"),

@@ -32,6 +32,7 @@ import { initialModel } from "../connection/connection";
 import type { ConversationEntry } from "@persistence/ConversationSchema";
 import { HomeConnection } from "../connection/ConnectionHelp";
 import { WorldArtwork } from "./WorldArtwork";
+import { CoreManuscripts } from "./CoreManuscripts";
 
 export function HomeScreen({
   repo,
@@ -312,6 +313,7 @@ export function HomeScreen({
             <span className="sb-hero__caption">The beginning is yours.</span>
           </section>
           <HomeConnection />
+          <CoreManuscripts />
           <section className="sb-home-section">
             <div className="sb-section-heading">
               <h2>Someone to talk to</h2>
