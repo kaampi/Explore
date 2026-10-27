@@ -313,7 +313,7 @@ export function HomeScreen({
             <span className="sb-hero__caption">The beginning is yours.</span>
           </section>
           <HomeConnection />
-          <CoreManuscripts />
+          <CoreManuscripts repo={repo} />
           <section className="sb-home-section">
             <div className="sb-section-heading">
               <h2>Someone to talk to</h2>

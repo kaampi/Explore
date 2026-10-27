@@ -277,6 +277,7 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
       current.approximateAge != null && Number.isFinite(current.approximateAge)
         ? Math.round(current.approximateAge)
         : undefined;
+    const original = library.find((item) => item.id === current.id);
     const built = newCharacterTemplate({
       ...(current.id ? { id: current.id } : {}),
       name,
@@ -292,14 +293,14 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
       position: "",
       scenario: "",
       source: current.source,
+      ...(original?.coreOrigin ? { coreOrigin: original.coreOrigin } : {}),
       ...(current.pronoun ? { pronoun: current.pronoun } : {}),
       ...(portraitSrc(current.portraitDataUrl) ? { portraitDataUrl: portraitSrc(current.portraitDataUrl) } : {}),
-      lore: library.find((item) => item.id === current.id)?.lore ?? []
+      lore: original?.lore ?? []
     });
-    const previous = library.find((item) => item.id === built.id);
     const saved = withOriginalTimestamps(
       built,
-      previous ?? (current.createdAt ? { createdAt: current.createdAt } : undefined)
+      original ?? (current.createdAt ? { createdAt: current.createdAt } : undefined)
     );
     if (lorebook) await repo.saveCharacterWithLorebook(saved, { ...lorebook, binding: { kind: "character", targetId: saved.id } });
     else await repo.saveCharacter(saved);

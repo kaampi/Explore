@@ -395,6 +395,12 @@
 .sb-core-list small { display: block; margin-top: 4px; color: var(--text-dim); }
 .sb-core-preview { max-height: min(65vh, 44rem); overflow: auto; }
 .sb-core-prose { white-space: pre-wrap; overflow-wrap: anywhere; }
+.sb-core-entities { display: grid; gap: 12px; }
+.sb-core-entity { border: 1px solid var(--border); border-radius: 10px; padding: 14px; overflow: auto; }
+.sb-core-entity h5 { font-size: 1rem; margin: 0; }
+.sb-core-entity p { margin: 8px 0; }
+.sb-core-entity ul { padding-left: 20px; }
+.sb-core-portrait { max-width: 8rem; max-height: 8rem; object-fit: contain; }
 .sb-section-description {
   font-size: 11px;
   color: var(--text-dim);

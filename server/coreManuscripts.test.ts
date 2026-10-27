@@ -7,7 +7,7 @@ const token = "a".repeat(64);
 const workspaceId = "e05e9d93-e7a9-432a-82cd-8e47303f84c8";
 const recordId = "04ac0bd1-b658-4265-b529-65311528719f";
 const item = { workspaceId, projectId: "book-one", recordId, title: "The Keys", language: "English", translationGroupId: "family", revision: 1, updatedAt: "2026-10-27T00:00:00.000Z" };
-const manuscript = { kind: "storycore.manuscript-export", format: 2, sourceApp: "storybook-ai", sourceBookId: "book-one", title: "The Keys", synopsis: "A synopsis", chapters: [{ id: "chapter-one", title: "One", prose: "Full prose" }], bible: [] };
+const manuscript = { kind: "storycore.manuscript-export", format: 2, sourceApp: "storybook-ai", sourceBookId: "book-one", title: "The Keys", synopsis: "A synopsis", chapters: [{ id: "chapter-one", title: "One", prose: "Full prose" }], bible: [{ kind: "characters", label: "Characters", entities: [{ entity_ref: "emma", name: "Emma", facts: [{ predicate: "core.identity", label: "Identity", value: "Bartender" }], referenceImages: [], privateNotes: "must not pass" }] }], brainstorm: "must not pass" };
 const activeServers: ReturnType<typeof createServer>[] = [];
 afterEach(async () => { for (const server of activeServers.splice(0)) { server.close(); await once(server, "close"); } });
 
@@ -32,7 +32,10 @@ describe("local Core manuscript reader", () => {
     expect(catalog.status).toBe(200);
     expect(await catalog.json()).toEqual([item]);
     const detail = await fetch(base + `/api/core/manuscripts/${workspaceId}`);
-    expect((await detail.json()).manuscript.chapters[0].prose).toBe("Full prose");
+    const detailBody = await detail.json();
+    expect(detailBody.manuscript.chapters[0].prose).toBe("Full prose");
+    expect(detailBody.manuscript.bible[0].entities[0].facts[0].value).toBe("Bartender");
+    expect(JSON.stringify(detailBody)).not.toContain("must not pass");
     expect(detail.headers.get("cache-control")).toBe("no-store");
     expect(requests.every(req => req.method === "GET" && req.authorization === `Bearer ${token}` && req.url.startsWith("http://127.0.0.1:43127/"))).toBe(true);
     expect(JSON.stringify(item)).not.toContain(token);

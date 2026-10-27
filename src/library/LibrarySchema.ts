@@ -62,6 +62,11 @@ export const CharacterTemplateSchema = z.object({
   /** Character-shelf Look for. Not sent to the model. Not a place or object tag. */
   tags: z.array(z.string().min(1)).default(() => []),
   source: LibrarySourceSchema.default("player"),
+  /** Attribution for a deliberate local copy; never grants writes to Storybook. */
+  coreOrigin: z.object({
+    workspaceId: z.string().min(1), projectId: z.string().min(1),
+    entityRef: z.string().min(1), revision: z.number().int().positive(),
+  }).optional(),
   createdAt: z.string(),
   updatedAt: z.string()
 });
