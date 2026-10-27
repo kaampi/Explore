@@ -40,7 +40,7 @@ export const safeAddress = safeAppAddress;
 const STATUS_COPY: Record<AppStatus["state"], string> = {
   available: "The app is running and ready to open.",
   unreachable:
-    "The app cannot be reached. It may be installed but not running. Start it and try again.",
+    "No web service responded at this address. A running Storybook Desktop (Tauri) app does not automatically provide a web server here.",
   "wrong-app":
     "A different service answered at this address. Check the app's address and try again.",
   unknown:
@@ -120,7 +120,7 @@ export function AppSwitcher({ onHome }: { onHome: () => void }) {
       <span className="sb-companion-link">
         <a
           href={status.address}
-          target="_blank"
+          target={`sandboxai-${key}`}
           rel="noreferrer"
           title={`Open ${app.name}`}
         >
@@ -202,7 +202,7 @@ export function AppSwitcher({ onHome }: { onHome: () => void }) {
               ? "Checking the app…"
               : selectedStatus
                 ? STATUS_COPY[selectedStatus.state]
-                : "Use the address shown when you start the app, then check its status."}
+                : "Enter the address of the app’s web server. A desktop app may not expose one."}
             {selectedStatus?.version
               ? ` Version ${selectedStatus.version}.`
               : ""}
@@ -252,7 +252,7 @@ export function AppSwitcher({ onHome }: { onHome: () => void }) {
               <a
                 className="sb-button"
                 href={validAddress}
-                target="_blank"
+                target={`sandboxai-${selected}`}
                 rel="noreferrer"
               >
                 Open app ↗
