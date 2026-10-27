@@ -1867,3 +1867,37 @@
   resize: vertical;
   min-height: 110px;
 }
+
+/* Adjustable Cast and Inspector widths, with the handles overlaying their boundaries. */
+@media (min-width: 901px) {
+  .sb-play-layout { position: relative; }
+  .sb-play-layout--cast { grid-template-columns: var(--cast-width, 300px) minmax(0, 1fr); }
+  .sb-play-layout--inspector { grid-template-columns: minmax(0, 1fr) var(--inspector-width, 360px); }
+  .sb-play-layout--cast.sb-play-layout--inspector {
+    grid-template-columns: var(--cast-width, 300px) minmax(0, 1fr) var(--inspector-width, 360px);
+  }
+  .sb-play-resizer {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 12px;
+    transform: translateX(-50%);
+    z-index: 6;
+    cursor: col-resize;
+    touch-action: none;
+  }
+  .sb-play-resizer--cast { left: var(--cast-width, 300px); }
+  .sb-play-resizer--inspector { left: calc(100% - var(--inspector-width, 360px)); }
+  .sb-play-resizer::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 5px;
+    width: 2px;
+    background: transparent;
+  }
+  .sb-play-resizer:hover::after,
+  .sb-play-resizer:focus-visible::after { background: var(--accent-active); }
+}
+@media (max-width: 900px) { .sb-play-resizer { display: none; } }
