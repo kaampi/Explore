@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Plugin } from "vite";
+import { CoreBibleSchema } from "../src/integrations/coreBibleSchema";
 
 const CORE_URL = "http://127.0.0.1:43127";
 const MAX_CATALOG_BYTES = 2_000_000;
@@ -78,13 +79,15 @@ export function createCoreManuscriptReader(token: string | undefined, fetcher: t
       if (!result || typeof result !== "object") throw new CoreReadError(502, "Core returned an invalid manuscript.");
       const record = result as { workspaceId?: unknown; revision?: unknown; body?: unknown };
       const body = record.body as { kind?: unknown; format?: unknown; sourceApp?: unknown; sourceBookId?: unknown; title?: unknown; synopsis?: unknown; chapters?: unknown; bible?: unknown } | null;
+      const bible = CoreBibleSchema.safeParse(body?.bible);
       if (record.workspaceId !== selected.workspaceId || record.revision !== selected.revision ||
         !body || body.kind !== "storycore.manuscript-export" || body.format !== 2 || body.sourceApp !== "storybook-ai" ||
         body.sourceBookId !== selected.projectId || typeof body.title !== "string" ||
-        typeof body.synopsis !== "string" || !Array.isArray(body.chapters) || !Array.isArray(body.bible) ||
-        !body.chapters.every(chapter => chapter && typeof chapter.title === "string" && typeof chapter.prose === "string"))
+        typeof body.synopsis !== "string" || !Array.isArray(body.chapters) || !bible.success ||
+        !body.chapters.every(chapter => chapter && typeof chapter.id === "string" && typeof chapter.title === "string" && typeof chapter.prose === "string"))
         throw new CoreReadError(502, "Core returned an invalid manuscript.");
-      return { ...selected, manuscript: body };
+      return { ...selected, manuscript: { title: body.title, synopsis: body.synopsis,
+        chapters: body.chapters.map(chapter => ({ id: chapter.id, title: chapter.title, prose: chapter.prose })), bible: bible.data } };
     },
   };
 }
