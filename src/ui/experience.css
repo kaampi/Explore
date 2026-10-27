@@ -1823,3 +1823,34 @@
 .sb-header-language { width: auto; min-width: 105px; max-width: 160px; padding: 6px 8px; border-radius: 5px; background: transparent; color: inherit; border: 1px solid currentColor; font: inherit; font-size: 12px; cursor: pointer; }
 .sb-header-language option { color: #202020; background: #fff; }
 @media (max-width: 560px) { .sb-header-preferences { gap: 5px; } .sb-header-language { min-width: 0; max-width: 115px; font-size: 11px; } }
+
+/* Desktop workspace navigation divider; the track width is controlled by App. */
+.sb-workspace { position: relative; }
+.sb-sidebar-resizer {
+  position: absolute;
+  z-index: 5;
+  top: 0;
+  bottom: 0;
+  left: var(--sidebar-resizer-left, 340px);
+  transform: translateX(-50%);
+  width: 12px;
+  cursor: col-resize;
+  touch-action: none;
+  background: transparent;
+}
+.sb-sidebar-resizer::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 5px;
+  width: 2px;
+  background: transparent;
+  transition: background .15s;
+}
+.sb-sidebar-resizer:hover::after,
+.sb-sidebar-resizer:focus-visible::after { background: var(--accent-active); }
+@media (max-width: 700px) {
+  .sb-sidebar-resizer { display: none; }
+  .sb-workspace { grid-template-columns: minmax(0, 1fr) !important; }
+}
