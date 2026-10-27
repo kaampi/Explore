@@ -109,6 +109,31 @@ function SandboxApp() {
   const actionPending = useRef(false);
   const [working, setWorking] = useState(false);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    try { return Math.min(520, Math.max(240, Number(localStorage.getItem("sandbox.sidebarWidth")) || 340)); }
+    catch { return 340; }
+  });
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const resizeSidebar = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || !window.matchMedia("(min-width: 701px)").matches) return;
+    const handle = event.currentTarget;
+    handle.setPointerCapture(event.pointerId);
+    const onMove = (move: PointerEvent) => {
+      const left = workspaceRef.current?.getBoundingClientRect().left ?? 0;
+      const width = Math.max(240, Math.min(520, move.clientX - left));
+      setSidebarWidth(width);
+    };
+    const onEnd = () => {
+      handle.removeEventListener("pointermove", onMove);
+      handle.removeEventListener("pointerup", onEnd);
+      handle.removeEventListener("pointercancel", onEnd);
+      try { localStorage.setItem("sandbox.sidebarWidth", String(sidebarWidth)); } catch { /* optional preference */ }
+    };
+    handle.addEventListener("pointermove", onMove);
+    handle.addEventListener("pointerup", onEnd, { once: true });
+    handle.addEventListener("pointercancel", onEnd, { once: true });
+  }, [sidebarWidth]);
+  useEffect(() => { try { localStorage.setItem("sandbox.sidebarWidth", String(sidebarWidth)); } catch { /* optional preference */ } }, [sidebarWidth]);
 
   const [operationError, setOperationError] = useState<string | null>(null);
   const setLive = useCallback((next: Session | null) => {
@@ -369,6 +394,8 @@ function SandboxApp() {
       ) : (
         <div
           className={`sb-workspace${view === "studio" ? " sb-workspace--studio" : ""}`}
+          ref={workspaceRef}
+          style={{ gridTemplateColumns: `${sidebarWidth}px minmax(0, 1fr)` }}
         >
           <aside className="sb-sidebar">
             <span className="sb-eyebrow">{t("eyebrow")}</span>
@@ -441,6 +468,7 @@ function SandboxApp() {
             </div>
 
           </aside>
+          <div className="sb-sidebar-resizer" role="separator" aria-label="Resize navigation sidebar" aria-orientation="vertical" aria-valuemin={240} aria-valuemax={520} aria-valuenow={sidebarWidth} tabIndex={0} onPointerDown={resizeSidebar} onKeyDown={(event) => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); setSidebarWidth(w => Math.max(240, Math.min(520, w + (event.key === "ArrowRight" ? 20 : -20)))); } }} />
           {view === "studio" ? (
             <div className="sb-studio-wrap">
               <StudioShell
