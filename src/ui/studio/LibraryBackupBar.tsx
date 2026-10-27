@@ -60,6 +60,12 @@ export function LibraryBackupBar({
     try {
       const parsed = JSON.parse(await file.text()) as unknown;
       const { backup, skipped: parseSkipped } = parseLibraryBackup(parsed);
+      const extras = backup.storybook;
+      const unsupported = (extras?.lore?.length ?? 0) + (extras?.relationships?.length ?? 0) + (extras?.facts?.length ?? 0);
+      if (unsupported > 0) {
+        setNotice(`This Storybook file includes ${unsupported} lore, relationship or fact records that Sandbox cannot safely restore yet. No data was imported. Keep the original export and use a compatible importer when available.`);
+        return;
+      }
       const report = await restoreLibraryBackup(repo, backup);
       const skipped = parseSkipped + report.skipped;
       const parts = [`Restored ${report.saved} cards.`];
