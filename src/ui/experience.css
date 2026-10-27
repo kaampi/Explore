@@ -1854,3 +1854,16 @@
   .sb-sidebar-resizer { display: none; }
   .sb-workspace { grid-template-columns: minmax(0, 1fr) !important; }
 }
+
+/* Let imported SillyTavern cards use more screen space when reviewing long fields. */
+.st-import__text {
+  resize: both;
+  overflow: auto;
+  min-width: 220px;
+  min-height: 140px;
+  max-width: 100%;
+}
+.st-import__card .setup-field__story {
+  resize: vertical;
+  min-height: 110px;
+}
