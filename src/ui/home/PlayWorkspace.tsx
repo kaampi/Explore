@@ -1,5 +1,5 @@
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Session } from "@state/StateSchema";
 import { primaryCharacter } from "@session/createSession";
 import { useEngine } from "../EngineStore";
@@ -13,6 +13,13 @@ import { Modal } from "../components/Modal";
 import { StatusBar } from "../components/StatusBar";
 import { playThemeStyle, useAppearance } from "../themes/ThemeProvider";
 import { GameAudio } from "../audio/GameAudio";
+
+function readPanelWidth(key: string, fallback: number, min: number, max: number): number {
+  try {
+    const value = Number(localStorage.getItem(key));
+    return Number.isFinite(value) && value > 0 ? Math.max(min, Math.min(max, value)) : fallback;
+  } catch { return fallback; }
+}
 
 export function PlayWorkspace({
   onHome,
@@ -35,6 +42,30 @@ export function PlayWorkspace({
   const [castOpen, setCastOpen] = useState(false);
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [castWidth, setCastWidth] = useState(() => readPanelWidth("sandbox.castWidth", 300, 200, 520));
+  const [inspectorWidth, setInspectorWidth] = useState(() => readPanelWidth("sandbox.inspectorWidth", 360, 220, 560));
+  const layoutRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { try { localStorage.setItem("sandbox.castWidth", String(castWidth)); } catch { /* optional */ } }, [castWidth]);
+  useEffect(() => { try { localStorage.setItem("sandbox.inspectorWidth", String(inspectorWidth)); } catch { /* optional */ } }, [inspectorWidth]);
+  function startResize(event: React.PointerEvent<HTMLDivElement>, side: "cast" | "inspector") {
+    if (event.button !== 0 || !window.matchMedia("(min-width: 901px)").matches) return;
+    const handle = event.currentTarget;
+    handle.setPointerCapture(event.pointerId);
+    const move = (next: PointerEvent) => {
+      const rect = layoutRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      if (side === "cast") setCastWidth(Math.max(200, Math.min(520, next.clientX - rect.left)));
+      else setInspectorWidth(Math.max(220, Math.min(560, rect.right - next.clientX)));
+    };
+    const stop = () => {
+      handle.removeEventListener("pointermove", move);
+      handle.removeEventListener("pointerup", stop);
+      handle.removeEventListener("pointercancel", stop);
+    };
+    handle.addEventListener("pointermove", move);
+    handle.addEventListener("pointerup", stop, { once: true });
+    handle.addEventListener("pointercancel", stop, { once: true });
+  }
   const streaming = phase === "streaming";
   const readiness = modelReadiness(discovery, session.runtime.model);
   const canSend = readiness === "ready";
@@ -118,8 +149,11 @@ export function PlayWorkspace({
       )}
       <div
         className={`sb-play-layout${castOpen ? " sb-play-layout--cast" : ""}${inspectorOpen ? " sb-play-layout--inspector" : ""}`}
+        ref={layoutRef}
+        style={{ ["--cast-width" as string]: `${castWidth}px`, ["--inspector-width" as string]: `${inspectorWidth}px` }}
       >
         {castOpen && <CastPanel />}
+        {castOpen && <div className="sb-play-resizer sb-play-resizer--cast" role="separator" aria-label="Resize character panel" aria-orientation="vertical" aria-valuemin={200} aria-valuemax={520} aria-valuenow={castWidth} tabIndex={0} onPointerDown={(event) => startResize(event, "cast")} onKeyDown={(event) => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); setCastWidth(w => Math.max(200, Math.min(520, w + (event.key === "ArrowRight" ? 20 : -20)))); } }} />
         <div className="sb-themed-play" style={playThemeStyle(library.active)}>
           <ChatPanel
             repo={repo}
@@ -129,7 +163,8 @@ export function PlayWorkspace({
             onCheckConnection={() => setConnectionOpen(true)}
           />
         </div>
-        {inspectorOpen && <InspectorPanel />}
+        {inspectorOpen && <div className="sb-play-resizer sb-play-resizer--inspector" role="separator" aria-label="Resize inspector panel" aria-orientation="vertical" aria-valuemin={220} aria-valuemax={560} aria-valuenow={inspectorWidth} tabIndex={0} onPointerDown={(event) => startResize(event, "inspector")} onKeyDown={(event) => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); setInspectorWidth(w => Math.max(220, Math.min(560, w + (event.key === "ArrowLeft" ? 20 : -20)))); } }} />}
+        {inspectorOpen && <InspectorPanel />
       </div>
       {connectionOpen && (
         <Modal title="Your local AI" onClose={() => setConnectionOpen(false)}>
