@@ -34,6 +34,7 @@ export type LibraryBackup = {
   objects: ObjectTemplate[];
   campaigns: CampaignTemplate[];
   lorebooks?: Lorebook[];
+  storybook?: StorybookExtension;
 };
 
 export type LibraryBackupStore = {
@@ -55,6 +56,15 @@ export type LibraryBackupStore = {
   saveRuleset(template: RulesetTemplate): Promise<void>;
   saveObject(template: ObjectTemplate): Promise<void>;
   saveCampaign(template: CampaignTemplate): Promise<void>;
+};
+
+/** Optional Storybook extension, retained as raw source data until richer native
+ * relationship and canon models are available. */
+export type StorybookExtension = {
+  lore?: unknown[];
+  relationships?: unknown[];
+  facts?: unknown[];
+  metadata?: Record<string, unknown>;
 };
 
 export type RestoreReport = {
@@ -146,6 +156,19 @@ export function parseLibraryBackup(input: unknown): { backup: LibraryBackup; ski
   };
 
   backup.lorebooks = take(row.lorebooks, item => LorebookSchema.parse(item));
+  // Storybook may export extra canonical data before Sandbox has native editors
+  // for every kind. Retain it in the backup instead of silently discarding it.
+  const extension = row.storybook;
+  if (extension && typeof extension === "object" && !Array.isArray(extension)) {
+    const ext = extension as Record<string, unknown>;
+    backup.storybook = {
+      ...(Array.isArray(ext.lore) ? { lore: ext.lore } : {}),
+      ...(Array.isArray(ext.relationships) ? { relationships: ext.relationships } : {}),
+      ...(Array.isArray(ext.facts) ? { facts: ext.facts } : {}),
+      ...(ext.metadata && typeof ext.metadata === "object" && !Array.isArray(ext.metadata)
+        ? { metadata: ext.metadata as Record<string, unknown> } : {})
+    };
+  }
   backup.characters = take(row.characters, recoverCharacterTemplate);
   backup.places = take(row.places, (item) => parsePlaceTemplate(item));
   backup.realms = take(row.realms, (item) => parseRealmTemplate(item));
