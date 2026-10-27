@@ -395,7 +395,7 @@ function SandboxApp() {
         <div
           className={`sb-workspace${view === "studio" ? " sb-workspace--studio" : ""}`}
           ref={workspaceRef}
-          style={{ gridTemplateColumns: `${sidebarWidth}px minmax(0, 1fr)` }}
+          style={{ gridTemplateColumns: `${sidebarWidth}px minmax(0, 1fr)`, ["--sidebar-resizer-left" as string]: `${sidebarWidth}px` }}
         >
           <aside className="sb-sidebar">
             <span className="sb-eyebrow">{t("eyebrow")}</span>
