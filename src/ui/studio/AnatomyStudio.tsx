@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import "./anatomy.css";
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 import { AnatomyTemplateSchema, type AnatomyTemplate } from "@state/StateSchema";
 import { BUILTIN_ANATOMY_TEMPLATES, isBuiltInAnatomy } from "@state/builtinAnatomy";
@@ -70,50 +71,52 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
     setPartId(id);
   }
 
-  return <section className="studio-panel" aria-label="Anatomy library" style={{ padding: "24px", boxSizing: "border-box" }}>
-    <h2>Anatomy Library</h2>
-    <p>Body plans describe which parts a character has and what those parts can do in a scene.</p>
-    <p>Characters with the same body structure share a body plan. Humans, elves and dwarves can all use Humanoid. Appearance, gender and size belong on the character.</p>
+  const builtIn = !!draft && isBuiltInAnatomy(draft.id);
+  return <section className="anatomy" aria-label="Anatomy library">
+    <header className="anatomy-header">
+      <div><span className="anatomy-eyebrow">CHARACTER FOUNDATIONS</span><h2>{draft ? draft.name : "Anatomy Library"}</h2>
+      <p>{draft ? "Explore the body, one part at a time." : "A shared structure for every kind of body."}</p></div>
+      {draft ? <button className="anatomy-button" onClick={() => { setDraft(null); setError(""); setNotice(""); }}>← All body plans</button> :
+      <button className="anatomy-button anatomy-primary" onClick={() => open({ id: crypto.randomUUID(), name: "New anatomy", version: 1, parts: [emptyPart("head", "Head")] })}>+ New body plan</button>}
+    </header>
     {draft ? <>
-      <div className="studio-actions">
-        <button type="button" onClick={() => { setDraft(null); setError(""); setNotice(""); }}>← Back to library</button>
-        <button type="button" onClick={duplicate}>Create a different body plan</button>
+      <div className="anatomy-summary"><div><span className="anatomy-badge">{builtIn ? "Built-in body plan" : "Custom body plan"}</span><span>{draft.parts.length} parts · {groupsOf(draft.parts).length} groups</span></div>
+        <button className="anatomy-button" onClick={duplicate}>Customize a copy</button>
       </div>
-      <h3>{draft.name}</h3>
-      <p>{draft.parts.length} body parts · {groupsOf(draft.parts).length} groups {isBuiltInAnatomy(draft.id) ? "· Built-in" : "· Custom"}</p>
-      <p>{isBuiltInAnatomy(draft.id) ? "Built-in body plan. Browse its parts below. Create a different body plan when the body structure or functions need to change." : "Custom body plan. Select a part to edit its name, group and functions."}</p>
-      {draft.id === "builtin-humanoid" && <p>One head, a torso, two arms with hands and two legs with feet. This plan is shared across humanoid appearances.</p>}
-      <h3>Body parts and functions</h3>
-        {!isBuiltInAnatomy(draft.id) && <label className="setup-field"><span className="setup-field__label">Template name</span><input value={draft.name} onChange={(e) => patch({ name: e.target.value })}/></label>}
-        <div className="studio-anatomy-groups">
-          {groupsOf(draft.parts).map((group) => <div key={group} className="studio-panel">
-            <button type="button" aria-expanded={expanded === group} onClick={() => setExpanded(expanded === group ? "" : group)}>{expanded === group ? "▾" : "▸"} {group} ({draft.parts.filter((part) => (part.group || "Other") === group).length})</button>
-            {expanded === group && <div className="studio-actions">
-              {draft.parts.filter((part) => (part.group || "Other") === group).map((part) => <button type="button" key={part.id} aria-pressed={partId === part.id} onClick={() => setPartId(part.id)}>{part.label}<small style={{ display: "block", marginTop: 4 }}>{part.capabilities.map(capability => CAPABILITY_LABELS[capability]).join(" · ") || "No specific function assigned"}</small></button>)}
-              {!isBuiltInAnatomy(draft.id) && <button type="button" onClick={() => addPart(group)}>+ Add body part</button>}
+      {draft.id === "builtin-humanoid" && <aside className="anatomy-tip"><strong>One structure. Many characters.</strong><p>Humans, elves and dwarves share this body plan. Describe appearance and size on the character; customize anatomy when the body structure changes.</p></aside>}
+      {!builtIn && <label className="anatomy-field">Body plan name<input value={draft.name} onChange={e => patch({ name: e.target.value })}/></label>}
+      <div className="anatomy-workspace">
+        <nav className="anatomy-navigation" aria-label="Body parts"><div className="anatomy-nav-title">BODY REGIONS <span>Select a part to explore</span></div>
+          {groupsOf(draft.parts).map(group => <div className="anatomy-region" key={group}>
+            <button className="anatomy-region-button" aria-expanded={expanded === group} onClick={() => { setExpanded(expanded === group ? "" : group); const first = draft.parts.find(part => (part.group || "Other") === group); if (first) setPartId(first.id); }}><span>{group}</span><span>{draft.parts.filter(part => (part.group || "Other") === group).length} {expanded === group ? "−" : "+"}</span></button>
+            {expanded === group && <div className="anatomy-part-list">{draft.parts.filter(part => (part.group || "Other") === group).map(part => <button key={part.id} className="anatomy-part" aria-pressed={partId === part.id} onClick={() => setPartId(part.id)}><span>{part.label}</span><span aria-hidden="true">→</span></button>)}
+              {!builtIn && <button className="anatomy-add" onClick={() => addPart(group)}>+ Add part</button>}
             </div>}
           </div>)}
-        </div>
-        {current && <div className="studio-panel">
-          <h3>{current.label}</h3>
-          <label className="setup-field"><span className="setup-field__label">Name</span><input value={current.label} disabled={isBuiltInAnatomy(draft.id)} onChange={(e) => patchPart({ label: e.target.value })}/></label>
-          <label className="setup-field"><span className="setup-field__label">Group</span><input value={current.group || ""} disabled={isBuiltInAnatomy(draft.id)} onChange={(e) => patchPart({ group: e.target.value })}/></label>
-          <label className="setup-field"><span className="setup-field__label">Description</span><textarea value={current.description || ""} disabled={isBuiltInAnatomy(draft.id)} onChange={(e) => patchPart({ description: e.target.value })}/></label>
-          <fieldset disabled={isBuiltInAnatomy(draft.id)}><legend>What this part can do</legend>
-            {CAPABILITIES.map((capability) => <label key={capability}><input type="checkbox" checked={current.capabilities.includes(capability)} onChange={(e) => patchPart({ capabilities: e.target.checked ? [...current.capabilities, capability] : current.capabilities.filter((value) => value !== capability) })}/>{CAPABILITY_LABELS[capability]} </label>)}
-          </fieldset>
-          {!isBuiltInAnatomy(draft.id) && <button type="button" onClick={() => { patch({ parts: draft.parts.filter((part) => part.id !== partId) }); setPartId(""); }}>Remove body part</button>}
-        </div>}
-        {!isBuiltInAnatomy(draft.id) && <div className="studio-actions"><button type="button" onClick={() => void save()}>Save anatomy</button><button type="button" onClick={() => void remove()}>Delete anatomy</button></div>}
-    </> : <>
-      <div className="studio-actions"><button type="button" onClick={() => { const item = { id: crypto.randomUUID(), name: "New anatomy", version: 1, parts: [emptyPart("head", "Head")] }; setDraft(item); setExpanded("Head"); setPartId("head"); }}>+ New anatomy</button></div>
-      <div className="studio-anatomy-library" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: "12px" }}>
-        {templates.map((item) => <button type="button" key={item.id} onClick={() => open(item)} style={{ textAlign: "left", padding: "16px", minHeight: "115px" }}>
-          <strong>{item.name}</strong><br/><small>{isBuiltInAnatomy(item.id) ? "Built-in" : "Custom"} · {item.parts.length} parts · {groupsOf(item.parts).length} groups</small>
-        </button>)}
+        </nav>
+        <section className="anatomy-detail" aria-label="Selected body part">
+          {current ? <><span className="anatomy-eyebrow">{current.group || "Other"}</span><h3>{current.label}</h3>
+            {builtIn ? <>
+              <p className="anatomy-description">{current.description || "A structural part of this body plan. Explore uses its identity when tracking physical interactions."}</p>
+              <h4>Functions in a scene</h4>
+              {current.capabilities.length ? <div className="anatomy-functions">{current.capabilities.map(capability => <span className="anatomy-function" key={capability}><span aria-hidden="true">✓</span> {CAPABILITY_LABELS[capability]}</span>)}</div> : <p className="anatomy-muted">No additional action functions are configured for this part.</p>}
+              <div className="anatomy-detail-note"><strong>About this view</strong><p>Built-in plans are ready to use. To change a part or its functions, customize a copy.</p></div>
+            </> : <div className="anatomy-editor">
+              <label className="anatomy-field">Part name<input value={current.label} onChange={e => patchPart({ label: e.target.value })}/></label>
+              <label className="anatomy-field">Body region<input value={current.group || ""} onChange={e => patchPart({ group: e.target.value })}/></label>
+              <label className="anatomy-field">Description<textarea rows={3} value={current.description || ""} onChange={e => patchPart({ description: e.target.value })}/></label>
+              <fieldset className="anatomy-capabilities"><legend>Functions in a scene</legend>{CAPABILITIES.map(capability => <label key={capability}><input type="checkbox" checked={current.capabilities.includes(capability)} onChange={e => patchPart({ capabilities: e.target.checked ? [...current.capabilities, capability] : current.capabilities.filter(value => value !== capability) })}/>{CAPABILITY_LABELS[capability]}</label>)}</fieldset>
+              <button className="anatomy-button anatomy-danger" onClick={() => { patch({ parts: draft.parts.filter(part => part.id !== partId) }); setPartId(""); }}>Remove part</button>
+            </div>}
+          </> : <div className="anatomy-empty"><h3>Select a body part</h3><p>Choose a region on the left, then a part to see its functions.</p></div>}
+        </section>
       </div>
+      {!builtIn && <footer className="anatomy-footer"><button className="anatomy-button anatomy-danger" onClick={() => void remove()}>Delete body plan</button><button className="anatomy-button anatomy-primary" onClick={() => void save()}>Save body plan</button></footer>}
+    </> : <>
+      <aside className="anatomy-tip"><strong>Choose a structure, not an appearance.</strong><p>A body plan defines parts and physical functions. Characters with the same structure can share a plan.</p></aside>
+      <div className="anatomy-library">{templates.map(item => <button className="anatomy-card" key={item.id} onClick={() => open(item)}><span className="anatomy-badge">{isBuiltInAnatomy(item.id) ? "Built-in" : "Custom"}</span><strong>{item.name}</strong><span>{item.parts.length} parts · {groupsOf(item.parts).length} regions</span><span className="anatomy-card-link">Explore body plan →</span></button>)}</div>
     </>}
-    {error && <p role="alert">{error}</p>}
-    {notice && <p role="status">{notice}</p>}
+    {error && <p className="anatomy-feedback anatomy-danger" role="alert">{error}</p>}
+    {notice && <p className="anatomy-feedback" role="status">{notice}</p>}
   </section>;
 }
