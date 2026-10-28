@@ -66,4 +66,4 @@ For developer checks, run `npm run typecheck`, `npm test`, and `npm run build`.
 - If a starter anatomy illustration is missing, the image assets may not be included in your checkout; the gallery currently refers to files under `public/anatomy/`.
 - Please avoid posting private character cards, conversations or personal information in public GitHub issues.
 
-[Report a problem](https://github.com/ocedo-apps/Sandbox-AI/issues/new) or [browse known reports](https://github.com/ocedo-apps/Sandbox-AI/issues).
+[Report a problem](https://github.com/kaampi/Explore/issues/new) or [browse known reports](https://github.com/kaampi/Explore/issues).

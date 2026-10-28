@@ -42,7 +42,7 @@ This checklist tracks readiness for the first public tester build. **A public re
 
 **Data safety:** Did any saved conversation or character appear to be lost? Please avoid including private data in public issues.
 
-Report issues at https://github.com/ocedo-apps/Sandbox-AI/issues/new .
+Report issues at https://github.com/kaampi/Explore/issues/new .
 
 ## Pre-release notes draft
 
@@ -50,4 +50,4 @@ Report issues at https://github.com/ocedo-apps/Sandbox-AI/issues/new .
 
 Local-first AI character conversations and creative exploration with Ollama/Strata, saved conversation library, character import, lorebooks, worlds/places, adventures, a customizable appearance, an evolving anatomy library and partial English/Swedish/Norwegian interface localization.
 
-This is an experimental alpha. Expect unfinished UI, changes between versions and possible bugs. Please back up your content. Setup: [docs/running.md](running.md). Feedback: [GitHub issues](https://github.com/ocedo-apps/Sandbox-AI/issues).
+This is an experimental alpha. Expect unfinished UI, changes between versions and possible bugs. Please back up your content. Setup: [docs/running.md](running.md). Feedback: [GitHub issues](https://github.com/kaampi/Explore/issues).

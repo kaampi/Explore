@@ -14,7 +14,7 @@ The export is a suggestion notebook. Importing it neither accepts ideas as facts
 
 ## Validation
 
-Read-only compatibility check against `ocedo-apps/StoryBook-AI` main commit `d197a150d6034b0b7d38afa80b9c9691e2ac1484`:
+Read-only compatibility check against `kaampi/Write` main commit `d197a150d6034b0b7d38afa80b9c9691e2ac1484`:
 
 - `src/core/manuscriptBackup.ts` — `parseManuscriptBackup`, format 2.
 - `src/core/BookSchema.ts` — `parseBook`, including required fields and default values.

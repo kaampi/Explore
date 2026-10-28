@@ -15,7 +15,7 @@ const APPS = {
     title: "Give your world a story.",
     description:
       "Build your world, develop your characters, and write the stories that make it real. kaampi Write is the home of your established story and your next idea.",
-    repository: "https://github.com/ocedo-apps/StoryBook-AI",
+    repository: "https://github.com/kaampi/Write",
   },
   comicbook: {
     name: "kaampi Comic",
@@ -23,7 +23,7 @@ const APPS = {
     title: "See your story come to life.",
     description:
       "Turn moments, characters, and scenes into comics. Explore a visual way to tell the stories from your creative universe.",
-    repository: "https://github.com/ocedo-apps/ComicBook-AI",
+    repository: "https://github.com/kaampi/Comic",
   },
 };
 function readAddress(key: CompanionAppId): string {
