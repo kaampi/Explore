@@ -44,7 +44,7 @@ export function IdeaLibrary({ repo, conversations, onOpen }: {
     setError("");
     try {
       downloadIdeas(entries);
-      setNotice("JSON download prepared. In StorybookAI, import it as a manuscript and open Brainstorm.");
+      setNotice("JSON download prepared. In kaampi Write, import it as a manuscript and open Brainstorm.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not prepare your export.");
     }
@@ -74,7 +74,7 @@ export function IdeaLibrary({ repo, conversations, onOpen }: {
         </button>
       </div>
       <p className="sb-idea-help">
-        Export opens as a separate idea manuscript in StorybookAI, with one card per idea
+        Export opens as a separate idea manuscript in kaampi Write, with one card per idea
         in Brainstorm. To use an idea in an existing book, copy its text to that book’s
         Brainstorm. JSON includes your ideas and their selected source messages.
         Nothing is added to established story facts.

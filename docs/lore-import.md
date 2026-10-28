@@ -1,6 +1,6 @@
 # SillyTavern lore import
 
-SandboxAI uses an import adapter. Existing native lore, matching, priorities and saved conversations retain their behavior. StorybookAI is not modified.
+kaampi Explore uses an import adapter. Existing native lore, matching, priorities and saved conversations retain their behavior. kaampi Write is not modified.
 
 ## Supported inputs and review
 
@@ -8,7 +8,7 @@ Open **Lorebooks** from Home or Studio and import a JSON lorebook or PNG charact
 
 Character import also offers an embedded lorebook. Character and lorebook are saved atomically, linked by the library character ID. A malformed embedded book is preserved as dormant and does not block importing the character.
 
-No entries are selected automatically. **Use supported entries with Sandbox rules** or individual checkboxes explicitly approve translation to SandboxAI's existing semantics:
+No entries are selected automatically. **Use supported entries with Sandbox rules** or individual checkboxes explicitly approve translation to kaampi Explore's existing semantics:
 
 - Last eight messages; case-insensitive; a single keyword matches whole words, a phrase matches a substring.
 - Constant entries are always eligible within the imported-lore/context budgets.

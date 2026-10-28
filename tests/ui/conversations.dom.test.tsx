@@ -202,7 +202,7 @@ describe("conversation library journeys", () => {
     expect(await repo.listSessionIds()).toEqual([]);
     expect(await repo.loadActiveConversationId()).toBeNull();
     expect(sessionStorage.getItem(`sandboxai-draft:${id}`)).toBeNull();
-    await click(named("SandboxAI home"));
+    await click(named("kaampi Explore home"));
     await waitFor(() => !!container.querySelector(".sb-home-connection"));
     expect(container.textContent).not.toContain("Continue exploring →");
     expect(await repo.listSessionIds()).toEqual([]);
@@ -251,7 +251,7 @@ describe("conversation library journeys", () => {
     const repo = new IndexedDBRepository();
     expect(await repo.listSessionIds()).toHaveLength(1);
     await repo.close();
-    await click(named("SandboxAI home"));
+    await click(named("kaampi Explore home"));
     await waitFor(() => !!container.querySelector(".sb-home-connection"));
     await click(button("Continue exploring →"));
     await waitFor(

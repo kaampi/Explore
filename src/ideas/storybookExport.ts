@@ -11,7 +11,7 @@ export function exportIdeas(input: Idea[], now = new Date().toISOString(), noteb
     const ideas = input.map(idea => IdeaSchema.parse(idea));
     const notes = ideas.map((idea, index) => ({
         id: idea.id,
-        text: `${idea.title}\n\n${idea.description}\n\n[${IDEA_LABELS[idea.kind]} idea from SandboxAI · ${idea.source.conversationTitle}]`,
+        text: `${idea.title}\n\n${idea.description}\n\n[${IDEA_LABELS[idea.kind]} idea from kaampi Explore · ${idea.source.conversationTitle}]`,
         x: 24 + (index % 3) * 284,
         y: 24 + Math.floor(index / 3) * 280,
         color: idea.kind === "plot" ? "paper" as const : idea.kind === "character" ? "lilac" as const : "sage" as const,
@@ -20,7 +20,7 @@ export function exportIdeas(input: Idea[], now = new Date().toISOString(), noteb
         kind: "storybook-ai.manuscript" as const,
         format: 2,
         exportedAt: now,
-        note: "SandboxAI ideas. Import as a separate notebook, then open Brainstorm. These are suggestions, not established story facts.",
+        note: "kaampi Explore ideas. Import as a separate notebook, then open Brainstorm. These are suggestions, not established story facts.",
         book: {
             id: `sandbox-ideas-${notebookId}`,
             title: ideas.length === 1 ? `Sandbox ideas — ${ideas[0]!.title}` : "Sandbox ideas",

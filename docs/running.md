@@ -1,12 +1,12 @@
-# Installing and running Sandbox AI
+# Installing and running kaampi Explore
 
-Sandbox AI is a local-first application. You run its interface on your computer and connect it to a local AI server. No cloud AI account or API key is required.
+kaampi Explore is a local-first application. You run its interface on your computer and connect it to a local AI server. No cloud AI account or API key is required.
 
 ## Before you begin
 
 Install [Node.js](https://nodejs.org/) (including npm). To generate AI replies, also install and run a supported local model server, such as [Ollama](https://ollama.com/) or Strata, and make a chat model available there. The app can open without a working AI connection, but it cannot generate replies until a model is connected.
 
-## Start Sandbox AI
+## Start kaampi Explore
 
 Download the repository as a ZIP from GitHub (**Code → Download ZIP**) and extract it, or clone the repository using Git. Open the extracted project folder. This is an alpha source-code distribution, not a signed desktop installer.
 
@@ -21,7 +21,7 @@ npm install
 npm start
 ```
 
-The development server opens **http://localhost:5173**. Leave the terminal or command window open while using Sandbox AI. Stop the server with Ctrl+C or by closing the window.
+The development server opens **http://localhost:5173**. Leave the terminal or command window open while using kaampi Explore. Stop the server with Ctrl+C or by closing the window.
 
 ## Connect your local AI
 
@@ -34,7 +34,7 @@ ollama pull llama3.2
 ollama serve
 ```
 
-If Ollama is already running, do not start a second server. If the browser reports a cross-origin (CORS) error, configure the Ollama server to allow the Sandbox AI origin `http://localhost:5173` and restart Ollama. For example, when launching Ollama manually on macOS/Linux:
+If Ollama is already running, do not start a second server. If the browser reports a cross-origin (CORS) error, configure the Ollama server to allow the kaampi Explore origin `http://localhost:5173` and restart Ollama. For example, when launching Ollama manually on macOS/Linux:
 
 ```bash
 OLLAMA_ORIGINS=http://localhost:5173 ollama serve

@@ -1,4 +1,4 @@
-# Sandbox AI — public alpha release checklist
+# kaampi Explore — public alpha release checklist
 
 This checklist tracks readiness for the first public tester build. **A public repository is not the same as a verified release.** Do not tag a release until the build and smoke tests pass.
 
@@ -32,7 +32,7 @@ This checklist tracks readiness for the first public tester build. **A public re
 
 **Environment:** OS/version, browser/version, app commit or release, AI engine and model.
 
-**What I tried:** Steps from opening Sandbox AI.
+**What I tried:** Steps from opening kaampi Explore.
 
 **Expected:** What should have happened.
 
@@ -46,7 +46,7 @@ Report issues at https://github.com/ocedo-apps/Sandbox-AI/issues/new .
 
 ## Pre-release notes draft
 
-**Sandbox AI v0.1.0-alpha.1 — early tester preview**
+**kaampi Explore v0.1.0-alpha.1 — early tester preview**
 
 Local-first AI character conversations and creative exploration with Ollama/Strata, saved conversation library, character import, lorebooks, worlds/places, adventures, a customizable appearance, an evolving anatomy library and partial English/Swedish/Norwegian interface localization.
 

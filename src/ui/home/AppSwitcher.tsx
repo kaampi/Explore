@@ -10,15 +10,15 @@ import {
 
 const APPS = {
   storybook: {
-    name: "StorybookAI",
+    name: "kaampi Write",
     symbol: "▤",
     title: "Give your world a story.",
     description:
-      "Build your world, develop your characters, and write the stories that make it real. StorybookAI is the home of your established story and your next idea.",
+      "Build your world, develop your characters, and write the stories that make it real. kaampi Write is the home of your established story and your next idea.",
     repository: "https://github.com/ocedo-apps/StoryBook-AI",
   },
   comicbook: {
-    name: "ComicbookAI",
+    name: "kaampi Comic",
     symbol: "▦",
     title: "See your story come to life.",
     description:
@@ -44,7 +44,7 @@ const STATUS_COPY: Record<AppStatus["state"], string> = {
   "wrong-app":
     "A different service answered at this address. Check the app's address and try again.",
   unknown:
-    "Automatic checks are available when SandboxAI runs locally. You can still open the address yourself.",
+    "Automatic checks are available when kaampi Explore runs locally. You can still open the address yourself.",
 };
 
 export function AppSwitcher({ onHome }: { onHome: () => void }) {
@@ -168,7 +168,7 @@ export function AppSwitcher({ onHome }: { onHome: () => void }) {
           aria-current="page"
           onClick={onHome}
         >
-          <span aria-hidden="true">✧</span> SandboxAI
+          <span aria-hidden="true">✧</span> kaampi Explore
         </button>
         {appLink("comicbook")}
       </nav>

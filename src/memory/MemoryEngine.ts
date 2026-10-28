@@ -35,7 +35,7 @@ function scoreMemory(entry: MemoryEntry, currentTurn: number): number {
 }
 
 /**
- * Sandbox AI continuity retrieval. The current scene is always relevant,
+ * kaampi Explore continuity retrieval. The current scene is always relevant,
  * while the last three player messages fade by age. This avoids sudden
  * topic loss at scene boundaries without pinning stale history forever.
  * It is a deterministic relevance hint, never an instruction source.

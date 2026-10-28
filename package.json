@@ -1,7 +1,7 @@
 {
   "name": "ai-sandbox-engine",
   "version": "0.1.0",
-  "description": "AI Sandbox Engine — modular, provider-agnostic sandbox platform for interactive AI-driven scenarios (Master Spec v2.2).",
+  "description": "kaampi Explore — modular, provider-agnostic sandbox platform for interactive AI-driven scenarios (Master Spec v2.2).",
   "type": "module",
   "private": true,
   "license": "AGPL-3.0-or-later",

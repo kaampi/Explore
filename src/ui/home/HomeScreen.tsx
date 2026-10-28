@@ -237,7 +237,7 @@ export function HomeScreen({
   return (
     <main className="sb-home">
       <div className="sb-breadcrumb">
-        Your creative space <span>/</span> SandboxAI
+        Your creative space <span>/</span> kaampi Explore
       </div>
       <div className="sb-home-heading">
         <div>
@@ -498,8 +498,8 @@ export function HomeScreen({
             <p>
               <strong>One imagination. More ways to create.</strong>
               <br />
-              Write in StorybookAI. Explore in SandboxAI. Bring scenes to life
-              in ComicbookAI.
+              Write in kaampi Write. Explore in kaampi Explore. Bring scenes to life
+              in kaampi Comic.
             </p>
             <button
               type="button"

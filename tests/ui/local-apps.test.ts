@@ -147,7 +147,7 @@ describe("status API client", () => {
   it("handles a hosted static HTML fallback as unknown", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn<typeof fetch>().mockResolvedValue(html("SandboxAI")),
+      vi.fn<typeof fetch>().mockResolvedValue(html("kaampi Explore")),
     );
     expect(
       (await checkCompanionApp("storybook", DEFAULT_APP_ADDRESSES.storybook))
