@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 import { AnatomyTemplateSchema, type AnatomyTemplate } from "@state/StateSchema";
 import { BUILTIN_ANATOMY_TEMPLATES, isBuiltInAnatomy } from "@state/builtinAnatomy";
-import { anatomyImages } from "./anatomyImages";
 
 type Part = AnatomyTemplate["parts"][number];
+const CAPABILITY_LABELS = { grasp: "Grip and hold", support: "Bear weight", locomote: "Move the body", sense: "Sense surroundings", manipulate: "Handle objects" };
 const CAPABILITIES = ["grasp", "support", "locomote", "sense", "manipulate"] as const;
 const emptyPart = (id: string, group: string): Part => ({ id, label: id.replaceAll("_", " "), group, capabilities: [] });
 const groupsOf = (parts: Part[]) => [...new Set(parts.map((part) => part.group || "Other"))];
@@ -12,35 +12,21 @@ const groupsOf = (parts: Part[]) => [...new Set(parts.map((part) => part.group |
 export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
   const [custom, setCustom] = useState<AnatomyTemplate[]>([]);
   const [draft, setDraft] = useState<AnatomyTemplate | null>(null);
-  const [editing, setEditing] = useState(false);
   const [expanded, setExpanded] = useState("");
   const [partId, setPartId] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [galleryIndex, setGalleryIndex] = useState(0);
-  const [hovered, setHovered] = useState<string | null>(null);
-  const [hoverIndex, setHoverIndex] = useState(0);
-  useEffect(() => {
-    if (!hovered || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const timer = window.setInterval(() => setHoverIndex((i) => i + 1), 1500);
-    return () => window.clearInterval(timer);
-  }, [hovered]);
   const refresh = async () => setCustom(await repo.listAnatomyTemplates());
   useEffect(() => { void refresh().catch((e: unknown) => setError(String(e))); }, [repo]);
 
   const templates = [...BUILTIN_ANATOMY_TEMPLATES, ...custom.filter((item) => !isBuiltInAnatomy(item.id))];
   const current = draft?.parts.find((part) => part.id === partId);
-  const galleryImages = draft ? (anatomyImages[draft.id] ?? []) : [];
-  const selectedGalleryImage = galleryImages.length ? galleryImages[galleryIndex % galleryImages.length] : undefined;
-
   function open(item: AnatomyTemplate) {
     setDraft(structuredClone(item));
-    setEditing(false);
     setExpanded(groupsOf(item.parts)[0] || "");
-    setPartId("");
+    setPartId(item.parts[0]?.id || "");
     setError("");
     setNotice("");
-    setGalleryIndex(0);
   }
   function patch(update: Partial<AnatomyTemplate>) {
     setDraft((value) => value ? { ...value, ...update } : value);
@@ -53,7 +39,6 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
     if (!draft) return;
     const copy = { ...structuredClone(draft), id: crypto.randomUUID(), name: `${draft.name} (Custom)`, version: 1 };
     setDraft(copy);
-    setEditing(true);
     setNotice("Custom copy ready to edit.");
   }
   async function save() {
@@ -72,8 +57,7 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
     try {
       await repo.deleteAnatomyTemplate(draft.id);
       await refresh();
-        setDraft(null);
-      setEditing(false);
+      setDraft(null);
     } catch (e) { setError(String(e)); }
   }
   function addPart(group: string) {
@@ -88,37 +72,24 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
 
   return <section className="studio-panel" aria-label="Anatomy library" style={{ padding: "24px", boxSizing: "border-box" }}>
     <h2>Anatomy Library</h2>
-    <p>Reusable body plans for characters and creatures. Built-in templates are read-only; duplicate one to customize it.</p>
+    <p>Body plans describe which parts a character has and what those parts can do in a scene.</p>
+    <p>Characters with the same body structure share a body plan. Humans, elves and dwarves can all use Humanoid. Appearance, gender and size belong on the character.</p>
     {draft ? <>
       <div className="studio-actions">
-        <button type="button" onClick={() => { setDraft(null); setEditing(false); }}>← Back to library</button>
-        {!editing && <button type="button" onClick={() => setEditing(true)}>View body parts</button>}
-        <button type="button" onClick={duplicate}>Duplicate & customize</button>
+        <button type="button" onClick={() => { setDraft(null); setError(""); setNotice(""); }}>← Back to library</button>
+        <button type="button" onClick={duplicate}>Create a different body plan</button>
       </div>
       <h3>{draft.name}</h3>
       <p>{draft.parts.length} body parts · {groupsOf(draft.parts).length} groups {isBuiltInAnatomy(draft.id) ? "· Built-in" : "· Custom"}</p>
-      {!editing ? <>
-        <div className="anatomy-gallery" style={{ maxWidth: 760, margin: "20px 0 24px" }}>
-          {selectedGalleryImage ? <>
-            <div className="anatomy-gallery__main" style={{ padding: 12, borderRadius: 10, background: "var(--surface-muted, rgba(128,128,128,0.06))", textAlign: "center" }}>
-              <img src={selectedGalleryImage.src} alt={selectedGalleryImage.label} style={{ display: "block", width: "100%", maxHeight: 620, objectFit: "contain" }} />
-            </div>
-            <div className="studio-actions" style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 14 }}>
-              {galleryImages.map((image, index) => <button key={image.src} type="button" aria-pressed={galleryIndex === index} onClick={() => setGalleryIndex(index)} style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "start", gap: 7, width: 110, padding: 9, borderRadius: 8, textAlign: "center" }}>
-                <img src={image.src} alt="" width="86" height="94" style={{ objectFit: "contain", display: "block" }} />
-                <span style={{ display: "block", fontSize: 12, lineHeight: 1.35 }}>{image.label}</span>
-              </button>)}
-            </div>
-          </> : <p>Example images can be added to this anatomy template.</p>}
-        </div>
-        <div className="studio-actions"><button type="button" onClick={() => setEditing(true)}>Open anatomy editor</button></div>
-      </> : <>
+      <p>{isBuiltInAnatomy(draft.id) ? "Built-in body plan. Browse its parts below. Create a different body plan when the body structure or functions need to change." : "Custom body plan. Select a part to edit its name, group and functions."}</p>
+      {draft.id === "builtin-humanoid" && <p>One head, a torso, two arms with hands and two legs with feet. This plan is shared across humanoid appearances.</p>}
+      <h3>Body parts and functions</h3>
         {!isBuiltInAnatomy(draft.id) && <label className="setup-field"><span className="setup-field__label">Template name</span><input value={draft.name} onChange={(e) => patch({ name: e.target.value })}/></label>}
         <div className="studio-anatomy-groups">
           {groupsOf(draft.parts).map((group) => <div key={group} className="studio-panel">
             <button type="button" aria-expanded={expanded === group} onClick={() => setExpanded(expanded === group ? "" : group)}>{expanded === group ? "▾" : "▸"} {group} ({draft.parts.filter((part) => (part.group || "Other") === group).length})</button>
             {expanded === group && <div className="studio-actions">
-              {draft.parts.filter((part) => (part.group || "Other") === group).map((part) => <button type="button" key={part.id} aria-pressed={partId === part.id} onClick={() => setPartId(part.id)}>{part.label}</button>)}
+              {draft.parts.filter((part) => (part.group || "Other") === group).map((part) => <button type="button" key={part.id} aria-pressed={partId === part.id} onClick={() => setPartId(part.id)}>{part.label}<small style={{ display: "block", marginTop: 4 }}>{part.capabilities.map(capability => CAPABILITY_LABELS[capability]).join(" · ") || "No specific function assigned"}</small></button>)}
               {!isBuiltInAnatomy(draft.id) && <button type="button" onClick={() => addPart(group)}>+ Add body part</button>}
             </div>}
           </div>)}
@@ -128,19 +99,17 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
           <label className="setup-field"><span className="setup-field__label">Name</span><input value={current.label} disabled={isBuiltInAnatomy(draft.id)} onChange={(e) => patchPart({ label: e.target.value })}/></label>
           <label className="setup-field"><span className="setup-field__label">Group</span><input value={current.group || ""} disabled={isBuiltInAnatomy(draft.id)} onChange={(e) => patchPart({ group: e.target.value })}/></label>
           <label className="setup-field"><span className="setup-field__label">Description</span><textarea value={current.description || ""} disabled={isBuiltInAnatomy(draft.id)} onChange={(e) => patchPart({ description: e.target.value })}/></label>
-          <fieldset disabled={isBuiltInAnatomy(draft.id)}><legend>Capabilities</legend>
-            {CAPABILITIES.map((capability) => <label key={capability}><input type="checkbox" checked={current.capabilities.includes(capability)} onChange={(e) => patchPart({ capabilities: e.target.checked ? [...current.capabilities, capability] : current.capabilities.filter((value) => value !== capability) })}/>{capability} </label>)}
+          <fieldset disabled={isBuiltInAnatomy(draft.id)}><legend>What this part can do</legend>
+            {CAPABILITIES.map((capability) => <label key={capability}><input type="checkbox" checked={current.capabilities.includes(capability)} onChange={(e) => patchPart({ capabilities: e.target.checked ? [...current.capabilities, capability] : current.capabilities.filter((value) => value !== capability) })}/>{CAPABILITY_LABELS[capability]} </label>)}
           </fieldset>
           {!isBuiltInAnatomy(draft.id) && <button type="button" onClick={() => { patch({ parts: draft.parts.filter((part) => part.id !== partId) }); setPartId(""); }}>Remove body part</button>}
         </div>}
         {!isBuiltInAnatomy(draft.id) && <div className="studio-actions"><button type="button" onClick={() => void save()}>Save anatomy</button><button type="button" onClick={() => void remove()}>Delete anatomy</button></div>}
-      </>}
     </> : <>
-      <div className="studio-actions"><button type="button" onClick={() => { const item = { id: crypto.randomUUID(), name: "New anatomy", version: 1, parts: [emptyPart("head", "Head")] }; setDraft(item); setEditing(true); setExpanded("Head"); setPartId("head"); }}>+ New anatomy</button></div>
+      <div className="studio-actions"><button type="button" onClick={() => { const item = { id: crypto.randomUUID(), name: "New anatomy", version: 1, parts: [emptyPart("head", "Head")] }; setDraft(item); setExpanded("Head"); setPartId("head"); }}>+ New anatomy</button></div>
       <div className="studio-anatomy-library" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: "12px" }}>
-        {templates.map((item) => <button type="button" key={item.id} onClick={() => open(item)} onMouseEnter={() => { setHovered(item.id); setHoverIndex(0); }} onMouseLeave={() => setHovered(null)} onFocus={() => setHovered(null)} style={{ textAlign: "left", padding: "16px", minHeight: "115px" }}>
-          {(() => { const images = anatomyImages[item.id] ?? []; const image = images.length ? images[hovered === item.id ? hoverIndex % images.length : 0] : undefined; return image ? <img src={image.src} alt="" style={{ width: "100%", height: 170, objectFit: "contain" }} /> : <div style={{ height: 170, display: "grid", placeItems: "center" }} aria-hidden="true">◇</div>; })()}
-          <strong>{item.name}</strong><br/><small>{isBuiltInAnatomy(item.id) ? "Built-in" : "Custom"} · {groupsOf(item.parts).length} groups</small>
+        {templates.map((item) => <button type="button" key={item.id} onClick={() => open(item)} style={{ textAlign: "left", padding: "16px", minHeight: "115px" }}>
+          <strong>{item.name}</strong><br/><small>{isBuiltInAnatomy(item.id) ? "Built-in" : "Custom"} · {item.parts.length} parts · {groupsOf(item.parts).length} groups</small>
         </button>)}
       </div>
     </>}
