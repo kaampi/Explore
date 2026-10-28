@@ -13,8 +13,8 @@ export type CoreCharacterSnapshot = {
   name: string;
   personality: string;
   appearance: string;
-  pronoun?: string;
-  approximateAge?: number;
+  pronoun?: string | undefined;
+  approximateAge?: number | undefined;
   facts: { predicate: string; label: string; value: string }[];
 };
 
@@ -46,8 +46,8 @@ export function snapshotCoreCharacter(entity: CoreBibleEntity): CoreCharacterSna
     name: entity.name.trim(),
     personality: entity.personality?.trim() ?? "",
     appearance: entity.looks?.trim() ?? "",
-    ...(entity.pronoun ? { pronoun: entity.pronoun.trim() } : {}),
-    ...(entity.approximateAge !== undefined ? { approximateAge: entity.approximateAge } : {}),
+    ...(entity.pronoun?.trim() && entity.pronoun.trim().length <= 32 ? { pronoun: entity.pronoun.trim() } : {}),
+    ...(Number.isInteger(entity.approximateAge) && entity.approximateAge! >= 1 && entity.approximateAge! <= 130 ? { approximateAge: entity.approximateAge } : {}),
     facts: entity.facts.filter(f => f.value.trim()).map(f => ({
       predicate: f.predicate.trim(), label: f.label.trim(), value: f.value.trim(),
     })),
@@ -116,7 +116,8 @@ export function applyCoreCharacterChanges(
   approvedKeys: readonly string[],
   source: CoreCharacterSource,
 ): CharacterTemplate {
-  if (!sameCoreCharacter(character, source)) throw new Error("Core identity mismatch.");
+  if (!sameCoreCharacter(character, source) || incoming.entity_ref !== source.entityRef) throw new Error("Core identity mismatch.");
+  if (source.revision < character.coreOrigin!.revision) throw new Error("This manuscript version is older than the local copy.");
   const selected = new Set(approvedKeys);
   const next = snapshotCoreCharacter(incoming);
   const updated: CharacterTemplate = { ...character, lore: [...character.lore] };
@@ -137,6 +138,23 @@ export function applyCoreCharacterChanges(
     else updated.lore.push(entry);
   }
   updated.coreOrigin = { ...character.coreOrigin!, revision: source.revision };
+  // Keep declined fields at their previous baseline so they can be reviewed again.
+  const baseline = character.coreSnapshot;
+  if (baseline) {
+    updated.coreSnapshot = {
+      ...baseline,
+      facts: baseline.facts.map(fact => ({ ...fact })),
+    };
+    for (const [key] of fields) {
+      if (selected.has(key)) Object.assign(updated.coreSnapshot, { [key]: next[key] });
+    }
+    for (const fact of next.facts) {
+      if (!selected.has("fact:" + fact.predicate)) continue;
+      const index = updated.coreSnapshot.facts.findIndex(old => old.predicate === fact.predicate);
+      if (index < 0) updated.coreSnapshot.facts.push({ ...fact });
+      else updated.coreSnapshot.facts[index] = { ...fact };
+    }
+  }
   updated.updatedAt = new Date().toISOString();
   return updated;
 }

@@ -67,6 +67,11 @@ export const CharacterTemplateSchema = z.object({
     workspaceId: z.string().min(1), projectId: z.string().min(1),
     entityRef: z.string().min(1), revision: z.number().int().positive(),
   }).optional(),
+  coreSnapshot: z.object({
+    name: z.string(), personality: z.string(), appearance: z.string(),
+    pronoun: z.string().optional(), approximateAge: z.number().optional(),
+    facts: z.array(z.object({ predicate: z.string(), label: z.string(), value: z.string() })),
+  }).optional(),
   createdAt: z.string(),
   updatedAt: z.string()
 });

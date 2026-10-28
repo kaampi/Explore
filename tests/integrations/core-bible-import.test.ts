@@ -25,7 +25,7 @@ describe("copying a shared Storybook character", () => {
     expect(card.appearance).toBe("Dark coat");
     expect(card.pronoun).toBe("she/her");
     expect(card.approximateAge).toBe(28);
-    expect(card.lore).toEqual([{ id: "core-fact-1", title: "Identity", content: "Emma: Identity: Bartender", keywords: [] }]);
+    expect(card.lore).toEqual([{ id: "core-fact-core.identity", title: "Identity", content: "Emma: Identity: Bartender", keywords: [] }]);
     expect(JSON.stringify(card)).not.toContain("Never copy this");
     await repo.saveCharacter(card);
     expect((await repo.loadCharacter(original.id)).personality).toBe("Local version");
