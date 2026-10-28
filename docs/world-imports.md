@@ -35,7 +35,7 @@ Choose either:
 - **Save lorebook**: keep selected content as optional lore; no character/place cards are created. Bind it manually to a character, campaign, world or all new conversations.
 - **Also create a world in my library → Save world & lore**: only approved supported typed rows create cards. A new local world and its character/place cards are saved with the source book in one IndexedDB transaction. Collisions abort the entire import; existing cards are never replaced. Starting cards over 4,000 characters must be shortened in the original or imported as optional lore only. Nothing is silently truncated.
 
-Creating a world is an explicit acceptance of its selected descriptions as library character/place material. Imported lore alone still does not establish a physical map or modify StorybookAI canon. The source world ID is retained separately from the new local copy's ID. Reimport creates a new copy.
+Creating a world is an explicit acceptance of its selected descriptions as library character/place material. Imported lore alone still does not establish a physical map or modify kaampi Write canon. The source world ID is retained separately from the new local copy's ID. Reimport creates a new copy.
 
 From Home, choose the new world, a place and a character, then **Begin exploring**. A newly imported character can also start a direct chat with its source-world lore, when no other place/world was selected. Selecting a place in a different world takes that world's lore binding instead. Existing conversations remain snapshots.
 

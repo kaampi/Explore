@@ -14,13 +14,13 @@ export const GUIDE_TOPICS: Topic[] = [
   { id: "ai", label: "AI setup", title: "Connect your local AI", intro: "Open Settings in the left sidebar. AI Settings is in the right column of the dialog.", steps: [
     { title: "1. Open Settings", body: "Click Settings in the left sidebar. The dialog opens directly: Appearance & Themes is on the left and AI Settings is on the right." },
     { title: "2. Choose an AI engine", body: "Select Ollama or Strata (OpenAI-compatible) under AI engine. Install and start your chosen local AI server first." },
-    { title: "3. Ollama setup", body: "Install and start Ollama, then download a chat-capable model. SandboxAI checks Ollama at http://localhost:11434 automatically; no server address field is needed. If necessary, start the server with ollama serve." },
+    { title: "3. Ollama setup", body: "Install and start Ollama, then download a chat-capable model. kaampi Explore checks Ollama at http://localhost:11434 automatically; no server address field is needed. If necessary, start the server with ollama serve." },
     { title: "4. Strata setup", body: "Enable the OpenAI-compatible HTTP API in Strata. Enter its API URL in the Strata API URL field that appears. Use the address and port configured in Strata, and allow browser access (CORS)." },
     { title: "5. Connect and select a model", body: "Click Check connection, or Try again if the server is not ready. Once available, choose an installed model under Chat model. If none appears, install a chat model in your AI server and retry." },
     { title: "6. Start a conversation", body: "Close Settings, choose a character and start chatting. Return to Settings at any time to change the engine or model." },
-    { title: "Troubleshooting", body: "Check that the server is running and the port is correct. Ollama may require the SandboxAI browser origin in OLLAMA_ORIGINS. A hosted SandboxAI page may not be able to reach your local server; running SandboxAI locally is more reliable." }
+    { title: "Troubleshooting", body: "Check that the server is running and the port is correct. Ollama may require the kaampi Explore browser origin in OLLAMA_ORIGINS. A hosted kaampi Explore page may not be able to reach your local server; running kaampi Explore locally is more reliable." }
   ] },
-  { id: "play", label: "Playing", title: "Play your way", intro: "You decide what your character attempts. The AI describes the response, while SandboxAI keeps track of important facts.", steps: [
+  { id: "play", label: "Playing", title: "Play your way", intro: "You decide what your character attempts. The AI describes the response, while kaampi Explore keeps track of important facts.", steps: [
     { title: "Adventure", body: "Follow a prepared story with its rules and scenes. Your choices still matter." },
     { title: "Free exploration", body: "Explore a world using its rules, without having to follow a fixed storyline." },
     { title: "Fan fiction", body: "Meet familiar characters and explore their world more freely, without a fixed storyline or game rules." },
@@ -42,7 +42,7 @@ export const GUIDE_TOPICS: Topic[] = [
     { title: "Rulesets", body: "A ruleset defines how the game should work. Leave it optional when you want a looser conversation." },
     { title: "Storylines", body: "Use a storyline to guide an adventure. For free exploration, you do not need one." }
   ] },
-  { id: "continuity", label: "Memory and continuity", title: "Keeping the world consistent", intro: "SandboxAI tries to remember what has changed, not just what was said.", steps: [
+  { id: "continuity", label: "Memory and continuity", title: "Keeping the world consistent", intro: "kaampi Explore tries to remember what has changed, not just what was said.", steps: [
     { title: "Persistent state", body: "Characters, places and relationships can change as you play. The engine tracks important changes separately from the AI's narration." },
     { title: "Physical continuity", body: "If both hands are holding something, your character should not suddenly use a third hand. Releasing a grip or changing position should happen explicitly." },
     { title: "AI limitations", body: "Local models can still make mistakes. If something seems wrong, note what happened and include the steps in a bug report." }
@@ -62,9 +62,9 @@ export const GUIDE_TOPICS: Topic[] = [
 export function GuidePanel() {
   const [active, setActive] = useState("start");
   const topic = GUIDE_TOPICS.find(item => item.id === active) ?? GUIDE_TOPICS[0]!;
-  return <main className="sb-guide" aria-label="SandboxAI guide">
+  return <main className="sb-guide" aria-label="kaampi Explore guide">
     <div className="sb-breadcrumb">Your creative space <span>/</span> Guide</div>
-    <h1>Guide to SandboxAI</h1>
+    <h1>Guide to kaampi Explore</h1>
     <p className="sb-muted">Start with a character. Learn the other tools when you need them.</p>
     <nav className="sb-guide__tabs" aria-label="Guide topics">
       {GUIDE_TOPICS.map(item => <button key={item.id} type="button" className={active === item.id ? "is-active" : ""} aria-current={active === item.id ? "page" : undefined} onClick={() => setActive(item.id)}>{item.label}</button>)}

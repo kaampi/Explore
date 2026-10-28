@@ -178,7 +178,7 @@ describe("external world import journeys", () => {
     const book = (await repo.listLorebooks()).entries[0]!;
     expect(book.binding.kind).toBe("realm");
     expect((await repo.listCharacters())[0]?.personality).not.toContain("EDITOR NOTE");
-    await click(named("SandboxAI home"));
+    await click(named("kaampi Explore home"));
     await waitFor(() => !!container.querySelector('.sb-home-connection'));
     const worldCard = Array.from(container.querySelectorAll<HTMLButtonElement>('.sb-world-card')).find(card => card.textContent?.includes("Star travellers"))!;
     await click(worldCard);
@@ -202,7 +202,7 @@ describe("external world import journeys", () => {
     await click(button("Save world & lore"));
     await waitFor(() => container.textContent?.includes("World saved with 2 characters and 2 places") ?? false);
     const repo = new IndexedDBRepository();
-    await click(named("SandboxAI home"));
+    await click(named("kaampi Explore home"));
     await waitFor(() => !!container.querySelector('.sb-home-connection'));
     const pip = Array.from(container.querySelectorAll<HTMLButtonElement>('.sb-character-card')).find(card => card.textContent?.includes("Pip"))!;
     await click(pip);

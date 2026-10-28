@@ -1,4 +1,4 @@
-# Sandbox AI
+# kaampi Explore
 
 > **Public alpha — work in progress.** Features and saved-data formats may change. Back up your browser data before updating. See [installation instructions](docs/running.md) and [alpha release checklist](docs/alpha-release-checklist.md).
 
@@ -14,7 +14,7 @@ The UI has an initial language selector (English, Swedish and Norwegian Bokmål)
 
 ## License
 
-SandboxAI is licensed under the **GNU Affero General Public License, version 3 or later** (`AGPL-3.0-or-later`). See [LICENSE](LICENSE) for the full license and warranty disclaimer. Third-party material retains its own licenses. Independent user-created or imported content is not automatically covered by the application's license.
+kaampi Explore is licensed under the **GNU Affero General Public License, version 3 or later** (`AGPL-3.0-or-later`). See [LICENSE](LICENSE) for the full license and warranty disclaimer. Third-party material retains its own licenses. Independent user-created or imported content is not automatically covered by the application's license.
 
 ## Stack
 
@@ -28,7 +28,7 @@ SandboxAI is licensed under the **GNU Affero General Public License, version 3 o
 
 Windows: double-click **`start.bat`**. macOS: run **`bash starta.command`**. Linux: run **`bash starta.sh`**. The launchers install dependencies on first run. Or run `npm install` and `npm start` from a terminal. The app opens at [http://localhost:5173](http://localhost:5173). Connect a local Ollama or Strata model via **Settings → AI Settings**.
 
-See [Installing and running Sandbox AI](docs/running.md) for detailed instructions, first chat, local data and troubleshooting.
+See [Installing and running kaampi Explore](docs/running.md) for detailed instructions, first chat, local data and troubleshooting.
 
 ## Getting started
 
@@ -80,7 +80,7 @@ Character-card review also recognizes line-based W++/PList fields such as `Age=1
 
 ## Import lorebooks
 
-**Lorebooks** accepts SillyTavern World Info JSON, embedded V2/V3 character lore (JSON/PNG), and V3 lorebook JSON. Review entries and explicitly select supported ones to use SandboxAI’s existing activation rules. Unsupported/disabled entries stay dormant, and the original is retained. Link a book to a character, campaign or all new conversations; saved conversations keep their own snapshots. Character import offers embedded lore in the same review and saves both together.
+**Lorebooks** accepts SillyTavern World Info JSON, embedded V2/V3 character lore (JSON/PNG), and V3 lorebook JSON. Review entries and explicitly select supported ones to use kaampi Explore’s existing activation rules. Unsupported/disabled entries stay dormant, and the original is retained. Link a book to a character, campaign or all new conversations; saved conversations keep their own snapshots. Character import offers embedded lore in the same review and saves both together.
 
 Imported lore has a separate context limit and does not establish the world map. Library backups include lorebooks and original data. See [supported behavior and limitations](docs/lore-import.md).
 
@@ -94,17 +94,17 @@ Choose the imported world, a place and a character from Home to begin exploring.
 
 In play, use **Save as idea** on a message or **Capture ideas** to select several messages. Edit the title, description and type (Plot, Character or World), then save. **My ideas** is available from play and the Home sidebar. Ideas keep snapshots of only the selected messages, independent of later edits or archive actions.
 
-**Export JSON** uses StorybookAI’s existing manuscript importer: import the file as a manuscript, then open **Brainstorm**. Each idea becomes a card in a **new, separate idea manuscript**, with no locked facts, synopsis or chapters. Exporting never targets an existing book. To use an idea in an existing manuscript, choose **Copy idea** and paste it into a Brainstorm card there. The JSON includes the saved idea and selected source messages; StorybookAI imports the card text. No StorybookAI changes are required. See [the export contract](docs/idea-export.md).
+**Export JSON** uses kaampi Write’s existing manuscript importer: import the file as a manuscript, then open **Brainstorm**. Each idea becomes a card in a **new, separate idea manuscript**, with no locked facts, synopsis or chapters. Exporting never targets an existing book. To use an idea in an existing manuscript, choose **Copy idea** and paste it into a Brainstorm card there. The JSON includes the saved idea and selected source messages; kaampi Write imports the card text. No kaampi Write changes are required. See [the export contract](docs/idea-export.md).
 
 ## Your space and appearance
 
-The shared header connects SandboxAI with StorybookAI and ComicbookAI. When running locally with `npm start` or `npm run preview`, it checks StorybookAI at `http://localhost:5175/` and ComicbookAI at `http://localhost:5176/`. A verified running app opens directly from its header link; otherwise its presentation offers installation information, Try again, and a configurable address. Checks repeat every 30 seconds while visible and when the window receives focus. Unreachable means the app cannot be reached, not that it is uninstalled. Remote addresses can be opened manually; automatic probes stay on loopback. The hosted/static preview has no local status backend and keeps the presentation available.
+The shared header connects kaampi Explore with kaampi Write and kaampi Comic. When running locally with `npm start` or `npm run preview`, it checks kaampi Write at `http://localhost:5175/` and kaampi Comic at `http://localhost:5176/`. A verified running app opens directly from its header link; otherwise its presentation offers installation information, Try again, and a configurable address. Checks repeat every 30 seconds while visible and when the window receives focus. Unreachable means the app cannot be reached, not that it is uninstalled. Remote addresses can be opened manually; automatic probes stay on loopback. The hosted/static preview has no local status backend and keeps the presentation available.
 
 In play, the conversation is central. **Cast**, **Settings** (including the model picker), and **Inspector** open on demand. **My space** returns home without deleting the current conversation. **My conversations** lists your active and archived conversations. Starting another keeps the current history, relationships, and state in its own saved snapshot.
 
 Use the **Light/Dark** control in the top bar for the app frame. Open **Settings → Appearance & Themes** to choose one of four independent play themes: Parchment, Forest dusk, Neon city, and Quiet conversation. Adjust colors, panel opacity, background dimming, font, text size, and reading width with a live preview. Backgrounds can follow the scene, stay on your own uploaded image, or use a plain color. PNG/JPEG/WebP uploads are limited to 10 MB and resized locally to a maximum edge of 1920 pixels.
 
-The status server first checks `/.well-known/storycore-app.json` for a matching `appId` and optional `version`. Existing sibling releases are recognized by their exact page titles as a compatibility fallback. SandboxAI exposes its own identity at the same path.
+The status server first checks `/.well-known/storycore-app.json` for a matching `appId` and optional `version`. Existing sibling releases are recognized by their exact page titles as a compatibility fallback. kaampi Explore exposes its own identity at the same path.
 
 Named themes, default appearance, and each conversation’s appearance are saved in a separate local IndexedDB database (`sandboxai-appearance`). Theme choices for one conversation do not change another. Appearance never enters AI prompts. Storage errors are visible; clearing browser data removes these local preferences. Theme import/export and sharing are reserved for step 2.
 

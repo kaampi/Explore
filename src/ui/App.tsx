@@ -329,7 +329,7 @@ function SandboxApp() {
           type="button"
           className="sb-brand"
           onClick={() => navigate("home")}
-          aria-label="SandboxAI home"
+          aria-label="kaampi Explore home"
         >
           <span aria-hidden="true">✧</span>
           <span>
@@ -372,7 +372,7 @@ function SandboxApp() {
         >
           <aside className="sb-sidebar">
             <span className="sb-eyebrow">{t("eyebrow")}</span>
-            <nav aria-label="SandboxAI navigation">
+            <nav aria-label="kaampi Explore navigation">
               <button
                 type="button"
                 className={view === "home" ? "is-active" : ""}

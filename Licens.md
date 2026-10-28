@@ -1,14 +1,14 @@
-# SandboxAI license
+# kaampi Explore license
 
-Copyright (C) 2026 SandboxAI contributors.
+Copyright (C) 2026 kaampi Explore contributors.
 
 SPDX-License-Identifier: AGPL-3.0-or-later
 
-SandboxAI is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+kaampi Explore is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
-SandboxAI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the full license below for details.
+kaampi Explore is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the full license below for details.
 
-Third-party components and material retain their respective licenses and notices. Independent stories, character descriptions, images, audio, and other user content do not become AGPL-licensed merely because they are created, imported, or processed with SandboxAI.
+Third-party components and material retain their respective licenses and notices. Independent stories, character descriptions, images, audio, and other user content do not become AGPL-licensed merely because they are created, imported, or processed with kaampi Explore.
 
 ---
 

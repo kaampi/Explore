@@ -129,7 +129,7 @@ export function localAppsPlugin(): Plugin {
     if (url.pathname === "/.well-known/storycore-app.json") {
       json(response, 200, {
         appId: "sandbox",
-        name: "SandboxAI",
+        name: "kaampi Explore",
         version: "0.1.0",
         protocolVersion: 1,
       });

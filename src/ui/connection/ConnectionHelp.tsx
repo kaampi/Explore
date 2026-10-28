@@ -67,7 +67,7 @@ export function ConnectionHelp({
         <p className="sb-muted">
           {discovery.unsupportedModels?.length
             ? "The installed models are for other tasks. Add a chat model in Ollama, then try again."
-            : "Download a chat model in Ollama, then try again. SandboxAI will show your installed chat models here."}
+            : "Download a chat model in Ollama, then try again. kaampi Explore will show your installed chat models here."}
         </p>
       )}
       {backend === "ollama" && status === "missing-model" && (
@@ -129,13 +129,13 @@ export function ConnectionHelp({
             <code>ollama serve</code>.
           </p>
           <p>
-            Ollama must allow this SandboxAI address:{" "}
+            Ollama must allow this kaampi Explore address:{" "}
             <code>{window.location.origin}</code>. Check its{" "}
             <code>OLLAMA_ORIGINS</code> setting and restart Ollama after
             changing it.
           </p>
           <p>
-            If you're viewing the hosted preview, run SandboxAI locally to use
+            If you're viewing the hosted preview, run kaampi Explore locally to use
             your local AI connection.
           </p>
         </details>

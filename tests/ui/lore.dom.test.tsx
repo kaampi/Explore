@@ -193,7 +193,7 @@ describe("lorebook import journeys", () => {
     expect(book.raw).toEqual({ entries: [supportedEntry, { ...supportedEntry, comment: "Advanced", extensions: { sticky: 3 } }] });
     const oldId = (await repo.listSessionIds())[0]!;
     expect((await repo.loadSession(oldId)).layers.some(l => l.loreSource)).toBe(false);
-    await click(named("SandboxAI home"));
+    await click(named("kaampi Explore home"));
     await waitFor(() => !!container.querySelector('.sb-home-connection'));
     await create("Bea");
     await send("Tell me about the gate.", "It opens at dawn.");
