@@ -24,6 +24,17 @@ Living status (what is shipped vs still open) lives in [`project_spec.md`](proje
 
 The UI has an initial language selector (English, Swedish and Norwegian Bokmål); translations are still incomplete. Engines are framework-free TypeScript; React (`src/ui/`) consumes them.
 
+## The kaampi family
+
+kaampi Explore is one of four sibling apps that share a Story Bible via [**kaampi Codex**](https://github.com/kaampi/Codex), a local sync service — never a cloud account:
+
+- [**kaampi Write**](https://github.com/kaampi/Write) — long-form prose
+- [**kaampi Comic**](https://github.com/kaampi/Comic) — comic scripting and panel layout
+- [**kaampi Explore**](https://github.com/kaampi/Explore) (this app) — tabletop campaign sandbox
+- [**kaampi Codex**](https://github.com/kaampi/Codex) — the local sync service the others pair with
+
+Each is a sibling, not a module of another — kaampi Write can send locked Story Bible cards to kaampi Explore shelves, and kaampi Explore's Storyboard can export chapter shells (title + brief, no prose) for kaampi Write to pick up. No app requires any of the others.
+
 ## License
 
 kaampi Explore is licensed under the **GNU Affero General Public License, version 3 or later** (`AGPL-3.0-or-later`). See [LICENSE](LICENSE) for the full license and warranty disclaimer. Third-party material retains its own licenses. Independent user-created or imported content is not automatically covered by the application's license.
