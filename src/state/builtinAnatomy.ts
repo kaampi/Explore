@@ -7,19 +7,37 @@ const makePart = (id: string, capabilities: Capability[] = []): Part => ({
   id, label: id.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase()), capabilities
 });
 
+/** Baseline action roles, not species-specific skills or guarantees of flight. */
+function functionsFor(plan: string, part: string): Capability[] {
+  if (plan === "cephalopod" && /^arm_\d+$/.test(part)) return ["grasp", "manipulate", "support", "locomote", "sense"];
+  if (plan === "cephalopod" && part === "suckers") return ["grasp", "sense"];
+  if (plan === "cephalopod" && part === "siphon") return ["locomote"];
+  if (plan === "serpentine" && ["torso", "belly", "tail"].includes(part)) return ["support", "locomote"];
+  if (/^(head|eyes|ears|antennae|tongue|muzzle|left_eye|right_eye|left_ear|right_ear)$/.test(part)) return ["sense"];
+  if (/hand$/.test(part)) return ["grasp", "manipulate", "sense"];
+  if (/^(left_arm|right_arm)$/.test(part)) return ["support", "manipulate"];
+  if (/leg$|^leg_\d+$|foot$|paw$|hoof$|^hooves$/.test(part)) return ["support", "locomote"];
+  if (/wing$/.test(part)) return ["locomote"];
+  if (["mouth", "beak", "jaw", "jaws", "mandibles", "chelicerae"].includes(part)) return ["grasp", "manipulate"];
+  if (/pedipalp$/.test(part)) return ["sense", "manipulate"];
+  if (part === "talons") return ["grasp", "support"];
+  if (part === "claws") return ["grasp"];
+  if (["torso", "human_torso", "equine_torso", "pelvis", "thorax", "cephalothorax"].includes(part)) return ["support"];
+  // Tails are not assumed prehensile; armor and decorative parts get no invented action role.
+  return [];
+}
+
 const build = (id: string, name: string, groups: Record<string, string>, capabilities: Record<string, Capability[]> = {}): AnatomyTemplate => ({
-  id: `builtin-${id}`, name, version: 1,
+  id: `builtin-${id}`, name, version: 2,
   parts: Object.entries(groups).flatMap(([group, ids]) =>
     ids.split(",").map((value) => value.trim()).filter(Boolean).map((partId) => ({
-      ...makePart(partId, capabilities[partId] ?? []), group
+      ...makePart(partId, capabilities[partId] ?? functionsFor(id, partId)), group
     }))
   )
 });
 
-const limbs = { head: ["sense"], left_hand: ["grasp", "manipulate", "sense"], right_hand: ["grasp", "manipulate", "sense"], left_foot: ["support", "locomote"], right_foot: ["support", "locomote"] } as Record<string, Capability[]>;
-
 export const BUILTIN_ANATOMY_TEMPLATES: AnatomyTemplate[] = [
-  build("humanoid", "Humanoid", { "Head & Neck": "head, neck, left_eye, right_eye, mouth, left_ear, right_ear", "Torso": "chest, abdomen, pelvis", "Arms & Hands": "left_arm, right_arm, left_hand, right_hand", "Legs & Feet": "left_leg, right_leg, left_foot, right_foot" }, limbs),
+  build("humanoid", "Humanoid", { "Head & Neck": "head, neck, left_eye, right_eye, mouth, left_ear, right_ear", "Torso": "chest, abdomen, pelvis", "Arms & Hands": "left_arm, right_arm, left_hand, right_hand", "Legs & Feet": "left_leg, right_leg, left_foot, right_foot" }),
   build("equine", "Equine", { "Head & Neck": "head, muzzle, ears, eyes, neck", "Body": "chest, torso, abdomen", "Front Legs": "front_left_leg, front_right_leg, front_left_hoof, front_right_hoof", "Hind Legs": "hind_left_leg, hind_right_leg, hind_left_hoof, hind_right_hoof", "Tail": "tail" }),
   build("quadruped", "Quadruped", { "Head & Neck": "head, muzzle, ears, eyes, mouth, neck", "Body": "chest, torso, abdomen", "Front Legs": "front_left_leg, front_right_leg, front_left_paw, front_right_paw", "Hind Legs": "hind_left_leg, hind_right_leg, hind_left_paw, hind_right_paw", "Tail": "tail" }),
   build("serpentine", "Serpentine", { "Head": "head, eyes, mouth, tongue, fangs", "Body": "neck, torso, belly, scales", "Tail": "tail, tail_tip" }),

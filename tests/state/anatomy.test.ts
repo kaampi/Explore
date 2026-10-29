@@ -1,6 +1,29 @@
 import { describe, expect, it } from "vitest";
 import { pinSessionAnatomy, validateAnatomicalRelation } from "../../src/state/anatomy";
 import type { Session } from "../../src/state/StateSchema";
+import { AnatomyTemplateSchema } from "../../src/state/StateSchema";
+import { BUILTIN_ANATOMY_TEMPLATES } from "../../src/state/builtinAnatomy";
+
+describe("built-in body plan functions", () => {
+  it.each(BUILTIN_ANATOMY_TEMPLATES)("provides valid movement and sensory functions for $name", template => {
+    expect(AnatomyTemplateSchema.safeParse(template).success).toBe(true);
+    expect(template.version).toBe(2);
+    expect(template.parts.some(part => part.capabilities.includes("locomote"))).toBe(true);
+    expect(template.parts.some(part => part.capabilities.includes("sense"))).toBe(true);
+    expect(new Set(template.parts.map(part => part.id)).size).toBe(template.parts.length);
+  });
+
+  it("distinguishes grasping limbs from walking limbs and ordinary tails", () => {
+    const functionsFor = (plan: string, part: string) => BUILTIN_ANATOMY_TEMPLATES.find(template => template.id === `builtin-${plan}`)?.parts.find(item => item.id === part)?.capabilities;
+    expect(functionsFor("humanoid", "left_eye")).toEqual(["sense"]);
+    expect(functionsFor("equine", "front_left_hoof")).toEqual(["support", "locomote"]);
+    expect(functionsFor("quadruped", "tail")).not.toContain("grasp");
+    expect(functionsFor("cephalopod", "arm_8")).toEqual(expect.arrayContaining(["grasp", "manipulate", "locomote"]));
+    expect(functionsFor("serpentine", "belly")).toContain("locomote");
+    expect(functionsFor("avian", "left_wing")).toEqual(["locomote"]);
+    expect(functionsFor("dragon", "horns")).toEqual([]);
+  });
+});
 
 const anatomy = {
   anatomyTemplates: {
