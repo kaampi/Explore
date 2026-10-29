@@ -1,7 +1,7 @@
 import { originalPoints, originalTriangles } from "./originalMorphMesh";
 export function morphLoopStep(elapsed: number, count: number) {
   const source = Math.floor(elapsed / 4000) % count;
-  const progress = Math.max(0, (elapsed % 4000 - 1500) / 2500);
+  const progress = Math.max(0, (elapsed % 4000 - 3000) / 1000);
   return { source, target: (source + 1) % count, mix: progress * progress * (3 - 2 * progress) };
 }
 export type Point = [number, number];
