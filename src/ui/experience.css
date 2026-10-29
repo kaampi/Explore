@@ -14,7 +14,7 @@
   --accent-locked: #8c642c;
   --accent-danger: #a9434c;
   --subhead: #795f31;
-  --font-ui: system-ui, -apple-system, sans-serif;
+  --font-ui: "Barlow", system-ui, sans-serif;
   --font-dialogue: Georgia, serif;
   color-scheme: light;
   min-height: 100%;
@@ -96,7 +96,7 @@
 }
 .sb-brand small {
   font:
-    8px/1.5 system-ui,
+    8px/1.5 "Barlow", system-ui,
     sans-serif;
   display: block;
   letter-spacing: 2px;
@@ -152,7 +152,7 @@
 }
 .sb-eyebrow {
   font:
-    600 9px/1.6 system-ui,
+    600 9px/1.6 "Barlow", system-ui,
     sans-serif;
   letter-spacing: 1.6px;
   color: var(--text-dim);
@@ -861,7 +861,7 @@
 }
 .sb-theme-preview small {
   color: var(--play-accent);
-  font: 9px system-ui;
+  font: 9px var(--font-ui);
   letter-spacing: 1px;
 }
 .sb-theme-preview p {
@@ -871,7 +871,7 @@
   margin: 15px 0;
 }
 .sb-theme-preview__message > span {
-  font: 10px system-ui;
+  font: 10px var(--font-ui);
   color: var(--play-text);
   opacity: 0.75;
 }

@@ -20,7 +20,7 @@
   --accent-player: #6fa8dc; /* blue — player-sourced content */
   --accent-danger: #d9707a;
 
-  --font-ui: "Space Grotesk", system-ui, sans-serif;
+  --font-ui: "Barlow", system-ui, sans-serif;
   --font-dialogue: "Newsreader", Georgia, serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 

@@ -143,6 +143,6 @@ export function playThemeStyle(theme: PlayTheme): CSSProperties {
     "--play-size": `${theme.textSize}px`,
     "--play-width": `${theme.textWidth}px`,
     "--play-font":
-      theme.font === "serif" ? "Georgia, serif" : "system-ui, sans-serif",
+      theme.font === "serif" ? "Georgia, serif" : '"Barlow", system-ui, sans-serif',
   } as CSSProperties;
 }
