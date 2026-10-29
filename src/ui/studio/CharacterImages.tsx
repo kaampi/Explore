@@ -98,7 +98,7 @@ export function CharacterImages({ characterId, repo, portrait, onPortrait }: { c
     </div>}
     {open && <div role="dialog" aria-modal="true" aria-label="Morph Studio" style={{position:"fixed",inset:0,zIndex:10000,background:"rgba(0,0,0,.8)",display:"flex",alignItems:"center",justifyContent:"center"}}>
       <div className="morph-studio-dialog" style={{width:"90vw",height:"90vh",overflow:"auto",background:"var(--panel)",color:"var(--text)",padding:20,borderRadius:12,boxSizing:"border-box"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><h2>Morph Studio</h2><div style={{display:"flex",gap:8,alignItems:"center"}}><button type="button" onClick={()=>setSaveRequest(p=>({id:(p?.id??0)+1,mode:"draft"}))}>Save draft</button><button type="button" onClick={()=>setSaveRequest(p=>({id:(p?.id??0)+1,mode:"profile"}))}>Save profile</button><button type="button" onClick={()=>void closeStudio()}>Close ✕</button></div></div>
+        <div className="morph-studio-heading" style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><h2>Morph Studio</h2><div style={{display:"flex",gap:8,alignItems:"center"}}><button type="button" onClick={()=>setSaveRequest(p=>({id:(p?.id??0)+1,mode:"draft"}))}>Save draft</button><button type="button" onClick={()=>setSaveRequest(p=>({id:(p?.id??0)+1,mode:"profile"}))}>Save profile</button><button type="button" onClick={()=>void closeStudio()}>Close ✕</button></div></div>
         <MorphStudio characterId={characterId} repo={repo} saveRequest={saveRequest} gallery={emotion.map(g=>({name:(g.emotion.trim() || g.name.trim()).toLowerCase(),image:g.image}))}/>
       </div>
     </div>}
