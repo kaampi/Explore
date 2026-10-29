@@ -137,6 +137,12 @@ describe("first-run conversation flow", () => {
     const card = Array.from(container.querySelectorAll('.sb-character-card')).find(card => card.textContent?.includes("Mona"))!;
     expect(card.textContent).toContain("Built-in demo");
     expect(card.querySelector('.morph-portrait canvas')).not.toBeNull();
+    await click(card as HTMLElement);
+    await click(button("Start conversation →"));
+    await waitFor(() => !!container.querySelector('.sb-play-portrait'));
+    const portrait = container.querySelector<HTMLImageElement>('.sb-play-portrait')!;
+    expect(portrait.alt).toContain("Mona");
+    expect(portrait.src).toMatch(/^data:image\//);
   });
   it("offers optional chat settings, cancels safely, retains failed choices and keeps each new conversation independent", async () => {
     online = true;

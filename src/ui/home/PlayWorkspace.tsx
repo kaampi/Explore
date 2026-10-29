@@ -13,6 +13,7 @@ import { Modal } from "../components/Modal";
 import { StatusBar } from "../components/StatusBar";
 import { playThemeStyle, useAppearance } from "../themes/ThemeProvider";
 import { GameAudio } from "../audio/GameAudio";
+import { portraitSrc } from "../studio/portrait";
 
 export function PlayWorkspace({
   onHome,
@@ -31,6 +32,8 @@ export function PlayWorkspace({
   const { discovery, refresh, chooseModel } = useConnection();
   const [connectionOpen, setConnectionOpen] = useState(false);
   const session = useSession();
+  const person = primaryCharacter(session);
+  const portrait = portraitSrc(person ? session.characters[person.id]?.portraitDataUrl : undefined);
   const { library } = useAppearance();
   const [castOpen, setCastOpen] = useState(false);
   const [inspectorOpen, setInspectorOpen] = useState(false);
@@ -44,6 +47,7 @@ export function PlayWorkspace({
   return (
     <div className="sb-play-workspace">
       <div className="sb-play-toolbar">
+        {portrait && <img className="sb-play-portrait" src={portrait} alt={`${person?.name ?? "Character"} portrait`} />}
         <div className="sb-play-title">
           <strong>
             {title || primaryCharacter(session)?.name || "Your exploration"}
