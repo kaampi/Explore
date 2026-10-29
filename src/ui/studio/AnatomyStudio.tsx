@@ -121,7 +121,6 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
               {current.description && <p className="anatomy-description">{current.description}</p>}
               <h4>Functions in a scene</h4>
               {current.capabilities.length ? <div className="anatomy-functions">{current.capabilities.map(capability => <span className="anatomy-function" key={capability}><span aria-hidden="true">✓</span> {CAPABILITY_LABELS[capability]}</span>)}</div> : <p className="anatomy-muted">No additional action functions are configured for this part.</p>}
-              <div className="anatomy-detail-note"><strong>About this view</strong><p>Built-in plans are ready to use. To change a part or its functions, customize a copy.</p></div>
             </> : <div className="anatomy-editor">
               <label className="anatomy-field">Part name<input value={current.label} onChange={e => patchPart({ label: e.target.value })}/></label>
               <label className="anatomy-field">Body region<input value={current.group || ""} onChange={e => patchPart({ group: e.target.value })}/></label>
@@ -135,6 +134,7 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
       {!builtIn && <footer className="anatomy-footer"><button className="anatomy-button anatomy-danger" disabled={uploading} onClick={() => void remove()}>Delete body plan</button><button className="anatomy-button anatomy-primary" disabled={uploading} onClick={() => void save()}>Save body plan</button></footer>}
     </> : <>
       <aside className="anatomy-tip"><strong>Choose a structure, not an appearance.</strong><p>A body plan defines parts and physical functions. Characters with the same structure can share a plan.</p></aside>
+      <p className="anatomy-muted">Built-in body plans are ready to use. To adapt one to your needs, open the plan you want to change and select “Customize a copy”. You can then edit and save your own version.</p>
       <div className="anatomy-library">{templates.map(item => <button className="anatomy-card" key={item.id} onClick={() => open(item)}>
         {(item.imageDataUrl || BUILTIN_ANATOMY_TEMPLATES.some(template => template.id === item.id)) && <span className="anatomy-card-illustration"><img src={item.imageDataUrl || `/anatomy/${item.id.replace("builtin-", "")}.png`} alt="" loading="lazy" /></span>}
         <span className="anatomy-badge">{isBuiltInAnatomy(item.id) ? "Built-in" : "Custom"}</span><strong>{item.name}</strong><span>{item.parts.length} parts · {groupsOf(item.parts).length} regions</span><span className="anatomy-card-link">Explore body plan →</span></button>)}</div>
