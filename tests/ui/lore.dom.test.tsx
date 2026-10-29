@@ -75,13 +75,18 @@ async function theme(name: string) {
     await click(button(`Aa ✧${name}`));
     await click(button("Done"));
 }
-beforeEach(() => {
+beforeEach(async () => {
     (globalThis as typeof globalThis & {
         IS_REACT_ACT_ENVIRONMENT: boolean;
     }).IS_REACT_ACT_ENVIRONMENT = true;
     localStorage.clear();
     sessionStorage.clear();
     vi.stubGlobal("indexedDB", new IDBFactory());
+  // These journeys exercise a user archive after the optional demo was removed.
+  const demoRepo = new IndexedDBRepository();
+  await demoRepo.installExampleMona();
+  await demoRepo.deleteCharacter("example-mona-sanchez");
+  await demoRepo.close();
     Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
         configurable: true,
         value() {

@@ -1,5 +1,7 @@
 import { AnatomyTemplateSchema, type AnatomyTemplate } from "@state/StateSchema";
 import { BUILTIN_ANATOMY_TEMPLATES } from "@state/builtinAnatomy";
+import mona from "../library/examples/mona.json";
+import monaMorph from "../library/examples/mona-morph.json";
 import type { materializeWorld } from "../lore/materializeWorld";
 import { LorebookSchema, type Lorebook } from "../lore/LorebookSchema";
 import { IdeaSchema, type Idea } from "../ideas/IdeaSchema";
@@ -590,6 +592,33 @@ export class IndexedDBRepository {
 
   async listCharacters(): Promise<CharacterTemplate[]> {
     return (await this.listCharacterCatalog()).items;
+  }
+
+  /** Install the bundled demonstration once; edits and deliberate deletion are retained. */
+  async installExampleMona(): Promise<void> {
+    const character = parseCharacterTemplate(mona);
+    const db = await this.open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction([CHARACTERS_STORE, PREFS_STORE], "readwrite");
+      const preferences = tx.objectStore(PREFS_STORE);
+      const marker = "example-mona-installed-v1";
+      const checked = preferences.get(marker);
+      checked.onsuccess = () => {
+        if (checked.result) return;
+        const characters = tx.objectStore(CHARACTERS_STORE);
+        const existing = characters.get(character.id);
+        existing.onsuccess = () => {
+          if (!existing.result) {
+            characters.put(character);
+            preferences.put({ id: `character-morph:${character.id}`, profile: monaMorph });
+          }
+          preferences.put({ id: marker, installed: true });
+        };
+      };
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error ?? new Error("Could not install example Mona."));
+      tx.onabort = () => reject(tx.error ?? new Error("Could not install example Mona."));
+    });
   }
 
   /** Includes rows that fail schema, so Studio can say the archive is not empty. */

@@ -81,15 +81,14 @@ export function HomeScreen({
   const [characterId, setCharacterId] = useState("");
   useEffect(() => {
     let cancelled = false;
-    Promise.all([
+    repo.installExampleMona().then(() => Promise.all([
       repo.listCharacters(),
       repo.listRealms(),
       repo.listPlaces(),
       repo.listCampaigns(),
       repo.listVoices(),
       repo.listRulesets(),
-    ])
-      .then(([people, worlds, venues, stories, narrativeVoices, ruleSets]) => {
+    ])).then(([people, worlds, venues, stories, narrativeVoices, ruleSets]) => {
         if (cancelled) return;
         setCharacters(people);
         setRealms(worlds);
@@ -352,6 +351,7 @@ export function HomeScreen({
                         character.middleName,
                       )}
                     </strong>
+                    {character.id === "example-mona-sanchez" && <small>Built-in demo · Morph portrait</small>}
                     <small>
                       {character.personality ||
                         character.mood ||

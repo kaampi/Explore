@@ -57,12 +57,17 @@ async function mount() {
   );
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   (
     globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
   ).IS_REACT_ACT_ENVIRONMENT = true;
   localStorage.clear();
   vi.stubGlobal("indexedDB", new IDBFactory());
+  // Start these creation journeys after the optional demo was removed.
+  const demoRepo = new IndexedDBRepository();
+  await demoRepo.installExampleMona();
+  await demoRepo.deleteCharacter("example-mona-sanchez");
+  await demoRepo.close();
   Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
     configurable: true,
     value() {
@@ -125,6 +130,14 @@ afterEach(async () => {
 });
 
 describe("first-run conversation flow", () => {
+  it("shows Mona and her morph portrait on a fresh installation", async () => {
+    vi.stubGlobal("indexedDB", new IDBFactory());
+    await mount();
+    await waitFor(() => Array.from(container.querySelectorAll('.sb-character-card')).some(card => card.textContent?.includes("Mona")));
+    const card = Array.from(container.querySelectorAll('.sb-character-card')).find(card => card.textContent?.includes("Mona"))!;
+    expect(card.textContent).toContain("Built-in demo");
+    expect(card.querySelector('.morph-portrait canvas')).not.toBeNull();
+  });
   it("offers optional chat settings, cancels safely, retains failed choices and keeps each new conversation independent", async () => {
     online = true;
     const repo = new IndexedDBRepository();
