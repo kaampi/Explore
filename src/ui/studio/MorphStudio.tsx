@@ -244,17 +244,20 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
   const choices=profile.expressions.map((item,i)=><option key={i} value={i}>{item.name}</option>);
   return <section className="setup-field morph-studio-editor" style={{marginTop:20,padding:16,border:"1px solid var(--border)",borderRadius:12}}>
 
-    <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}><button type="button" onClick={()=>imageFileRef.current?.click()}>Upload more images</button><button type="button" onClick={()=>meshFileRef.current?.click()}>Import JSON</button><button type="button" onClick={()=>{const blob=new Blob([JSON.stringify(profile)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="morph-profile.json";a.click();URL.revokeObjectURL(url);}}>Export JSON</button></div>
-    <input ref={meshFileRef} style={{display:"none"}} type="file" accept=".json,application/json" aria-label="Import Morph Studio mesh JSON" onChange={e=>{void importMesh(e.target.files?.[0]??null);e.target.value="";}}/>
-    <input ref={imageFileRef} style={{display:"none"}} type="file" multiple accept="image/*" aria-label="Add expression images" onChange={e=>{void addFiles(e.target.files).catch(()=>setMessage("Could not load images."));e.target.value="";}}/>
-    {profile.expressions.length>=2 && <>
-      <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:10}}>
+    <div className="morph-toolbar">
+      {profile.expressions.length>=2 && (<div className="morph-toolbar-tools">
         <button type="button" aria-pressed={eyeEditMode} onClick={()=>{setEyeEditMode(v=>!v);setAddingPoint(false);}}>{eyeEditMode?"Edit mesh nodes":"Edit eye regions"}</button>
         <button type="button" onClick={()=>setShowMesh(v=>!v)}>{showMesh?"Hide mesh":"Show mesh"}</button>
         <button type="button" aria-pressed={addingPoint} onClick={()=>{setAddingPoint(v=>!v);setEyeEditMode(false);}}>{addingPoint?"Cancel point":"Add mesh point"}</button>
         <button type="button" onClick={()=>setZoom(v=>Math.max(100,v-25))}>−</button><span>{zoom}%</span><button type="button" onClick={()=>setZoom(v=>Math.min(400,v+25))}>+</button>
         <button type="button" onClick={()=>setZoom(100)}>Fit</button>
-      </div>
+      </div>)}
+      <div className="morph-toolbar-files"><button type="button" onClick={()=>imageFileRef.current?.click()}>Upload more images</button><button type="button" onClick={()=>meshFileRef.current?.click()}>Import JSON</button><button type="button" onClick={()=>{const blob=new Blob([JSON.stringify(profile)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="morph-profile.json";a.click();URL.revokeObjectURL(url);}}>Export JSON</button></div>
+    </div>
+    <input ref={meshFileRef} style={{display:"none"}} type="file" accept=".json,application/json" aria-label="Import Morph Studio mesh JSON" onChange={e=>{void importMesh(e.target.files?.[0]??null);e.target.value="";}}/>
+    <input ref={imageFileRef} style={{display:"none"}} type="file" multiple accept="image/*" aria-label="Add expression images" onChange={e=>{void addFiles(e.target.files).catch(()=>setMessage("Could not load images."));e.target.value="";}}/>
+    {profile.expressions.length>=2 && <>
+
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(230px,1fr))",gap:12}}>
         {canvases.map((ref,i)=><div key={i} ref={viewports[i]} style={{overflow:"auto",maxHeight:"65vh",border:"1px solid var(--border)",borderRadius:8}}>
           <canvas ref={ref} width={252} height={282} aria-label={["Source mesh","Target mesh","Morph preview"][i]} style={{display:"block",width:`calc(min(100%, 51vh) * ${zoom / 100})`,maxWidth:"none",height:"auto",touchAction:"none",cursor:spaceHeld?"grab":eyeEditMode?"move":"crosshair"}} onPointerDown={i<2?e=>movePoint(e,i):undefined} onPointerMove={i<2?e=>movePoint(e,i):undefined} onPointerUp={i<2?e=>movePoint(e,i):undefined} onPointerCancel={i<2?e=>movePoint(e,i):undefined}/>
