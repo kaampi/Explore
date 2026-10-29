@@ -9,14 +9,14 @@ export function morphLoopStep(elapsed: number, count: number, durations?: number
       const duration = times[source]!;
       if (remaining < 3000 + duration) {
         const progress = Math.max(0, (remaining - 3000) / duration);
-        return { source, target: (source + 1) % count, mix: progress * progress * (3 - 2 * progress) };
+        return { source, target: (source + 1) % count, mix: progress };
       }
       remaining -= 3000 + duration;
     }
   }
   const source = Math.floor(elapsed / 4000) % count;
   const progress = Math.max(0, (elapsed % 4000 - 3000) / 1000);
-  return { source, target: (source + 1) % count, mix: progress * progress * (3 - 2 * progress) };
+  return { source, target: (source + 1) % count, mix: progress };
 }
 export type Point = [number, number];
 export type Expression = { name: string; image: string; points: Point[] };
