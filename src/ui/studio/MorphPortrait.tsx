@@ -24,7 +24,8 @@ export function MorphPortrait({ characterId, repo, fallback, className = "studio
     const stop = () => { cancelAnimationFrame(frame); frame = 0; last = 0; };
     const tick = (time: number) => {
       if (disposed || !profile) return;
-      if (last) elapsed += Math.min(time - last, 100);
+      // Use wall-clock time so expensive morph frames do not stretch saved durations.
+      if (last) elapsed += Math.max(0, time - last);
       last = time;
       // Hold each expression, then smoothly morph to the next, including last → first.
       const { source, target, mix } = morphLoopStep(elapsed, profile.expressions.length, profile.morphDurations ? profile.expressions.map((expression, index) => profile!.morphDurations?.[JSON.stringify([expression.name, profile!.expressions[(index + 1) % profile!.expressions.length]!.name])] ?? 1800) : undefined);
