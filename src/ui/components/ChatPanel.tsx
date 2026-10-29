@@ -20,6 +20,9 @@ import { PlaceAudio } from "./PlaceAudio";
 import { portraitSrc } from "../studio/portrait";
 import { beatHasLaterChat, chatBeatFor, parseLiveTurns } from "@session/chatBeat";
 
+import { useChatExpressions, type ChatExpression } from "../studio/useChatExpressions";
+import { ChatMorphPortrait } from "../studio/ChatMorphPortrait";
+
 const INTRO_FADE_MS = 520;
 
 interface DisplayTurn {
@@ -46,10 +49,11 @@ function speakerLabel(turn: DisplayTurn, session: Session, fallback: string): st
     : displayCharacterName(turn.speaker);
 }
 
-function CardFace({ src, narrator }: { src?: string | undefined; narrator?: boolean }) {
+function CardFace({ src, narrator, morph }: { src?: string | undefined; narrator?: boolean; morph?: ChatExpression | undefined }) {
   if (narrator) {
     return <span className="message__portrait message__portrait--narrator" aria-hidden="true" />;
   }
+  if (morph) return <ChatMorphPortrait value={morph} fallback={src} className="message__portrait" />;
   if (!src) return null;
   return <img className="message__portrait" src={src} alt="" />;
 }
@@ -159,6 +163,7 @@ export function ChatPanel({ canSend = true, onCheckConnection, repo, conversatio
   const conversation = session.conversation as DisplayTurn[];
   const liveTurns = parseLiveTurns(session.conversation);
   const busy = phase === "streaming";
+  const expressions = useChatExpressions(session, repo, busy || !canSend);
   const streamingPortrait = busy
     ? characterPortraitUrl(session, streamingCharacterId ?? speakingAs?.id)
     : undefined;
@@ -356,7 +361,9 @@ export function ChatPanel({ canSend = true, onCheckConnection, repo, conversatio
             narratorCard || turn.role !== "character"
               ? undefined
               : characterPortraitUrl(session, turn.speaker);
-          const showFace = narratorCard || Boolean(portrait);
+          const expression = expressions[turn.speaker || speakingAs?.id || ""];
+          const morph = !narratorCard && turn.role === "character" && expression?.turn === turn.turn ? expression : undefined;
+          const showFace = narratorCard || Boolean(portrait) || Boolean(morph);
 
           return (
             <div
@@ -402,7 +409,7 @@ export function ChatPanel({ canSend = true, onCheckConnection, repo, conversatio
 
               {isEditing ? (
                 <div className={showFace ? "message__bubble message__bubble--portrait" : "message__bubble"}>
-                  <CardFace src={portrait} narrator={narratorCard} />
+                  <CardFace src={portrait} narrator={narratorCard} morph={morph} />
                   <div className="message__body">
                     <textarea
                       value={editDraft}
@@ -457,7 +464,7 @@ export function ChatPanel({ canSend = true, onCheckConnection, repo, conversatio
                 </div>
               ) : (
                   <span className={showFace ? "message__bubble message__bubble--portrait" : "message__bubble"}>
-                  <CardFace src={portrait} narrator={narratorCard} />
+                  <CardFace src={portrait} narrator={narratorCard} morph={morph} />
                   <MessageBody text={turn.content} />
                 </span>
               )}
@@ -582,8 +589,7 @@ export function ChatPanel({ canSend = true, onCheckConnection, repo, conversatio
                     title={`${slot.name} is in the party — tap to drop them to Prospects`}
                     onClick={() => leaveParty(slot.id)}
                   >
-                    {src ? (
-                      <img className="chat-party__face" src={src} alt="" />
+                    {expressions[slot.id] ? (<ChatMorphPortrait key={`${session.id}:${slot.id}`} value={expressions[slot.id]!} fallback={src} className="chat-party__face" />) : src ? (<img className="chat-party__face" src={src} alt="" />
                     ) : (
                       <span className="chat-party__face chat-party__face--empty">{slot.name.slice(0, 1)}</span>
                     )}
@@ -632,8 +638,7 @@ export function ChatPanel({ canSend = true, onCheckConnection, repo, conversatio
                   }
                   onClick={() => acceptParty(slot.id)}
                 >
-                  {src ? (
-                    <img className="chat-party__face" src={src} alt="" />
+                  {expressions[slot.id] ? (<ChatMorphPortrait key={`${session.id}:${slot.id}`} value={expressions[slot.id]!} fallback={src} className="chat-party__face" />) : src ? (<img className="chat-party__face" src={src} alt="" />
                   ) : (
                     <span className="chat-party__face chat-party__face--empty">{slot.name.slice(0, 1)}</span>
                   )}
@@ -709,4 +714,3 @@ export function ChatPanel({ canSend = true, onCheckConnection, repo, conversatio
     </div>
   );
 }
-
