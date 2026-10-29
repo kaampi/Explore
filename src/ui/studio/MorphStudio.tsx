@@ -3,7 +3,7 @@ import { originalPoints, originalTriangles } from "./originalMorphMesh";
 import { useEffect, useRef, useState } from "react";
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 
-/** Character-scoped, local-first morph authoring. Experimental: activation is not yet wired to chat. */
+/** Character-scoped morph authoring for animated cards and AI-selected chat expressions. */
 const GRID_COLS = 7;
 const GRID_ROWS = 9;
 const initial: Point[] = originalPoints("shy");
@@ -97,7 +97,7 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
       window.dispatchEvent(new CustomEvent("kaampi:morph-saved", { detail: characterId }));
       setProfile(next);
       try { localStorage.removeItem(key); } catch { /* migration cleanup is optional */ }
-      setMessage(active ? "Morph profile saved. Card animation is enabled; chat integration is still pending." : "Morph draft saved in IndexedDB.");
+      setMessage(active ? "Morph profile saved. Card animation is enabled; chat expressions use local Ollama." : "Morph draft saved in IndexedDB.");
     } catch (err) { setMessage(err instanceof Error ? err.message : "Could not save morph profile."); }
   }
   useEffect(()=>{if(saveRequest && saveRequest.id!==handledSaveRequest.current){handledSaveRequest.current=saveRequest.id;void save(saveRequest.mode==="profile");}},[saveRequest]);
