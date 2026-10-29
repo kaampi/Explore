@@ -31,7 +31,11 @@ Click the large, light-green **MORPH STUDIO** tile next to the **+** tile. Morph
 - Adjust mesh points and eye regions, preview the transition with **Play** and **Transition**, and use **Save draft** or **Save profile** in the top-right corner.
 - Existing expression images remain separate from ordinary pictures in the picture archive. The Morph Studio tile shows the number of stored expression images.
 
-**Save draft** retains the editor profile without activating it. **Save profile** marks the morph profile active, but automatic morph playback during chat is not connected yet.
+**Save draft** retains the editor profile without activating it. **Save profile** activates animation on character cards and AI-selected expressions in chat when using local Ollama at `http://localhost:11434`.
+
+Choose **MESH** or **EYES** to edit control points or eye regions. In EYES mode, drag an oval to move it or its square handle to resize it. **Eye correction** separately enables the eye texture correction; midpoint, duration and strength adjust that correction.
+
+**Morph duration**, below the preview, is saved for the selected source → target pair. A short neutral → shocked transition does not change intimate → shocked. Character cards follow the saved expression order, hold each image for three seconds, and use the duration for each consecutive pair. In chat, local Ollama interprets the completed reply and selects an available expression. The portrait morphs from its current expression to that choice, then holds it; uncertain or invalid choices leave the expression unchanged.
 
 ## Existing pictures
 
