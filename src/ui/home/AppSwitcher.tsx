@@ -26,6 +26,9 @@ const APPS = {
     repository: "https://github.com/kaampi/Comic",
   },
 };
+function AppLogo({ app, name }: { app: "write" | "explore" | "comic"; name: string }) {
+  return <><img className="sb-switch-logo sb-switch-logo--light" src={`/brand/kaampi-${app}.svg`} alt={name} /><img className="sb-switch-logo sb-switch-logo--dark" src={`/brand/kaampi-${app}-dark.svg`} alt={name} /></>;
+}
 function readAddress(key: CompanionAppId): string {
   try {
     return (
@@ -124,7 +127,7 @@ export function AppSwitcher({ onHome }: { onHome: () => void }) {
           rel="noreferrer"
           title={`Open ${app.name}`}
         >
-          <span aria-hidden="true">{app.symbol}</span> {app.name}
+          <AppLogo app={key === "storybook" ? "write" : "comic"} name={app.name} />
           <i className="sb-app-online" aria-label="Available" />
         </a>
         <button
@@ -168,7 +171,7 @@ export function AppSwitcher({ onHome }: { onHome: () => void }) {
           aria-current="page"
           onClick={onHome}
         >
-          <span aria-hidden="true">✧</span> kaampi Explore
+          <AppLogo app="explore" name="kaampi Explore" />
         </button>
         {appLink("comicbook")}
       </nav>

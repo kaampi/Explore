@@ -1842,3 +1842,20 @@
 .sandbox-root[data-shell="dark"] .sb-brand__logo--light { display: none; }
 .sandbox-root[data-shell="dark"] .sb-brand__logo--dark { display: block; }
 @media (max-width: 600px) { .sb-brand__logo { width: 190px; } }
+
+/* Center the app family independently of the controls on either side. */
+.sb-header { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); }
+.sb-brand { justify-self: start; }
+.sb-header .sb-apps { justify-self: center; gap: 10px; }
+.sb-apps .sb-switch-logo { display: block; width: 120px; height: auto; }
+.sb-apps .sb-switch-logo--dark { display: none; }
+.sandbox-root[data-shell="dark"] .sb-apps .sb-switch-logo--light { display: none; }
+.sandbox-root[data-shell="dark"] .sb-apps .sb-switch-logo--dark { display: block; }
+.sb-apps > button, .sb-apps .sb-companion-link > a { display: flex; align-items: center; justify-content: center; padding: 12px 10px; min-height: 44px; border-radius: 8px; }
+.sb-header-preferences { justify-self: end; }
+@media (max-width: 1100px) {
+  .sb-header { height: auto; min-height: 84px; grid-template-columns: minmax(0,1fr) auto; padding-top: 16px; padding-bottom: 12px; gap: 12px; }
+  .sb-header .sb-apps { grid-column: 1 / -1; grid-row: 2; width: auto; }
+  .sb-header-preferences { grid-column: 2; grid-row: 1; }
+}
+@media (max-width: 600px) { .sb-apps .sb-switch-logo { width: 95px; } .sb-header .sb-apps { gap: 4px; } .sb-apps > button, .sb-apps .sb-companion-link > a { padding: 10px 5px; } }
