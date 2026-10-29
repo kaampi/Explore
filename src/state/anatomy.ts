@@ -21,7 +21,7 @@ export function validateAnatomicalRelation(
     if (!template) continue;
     const added = character.anatomyOverrides?.addedParts ?? [];
     const removed = character.anatomyOverrides?.removedParts ?? [];
-    if ((!template.parts.some((part) => part.id === partId) && !added.includes(partId)) || removed.includes(partId)) {
+    if ((!template.parts.some((part) => part.id === partId) && !added.includes(partId)) || isAnatomyPartRemoved(template, removed, partId)) {
       return `${entityId} has no available body part "${partId}" in anatomy template "${template.id}".`;
     }
   }
@@ -41,4 +41,15 @@ export function pinSessionAnatomy<T extends Session>(
     if (template) templates[id] = structuredClone(template);
   }
   return Object.keys(templates).length ? { ...session, anatomyTemplates: templates } : session;
+}
+
+export function isAnatomyPartRemoved(template: AnatomyTemplate, removed: readonly string[], partId: string): boolean {
+  const seen = new Set<string>();
+  let id: string | undefined = partId;
+  while (id && !seen.has(id)) {
+    if (removed.includes(id)) return true;
+    seen.add(id);
+    id = template.parts.find(part => part.id === id)?.parentId;
+  }
+  return false;
 }

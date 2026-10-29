@@ -88,3 +88,21 @@ describe("session anatomy pinning", () => {
     })).toContain("arm_9");
   });
 });
+
+it("rejects a hand when its arm or an ancestor is missing", () => {
+  const template = BUILTIN_ANATOMY_TEMPLATES.find(t => t.id === "builtin-humanoid")!;
+  for (const removed of ["right_arm", "chest"]) {
+    const session = {
+      anatomyTemplates: { [template.id]: template },
+      characters: { hero: { anatomyTemplateId: template.id, anatomyOverrides: { removedParts: [removed], addedParts: [] } } }
+    } as unknown as Session;
+    expect(validateAnatomicalRelation(session, { id: "hold", subject: "hero", subjectPart: "right_hand", relation: "holding", target: "sword" })).toContain("right_hand");
+    if (removed === "right_arm") expect(validateAnatomicalRelation(session, { id: "hold", subject: "hero", subjectPart: "left_hand", relation: "holding", target: "sword" })).toBeUndefined();
+  }
+});
+it("rejects cyclic and dangling attachments while accepting older plans", () => {
+  const base = { id: "test", name: "Test", version: 1 };
+  expect(AnatomyTemplateSchema.safeParse({ ...base, parts: [{ id: "a", label: "A" }] }).success).toBe(true);
+  expect(AnatomyTemplateSchema.safeParse({ ...base, parts: [{ id: "a", label: "A", parentId: "missing" }] }).success).toBe(false);
+  expect(AnatomyTemplateSchema.safeParse({ ...base, parts: [{ id: "a", label: "A", parentId: "b" }, { id: "b", label: "B", parentId: "a" }] }).success).toBe(false);
+});

@@ -27,11 +27,21 @@ function functionsFor(plan: string, part: string): Capability[] {
   return [];
 }
 
+function attachment(part: string, groups: Record<string, string>): string | undefined {
+  const ids = Object.values(groups).join(",").split(",").map(id => id.trim());
+  const candidates = /_hand$/.test(part) ? [part.replace(/hand$/, "arm")]
+    : /_(foot|paw|hoof)$/.test(part) ? [part.replace(/(foot|paw|hoof)$/, "leg")]
+    : /^(left_arm|right_arm)$/.test(part) ? ["human_torso", "chest", "torso"]
+    : /^(left_leg|right_leg)$/.test(part) ? ["pelvis", "torso"]
+    : /^(left_eye|right_eye|left_ear|right_ear|mouth)$/.test(part) ? ["head"]
+    : part === "head" ? ["neck"] : part === "neck" ? ["chest", "human_torso", "torso"] : [];
+  return candidates.find(id => ids.includes(id));
+}
 const build = (id: string, name: string, groups: Record<string, string>, capabilities: Record<string, Capability[]> = {}): AnatomyTemplate => ({
   id: `builtin-${id}`, name, version: 2,
   parts: Object.entries(groups).flatMap(([group, ids]) =>
     ids.split(",").map((value) => value.trim()).filter(Boolean).map((partId) => ({
-      ...makePart(partId, capabilities[partId] ?? functionsFor(id, partId)), group
+      ...makePart(partId, capabilities[partId] ?? functionsFor(id, partId)), group, parentId: attachment(partId, groups)
     }))
   )
 });

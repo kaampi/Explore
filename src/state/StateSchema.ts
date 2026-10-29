@@ -480,12 +480,24 @@ export const AnatomyTemplateSchema = z.object({
     id: z.string().min(1).max(80),
     label: z.string().min(1).max(120),
     group: z.string().max(80).optional(),
+    parentId: z.string().min(1).max(80).optional(),
     description: z.string().max(1000).optional(),
     capabilities: z.array(z.enum(["grasp", "support", "locomote", "sense", "manipulate"])).max(5).default([])
   })).min(1).max(128)
 }).refine((template) => new Set(template.parts.map((part) => part.id)).size === template.parts.length, {
   message: "Anatomy part IDs must be unique."
-});
+}).refine(template => template.parts.every(part => {
+  const seen = new Set([part.id]);
+  let id = part.parentId;
+  while (id) {
+    if (seen.has(id)) return false;
+    seen.add(id);
+    const parent = template.parts.find(p => p.id === id);
+    if (!parent) return false;
+    id = parent.parentId;
+  }
+  return true;
+}), { message: "Attachments must reference existing parts and cannot form cycles." });
 export type AnatomyTemplate = z.infer<typeof AnatomyTemplateSchema>;
 
 export const SessionSchema = z.object({

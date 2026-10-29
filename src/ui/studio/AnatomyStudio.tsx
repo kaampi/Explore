@@ -118,15 +118,18 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
         <section className="anatomy-detail" aria-label="Selected body part">
           {current ? <><span className="anatomy-eyebrow">{current.group || "Other"}</span><h3>{current.label}</h3>
             {builtIn ? <>
+              <p>Attached to: {draft.parts.find(part => part.id === current.parentId)?.label || "Independent part"}</p>
               {current.description && <p className="anatomy-description">{current.description}</p>}
               <h4>Functions in a scene</h4>
               {current.capabilities.length ? <div className="anatomy-functions">{current.capabilities.map(capability => <span className="anatomy-function" key={capability}><span aria-hidden="true">✓</span> {CAPABILITY_LABELS[capability]}</span>)}</div> : <p className="anatomy-muted">No additional action functions are configured for this part.</p>}
             </> : <div className="anatomy-editor">
               <label className="anatomy-field">Part name<input value={current.label} onChange={e => patchPart({ label: e.target.value })}/></label>
               <label className="anatomy-field">Body region<input value={current.group || ""} onChange={e => patchPart({ group: e.target.value })}/></label>
+              <label className="anatomy-field">Attached to<select value={current.parentId || ""} onChange={e => patchPart({ parentId: e.target.value || undefined })}><option value="">Independent part</option>{draft.parts.filter(part => part.id !== current.id).map(part => <option key={part.id} value={part.id}>{part.label}</option>)}</select></label>
+              <p>If the attached part is lost, this part and its attached parts become unavailable too.</p>
               <label className="anatomy-field">Description<textarea rows={3} value={current.description || ""} onChange={e => patchPart({ description: e.target.value })}/></label>
               <fieldset className="anatomy-capabilities"><legend>Functions in a scene</legend>{CAPABILITIES.map(capability => <label key={capability}><input type="checkbox" checked={current.capabilities.includes(capability)} onChange={e => patchPart({ capabilities: e.target.checked ? [...current.capabilities, capability] : current.capabilities.filter(value => value !== capability) })}/>{CAPABILITY_LABELS[capability]}</label>)}</fieldset>
-              <button className="anatomy-button anatomy-danger" onClick={() => { patch({ parts: draft.parts.filter(part => part.id !== partId) }); setPartId(""); }}>Remove part</button>
+              <button className="anatomy-button anatomy-danger" onClick={() => { patch({ parts: draft.parts.filter(part => part.id !== partId).map(part => part.parentId === partId ? { ...part, parentId: undefined } : part) }); setPartId(""); }}>Remove part</button>
             </div>}
           </> : <div className="anatomy-empty"><h3>Select a body part</h3><p>Choose a region on the left, then a part to see its functions.</p></div>}
         </section>
