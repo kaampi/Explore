@@ -11,9 +11,9 @@ import {
 
 const MAX_RESPONSE_BYTES = 64 * 1024;
 const PROBE_TIMEOUT_MS = 1200;
-const TITLE: Record<CompanionAppId, string> = {
-  storybook: "storybookai",
-  comicbook: "comicbookai",
+const TITLES: Record<CompanionAppId, readonly string[]> = {
+  storybook: ["kaampiwrite", "storybookai"],
+  comicbook: ["comicbookai"],
 };
 
 async function readBounded(response: Response): Promise<string> {
@@ -93,7 +93,7 @@ export async function probeLocalApp(
       .match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1]
       ?.replace(/[^a-z0-9]/gi, "")
       .toLowerCase();
-    if (title === TITLE[appId]) return { ...status, state: "available" };
+    if (title && TITLES[appId].includes(title)) return { ...status, state: "available" };
     return { ...status, state: "wrong-app" };
   } catch {
     return { ...status, state: "unreachable" };
