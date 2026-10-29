@@ -10,17 +10,18 @@ export const IdeaSchema = z.object({
     kind: z.enum(IDEA_KINDS),
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),
+    origin: z.enum(["conversation", "manual"]).optional(),
     source: z.object({
-        conversationId: z.string().min(1),
+        conversationId: z.string(),
         conversationTitle: z.string(),
         excerpts: z.array(z.object({
             turn: z.number().int().nonnegative(),
             role: z.enum(["player", "character", "system"]),
             speaker: z.string(),
             content: z.string(),
-        })).min(1),
+        })),
     }),
-});
+}).refine(idea => idea.origin === "manual" || (!!idea.source.conversationId && idea.source.excerpts.length > 0), { message: "Select at least one source message." });
 export type Idea = z.infer<typeof IdeaSchema>;
 /** Snapshot only the explicitly selected messages; no prompts, flags or other session state. */
 export function captureIdea(session: Session, turns: Iterable<number>, title: string): Idea {

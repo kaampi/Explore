@@ -224,6 +224,6 @@ describe("idea capture journeys", () => {
         await click(button("Cancel"));
         await click(button("My ideas"));
         await waitFor(() => container.textContent?.includes("Keep something worth exploring") ?? false);
-        expect(container.querySelector<HTMLButtonElement>('.sb-idea-library .sb-button--primary')?.disabled).toBe(true);
+        expect(button("Export 0 idea(s)").disabled).toBe(true);
     }, 15000);
 });

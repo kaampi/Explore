@@ -66,12 +66,20 @@ export function IdeaLibrary({ repo, conversations, onOpen }: {
         <div>
           <span className="sb-eyebrow">KEEP THE SPARK</span>
           <h1>My ideas</h1>
-          <p className="sb-muted">Possibilities discovered in your conversations.</p>
+          <p className="sb-muted">Your own ideas and possibilities discovered in conversations.</p>
         </div>
+        <div className="sb-conversation-actions">
+        <button className="sb-button sb-button--primary" onClick={() => {
+          const now = new Date().toISOString();
+          setEditing({ id: crypto.randomUUID(), title: "", description: "", kind: "plot",
+            origin: "manual", createdAt: now, updatedAt: now,
+            source: { conversationId: "", conversationTitle: "Written manually", excerpts: [] } });
+        }}>Add idea</button>
         <button className="sb-button sb-button--primary" disabled={!visible.length}
           onClick={() => download(visible)}>
           Export {visible.length} idea(s)
         </button>
+        </div>
       </div>
       <details className="sb-idea-help">
         <summary>Using your ideas in kaampi Write</summary>
@@ -105,7 +113,7 @@ export function IdeaLibrary({ repo, conversations, onOpen }: {
         <div className="sb-empty">
           <h2>{ideas.length ? "No matching ideas" : "Keep something worth exploring"}</h2>
           <p>{ideas.length ? "Try another search or type." :
-            "In a conversation, choose Save as idea on a message, or Capture ideas to select several messages."}</p>
+            "Choose Add idea to write your own, or save an idea from a conversation."}</p>
         </div>
       ) : (
         <div className="sb-conversation-grid">
@@ -114,7 +122,7 @@ export function IdeaLibrary({ repo, conversations, onOpen }: {
               <span className="sb-eyebrow">{IDEA_LABELS[idea.kind]} IDEA</span>
               <h3>{idea.title}</h3>
               <p className="sb-idea-description">{idea.description}</p>
-              <details className="sb-idea-source">
+              {idea.origin === "manual" ? <p className="sb-muted">Written manually</p> : <details className="sb-idea-source">
                 <summary>From {idea.source.conversationTitle}</summary>
                 <p>
                   Captured {new Date(idea.createdAt).toLocaleDateString()}. Source text is
@@ -131,7 +139,7 @@ export function IdeaLibrary({ repo, conversations, onOpen }: {
                     Open conversation
                   </button>
                 )}
-              </details>
+              </details>}
               <div className="sb-conversation-actions">
                 <button className="sb-button" onClick={() => setEditing(idea)}>Edit idea</button>
                 <button className="sb-button sb-button--secondary" onClick={() => void copy(idea)}>Copy idea</button>
@@ -143,8 +151,10 @@ export function IdeaLibrary({ repo, conversations, onOpen }: {
       )}
       {editing && (
         <IdeaEditor idea={editing} repo={repo} onClose={() => setEditing(null)} onSaved={next => {
-          setIdeas(current => current.map(idea => idea.id === next.id ? next : idea)
+          setIdeas(current => [next, ...current.filter(idea => idea.id !== next.id)]
             .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
+          setQuery("");
+          setKind("");
           setEditing(null);
           setNotice("Idea saved.");
         }} />

@@ -65,7 +65,7 @@ export function IdeaEditor({ idea, repo, onSaved, onClose }: {
               onChange={event => setDescription(event.target.value)} />
           </label>
         </fieldset>
-        <details className="sb-idea-source">
+        {idea.origin !== "manual" && <details className="sb-idea-source">
           <summary>
             From {idea.source.conversationTitle} · {idea.source.excerpts.length} message(s)
           </summary>
@@ -75,7 +75,7 @@ export function IdeaEditor({ idea, repo, onSaved, onClose }: {
               <p>{excerpt.content}</p>
             </blockquote>
           ))}
-        </details>
+        </details>}
         {error && <p role="alert">{error}</p>}
         <div className="sb-dialog__actions">
           <button type="button" className="sb-button" disabled={saving} onClick={onClose}>
