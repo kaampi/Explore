@@ -114,7 +114,9 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
       {!builtIn && <footer className="anatomy-footer"><button className="anatomy-button anatomy-danger" onClick={() => void remove()}>Delete body plan</button><button className="anatomy-button anatomy-primary" onClick={() => void save()}>Save body plan</button></footer>}
     </> : <>
       <aside className="anatomy-tip"><strong>Choose a structure, not an appearance.</strong><p>A body plan defines parts and physical functions. Characters with the same structure can share a plan.</p></aside>
-      <div className="anatomy-library">{templates.map(item => <button className="anatomy-card" key={item.id} onClick={() => open(item)}><span className="anatomy-badge">{isBuiltInAnatomy(item.id) ? "Built-in" : "Custom"}</span><strong>{item.name}</strong><span>{item.parts.length} parts · {groupsOf(item.parts).length} regions</span><span className="anatomy-card-link">Explore body plan →</span></button>)}</div>
+      <div className="anatomy-library">{templates.map(item => <button className="anatomy-card" key={item.id} onClick={() => open(item)}>
+        {BUILTIN_ANATOMY_TEMPLATES.some(template => template.id === item.id) && <span className="anatomy-card-illustration"><img src={`/anatomy/${item.id.replace("builtin-", "")}.png`} alt="" loading="lazy" /></span>}
+        <span className="anatomy-badge">{isBuiltInAnatomy(item.id) ? "Built-in" : "Custom"}</span><strong>{item.name}</strong><span>{item.parts.length} parts · {groupsOf(item.parts).length} regions</span><span className="anatomy-card-link">Explore body plan →</span></button>)}</div>
     </>}
     {error && <p className="anatomy-feedback anatomy-danger" role="alert">{error}</p>}
     {notice && <p className="anatomy-feedback" role="status">{notice}</p>}
