@@ -11,6 +11,7 @@ export function StudioList({
   actions,
   secondaryAction,
   filters,
+  renderPortrait,
   layout = "rows",
   columns = 1
 }: {
@@ -24,6 +25,7 @@ export function StudioList({
   actions?: ReactNode;
   secondaryAction?: ReactNode;
   filters?: ReactNode;
+  renderPortrait?: (item: { id: string; thumb?: string }) => ReactNode;
   layout?: "rows" | "portraits";
   columns?: 1 | 2;
 }) {
@@ -67,7 +69,7 @@ export function StudioList({
               className={`studio-list__item ${selectedId === item.id ? "studio-list__item--active" : ""} ${item.thumb || portraits ? "studio-list__item--thumb" : ""}`}
               onClick={() => onSelect(item.id)}
             >
-              {item.thumb ? (
+              {renderPortrait ? renderPortrait(item) : item.thumb ? (
                 <img className="studio-list__thumb" src={item.thumb} alt="" />
               ) : portraits ? (
                 <span className="studio-list__thumb studio-list__thumb--empty" aria-hidden="true" />

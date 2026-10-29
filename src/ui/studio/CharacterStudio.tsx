@@ -22,6 +22,7 @@ import { formatPersonName, namesFromStored, splitPersonName } from "@library/per
 import { portraitDataUrlFromFile, PortraitError, portraitSrc } from "./portrait";
 import { StudioList } from "./StudioList";
 import { CharacterImages } from "./CharacterImages";
+import { MorphPortrait } from "./MorphPortrait";
 import { SheetNameField } from "./SheetNameField";
 import { SillyTavernImportReview } from "./SillyTavernImportReview";
 import { StudioErrorBoundary } from "./StudioErrorBoundary";
@@ -496,6 +497,7 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
         onSelect={open}
         onNew={startNew}
         layout="portraits"
+        renderPortrait={item => <MorphPortrait characterId={item.id} repo={repo} fallback={item.thumb} />}
         columns={2}
         newLabel="Create new"
         empty={library.length === 0 ? "No one in the archive yet." : "No one matches."}
