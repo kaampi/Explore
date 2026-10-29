@@ -32,7 +32,9 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
   const [showMesh,setShowMesh] = useState(true);
   const [eyeEditMode,setEyeEditMode] = useState(false);
   const [playing,setPlaying] = useState(false);
-  const handledSaveRequest = useRef(0);
+  const [loaded, setLoaded] = useState(false);
+  // A parent request can survive closing this editor; never replay it on mount.
+  const handledSaveRequest = useRef(saveRequest?.id ?? 0);
   const eyeDragging = useRef<{expression:number; eye:number}|null>(null);
   const eyePairKey = JSON.stringify([profile.expressions[source]?.name ?? "",profile.expressions[target]?.name ?? ""]);
   const eyeCorrectionActive = profile.eyeCorrections?.[eyePairKey] ?? (profile.eyeCorrections ? false : (profile.eyeEnabled ?? false));
@@ -43,17 +45,18 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
   const dragging = useRef<{ expression: number; point: number; edge: "left"|"right"|"top"|"bottom"|null } | null>(null);
   useEffect(() => {
     let cancelled = false;
+    setLoaded(false);
     void repo.loadCharacterMorph(characterId).then(saved => {
       if (cancelled) return;
       if (saved && typeof saved === "object" && "version" in saved && saved.version === 1 && "expressions" in saved && Array.isArray(saved.expressions)) {
         const previous = saved as Profile;
-        const reference = previous.expressions[0]?.points ?? initial;
-        setProfile({ ...previous, expressions: gallery.length ? gallery.map(g => ({name:g.name,image:g.image,points:clone(previous.expressions.find(e=>e.name===g.name)?.points ?? reference)})) : previous.expressions });
+        setProfile({ ...previous, expressions: previous.expressions.length ? previous.expressions : gallery.map(g => ({name:g.name,image:g.image,points:clone(originalPoints(g.name))})) });
       } else {
         const previous = load(key);
         setProfile({ ...previous, expressions: gallery.length ? gallery.map(g => ({name:g.name,image:g.image,points:clone(originalPoints(g.name))})) : previous.expressions });
       }
       setSource(0); setTarget(1);
+      setLoaded(true);
     }).catch(() => { if (!cancelled) setMessage("Could not load morph profile."); });
     return () => { cancelled = true; };
   }, [characterId, key, repo]);
@@ -82,6 +85,7 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
     return ()=>{cancelled=true;images.forEach(img=>img.removeEventListener("load",render));};
   },[profile,source,target,mix,meshTriangles,showMesh,zoom,eyeCorrectionActive]);
   async function save(active: boolean) {
+    if (!loaded) { setMessage("Wait for the saved morph profile to finish loading before saving."); return; }
     const next={...profile,active};
     try {
       const stored = await repo.loadCharacterMorph(characterId);
