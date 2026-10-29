@@ -4,6 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 
 /** Character-scoped morph authoring for animated cards and AI-selected chat expressions. */
+const MESH_COLORS = [
+  { name: "Blue", value: "#29d8df" },
+  { name: "Cerise", value: "#ff008f" },
+  { name: "Black", value: "#000000" },
+  { name: "White", value: "#ffffff" },
+] as const;
 const GRID_COLS = 7;
 const GRID_ROWS = 9;
 const initial: Point[] = originalPoints("shy");
@@ -38,6 +44,7 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
   const eyeDragging = useRef<{expression:number; eye:number; resize?: boolean}|null>(null);
   const eyePairKey = JSON.stringify([profile.expressions[source]?.name ?? "",profile.expressions[target]?.name ?? ""]);
   const showEyeRegions = eyeEditMode;
+  const meshColor = MESH_COLORS.find(color => color.value === profile.meshColor)?.value ?? MESH_COLORS[0].value;
   const eyeCorrectionActive = profile.eyeCorrections?.[eyePairKey] ?? (profile.eyeCorrections ? false : (profile.eyeEnabled ?? false));
   const morphDuration = profile.morphDurations?.[eyePairKey] ?? 1800;
   const meshTriangles = profile.triangles ?? (profile.expressions[0]?.points.length === 17 ? legacyTriangles : profile.expressions[0]?.points.length === 57 ? originalTriangles : triangles);
@@ -74,9 +81,9 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
         if(!canvas || !img || !exp)return;
         const ctx=canvas.getContext("2d");if(!ctx)return;
         ctx.clearRect(0,0,canvas.width,canvas.height);drawImage(ctx,img,canvas.width,canvas.height);
-        if(showMesh){ctx.strokeStyle="#29d8df";ctx.lineWidth=Math.max(.15,canvas.width/Math.max(1,canvas.getBoundingClientRect().width))*.65;
+        if(showMesh){ctx.strokeStyle=meshColor;ctx.lineWidth=Math.max(.15,canvas.width/Math.max(1,canvas.getBoundingClientRect().width))*.65;
         for(const tri of meshTriangles){const p=tri.map(i=>exp.points[i]);if(p.some(v=>!v))continue;ctx.beginPath();ctx.moveTo(p[0]![0]*canvas.width,p[0]![1]*canvas.height);for(let j=1;j<3;j++)ctx.lineTo(p[j]![0]*canvas.width,p[j]![1]*canvas.height);ctx.closePath();ctx.stroke();}
-        for(const p of exp.points){ctx.beginPath();ctx.arc(p[0]*canvas.width,p[1]*canvas.height,Math.max(.3,canvas.width/Math.max(1,canvas.getBoundingClientRect().width))*2,0,Math.PI*2);ctx.fillStyle="#29d8df";ctx.fill();}}
+        for(const p of exp.points){ctx.beginPath();ctx.arc(p[0]*canvas.width,p[1]*canvas.height,Math.max(.3,canvas.width/Math.max(1,canvas.getBoundingClientRect().width))*2,0,Math.PI*2);ctx.fillStyle=meshColor;ctx.fill();}}
         if(showEyeRegions){const centers=profile.eyeCenters?.[exp.name] ?? [[.37,.39],[.63,.39]];ctx.strokeStyle="#ffffff";ctx.fillStyle="#ffffff";ctx.lineWidth=Math.max(.15,canvas.width/Math.max(1,canvas.getBoundingClientRect().width))*1.5;for(const p of centers){ctx.beginPath();ctx.ellipse(p[0]*canvas.width,p[1]*canvas.height,(profile.eyeWidth??25)/252*canvas.width,(profile.eyeHeight??14)/282*canvas.height,0,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(p[0]*canvas.width,p[1]*canvas.height,Math.max(.3,canvas.width/Math.max(1,canvas.getBoundingClientRect().width))*2,0,Math.PI*2);ctx.fill();const rx=(profile.eyeWidth??25)/252*canvas.width,ry=(profile.eyeHeight??14)/282*canvas.height;const hx=(p[0]*canvas.width)+rx*Math.SQRT1_2,hy=(p[1]*canvas.height)+ry*Math.SQRT1_2;const size=8*canvas.width/Math.max(1,canvas.getBoundingClientRect().width);ctx.fillStyle="#173b29";ctx.fillRect(hx-size/2,hy-size/2,size,size);ctx.strokeRect(hx-size/2,hy-size/2,size,size);ctx.fillStyle="#ffffff";}}
       });
       const canvas=canvases[2].current,ctx=canvas?.getContext("2d");
@@ -85,7 +92,7 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
     };
     images.forEach(img=>img.addEventListener("load",render));render();
     return ()=>{cancelled=true;images.forEach(img=>img.removeEventListener("load",render));};
-  },[profile,source,target,mix,meshTriangles,showMesh,zoom,eyeCorrectionActive,showEyeRegions]);
+  },[profile,source,target,mix,meshTriangles,showMesh,zoom,eyeCorrectionActive,showEyeRegions,meshColor]);
   async function save(active: boolean) {
     if (!loaded) { setMessage("Wait for the saved morph profile to finish loading before saving."); return; }
     const next={...profile,active};
@@ -236,6 +243,16 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
           {sliderRow("Eye transition midpoint",profile.eyeMidpoint??50,0,100,"%",n=>setProfile(p=>({...p,active:false,eyeMidpoint:n})),true)}
           {sliderRow("Eye transition duration",profile.eyeDuration??30,5,100,"%",n=>setProfile(p=>({...p,active:false,eyeDuration:n})),true)}
           {sliderRow("Eye strength",profile.eyeStrength??80,0,100,"%",n=>setProfile(p=>({...p,active:false,eyeStrength:n})),true)}
+        </div>
+        <div role="group" aria-label="Mesh color" style={{display:"grid",gap:10}}>
+          <span style={{fontSize:13}}>Mesh color</span>
+          <div style={{display:"flex",gap:10}}>
+            {MESH_COLORS.map(color => <button key={color.value} type="button"
+              aria-label={color.name + " mesh"} title={color.name} aria-pressed={meshColor === color.value}
+              onClick={() => setProfile(p => ({...p,meshColor:color.value}))}
+              style={{width:32,height:32,minHeight:32,padding:0,borderRadius:"50%",background:color.value,
+                border:"1px solid var(--border)",outline:meshColor === color.value ? "2px solid var(--text)" : "none",outlineOffset:3,cursor:"pointer"}} />)}
+          </div>
         </div>
       </div>
     </>}

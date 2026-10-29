@@ -20,7 +20,7 @@ export function morphLoopStep(elapsed: number, count: number, durations?: number
 }
 export type Point = [number, number];
 export type Expression = { name: string; image: string; points: Point[] };
-export type Profile = { version: 1; active: boolean; expressions: Expression[]; triangles?: number[][]; morphDurations?: Record<string, number>; eyeMidpoint?: number; eyeDuration?: number; eyeEnabled?: boolean; eyeCorrections?: Record<string, boolean>; eyeWidth?: number; eyeHeight?: number; eyeStrength?: number; eyeGuides?: boolean; eyeCenters?: Record<string, Point[]> };
+export type Profile = { meshColor?: string; version: 1; active: boolean; expressions: Expression[]; triangles?: number[][]; morphDurations?: Record<string, number>; eyeMidpoint?: number; eyeDuration?: number; eyeEnabled?: boolean; eyeCorrections?: Record<string, boolean>; eyeWidth?: number; eyeHeight?: number; eyeStrength?: number; eyeGuides?: boolean; eyeCenters?: Record<string, Point[]> };
 
 const GRID_COLS = 7;
 const GRID_ROWS = 9;
