@@ -35,9 +35,9 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
   const [loaded, setLoaded] = useState(false);
   // A parent request can survive closing this editor; never replay it on mount.
   const handledSaveRequest = useRef(saveRequest?.id ?? 0);
-  const eyeDragging = useRef<{expression:number; eye:number}|null>(null);
+  const eyeDragging = useRef<{expression:number; eye:number; resize?: boolean}|null>(null);
   const eyePairKey = JSON.stringify([profile.expressions[source]?.name ?? "",profile.expressions[target]?.name ?? ""]);
-  const showEyeRegions = profile.eyeGuides ?? true;
+  const showEyeRegions = eyeEditMode;
   const eyeCorrectionActive = profile.eyeCorrections?.[eyePairKey] ?? (profile.eyeCorrections ? false : (profile.eyeEnabled ?? false));
   const meshTriangles = profile.triangles ?? (profile.expressions[0]?.points.length === 17 ? legacyTriangles : profile.expressions[0]?.points.length === 57 ? originalTriangles : triangles);
   const canvases = [useRef<HTMLCanvasElement>(null),useRef<HTMLCanvasElement>(null),useRef<HTMLCanvasElement>(null)] as const;
@@ -76,7 +76,7 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
         if(showMesh){ctx.strokeStyle="#29d8df";ctx.lineWidth=Math.max(.15,canvas.width/Math.max(1,canvas.getBoundingClientRect().width))*.65;
         for(const tri of meshTriangles){const p=tri.map(i=>exp.points[i]);if(p.some(v=>!v))continue;ctx.beginPath();ctx.moveTo(p[0]![0]*canvas.width,p[0]![1]*canvas.height);for(let j=1;j<3;j++)ctx.lineTo(p[j]![0]*canvas.width,p[j]![1]*canvas.height);ctx.closePath();ctx.stroke();}
         for(const p of exp.points){ctx.beginPath();ctx.arc(p[0]*canvas.width,p[1]*canvas.height,Math.max(.3,canvas.width/Math.max(1,canvas.getBoundingClientRect().width))*2,0,Math.PI*2);ctx.fillStyle="#29d8df";ctx.fill();}}
-        if(showEyeRegions && (profile.eyeCorrections?.[JSON.stringify([profile.expressions[source]?.name ?? "",profile.expressions[target]?.name ?? ""])] ?? (profile.eyeCorrections ? false : (profile.eyeEnabled ?? false)))){const centers=profile.eyeCenters?.[exp.name] ?? [[.37,.39],[.63,.39]];ctx.strokeStyle="#ffffff";ctx.fillStyle="#ffffff";ctx.lineWidth=Math.max(.15,canvas.width/Math.max(1,canvas.getBoundingClientRect().width))*1.5;for(const p of centers){ctx.beginPath();ctx.ellipse(p[0]*canvas.width,p[1]*canvas.height,(profile.eyeWidth??25)/252*canvas.width,(profile.eyeHeight??14)/282*canvas.height,0,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(p[0]*canvas.width,p[1]*canvas.height,Math.max(.3,canvas.width/Math.max(1,canvas.getBoundingClientRect().width))*2,0,Math.PI*2);ctx.fill();}}
+        if(showEyeRegions){const centers=profile.eyeCenters?.[exp.name] ?? [[.37,.39],[.63,.39]];ctx.strokeStyle="#ffffff";ctx.fillStyle="#ffffff";ctx.lineWidth=Math.max(.15,canvas.width/Math.max(1,canvas.getBoundingClientRect().width))*1.5;for(const p of centers){ctx.beginPath();ctx.ellipse(p[0]*canvas.width,p[1]*canvas.height,(profile.eyeWidth??25)/252*canvas.width,(profile.eyeHeight??14)/282*canvas.height,0,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(p[0]*canvas.width,p[1]*canvas.height,Math.max(.3,canvas.width/Math.max(1,canvas.getBoundingClientRect().width))*2,0,Math.PI*2);ctx.fill();const rx=(profile.eyeWidth??25)/252*canvas.width,ry=(profile.eyeHeight??14)/282*canvas.height;const hx=(p[0]*canvas.width)+rx*Math.SQRT1_2,hy=(p[1]*canvas.height)+ry*Math.SQRT1_2;const size=8*canvas.width/Math.max(1,canvas.getBoundingClientRect().width);ctx.fillStyle="#173b29";ctx.fillRect(hx-size/2,hy-size/2,size,size);ctx.strokeRect(hx-size/2,hy-size/2,size,size);ctx.fillStyle="#ffffff";}}
       });
       const canvas=canvases[2].current,ctx=canvas?.getContext("2d");
       if(!canvas || !ctx)return;
@@ -177,11 +177,13 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
     const rect=canvas.getBoundingClientRect(),x=(event.clientX-rect.left)/rect.width,y=(event.clientY-rect.top)/rect.height;
     if(event.type==="pointerup" || event.type==="pointercancel"){eyeDragging.current=null;dragging.current=null;return;}
     if(event.type==="pointermove" && dragging.current?.expression===expIndex){const {point,edge}=dragging.current;const nx=edge==="left"?0:edge==="right"?1:Math.max(0,Math.min(1,x));const ny=edge==="top"?0:edge==="bottom"?1:Math.max(0,Math.min(1,y));setProfile(p=>({...p,active:false,expressions:p.expressions.map((item,i)=>i===expIndex?{...item,points:item.points.map((v,j)=>j===point?[nx,ny] as Point:v)}:item)}));return;}
-    if(event.type==="pointermove" && eyeDragging.current?.expression===expIndex){const {eye}=eyeDragging.current;setProfile(p=>{const name=p.expressions[expIndex]?.name;if(!name)return p;const centers=(p.eyeCenters?.[name]??[[.37,.39],[.63,.39]]).map((v,i)=>i===eye?[Math.max(0,Math.min(1,x)),Math.max(0,Math.min(1,y))] as Point:v);return {...p,active:false,eyeCenters:{...p.eyeCenters,[name]:centers}};});return;}
+    if(event.type==="pointermove" && eyeDragging.current?.expression===expIndex){const {eye,resize}=eyeDragging.current;if(resize){const center=(profile.eyeCenters?.[exp.name]??[[.37,.39],[.63,.39]])[eye]!;setProfile(p=>({...p,active:false,eyeWidth:Math.max(10,Math.min(50,Math.abs(x-center[0])*252/Math.SQRT1_2)),eyeHeight:Math.max(5,Math.min(35,Math.abs(y-center[1])*282/Math.SQRT1_2))}));return;}setProfile(p=>{const name=p.expressions[expIndex]?.name;if(!name)return p;const centers=(p.eyeCenters?.[name]??[[.37,.39],[.63,.39]]).map((v,i)=>i===eye?[Math.max(0,Math.min(1,x)),Math.max(0,Math.min(1,y))] as Point:v);return {...p,active:false,eyeCenters:{...p.eyeCenters,[name]:centers}};});return;}
     if(event.type!=="pointerdown")return;
     if(eyeEditMode){
-      if(!eyeCorrectionActive || !showEyeRegions)return;
+      if(!showEyeRegions)return;
       const centers=profile.eyeCenters?.[exp.name]??[[.37,.39],[.63,.39]];
+      const resizeEye=centers.findIndex(p=>Math.hypot((x-p[0]-(profile.eyeWidth??25)/252*Math.SQRT1_2)*rect.width,(y-p[1]-(profile.eyeHeight??14)/282*Math.SQRT1_2)*rect.height)<=12);
+      if(resizeEye>=0){eyeDragging.current={expression:expIndex,eye:resizeEye,resize:true};canvas.setPointerCapture(event.pointerId);return;}
       // Grab anywhere inside an ellipse, including its border and central handle.
       let closest=Number.POSITIVE_INFINITY,eye=-1;
       centers.forEach((p,i)=>{const dx=(x-p[0])*rect.width,dy=(y-p[1])*rect.height;const rx=Math.max(12,(profile.eyeWidth??25)/252*rect.width),ry=Math.max(12,(profile.eyeHeight??14)/282*rect.height);const distance=(dx*dx)/(rx*rx)+(dy*dy)/(ry*ry);if(distance<=1.35 && distance<closest){closest=distance;eye=i;}});
@@ -204,7 +206,6 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
 
     <div className="morph-toolbar">
       {profile.expressions.length>=2 && (<div className="morph-toolbar-tools">
-        <button type="button" aria-pressed={eyeEditMode} onClick={()=>{setEyeEditMode(v=>!v);setAddingPoint(false);}}>{eyeEditMode?"Edit mesh nodes":"Edit eye regions"}</button>
         <button type="button" onClick={()=>setShowMesh(v=>!v)}>{showMesh?"Hide mesh":"Show mesh"}</button>
         <button type="button" aria-pressed={addingPoint} onClick={()=>{setAddingPoint(v=>!v);setEyeEditMode(false);}}>{addingPoint?"Cancel point":"Add mesh point"}</button>
         <button type="button" onClick={()=>setZoom(v=>Math.max(100,v-25))}>−</button><span>{zoom}%</span><button type="button" onClick={()=>setZoom(v=>Math.min(400,v+25))}>+</button>
@@ -226,12 +227,9 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,280px),1fr))",gap:20,alignItems:"start",marginTop:16,padding:"14px 0",borderTop:"1px solid var(--border)"}}>
         <div style={{display:"grid",gap:14,paddingTop:7}}>
           <label style={{display:"flex",gap:8,alignItems:"center"}}><input type="checkbox" checked={eyeCorrectionActive} onChange={e=>setProfile(p=>({...p,active:false,eyeCorrections:{...p.eyeCorrections,[eyePairKey]:e.target.checked}}))}/> Eye correction</label>
-          <label style={{display:"flex",gap:8,alignItems:"center"}}><input type="checkbox" checked={showEyeRegions} onChange={e=>setProfile(p=>({...p,eyeGuides:e.target.checked}))}/> Show eye regions</label>
+          <label style={{display:"flex",gap:8,alignItems:"center"}}><input type="checkbox" checked={eyeEditMode} onChange={e=>{setEyeEditMode(e.target.checked);setAddingPoint(false);eyeDragging.current=null;dragging.current=null;}}/> Edit eye regions</label>
         </div>
-        <div style={{display:"grid",gap:8}}>
-          {sliderRow("Eye width",profile.eyeWidth??25,10,50,"px",n=>setProfile(p=>({...p,active:false,eyeWidth:n})))}
-          {sliderRow("Eye height",profile.eyeHeight??14,5,35,"px",n=>setProfile(p=>({...p,active:false,eyeHeight:n})))}
-        </div>
+        <p style={{fontSize:13}}>Drag inside an eye region to move it. Drag its square handle to resize both eye regions.</p>
         <div style={{display:"grid",gap:8}}>
           {sliderRow("Eye transition midpoint",profile.eyeMidpoint??50,0,100,"%",n=>setProfile(p=>({...p,active:false,eyeMidpoint:n})))}
           {sliderRow("Eye transition duration",profile.eyeDuration??30,5,100,"%",n=>setProfile(p=>({...p,active:false,eyeDuration:n})))}
