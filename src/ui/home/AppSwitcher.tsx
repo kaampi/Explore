@@ -166,7 +166,7 @@ export function AppSwitcher({ onHome }: { onHome: () => void }) {
         onClick={() => open(key)}
         title={`About ${app.name}`}
       >
-        <span aria-hidden="true">{app.symbol}</span> {app.name}
+        <AppLogo app={key === "storybook" ? "write" : "comic"} name={app.name} />
       </button>
     );
   }
