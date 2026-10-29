@@ -1,0 +1,54 @@
+name: Desktop build (Windows)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "public/**"
+      - "src-tauri/**"
+      - "package.json"
+      - "package-lock.json"
+      - "vite.config.ts"
+      - "tsconfig.json"
+      - ".github/workflows/desktop-build.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install dependencies
+        run: npm ci
+      - name: Test
+        run: npm test
+      - name: Build Windows installer
+        run: npm run desktop:build -- --bundles nsis
+      - name: Keep installer under a predictable name
+        shell: pwsh
+        run: |
+          $installers = @(Get-ChildItem -LiteralPath src-tauri/target/release/bundle/nsis -Filter *.exe)
+          if ($installers.Count -ne 1) { throw "Expected exactly one NSIS installer." }
+          New-Item -ItemType Directory -Path installer-output -Force | Out-Null
+          Copy-Item -LiteralPath $installers[0].FullName -Destination installer-output/kaampi-Explore-Setup.exe
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: kaampi-explore-windows-installer
+          path: installer-output/kaampi-Explore-Setup.exe
+          if-no-files-found: error
+          retention-days: 90
