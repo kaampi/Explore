@@ -1,3 +1,4 @@
+import { CodexConnection } from "./connection/CodexConnection";
 import { attachLorebooks } from "../lore/attachLorebooks";
 import { IdeaLibrary } from "./ideas/IdeaLibrary";
 import { GuidePanel } from "./guide/GuidePanel";
@@ -415,6 +416,7 @@ function SandboxApp() {
               )}
             </nav>
             <nav className="sb-sidebar-utilities" aria-label="Help and settings">
+              <CodexConnection />
               <button type="button" className={view === "guide" ? "is-active" : ""} onClick={() => navigate("guide")}>? <span>{t("guide")}</span></button>
               <button type="button" onClick={() => setAppearanceOpen(true)}>⚙ <span>{t("settings")}</span></button>
             </nav>

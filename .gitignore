@@ -9,3 +9,6 @@ coverage/
 temp/
 *.zip
 lokal-chatt*.json
+
+src-tauri/target/
+src-tauri/gen/

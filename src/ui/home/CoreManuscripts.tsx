@@ -1,3 +1,5 @@
+import { invoke, isTauri } from "@tauri-apps/api/core";
+import { createCoreManuscriptReader } from "../../integrations/coreManuscriptReader";
 import { useState } from "react";
 import { Modal } from "../components/Modal";
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
@@ -15,6 +17,10 @@ type Chapter = { id: string; title: string; prose: string };
 type SharedManuscript = Entry & { manuscript: { title: string; synopsis: string; chapters: Chapter[]; bible: CoreBibleSection[] } };
 
 async function read<T>(path: string): Promise<T> {
+  if (isTauri()) {
+    const reader = createCoreManuscriptReader(undefined, fetch, corePath => invoke("core_read", { path: corePath }));
+    return (path === "/api/core/manuscripts" ? await reader.catalog() : await reader.manuscript(path.slice("/api/core/manuscripts/".length))) as T;
+  }
   const response = await fetch(path, { credentials: "omit", cache: "no-store" });
   const data: unknown = await response.json();
   if (!response.ok) throw new Error((data as { error?: string }).error ?? "Could not reach Core.");
