@@ -39,6 +39,7 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
   const eyePairKey = JSON.stringify([profile.expressions[source]?.name ?? "",profile.expressions[target]?.name ?? ""]);
   const showEyeRegions = eyeEditMode;
   const eyeCorrectionActive = profile.eyeCorrections?.[eyePairKey] ?? (profile.eyeCorrections ? false : (profile.eyeEnabled ?? false));
+  const morphDuration = profile.morphDurations?.[eyePairKey] ?? 1800;
   const meshTriangles = profile.triangles ?? (profile.expressions[0]?.points.length === 17 ? legacyTriangles : profile.expressions[0]?.points.length === 57 ? originalTriangles : triangles);
   const canvases = [useRef<HTMLCanvasElement>(null),useRef<HTMLCanvasElement>(null),useRef<HTMLCanvasElement>(null)] as const;
   const meshFileRef = useRef<HTMLInputElement>(null);
@@ -197,7 +198,7 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
     if(point>=0){const p=exp.points[point]!;const edge=p[0]===0?"left":p[0]===1?"right":p[1]===0?"top":p[1]===1?"bottom":null;dragging.current={expression:expIndex,point,edge};canvas.setPointerCapture(event.pointerId);}
 
   }
-  useEffect(()=>{if(!playing)return;let frame=0;let last=0;let progress=mix/100;let direction=1;const tick=(now:number)=>{if(last){progress+=direction*(now-last)/1800;if(progress>=1){progress=1;direction=-1;}if(progress<=0){progress=0;direction=1;}setMix(Math.round(progress*100));}last=now;frame=requestAnimationFrame(tick);};frame=requestAnimationFrame(tick);return()=>cancelAnimationFrame(frame);},[playing]);
+  useEffect(()=>{if(!playing)return;let frame=0;let last=0;let progress=mix/100;let direction=1;const tick=(now:number)=>{if(last){progress+=direction*(now-last)/morphDuration;if(progress>=1){progress=1;direction=-1;}if(progress<=0){progress=0;direction=1;}setMix(Math.round(progress*100));}last=now;frame=requestAnimationFrame(tick);};frame=requestAnimationFrame(tick);return()=>cancelAnimationFrame(frame);},[playing,source,target,morphDuration]);
   useEffect(()=>{const down=(e:KeyboardEvent)=>{if(e.code==="Space" && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement) && !(e.target instanceof HTMLSelectElement)){e.preventDefault();setSpaceHeld(true);}};const up=(e:KeyboardEvent)=>{if(e.code==="Space")setSpaceHeld(false);};window.addEventListener("keydown",down);window.addEventListener("keyup",up);return()=>{window.removeEventListener("keydown",down);window.removeEventListener("keyup",up);};},[]);
   useEffect(()=>{const nodes=canvases.map(ref=>ref.current).filter((node):node is HTMLCanvasElement=>Boolean(node));const onWheel=(event:WheelEvent)=>{if(!event.ctrlKey)return;event.preventDefault();setZoom(value=>Math.max(100,Math.min(400,value+(event.deltaY<0?25:-25))));};nodes.forEach(node=>node.addEventListener("wheel",onWheel,{passive:false}));return()=>nodes.forEach(node=>node.removeEventListener("wheel",onWheel));},[profile.expressions.length]);
   const sliderRow=(label:string,value:number,min:number,max:number,unit:string,onChange:(n:number)=>void)=> <label style={{display:"grid",gridTemplateColumns:"minmax(130px,1fr) minmax(90px,1.1fr) 46px",alignItems:"center",gap:8,minHeight:34,fontSize:13}}><span>{label}</span><input style={{width:"100%",margin:0}} type="range" min={min} max={max} value={value} onChange={e=>onChange(Number(e.target.value))}/><span style={{textAlign:"right",fontVariantNumeric:"tabular-nums"}}>{value}{unit}</span></label>;
@@ -221,18 +222,25 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
         {canvases.map((ref,i)=><div key={i} ref={viewports[i]} style={{overflow:"auto",maxHeight:"65vh",border:"1px solid var(--border)",borderRadius:8}}>
           <canvas ref={ref} width={252} height={282} aria-label={["Source mesh","Target mesh","Morph preview"][i]} style={{display:"block",width:`calc(min(100%, 51vh) * ${zoom / 100})`,maxWidth:"none",height:"auto",touchAction:"none",cursor:spaceHeld?"grab":eyeEditMode?"move":"crosshair"}} onPointerDown={i<2?e=>movePoint(e,i):undefined} onPointerMove={i<2?e=>movePoint(e,i):undefined} onPointerUp={i<2?e=>movePoint(e,i):undefined} onPointerCancel={i<2?e=>movePoint(e,i):undefined}/>
           {i<2 && <div style={{display:"flex",justifyContent:"center",gap:8,alignItems:"center",padding:8}}><button type="button" onClick={()=>i===0?setSource((source+profile.expressions.length-1)%profile.expressions.length):setTarget((target+profile.expressions.length-1)%profile.expressions.length)}>‹</button><select aria-label={i===0?"From":"To"} value={i===0?source:target} onChange={e=>i===0?setSource(Number(e.target.value)):setTarget(Number(e.target.value))}>{choices}</select><button type="button" onClick={()=>i===0?setSource((source+1)%profile.expressions.length):setTarget((target+1)%profile.expressions.length)}>›</button></div>}
-          {i===2 && <div className="morph-transition" style={{display:"flex",alignItems:"center",gap:12,padding:"8px 12px",borderTop:"1px solid var(--border)"}}><button type="button" style={{justifySelf:"start"}} onClick={()=>setPlaying(v=>!v)}>{playing?"Pause":"Play ↔"}</button>{sliderRow("Transition",mix,0,100,"%",n=>{setPlaying(false);setMix(n);})}</div>}
+          {i===2 && <div style={{display:"grid",gap:8,paddingBottom:10}}><div className="morph-transition" style={{display:"flex",alignItems:"center",gap:12,padding:"8px 12px",borderTop:"1px solid var(--border)"}}><button type="button" style={{justifySelf:"start"}} onClick={()=>setPlaying(v=>!v)}>{playing?"Pause":"Play ↔"}</button>{sliderRow("Transition",mix,0,100,"%",n=>{setPlaying(false);setMix(n);})}</div><label style={{display:"grid",gridTemplateColumns:"auto minmax(80px,1fr) auto",gap:10,alignItems:"center",padding:"0 12px",fontSize:13}}><span>Morph duration</span><input aria-label="Morph duration" type="range" min={0.3} max={6} step={0.1} value={morphDuration/1000} onChange={e=>{const duration=Number(e.target.value)*1000;setProfile(p=>({...p,active:false,morphDurations:{...p.morphDurations,[eyePairKey]:duration}}));}}/><span>{(morphDuration/1000).toFixed(1)} s</span></label></div>}
         </div>)}
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,280px),1fr))",gap:20,alignItems:"start",marginTop:16,padding:"14px 0",borderTop:"1px solid var(--border)"}}>
+      <div style={{display:"grid",gridTemplateColumns:"minmax(0,2fr) minmax(0,1fr)",gap:16,alignItems:"start",marginTop:16,padding:"14px 0",borderTop:"1px solid var(--border)"}}>
+        <div style={{display:"flex",flexWrap:"wrap",gap:20,alignItems:"center"}}>
         <div style={{display:"grid",gap:14,paddingTop:7}}>
           <label style={{display:"flex",gap:8,alignItems:"center"}}><input type="checkbox" checked={eyeCorrectionActive} onChange={e=>setProfile(p=>({...p,active:false,eyeCorrections:{...p.eyeCorrections,[eyePairKey]:e.target.checked}}))}/> Eye correction</label>
-          <label style={{display:"flex",gap:8,alignItems:"center"}}><input type="checkbox" checked={eyeEditMode} onChange={e=>{setEyeEditMode(e.target.checked);setAddingPoint(false);eyeDragging.current=null;dragging.current=null;}}/> Edit eye regions</label>
+          <div style={{display:"flex",gap:10,alignItems:"center",fontSize:13}}>
+            <span style={{fontWeight:eyeEditMode?400:700}}>Edit mesh</span>
+            <button type="button" role="switch" aria-label="Edit eye regions" aria-checked={eyeEditMode} onClick={()=>{setEyeEditMode(v=>!v);setAddingPoint(false);eyeDragging.current=null;dragging.current=null;}} style={{position:"relative",width:52,height:28,minWidth:52,padding:0,border:"1px solid var(--border)",borderRadius:20,background:eyeEditMode?"#92b75d":"#777",cursor:"pointer"}}>
+              <span style={{position:"absolute",top:2,left:eyeEditMode?26:2,width:22,height:22,borderRadius:"50%",background:"#fff",boxShadow:"0 1px 3px #0005",transition:"left 120ms"}}/>
+            </button>
+            <span style={{fontWeight:eyeEditMode?700:400}}>Edit eye regions</span>
+          </div>
         </div>
-        <p style={{fontSize:13}}>Drag inside an eye region to move it. Drag its square handle to resize both eye regions.</p>
         <div style={{display:"grid",gap:8}}>
           {sliderRow("Eye transition midpoint",profile.eyeMidpoint??50,0,100,"%",n=>setProfile(p=>({...p,active:false,eyeMidpoint:n})))}
           {sliderRow("Eye transition duration",profile.eyeDuration??30,5,100,"%",n=>setProfile(p=>({...p,active:false,eyeDuration:n})))}
+        </div>
         </div>
         <div>{sliderRow("Eye strength",profile.eyeStrength??80,0,100,"%",n=>setProfile(p=>({...p,active:false,eyeStrength:n})))}</div>
 
