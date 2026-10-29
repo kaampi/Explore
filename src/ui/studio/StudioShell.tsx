@@ -32,42 +32,32 @@ export function StudioShell({
   repo,
   resume,
   onStart,
+  onViewChange,
   initialView = "campaigns"
 }: {
   initialView?: StudioView;
+  onViewChange?: (view: StudioView) => void;
   sessionId: string;
   repo: IndexedDBRepository;
   resume: StudioResume | null;
   onStart: (session: Session) => void;
 }) {
-  const [view, setView] = useState<StudioView>(initialView);
+  const [view, updateView] = useState<StudioView>(initialView);
+  function setView(next: StudioView) { updateView(next); onViewChange?.(next); }
   const [catalogTick, setCatalogTick] = useState(0);
 
   return (
     <div className="studio">
       <nav className="studio-nav" aria-label="Library">
-        <span className="studio-nav__brand">Your studio</span>
-        {NAV.filter((item) => item.group === "library").map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            className={`studio-nav__tab ${view === item.id ? "studio-nav__tab--active" : ""}`}
-            onClick={() => setView(item.id)}
-          >
-            {item.label}
-          </button>
-        ))}
-        <span className="studio-nav__rule" />
-        {NAV.filter((item) => item.group === "play").map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            className={`studio-nav__tab ${view === item.id ? "studio-nav__tab--active" : ""}`}
-            onClick={() => setView(item.id)}
-          >
-            {item.label}
-          </button>
-        ))}
+        {[
+          { title: "Characters & creatures", ids: ["characters", "anatomy", "voices"] },
+          { title: "World", ids: ["places", "objects", "lorebooks"] },
+          { title: "Story & play", ids: ["stories", "rulesets"] },
+        ].map(group => <div className="studio-nav-group" role="group" aria-label={group.title} key={group.title}>
+          <span className="studio-nav-group__title">{group.title}</span>
+          <div>{group.ids.map(id => { const item = NAV.find(entry => entry.id === id)!; return <button key={item.id} type="button" className={`studio-nav__tab ${view === item.id ? "studio-nav__tab--active" : ""}`} aria-current={view === item.id ? "page" : undefined} onClick={() => setView(item.id)}>{item.label}</button>; })}</div>
+        </div>)}
+        {["campaigns", "adventure"].includes(view) && <button type="button" className="studio-nav__tab studio-nav__tab--active" aria-current="page" onClick={() => setView("campaigns")}>Adventures</button>}
         <LibraryBackupBar repo={repo} onRestored={() => setCatalogTick((tick) => tick + 1)} />
       </nav>
       <div className="studio-body">

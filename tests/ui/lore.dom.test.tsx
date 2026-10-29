@@ -154,7 +154,14 @@ const supportedEntry = { keys: ["gate"], content: "The gate opens at dawn.", ena
 describe("lorebook import journeys", () => {
   it("shows and saves parenthesized character fields separately while retaining original text in review", async () => {
     await mount();
-    await click(button("♧ Characters"));
+    await click(button("▤ My library"));
+    expect(container.querySelector('[aria-label="Characters & creatures"]')).not.toBeNull();
+    expect(container.querySelector('[aria-label="World"]')).not.toBeNull();
+    expect(container.querySelector('[aria-label="Story & play"]')).not.toBeNull();
+    await click(button("Anatomy"));
+    expect(container.querySelector('[aria-label="Anatomy library"]')).not.toBeNull();
+    expect(container.querySelector('.sb-sidebar nav button.is-active')?.textContent).toContain("My library");
+    await click(button("Characters"));
     await waitFor(() => container.textContent?.includes("Import SillyTavern") ?? false);
     const description = "[Character(Alice)\n{\nAge(18)\nSex(Female)\nAppearance(Black hair + red eyes)\nOutfit(Black vest)\nPersonality(Shy (when alone) and compassionate.)\nDescription(Her parents left when she was 4 years old.)\nScenario(A school hallway.)\n}]";
     await upload(jsonFile({ spec: "chara_card_v2", data: { name: "Alice the bully", description } }, "Alice.json"), 'input[accept*=".png"]');
@@ -175,7 +182,8 @@ describe("lorebook import journeys", () => {
     await mount();
     await create("Ari");
     await home();
-    await click(button("▤ Lorebooks"));
+    await click(button("▤ My library"));
+    await click(button("Lorebooks"));
     await waitFor(() => container.textContent?.includes("Import lorebook") ?? false);
     await upload(jsonFile({ entries: [supportedEntry, { ...supportedEntry, comment: "Advanced", extensions: { sticky: 3 } }] }));
     await waitFor(() => !!container.querySelector('.sb-lore-review'));
@@ -206,7 +214,8 @@ describe("lorebook import journeys", () => {
 
   it("retains a failed import review for retry and cancelling never saves", async () => {
     await mount();
-    await click(button("▤ Lorebooks"));
+    await click(button("▤ My library"));
+    await click(button("Lorebooks"));
     await waitFor(() => container.textContent?.includes("Import lorebook") ?? false);
     await upload(jsonFile({ entries: [supportedEntry] }));
     await waitFor(() => !!container.querySelector('.sb-lore-review'));
@@ -227,7 +236,7 @@ describe("lorebook import journeys", () => {
 
   it("offers embedded character lore and saves character and approvals together", async () => {
     await mount();
-    await click(button("♧ Characters"));
+    await click(button("▤ My library"));
     await waitFor(() => container.textContent?.includes("Import SillyTavern") ?? false);
     const raw = { spec: "chara_card_v2", data: { name: "Ari", description: "A traveller", personality: "Curious", character_book: { entries: [supportedEntry] } } };
     await upload(jsonFile(raw, "Ari.json"), 'input[accept*=".png"]');

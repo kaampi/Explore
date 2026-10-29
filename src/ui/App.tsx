@@ -103,6 +103,7 @@ function SandboxApp() {
   const [view, setView] = useState<
     "home" | "studio" | "play" | "conversations" | "ideas" | "guide"
   >("home");
+  const [lastLibraryView, setLastLibraryView] = useState<StudioView>("characters");
   const [studioView, setStudioView] = useState<StudioView>("characters");
   const [generation, setGeneration] = useState(0);
   const [phase, setPhase] = useState<ChatPhase>("idle");
@@ -281,6 +282,7 @@ function SandboxApp() {
       );
       return;
     }
+    if (!["campaigns", "adventure"].includes(next)) setLastLibraryView(next);
     setStudioView(next);
     setView("studio");
     setOperationError(null);
@@ -388,33 +390,13 @@ function SandboxApp() {
               <button type="button" className={view === "ideas" ? "is-active" : ""} onClick={() => navigate("ideas")}>
                 ✧ <span>{t("ideas")}</span>
               </button>
-              <button
-                type="button"
-                className={
-                  view === "studio" && studioView === "characters"
-                    ? "is-active"
-                    : ""
-                }
-                onClick={() => openStudio("characters")}
-              >
-                ♧ <span>{t("characters")}</span>
-              </button>
-              <button type="button" className={view === "studio" && studioView === "lorebooks" ? "is-active" : ""} onClick={() => openStudio("lorebooks")}>▤ <span>{t("lorebooks")}</span></button>
-              <button
-                type="button"
-                className={
-                  view === "studio" && studioView === "places"
-                    ? "is-active"
-                    : ""
-                }
-                onClick={() => openStudio("places")}
-              >
-                ⌖ <span>{t("places")}</span>
+              <button type="button" className={view === "studio" && !["campaigns", "adventure"].includes(studioView) ? "is-active" : ""} onClick={() => openStudio(lastLibraryView)}>
+                ▤ <span>{t("library")}</span>
               </button>
               <button
                 type="button"
                 className={
-                  view === "studio" && studioView === "campaigns"
+                  view === "studio" && ["campaigns", "adventure"].includes(studioView)
                     ? "is-active"
                     : ""
                 }
@@ -422,8 +404,6 @@ function SandboxApp() {
               >
                 ◇ <span>{t("adventures")}</span>
               </button>
-              <button type="button" className={view === "guide" ? "is-active" : ""} onClick={() => navigate("guide")}>? <span>{t("guide")}</span></button>
-              <button type="button" onClick={() => setAppearanceOpen(true)}>⚙ <span>{t("settings")}</span></button>
               {session && (
                 <button
                   type="button"
@@ -433,6 +413,10 @@ function SandboxApp() {
                   ↗ <span>{t("continue")}</span>
                 </button>
               )}
+            </nav>
+            <nav className="sb-sidebar-utilities" aria-label="Help and settings">
+              <button type="button" className={view === "guide" ? "is-active" : ""} onClick={() => navigate("guide")}>? <span>{t("guide")}</span></button>
+              <button type="button" onClick={() => setAppearanceOpen(true)}>⚙ <span>{t("settings")}</span></button>
             </nav>
             <div className="sb-sidebar__quote">
               <span aria-hidden="true">❧</span>{t("tagline")}
@@ -444,6 +428,7 @@ function SandboxApp() {
               <StudioShell
                 key={studioView}
                 initialView={studioView}
+                onViewChange={next => { setStudioView(next); if (!["campaigns", "adventure"].includes(next)) setLastLibraryView(next); }}
                 sessionId={UI_SESSION_ID}
                 repo={repo}
                 resume={resume}

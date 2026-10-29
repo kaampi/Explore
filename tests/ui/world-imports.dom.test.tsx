@@ -155,7 +155,8 @@ async function selectValue(element: HTMLSelectElement, value: string) {
   await act(async () => { element.value = value; element.dispatchEvent(new Event("change", { bubbles: true })); });
 }
 async function openImports() {
-  await click(button("▤ Lorebooks"));
+  await click(button("▤ My library"));
+    await click(button("Lorebooks"));
   await waitFor(() => !!container.querySelector('.sb-lore-studio'));
 }
 const cards = [
