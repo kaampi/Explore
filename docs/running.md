@@ -2,13 +2,28 @@
 
 kaampi Explore is a local-first application. You run its interface on your computer and connect it to a local AI server. No cloud AI account or API key is required.
 
-## Before you begin
+## Windows desktop app (Tauri alpha)
+
+Open [Desktop build (Windows)](https://github.com/kaampi/Explore/actions/workflows/desktop-build.yml) and select a successful run. Under **Artifacts**, download **kaampi-explore-windows-installer**, extract the ZIP, and run **kaampi-Explore-Setup.exe**. You need to sign in to GitHub to download build artifacts. If the first build has not completed successfully yet, use the browser/source instructions below. Artifacts are retained for 90 days; these are alpha test builds, not signed stable releases.
+
+The installer includes the app runtime; you do not need Node.js or Rust to use it. Run your local model server separately. Windows may show a SmartScreen warning because the installer is unsigned. Codex pairing and opening installed Write/Comic windows require the desktop app. Linux and macOS desktop installers are not currently published.
+
+To build a Windows installer yourself, install the [Tauri Windows prerequisites](https://v2.tauri.app/start/prerequisites/) (Rust, Microsoft C++ Build Tools and WebView2), then run:
+
+```bash
+npm install
+npm run desktop:build -- --bundles nsis
+```
+
+The generated `.exe` is in `src-tauri/target/release/bundle/nsis/`. For desktop development use `npm run desktop:dev`.
+
+## Before running from source
 
 Install [Node.js](https://nodejs.org/) (including npm). To generate AI replies, also install and run a supported local model server, such as [Ollama](https://ollama.com/) or Strata, and make a chat model available there. The app can open without a working AI connection, but it cannot generate replies until a model is connected.
 
-## Start kaampi Explore
+## Run the browser version from source
 
-Download the repository as a ZIP from GitHub (**Code → Download ZIP**) and extract it, or clone the repository using Git. Open the extracted project folder. This is an alpha source-code distribution, not a signed desktop installer.
+Download the repository as a ZIP from GitHub (**Code → Download ZIP**) and extract it, or clone the repository using Git. Open the extracted project folder. This starts the browser version; use the Windows instructions above for the Tauri desktop app.
 
 - **Windows:** Double-click `start.bat`. It installs npm dependencies on first run, tries to start Ollama if it is installed but not responding, and opens the app in your browser.
 - **macOS:** Run `bash starta.command` in Terminal from the project folder. The launcher is also intended for Finder double-click where macOS allows it.
@@ -46,7 +61,7 @@ On **My space**, choose an existing character or create one with a name and a sh
 
 ## Your data and backups
 
-Characters and conversations are saved locally in your browser's storage (IndexedDB), not in the Git repository. Use the app's available export and backup options to keep separate copies. Clearing site data, changing browsers or browser profiles, or using private browsing can make local saves unavailable. Back up your data before upgrading an alpha build.
+Characters and conversations are saved locally in IndexedDB, not in the Git repository. The desktop app has its own webview storage, separate from your browser. Switching between the browser and desktop app does not automatically transfer your data. Use the app's available export and backup options to keep separate copies. Clearing site data, changing browsers or browser profiles, or using private browsing can make local saves unavailable. Back up your data before upgrading an alpha build.
 
 ## Troubleshooting
 
