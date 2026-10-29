@@ -75,7 +75,8 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
   return <section className="anatomy" aria-label="Anatomy library">
     <header className="anatomy-header">
       <div><span className="anatomy-eyebrow">CHARACTER FOUNDATIONS</span><h2>{draft ? draft.name : "Anatomy Library"}</h2>
-      <p>{draft ? "Explore the body, one part at a time." : "A shared structure for every kind of body."}</p></div>
+      <p>{draft ? "Explore the body, one part at a time." : "A shared structure for different kinds of bodies."}</p>
+      {!draft && <p>Explore uses body plans to identify body parts and track physical interactions in a scene.</p>}</div>
       {draft ? <button className="anatomy-button" onClick={() => { setDraft(null); setError(""); setNotice(""); }}>← All body plans</button> :
       <button className="anatomy-button anatomy-primary" onClick={() => open({ id: crypto.randomUUID(), name: "New anatomy", version: 1, parts: [emptyPart("head", "Head")] })}>+ New body plan</button>}
     </header>
@@ -83,7 +84,6 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
       <div className="anatomy-summary"><div><span className="anatomy-badge">{builtIn ? "Built-in body plan" : "Custom body plan"}</span><span>{draft.parts.length} parts · {groupsOf(draft.parts).length} groups</span></div>
         <button className="anatomy-button" onClick={duplicate}>Customize a copy</button>
       </div>
-      <p className="anatomy-muted">Explore uses this body plan to identify body parts and track physical interactions in a scene.</p>
       {draft.id === "builtin-humanoid" && <aside className="anatomy-tip"><strong>One structure. Many characters.</strong><p>Humans, elves and dwarves share this body plan. Describe appearance and size on the character; customize anatomy when the body structure changes.</p></aside>}
       {!builtIn && <label className="anatomy-field">Body plan name<input value={draft.name} onChange={e => patch({ name: e.target.value })}/></label>}
       <div className="anatomy-workspace">
