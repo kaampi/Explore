@@ -1,4 +1,16 @@
-# kaampi Explore
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="public/brand/kaampi-explore-dark.svg">
+    <img src="public/brand/kaampi-explore.svg" alt="kaampi Explore" width="420">
+  </picture>
+</p>
+
+<p align="center">A local-first playground for AI-driven characters, worlds, and stories. The AI proposes. You decide.</p>
+
+<p align="center">
+  <a href="https://github.com/kaampi/Explore/actions/workflows/verify.yml"><img src="https://github.com/kaampi/Explore/actions/workflows/verify.yml/badge.svg" alt="Build and test status"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPLv3-blue.svg" alt="License: AGPLv3 or later"></a>
+</p>
 
 > **Public alpha — work in progress.** Features and saved-data formats may change. Back up your browser data before updating. See [installation instructions](docs/running.md) and [alpha release checklist](docs/alpha-release-checklist.md).
 
