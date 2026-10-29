@@ -1,3 +1,4 @@
+import { collectCharacterBackup, LIBRARY_BACKUP_KIND, parseLibraryBackup, restoreLibraryBackup } from "@library/libraryBackup";
 import type { AnatomyTemplate } from "@state/StateSchema";
 import { importEmbeddedLore } from "../../lore/sillyTavernLore";
 import type { Lorebook } from "../../lore/LorebookSchema";
@@ -372,6 +373,17 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
   async function beginReview(files: File[]) {
     const [first, ...remaining] = files;
     if (!first) return;
+    if (first.name.toLowerCase().endsWith(".json")) {
+      const raw = JSON.parse(await first.text());
+      if (raw?.kind === LIBRARY_BACKUP_KIND) {
+        const { backup, skipped } = parseLibraryBackup(raw);
+        const report = await restoreLibraryBackup(repo, backup);
+        await refresh();
+        setNotice(`Imported ${report.saved} saved cards; ${skipped + report.skipped} skipped.`);
+        if (remaining.length) await beginReview(remaining);
+        return;
+      }
+    }
     const review = await importSillyTavernFile(first);
     let portraitDataUrl = review.character.portraitDataUrl ?? "";
     const png = first.type === "image/png" || first.name.toLowerCase().endsWith(".png");
@@ -799,14 +811,16 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
                 <button
                   type="button"
                   className="setup-example"
-                  onClick={() => {
-                    const record = library.find((item) => item.id === draft.id);
-                    if (!record) return;
-                    downloadJson(
-                      `${slugifyCharacterId(formatPersonName(record.name, record.familyName, record.middleName))}.json`,
-                      record
-                    );
-                  }}
+                  onClick={() => void (async () => {
+                    try {
+                      const record = library.find((item) => item.id === draft.id);
+                      if (!record) return;
+                      downloadJson(
+                        `${slugifyCharacterId(formatPersonName(record.name, record.familyName, record.middleName))}.json`,
+                        await collectCharacterBackup(repo, record)
+                      );
+                    } catch (error) { setError(error instanceof Error ? error.message : "Could not export character."); }
+                  })()}
                 >
                   Export JSON
                 </button>
