@@ -83,6 +83,7 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
       <div className="anatomy-summary"><div><span className="anatomy-badge">{builtIn ? "Built-in body plan" : "Custom body plan"}</span><span>{draft.parts.length} parts · {groupsOf(draft.parts).length} groups</span></div>
         <button className="anatomy-button" onClick={duplicate}>Customize a copy</button>
       </div>
+      <p className="anatomy-muted">Explore uses this body plan to identify body parts and track physical interactions in a scene.</p>
       {draft.id === "builtin-humanoid" && <aside className="anatomy-tip"><strong>One structure. Many characters.</strong><p>Humans, elves and dwarves share this body plan. Describe appearance and size on the character; customize anatomy when the body structure changes.</p></aside>}
       {!builtIn && <label className="anatomy-field">Body plan name<input value={draft.name} onChange={e => patch({ name: e.target.value })}/></label>}
       <div className="anatomy-workspace">
@@ -97,7 +98,7 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
         <section className="anatomy-detail" aria-label="Selected body part">
           {current ? <><span className="anatomy-eyebrow">{current.group || "Other"}</span><h3>{current.label}</h3>
             {builtIn ? <>
-              <p className="anatomy-description">{current.description || "A structural part of this body plan. Explore uses its identity when tracking physical interactions."}</p>
+              {current.description && <p className="anatomy-description">{current.description}</p>}
               <h4>Functions in a scene</h4>
               {current.capabilities.length ? <div className="anatomy-functions">{current.capabilities.map(capability => <span className="anatomy-function" key={capability}><span aria-hidden="true">✓</span> {CAPABILITY_LABELS[capability]}</span>)}</div> : <p className="anatomy-muted">No additional action functions are configured for this part.</p>}
               <div className="anatomy-detail-note"><strong>About this view</strong><p>Built-in plans are ready to use. To change a part or its functions, customize a copy.</p></div>
