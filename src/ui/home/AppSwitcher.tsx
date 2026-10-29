@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Modal } from "../components/Modal";
+import { openCompanionWindow } from "../../integrations/companionWindows";
 import {
   checkCompanionApp,
   DEFAULT_APP_ADDRESSES,
@@ -123,8 +124,9 @@ export function AppSwitcher({ onHome }: { onHome: () => void }) {
       <span className="sb-companion-link">
         <a
           href={status.address}
-          target="_blank"
+          target={`kaampi-${key}`}
           rel="noreferrer"
+          onClick={event => { event.preventDefault(); openCompanionWindow(key, status.address); }}
           title={`Open ${app.name}`}
         >
           <AppLogo app={key === "storybook" ? "write" : "comic"} name={app.name} />
@@ -255,8 +257,9 @@ export function AppSwitcher({ onHome }: { onHome: () => void }) {
               <a
                 className="sb-button"
                 href={validAddress}
-                target="_blank"
+                target={`kaampi-${selected}`}
                 rel="noreferrer"
+                onClick={event => { event.preventDefault(); openCompanionWindow(selected, validAddress); }}
               >
                 Open app ↗
               </a>
