@@ -474,6 +474,7 @@ export type PhysicalState = z.infer<typeof PhysicalStateSchema>;
 export const AnatomyTemplateSchema = z.object({
   id: z.string().min(1).max(100),
   name: z.string().min(1).max(120),
+  imageDataUrl: z.string().max(6_000_000).regex(/^data:image\/png;base64,[A-Za-z0-9+/=]+$/).optional(),
   version: z.number().int().positive(),
   parts: z.array(z.object({
     id: z.string().min(1).max(80),

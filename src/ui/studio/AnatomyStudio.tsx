@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import "./anatomy.css";
+import { anatomyImageFromFile } from "./anatomyUpload";
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 import { AnatomyTemplateSchema, type AnatomyTemplate } from "@state/StateSchema";
 import { BUILTIN_ANATOMY_TEMPLATES, isBuiltInAnatomy } from "@state/builtinAnatomy";
@@ -17,6 +18,7 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
   const [partId, setPartId] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [uploading, setUploading] = useState(false);
   const refresh = async () => setCustom(await repo.listAnatomyTemplates());
   useEffect(() => { void refresh().catch((e: unknown) => setError(String(e))); }, [repo]);
 
@@ -31,6 +33,16 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
   }
   function patch(update: Partial<AnatomyTemplate>) {
     setDraft((value) => value ? { ...value, ...update } : value);
+  }
+  async function upload(file: File) {
+    if (!draft || uploading) return;
+    const id = draft.id;
+    setUploading(true); setError("");
+    try {
+      const imageDataUrl = await anatomyImageFromFile(file);
+      setDraft(value => value?.id === id ? { ...value, imageDataUrl } : value);
+    } catch (reason) { setError(reason instanceof Error ? reason.message : "Could not read this image."); }
+    finally { setUploading(false); }
   }
   function patchPart(update: Partial<Part>) {
     if (!draft || !current) return;
@@ -86,6 +98,14 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
       </div>
       {draft.id === "builtin-humanoid" && <aside className="anatomy-tip"><strong>One structure. Many characters.</strong><p>Humans, elves and dwarves share this body plan. Describe appearance and size on the character; customize anatomy when the body structure changes.</p></aside>}
       {!builtIn && <label className="anatomy-field">Body plan name<input value={draft.name} onChange={e => patch({ name: e.target.value })}/></label>}
+      {!builtIn && <section className="anatomy-upload" aria-label="Body plan illustration">
+        <div><h3>Illustration</h3><p>PNG, JPEG or WebP · up to 10 MB. Larger images are scaled to a maximum of 1600 × 1600 pixels. Transparency is preserved.</p>
+        <label className="anatomy-field">{draft.imageDataUrl ? "Replace image" : "Upload image"}<input type="file" accept="image/png,image/jpeg,image/webp" disabled={uploading} onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void upload(file); }}/></label>
+        {uploading && <p role="status">Preparing image…</p>}
+        {draft.imageDataUrl && <button className="anatomy-button" disabled={uploading} onClick={() => { const { imageDataUrl: omitted, ...rest } = draft; setDraft(rest); }}>Remove image</button>}
+        </div>
+        {draft.imageDataUrl && <span className="anatomy-card-illustration"><img src={draft.imageDataUrl} alt={`${draft.name} illustration`} /></span>}
+      </section>}
       <div className="anatomy-workspace">
         <nav className="anatomy-navigation" aria-label="Body parts"><div className="anatomy-nav-title">BODY REGIONS <span>Select a part to explore</span></div>
           {groupsOf(draft.parts).map(group => <div className="anatomy-region" key={group}>
@@ -112,11 +132,11 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
           </> : <div className="anatomy-empty"><h3>Select a body part</h3><p>Choose a region on the left, then a part to see its functions.</p></div>}
         </section>
       </div>
-      {!builtIn && <footer className="anatomy-footer"><button className="anatomy-button anatomy-danger" onClick={() => void remove()}>Delete body plan</button><button className="anatomy-button anatomy-primary" onClick={() => void save()}>Save body plan</button></footer>}
+      {!builtIn && <footer className="anatomy-footer"><button className="anatomy-button anatomy-danger" disabled={uploading} onClick={() => void remove()}>Delete body plan</button><button className="anatomy-button anatomy-primary" disabled={uploading} onClick={() => void save()}>Save body plan</button></footer>}
     </> : <>
       <aside className="anatomy-tip"><strong>Choose a structure, not an appearance.</strong><p>A body plan defines parts and physical functions. Characters with the same structure can share a plan.</p></aside>
       <div className="anatomy-library">{templates.map(item => <button className="anatomy-card" key={item.id} onClick={() => open(item)}>
-        {BUILTIN_ANATOMY_TEMPLATES.some(template => template.id === item.id) && <span className="anatomy-card-illustration"><img src={`/anatomy/${item.id.replace("builtin-", "")}.png`} alt="" loading="lazy" /></span>}
+        {(item.imageDataUrl || BUILTIN_ANATOMY_TEMPLATES.some(template => template.id === item.id)) && <span className="anatomy-card-illustration"><img src={item.imageDataUrl || `/anatomy/${item.id.replace("builtin-", "")}.png`} alt="" loading="lazy" /></span>}
         <span className="anatomy-badge">{isBuiltInAnatomy(item.id) ? "Built-in" : "Custom"}</span><strong>{item.name}</strong><span>{item.parts.length} parts · {groupsOf(item.parts).length} regions</span><span className="anatomy-card-link">Explore body plan →</span></button>)}</div>
     </>}
     {error && <p className="anatomy-feedback anatomy-danger" role="alert">{error}</p>}
