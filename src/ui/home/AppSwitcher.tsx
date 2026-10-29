@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Modal } from "../components/Modal";
-import { openCompanionWindow } from "../../integrations/companionWindows";
+import { isTauri } from "@tauri-apps/api/core";
+import { openCompanionApp } from "../../integrations/companionWindows";
 import {
   checkCompanionApp,
   DEFAULT_APP_ADDRESSES,
@@ -52,6 +53,8 @@ const STATUS_COPY: Record<AppStatus["state"], string> = {
 };
 
 export function AppSwitcher({ onHome }: { onHome: () => void }) {
+  const desktop = isTauri();
+  const [opening, setOpening] = useState<CompanionAppId | null>(null);
   const [addresses, setAddresses] = useState(() => ({
     storybook: readAddress("storybook"),
     comicbook: readAddress("comicbook"),
@@ -64,6 +67,7 @@ export function AppSwitcher({ onHome }: { onHome: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   useEffect(() => {
+    if (desktop) return;
     const controller = new AbortController();
     let cancelled = false;
     async function refresh() {
@@ -91,7 +95,7 @@ export function AppSwitcher({ onHome }: { onHome: () => void }) {
       document.removeEventListener("visibilitychange", refresh);
       window.removeEventListener("focus", refresh);
     };
-  }, [addresses]);
+  }, [addresses, desktop]);
   function open(key: CompanionAppId) {
     setSelected(key);
     setAddress(addresses[key]);
@@ -113,6 +117,13 @@ export function AppSwitcher({ onHome }: { onHome: () => void }) {
       setChecking(false);
     }
   }
+  async function launch(key: CompanionAppId, appAddress: string) {
+    if (opening) return;
+    setOpening(key); setError(null);
+    try { await openCompanionApp(key, appAddress); }
+    catch (reason) { open(key); setError(typeof reason === "string" ? reason : reason instanceof Error ? reason.message : "Could not open the app."); }
+    finally { setOpening(null); }
+  }
   function savedStatus(key: CompanionAppId) {
     const status = statuses[key];
     return status?.address === addresses[key] ? status : undefined;
@@ -120,13 +131,21 @@ export function AppSwitcher({ onHome }: { onHome: () => void }) {
   function appLink(key: CompanionAppId) {
     const app = APPS[key],
       status = savedStatus(key);
+    if (desktop) return (
+      <span className="sb-companion-link">
+        <button type="button" style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"12px 10px",minHeight:44}} disabled={opening !== null} onClick={()=>void launch(key, addresses[key])} title={opening===key?`Opening ${app.name}…`:`Open installed ${app.name}`}>
+          <AppLogo app={key === "storybook" ? "write" : "comic"} name={app.name} />
+        </button>
+        <button type="button" className="sb-app-config" aria-label={`${app.name} information`} onClick={()=>open(key)}>⌄</button>
+      </span>
+    );
     return status?.state === "available" ? (
       <span className="sb-companion-link">
         <a
           href={status.address}
           target={`kaampi-${key}`}
           rel="noreferrer"
-          onClick={event => { event.preventDefault(); openCompanionWindow(key, status.address); }}
+          onClick={event => { event.preventDefault(); void launch(key, status.address); }}
           title={`Open ${app.name}`}
         >
           <AppLogo app={key === "storybook" ? "write" : "comic"} name={app.name} />
@@ -192,6 +211,11 @@ export function AppSwitcher({ onHome }: { onHome: () => void }) {
           >
             Get the app & installation guide ↗
           </a>
+          {desktop ? <>
+            <p className="sb-muted">Open the installed desktop app, or switch to its existing window.</p>
+            {error && <p className="sb-error" role="alert">{error}</p>}
+            <button type="button" className="sb-button" disabled={opening !== null} onClick={()=>void launch(selected, addresses[selected])}>{opening ? "Opening…" : "Open desktop app"}</button>
+          </> : <>
           <hr className="sb-rule" />
           <label className="sb-field">
             App address
@@ -259,12 +283,13 @@ export function AppSwitcher({ onHome }: { onHome: () => void }) {
                 href={validAddress}
                 target={`kaampi-${selected}`}
                 rel="noreferrer"
-                onClick={event => { event.preventDefault(); openCompanionWindow(selected, validAddress); }}
+                onClick={event => { event.preventDefault(); void launch(selected, validAddress); }}
               >
                 Open app ↗
               </a>
             )}
           </div>
+          </>}
         </Modal>
       )}
     </>
