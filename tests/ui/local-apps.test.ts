@@ -21,7 +21,7 @@ describe("local companion app identification", () => {
           DEFAULT_APP_ADDRESSES.storybook,
           vi
             .fn<typeof fetch>()
-            .mockImplementation(async () => html("StoryBook AI")),
+            .mockImplementation(async () => html("kaampi Write")),
         )
       ).state,
     ).toBe("available");
@@ -36,6 +36,19 @@ describe("local companion app identification", () => {
         )
       ).state,
     ).toBe("available");
+  });
+  it.each(["StoryBook AI", "kaampi Write", "  KAAMPI Write  "])("recognizes Write title %s", async (title) => {
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => html(title));
+    expect((await probeLocalApp("storybook", DEFAULT_APP_ADDRESSES.storybook, fetcher)).state).toBe("available");
+  });
+  it.each(["kaampi Comic", "kaampi Explore", "kaampi Write backup"])("rejects unrelated title %s as Write", async (title) => {
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => html(title));
+    expect((await probeLocalApp("storybook", DEFAULT_APP_ADDRESSES.storybook, fetcher)).state).toBe("wrong-app");
+  });
+  it("keeps an explicit wrong identity authoritative over a matching title", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(Response.json({ appId: "comicbook" })).mockResolvedValueOnce(html("kaampi Write"));
+    expect((await probeLocalApp("storybook", DEFAULT_APP_ADDRESSES.storybook, fetcher)).state).toBe("wrong-app");
+    expect(fetcher).toHaveBeenCalledTimes(1);
   });
   it("does not treat a different service on the same port as the requested app", async () => {
     const status = await probeLocalApp(
