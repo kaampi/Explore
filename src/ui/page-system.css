@@ -121,3 +121,4 @@
 .morph-toolbar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:14px}.morph-toolbar-tools,.morph-toolbar-files{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.morph-toolbar-files{margin-left:auto}.morph-toolbar button{white-space:nowrap}
 .morph-studio-heading h2{margin:0}.morph-studio-dialog .morph-studio-editor{margin-top:12px !important}
 .morph-portrait{position:relative;display:block;overflow:hidden}.morph-portrait>img,.morph-portrait>canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none}
+.sb-character-morph{width:68px;height:86px;border-radius:7px;flex-shrink:0;background:var(--panel-raised)}.morph-portrait-initial{display:grid;place-items:center;height:100%;font-size:28px;color:var(--page-accent)}

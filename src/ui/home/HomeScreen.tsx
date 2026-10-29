@@ -24,6 +24,7 @@ import { primaryCharacter } from "@session/createSession";
 import { sessionFromCampaignScene } from "@session/campaignStart";
 import type { StudioView } from "../studio/types";
 import { portraitSrc } from "../studio/portrait";
+import { MorphPortrait } from "../studio/MorphPortrait";
 import { Modal } from "../components/Modal";
 import { quickCharacterSession } from "./quickStart";
 import { ChatSetupFields } from "./ChatSetupFields";
@@ -342,13 +343,7 @@ export function HomeScreen({
                   disabled={busy}
                   onClick={() => openChatSetup(character)}
                 >
-                  {portraitSrc(character.portraitDataUrl) ? (
-                    <img src={portraitSrc(character.portraitDataUrl)} alt="" />
-                  ) : (
-                    <span className="sb-character-initial" aria-hidden="true">
-                      {character.name.charAt(0)}
-                    </span>
-                  )}
+                  <MorphPortrait characterId={character.id} repo={repo} fallback={portraitSrc(character.portraitDataUrl)} className="sb-character-morph" initial={character.name.charAt(0)} />
                   <span>
                     <strong>
                       {formatPersonName(

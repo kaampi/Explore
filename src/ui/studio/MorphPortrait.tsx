@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 import { morphLoopStep, renderMorphFrame, type Profile } from "./morphRenderer";
 
-export function MorphPortrait({ characterId, repo, fallback }: { characterId: string; repo: IndexedDBRepository; fallback?: string | undefined }) {
+export function MorphPortrait({ characterId, repo, fallback, className = "studio-list__thumb", initial }: { characterId: string; repo: IndexedDBRepository; fallback?: string | undefined; className?: string; initial?: string }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [painted, setPainted] = useState(false);
   const [poster, setPoster] = useState(fallback);
@@ -56,7 +56,8 @@ export function MorphPortrait({ characterId, repo, fallback }: { characterId: st
     }).catch(() => { /* Keep the static portrait if the saved profile cannot be rendered. */ });
     return () => { disposed = true; stop(); observer?.disconnect(); document.removeEventListener("visibilitychange", sync); motion?.removeEventListener("change", sync); images.forEach(image => { image.onload = null; image.onerror = null; }); };
   }, [characterId, repo, fallback, revision]);
-  return <span className="studio-list__thumb morph-portrait" aria-hidden="true">
+  return <span className={`${className} morph-portrait`} aria-hidden="true">
+    {!poster && initial && <span className="morph-portrait-initial">{initial}</span>}
     {poster && <img src={poster} alt="" />}
     <canvas ref={canvas} width={252} height={282} style={{ opacity: painted ? 1 : 0 }} />
   </span>;

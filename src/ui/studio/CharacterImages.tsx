@@ -30,7 +30,7 @@ export function CharacterImages({ characterId, repo, portrait, onPortrait }: { c
   async function persist(nextGallery: CharacterImage[], nextPortrait?: string) {
     try {
       const latest = normalized(await repo.loadCharacterMorph(characterId));
-      const next = { ...latest, gallery: nextGallery, active: false };
+      const next = { ...latest, gallery: nextGallery };
       await repo.saveCharacterMorph(characterId, next);
       setProfile(next);
       if (nextPortrait !== undefined && nextPortrait !== portrait) await onPortrait(nextPortrait);
