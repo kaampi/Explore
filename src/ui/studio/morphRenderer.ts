@@ -1,12 +1,26 @@
 import { originalPoints, originalTriangles } from "./originalMorphMesh";
-export function morphLoopStep(elapsed: number, count: number) {
+export function morphLoopStep(elapsed: number, count: number, durations?: number[]) {
+  if (count < 1) return { source: 0, target: 0, mix: 0 };
+  if (durations?.length === count) {
+    const times = durations.map(value => Number.isFinite(value) ? Math.max(300, Math.min(6000, value)) : 1800);
+    const total = times.reduce((sum, time) => sum + 3000 + time, 0);
+    let remaining = Math.max(0, elapsed) % total;
+    for (let source = 0; source < count; source++) {
+      const duration = times[source]!;
+      if (remaining < 3000 + duration) {
+        const progress = Math.max(0, (remaining - 3000) / duration);
+        return { source, target: (source + 1) % count, mix: progress * progress * (3 - 2 * progress) };
+      }
+      remaining -= 3000 + duration;
+    }
+  }
   const source = Math.floor(elapsed / 4000) % count;
   const progress = Math.max(0, (elapsed % 4000 - 3000) / 1000);
   return { source, target: (source + 1) % count, mix: progress * progress * (3 - 2 * progress) };
 }
 export type Point = [number, number];
 export type Expression = { name: string; image: string; points: Point[] };
-export type Profile = { version: 1; active: boolean; expressions: Expression[]; triangles?: number[][]; eyeMidpoint?: number; eyeDuration?: number; eyeEnabled?: boolean; eyeCorrections?: Record<string, boolean>; eyeWidth?: number; eyeHeight?: number; eyeStrength?: number; eyeGuides?: boolean; eyeCenters?: Record<string, Point[]> };
+export type Profile = { version: 1; active: boolean; expressions: Expression[]; triangles?: number[][]; morphDurations?: Record<string, number>; eyeMidpoint?: number; eyeDuration?: number; eyeEnabled?: boolean; eyeCorrections?: Record<string, boolean>; eyeWidth?: number; eyeHeight?: number; eyeStrength?: number; eyeGuides?: boolean; eyeCenters?: Record<string, Point[]> };
 
 const GRID_COLS = 7;
 const GRID_ROWS = 9;
