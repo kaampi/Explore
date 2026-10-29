@@ -201,7 +201,7 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
   useEffect(()=>{if(!playing)return;let frame=0;let last=0;let progress=mix/100;let direction=1;const tick=(now:number)=>{if(last){progress+=direction*(now-last)/morphDuration;if(progress>=1){progress=1;direction=-1;}if(progress<=0){progress=0;direction=1;}setMix(Math.round(progress*100));}last=now;frame=requestAnimationFrame(tick);};frame=requestAnimationFrame(tick);return()=>cancelAnimationFrame(frame);},[playing,source,target,morphDuration]);
   useEffect(()=>{const down=(e:KeyboardEvent)=>{if(e.code==="Space" && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement) && !(e.target instanceof HTMLSelectElement)){e.preventDefault();setSpaceHeld(true);}};const up=(e:KeyboardEvent)=>{if(e.code==="Space")setSpaceHeld(false);};window.addEventListener("keydown",down);window.addEventListener("keyup",up);return()=>{window.removeEventListener("keydown",down);window.removeEventListener("keyup",up);};},[]);
   useEffect(()=>{const nodes=canvases.map(ref=>ref.current).filter((node):node is HTMLCanvasElement=>Boolean(node));const onWheel=(event:WheelEvent)=>{if(!event.ctrlKey)return;event.preventDefault();setZoom(value=>Math.max(100,Math.min(400,value+(event.deltaY<0?25:-25))));};nodes.forEach(node=>node.addEventListener("wheel",onWheel,{passive:false}));return()=>nodes.forEach(node=>node.removeEventListener("wheel",onWheel));},[profile.expressions.length]);
-  const sliderRow=(label:string,value:number,min:number,max:number,unit:string,onChange:(n:number)=>void)=> <label style={{display:"grid",gridTemplateColumns:"minmax(130px,1fr) minmax(90px,1.1fr) 46px",alignItems:"center",gap:8,minHeight:34,fontSize:13}}><span>{label}</span><input style={{width:"100%",margin:0}} type="range" min={min} max={max} value={value} onChange={e=>onChange(Number(e.target.value))}/><span style={{textAlign:"right",fontVariantNumeric:"tabular-nums"}}>{value}{unit}</span></label>;
+  const sliderRow=(label:string,value:number,min:number,max:number,unit:string,onChange:(n:number)=>void,compact=false)=> <label style={{display:"grid",gridTemplateColumns:"minmax(130px,1fr) minmax(90px,1.1fr) 46px",alignItems:"center",gap:8,minHeight:compact?28:34,fontSize:13}}><span>{label}</span><input style={{width:"100%",margin:0}} type="range" min={min} max={max} value={value} onChange={e=>onChange(Number(e.target.value))}/><span style={{textAlign:"right",fontVariantNumeric:"tabular-nums"}}>{value}{unit}</span></label>;
   const choices=profile.expressions.map((item,i)=><option key={i} value={i}>{item.name}</option>);
   return <section className="setup-field morph-studio-editor" style={{marginTop:20,padding:16,border:"1px solid var(--border)",borderRadius:12}}>
 
@@ -233,9 +233,9 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
           <label style={{display:"flex",gap:8,alignItems:"center",fontSize:13,fontWeight:400}}><input type="checkbox" checked={eyeCorrectionActive} onChange={e=>setProfile(p=>({...p,active:false,eyeCorrections:{...p.eyeCorrections,[eyePairKey]:e.target.checked}}))}/> Eye correction</label>
         </div>
         <div style={{display:"grid",gap:0,width:420,maxWidth:"100%"}}>
-          {sliderRow("Eye transition midpoint",profile.eyeMidpoint??50,0,100,"%",n=>setProfile(p=>({...p,active:false,eyeMidpoint:n})))}
-          {sliderRow("Eye transition duration",profile.eyeDuration??30,5,100,"%",n=>setProfile(p=>({...p,active:false,eyeDuration:n})))}
-          {sliderRow("Eye strength",profile.eyeStrength??80,0,100,"%",n=>setProfile(p=>({...p,active:false,eyeStrength:n})))}
+          {sliderRow("Eye transition midpoint",profile.eyeMidpoint??50,0,100,"%",n=>setProfile(p=>({...p,active:false,eyeMidpoint:n})),true)}
+          {sliderRow("Eye transition duration",profile.eyeDuration??30,5,100,"%",n=>setProfile(p=>({...p,active:false,eyeDuration:n})),true)}
+          {sliderRow("Eye strength",profile.eyeStrength??80,0,100,"%",n=>setProfile(p=>({...p,active:false,eyeStrength:n})),true)}
         </div>
       </div>
     </>}
