@@ -68,7 +68,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 22px;
-  padding: 0 3.2%;
+  padding: 0 33px;
   border-bottom: 1px solid var(--border);
   background: var(--panel);
 }
@@ -1140,7 +1140,7 @@
 }
 @media (max-width: 1150px) {
   .sb-header {
-    padding: 0 23px;
+    padding: 0 25px;
     gap: 15px;
   }
   .sb-apps button {
@@ -1224,7 +1224,7 @@
     height: auto;
     min-height: 76px;
     flex-wrap: wrap;
-    padding: 17px 20px 12px;
+    padding: 17px 25px 12px;
     gap: 18px;
   }
   .sb-brand > span:last-child {
