@@ -30,6 +30,8 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
   const [target,setTarget] = useState(1);
   const [mix,setMix] = useState(50);
   const [zoom,setZoom] = useState(100);
+  const [linkedViews,setLinkedViews] = useState(true);
+  const scrollPositions = useRef(new WeakMap<HTMLDivElement, {left:number;top:number}>());
   const [spaceHeld,setSpaceHeld] = useState(false);
   const panning = useRef<{x:number;y:number;left:number;top:number;index:number}|null>(null);
   const viewports = [useRef<HTMLDivElement>(null),useRef<HTMLDivElement>(null),useRef<HTMLDivElement>(null)] as const;
@@ -196,11 +198,37 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
       setMessage("Mesh imported. Review alignment and save the profile.");
     } catch(err) {setMessage(err instanceof Error?err.message:"Mesh import failed.");}
   }
+  function syncViews(index: number) {
+    if (!linkedViews) return;
+    const current = viewports[index]?.current;
+    if (!current) return;
+    const expected = scrollPositions.current.get(current);
+    if (expected && Math.abs(current.scrollLeft - expected.left) < 1 && Math.abs(current.scrollTop - expected.top) < 1) return;
+    const x = current.scrollLeft / Math.max(1, current.scrollWidth - current.clientWidth);
+    const y = current.scrollTop / Math.max(1, current.scrollHeight - current.clientHeight);
+    viewports.forEach((ref, i) => {
+      const other = ref.current;
+      if (!other || i === index) return;
+      const left = x * Math.max(0, other.scrollWidth - other.clientWidth);
+      const top = y * Math.max(0, other.scrollHeight - other.clientHeight);
+      other.scrollLeft = left;
+      other.scrollTop = top;
+      scrollPositions.current.set(other, {left:other.scrollLeft,top:other.scrollTop});
+    });
+  }
+  function copyMesh() {
+    const from = profile.expressions[source];
+    if (!from || source === target) return;
+    setProfile(p => ({...p,active:false,expressions:p.expressions.map((expression,index) =>
+      index === target ? {...expression,points:clone(from.points)} : expression)}));
+    setMessage("Mesh copied from image 1 to image 2. Save to retain changes.");
+  }
   function movePoint(event: React.PointerEvent<HTMLCanvasElement>,index:number) {
     const viewport=viewports[index]?.current;
     if(event.type==="pointerdown" && spaceHeld && viewport){panning.current={x:event.clientX,y:event.clientY,left:viewport.scrollLeft,top:viewport.scrollTop,index};event.currentTarget.setPointerCapture(event.pointerId);return;}
     if(event.type==="pointermove" && panning.current?.index===index && viewport){viewport.scrollLeft=panning.current.left-(event.clientX-panning.current.x);viewport.scrollTop=panning.current.top-(event.clientY-panning.current.y);return;}
     if((event.type==="pointerup"||event.type==="pointercancel") && panning.current?.index===index){panning.current=null;return;}
+    if (index === 2) return;
     const canvas=canvases[index]?.current,expIndex=index===0?source:target,exp=profile.expressions[expIndex];if(!canvas||!exp)return;
     const rect=canvas.getBoundingClientRect(),x=(event.clientX-rect.left)/rect.width,y=(event.clientY-rect.top)/rect.height;
     if(event.type==="pointerup" || event.type==="pointercancel"){eyeDragging.current=null;dragging.current=null;return;}
@@ -237,7 +265,9 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
         <button type="button" onClick={()=>setShowMesh(v=>!v)}>{showMesh?"Hide mesh":"Show mesh"}</button>
         <button type="button" aria-pressed={addingPoint} onClick={()=>{setAddingPoint(v=>!v);setEyeEditMode(false);}}>{addingPoint?"Cancel point":"Add mesh point"}</button>
         <button type="button" onClick={()=>setZoom(v=>Math.max(100,v-25))}>−</button><span>{zoom}%</span><button type="button" onClick={()=>setZoom(v=>Math.min(400,v+25))}>+</button>
-        <button type="button" onClick={()=>setZoom(100)}>Fit</button>
+        <button type="button" onClick={()=>{setZoom(100);viewports.forEach(ref=>{if(ref.current){ref.current.scrollLeft=0;ref.current.scrollTop=0;}});}}>Fit</button>
+        <button type="button" disabled={source === target || !loaded} onClick={copyMesh}>Copy mesh 1 → 2</button>
+        <label style={{display:"flex",alignItems:"center",gap:6}}><input type="checkbox" checked={linkedViews} onChange={e=>{setLinkedViews(e.target.checked);scrollPositions.current=new WeakMap();}}/> Link views</label>
       </div>)}
       <div className="morph-toolbar-files"><button type="button" onClick={()=>imageFileRef.current?.click()}>Upload more images</button><button type="button" onClick={()=>meshFileRef.current?.click()}>Import JSON</button><button type="button" onClick={()=>{const blob=new Blob([JSON.stringify(profile)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="morph-profile.json";a.click();URL.revokeObjectURL(url);}}>Export JSON</button></div>
     </div>
@@ -246,8 +276,8 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
     {profile.expressions.length>=2 && <>
 
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(230px,1fr))",gap:12}}>
-        {canvases.map((ref,i)=><div key={i} ref={viewports[i]} style={{overflow:"auto",maxHeight:"65vh",border:"1px solid var(--border)",borderRadius:8}}>
-          <canvas ref={ref} width={252} height={282} aria-label={["Source mesh","Target mesh","Morph preview"][i]} style={{display:"block",width:`calc(min(100%, 51vh) * ${zoom / 100})`,maxWidth:"none",height:"auto",aspectRatio:"252 / 282",touchAction:"none",cursor:spaceHeld?"grab":eyeEditMode?"move":"crosshair"}} onPointerDown={i<2?e=>movePoint(e,i):undefined} onPointerMove={i<2?e=>movePoint(e,i):undefined} onPointerUp={i<2?e=>movePoint(e,i):undefined} onPointerCancel={i<2?e=>movePoint(e,i):undefined}/>
+        {canvases.map((ref,i)=><div key={i} ref={viewports[i]} onScroll={()=>syncViews(i)} style={{overflow:"auto",maxHeight:"65vh",border:"1px solid var(--border)",borderRadius:8}}>
+          <canvas ref={ref} width={252} height={282} aria-label={["Source mesh","Target mesh","Morph preview"][i]} style={{display:"block",width:`calc(min(100%, 51vh) * ${zoom / 100})`,maxWidth:"none",height:"auto",aspectRatio:"252 / 282",touchAction:"none",cursor:spaceHeld?"grab":eyeEditMode?"move":"crosshair"}} onPointerDown={e=>movePoint(e,i)} onPointerMove={e=>movePoint(e,i)} onPointerUp={e=>movePoint(e,i)} onPointerCancel={e=>movePoint(e,i)}/>
           {i<2 && <div style={{display:"flex",justifyContent:"center",gap:8,alignItems:"center",padding:8}}><button type="button" onClick={()=>i===0?setSource((source+profile.expressions.length-1)%profile.expressions.length):setTarget((target+profile.expressions.length-1)%profile.expressions.length)}>‹</button><select aria-label={i===0?"From":"To"} value={i===0?source:target} onChange={e=>i===0?setSource(Number(e.target.value)):setTarget(Number(e.target.value))}>{choices}</select><button type="button" onClick={()=>i===0?setSource((source+1)%profile.expressions.length):setTarget((target+1)%profile.expressions.length)}>›</button></div>}
           {i===2 && <div style={{display:"grid",gap:8,paddingBottom:10}}><div className="morph-transition" style={{display:"flex",alignItems:"center",gap:12,padding:"8px 12px",borderTop:"1px solid var(--border)"}}><button type="button" style={{justifySelf:"start"}} onClick={()=>setPlaying(v=>!v)}>{playing?"Pause":"Play ↔"}</button>{sliderRow("Transition",mix,0,100,"%",n=>{setPlaying(false);setMix(n);})}</div><label style={{display:"grid",gridTemplateColumns:"auto minmax(80px,1fr) auto",gap:10,alignItems:"center",padding:"0 12px",fontSize:13}}><span>Morph duration</span><input aria-label="Morph duration" type="range" min={0.3} max={6} step={0.1} value={morphDuration/1000} onChange={e=>{const duration=Number(e.target.value)*1000;setProfile(p=>({...p,active:false,morphDurations:{...p.morphDurations,[eyePairKey]:duration}}));}}/><span>{(morphDuration/1000).toFixed(1)} s</span></label></div>}
         </div>)}
