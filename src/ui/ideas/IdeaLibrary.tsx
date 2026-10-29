@@ -73,12 +73,15 @@ export function IdeaLibrary({ repo, conversations, onOpen }: {
           Export {visible.length} idea(s)
         </button>
       </div>
-      <p className="sb-idea-help">
+      <details className="sb-idea-help">
+        <summary>Using your ideas in kaampi Write</summary>
+        <p>
         Export opens as a separate idea manuscript in kaampi Write, with one card per idea
         in Brainstorm. To use an idea in an existing book, copy its text to that book’s
         Brainstorm. JSON includes your ideas and their selected source messages.
         Nothing is added to established story facts.
-      </p>
+        </p>
+      </details>
       <div className="sb-conversation-filters">
         <input aria-label="Search ideas" placeholder="Find an idea…" value={query}
           onChange={event => setQuery(event.target.value)} />
@@ -90,6 +93,7 @@ export function IdeaLibrary({ repo, conversations, onOpen }: {
           ))}
         </select>
       </div>
+      {ready && <p className="sb-idea-count" role="status">{visible.length} {visible.length === 1 ? "idea" : "ideas"}{query || kind ? ` matching your filters · ${ideas.length} saved` : " saved"}</p>}
       {error && <p role="alert">{error}</p>}
       {notice && <p role="status">{notice}</p>}
       {unreadable > 0 && (
@@ -130,8 +134,8 @@ export function IdeaLibrary({ repo, conversations, onOpen }: {
               </details>
               <div className="sb-conversation-actions">
                 <button className="sb-button" onClick={() => setEditing(idea)}>Edit idea</button>
-                <button className="sb-button" onClick={() => void copy(idea)}>Copy idea</button>
-                <button className="sb-button" onClick={() => download([idea])}>Export JSON</button>
+                <button className="sb-button sb-button--secondary" onClick={() => void copy(idea)}>Copy idea</button>
+                <button className="sb-button sb-button--secondary" onClick={() => download([idea])}>Export JSON</button>
               </div>
             </article>
           ))}

@@ -30,6 +30,7 @@ import type { Session } from "@state/StateSchema";
 import type { StudioView } from "./studio/types";
 import "./styles.css";
 import "./experience.css";
+import "./page-system.css";
 
 function LiveSessionBridge({
   onSession,
