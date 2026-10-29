@@ -79,7 +79,19 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
       [source,target].forEach((index,k)=>{
         const canvas=canvases[k]?.current, img=images[index],exp=profile.expressions[index];
         if(!canvas || !img || !exp)return;
+        // Match the backing bitmap to the zoomed display size and screen density.
+        // Keep the preview small: only the editable mesh needs this resolution.
+        const rect = canvas.getBoundingClientRect();
+        const density = window.devicePixelRatio || 1;
+        const width = Math.max(1, Math.round(rect.width * density));
+        const height = Math.max(1, Math.round(rect.height * density));
+        if (rect.width > 0 && rect.height > 0 && (canvas.width !== width || canvas.height !== height)) {
+          canvas.width = width;
+          canvas.height = height;
+        }
         const ctx=canvas.getContext("2d");if(!ctx)return;
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
         ctx.clearRect(0,0,canvas.width,canvas.height);drawImage(ctx,img,canvas.width,canvas.height);
         if(showMesh){ctx.strokeStyle=meshColor;ctx.lineWidth=Math.max(.15,canvas.width/Math.max(1,canvas.getBoundingClientRect().width))*.65;
         for(const tri of meshTriangles){const p=tri.map(i=>exp.points[i]);if(p.some(v=>!v))continue;ctx.beginPath();ctx.moveTo(p[0]![0]*canvas.width,p[0]![1]*canvas.height);for(let j=1;j<3;j++)ctx.lineTo(p[j]![0]*canvas.width,p[j]![1]*canvas.height);ctx.closePath();ctx.stroke();}
@@ -90,8 +102,16 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
       if(!canvas || !ctx)return;
       renderMorphFrame(canvas,profile,images,source,target,mix/100);
     };
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(render);
+    canvases.slice(0, 2).forEach(ref => { if (ref.current) observer?.observe(ref.current); });
+    window.addEventListener("resize", render);
     images.forEach(img=>img.addEventListener("load",render));render();
-    return ()=>{cancelled=true;images.forEach(img=>img.removeEventListener("load",render));};
+    return ()=>{
+      cancelled=true;
+      observer?.disconnect();
+      window.removeEventListener("resize", render);
+      images.forEach(img=>img.removeEventListener("load",render));
+    };
   },[profile,source,target,mix,meshTriangles,showMesh,zoom,eyeCorrectionActive,showEyeRegions,meshColor]);
   async function save(active: boolean) {
     if (!loaded) { setMessage("Wait for the saved morph profile to finish loading before saving."); return; }
@@ -227,7 +247,7 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
 
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(230px,1fr))",gap:12}}>
         {canvases.map((ref,i)=><div key={i} ref={viewports[i]} style={{overflow:"auto",maxHeight:"65vh",border:"1px solid var(--border)",borderRadius:8}}>
-          <canvas ref={ref} width={252} height={282} aria-label={["Source mesh","Target mesh","Morph preview"][i]} style={{display:"block",width:`calc(min(100%, 51vh) * ${zoom / 100})`,maxWidth:"none",height:"auto",touchAction:"none",cursor:spaceHeld?"grab":eyeEditMode?"move":"crosshair"}} onPointerDown={i<2?e=>movePoint(e,i):undefined} onPointerMove={i<2?e=>movePoint(e,i):undefined} onPointerUp={i<2?e=>movePoint(e,i):undefined} onPointerCancel={i<2?e=>movePoint(e,i):undefined}/>
+          <canvas ref={ref} width={252} height={282} aria-label={["Source mesh","Target mesh","Morph preview"][i]} style={{display:"block",width:`calc(min(100%, 51vh) * ${zoom / 100})`,maxWidth:"none",height:"auto",aspectRatio:"252 / 282",touchAction:"none",cursor:spaceHeld?"grab":eyeEditMode?"move":"crosshair"}} onPointerDown={i<2?e=>movePoint(e,i):undefined} onPointerMove={i<2?e=>movePoint(e,i):undefined} onPointerUp={i<2?e=>movePoint(e,i):undefined} onPointerCancel={i<2?e=>movePoint(e,i):undefined}/>
           {i<2 && <div style={{display:"flex",justifyContent:"center",gap:8,alignItems:"center",padding:8}}><button type="button" onClick={()=>i===0?setSource((source+profile.expressions.length-1)%profile.expressions.length):setTarget((target+profile.expressions.length-1)%profile.expressions.length)}>‹</button><select aria-label={i===0?"From":"To"} value={i===0?source:target} onChange={e=>i===0?setSource(Number(e.target.value)):setTarget(Number(e.target.value))}>{choices}</select><button type="button" onClick={()=>i===0?setSource((source+1)%profile.expressions.length):setTarget((target+1)%profile.expressions.length)}>›</button></div>}
           {i===2 && <div style={{display:"grid",gap:8,paddingBottom:10}}><div className="morph-transition" style={{display:"flex",alignItems:"center",gap:12,padding:"8px 12px",borderTop:"1px solid var(--border)"}}><button type="button" style={{justifySelf:"start"}} onClick={()=>setPlaying(v=>!v)}>{playing?"Pause":"Play ↔"}</button>{sliderRow("Transition",mix,0,100,"%",n=>{setPlaying(false);setMix(n);})}</div><label style={{display:"grid",gridTemplateColumns:"auto minmax(80px,1fr) auto",gap:10,alignItems:"center",padding:"0 12px",fontSize:13}}><span>Morph duration</span><input aria-label="Morph duration" type="range" min={0.3} max={6} step={0.1} value={morphDuration/1000} onChange={e=>{const duration=Number(e.target.value)*1000;setProfile(p=>({...p,active:false,morphDurations:{...p.morphDurations,[eyePairKey]:duration}}));}}/><span>{(morphDuration/1000).toFixed(1)} s</span></label></div>}
         </div>)}
