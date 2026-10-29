@@ -3113,3 +3113,11 @@ textarea.setup-field__story {
   }
 }
 
+
+/* Give character portraits the card's available width while preserving two columns. */
+.studio-list--cols-2.studio-list--portraits .studio-list__thumb.morph-portrait {
+  width: min(210px, 100%);
+  height: auto;
+  aspect-ratio: 1;
+  flex-shrink: 0;
+}
