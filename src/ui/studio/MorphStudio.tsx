@@ -1,3 +1,4 @@
+import { planMeshInsertion, type MeshInsertion } from "./meshInsertion";
 import { renderMorphFrame, type Point, type Profile, type Expression } from "./morphRenderer";
 import { originalPoints, originalTriangles } from "./originalMorphMesh";
 import { useEffect, useRef, useState } from "react";
@@ -37,6 +38,9 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
   const viewports = [useRef<HTMLDivElement>(null),useRef<HTMLDivElement>(null),useRef<HTMLDivElement>(null)] as const;
   const [message,setMessage] = useState("");
   const [addingPoint,setAddingPoint] = useState(false);
+  const [insertion,setInsertion] = useState<{index:number;plan:MeshInsertion}|null>(null);
+  const [undoStack,setUndoStack] = useState<Profile[]>([]);
+  function rememberMesh() { setUndoStack(stack=>[...stack.slice(-29),structuredClone({...profile,triangles:meshTriangles})]); }
   const [showMesh,setShowMesh] = useState(true);
   const [eyeEditMode,setEyeEditMode] = useState(false);
   const [playing,setPlaying] = useState(false);
@@ -66,6 +70,7 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
         const previous = load(key);
         setProfile({ ...previous, expressions: gallery.length ? gallery.map(g => ({name:g.name,image:g.image,points:clone(originalPoints(g.name))})) : previous.expressions });
       }
+      setUndoStack([]);setInsertion(null);
       setSource(0); setTarget(1);
       setLoaded(true);
     }).catch(() => { if (!cancelled) setMessage("Could not load morph profile."); });
@@ -98,6 +103,16 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
         if(showMesh){ctx.strokeStyle=meshColor;ctx.lineWidth=Math.max(.15,canvas.width/Math.max(1,canvas.getBoundingClientRect().width))*.65;
         for(const tri of meshTriangles){const p=tri.map(i=>exp.points[i]);if(p.some(v=>!v))continue;ctx.beginPath();ctx.moveTo(p[0]![0]*canvas.width,p[0]![1]*canvas.height);for(let j=1;j<3;j++)ctx.lineTo(p[j]![0]*canvas.width,p[j]![1]*canvas.height);ctx.closePath();ctx.stroke();}
         for(const p of exp.points){ctx.beginPath();ctx.arc(p[0]*canvas.width,p[1]*canvas.height,Math.max(.3,canvas.width/Math.max(1,canvas.getBoundingClientRect().width))*2,0,Math.PI*2);ctx.fillStyle=meshColor;ctx.fill();}}
+        if(addingPoint && insertion?.index===index){
+          const plan=insertion.plan,pts=[...exp.points,plan.point];
+          ctx.save();ctx.strokeStyle=meshColor;ctx.fillStyle=meshColor;
+          ctx.lineWidth=2*canvas.width/Math.max(1,canvas.getBoundingClientRect().width);
+          ctx.setLineDash([5*ctx.lineWidth,3*ctx.lineWidth]);
+          for(const tri of plan.triangles.filter(t=>t.includes(exp.points.length))){
+            ctx.beginPath();tri.forEach((v,j)=>{const p=pts[v]!;if(j===0)ctx.moveTo(p[0]*canvas.width,p[1]*canvas.height);else ctx.lineTo(p[0]*canvas.width,p[1]*canvas.height);});ctx.closePath();ctx.stroke();
+          }
+          ctx.setLineDash([]);ctx.beginPath();ctx.arc(plan.point[0]*canvas.width,plan.point[1]*canvas.height,4*ctx.lineWidth,0,Math.PI*2);ctx.fill();ctx.restore();
+        }
         if(showEyeRegions){const centers=profile.eyeCenters?.[exp.name] ?? [[.37,.39],[.63,.39]];ctx.strokeStyle="#ffffff";ctx.fillStyle="#ffffff";ctx.lineWidth=Math.max(.15,canvas.width/Math.max(1,canvas.getBoundingClientRect().width))*1.5;for(const p of centers){ctx.beginPath();ctx.ellipse(p[0]*canvas.width,p[1]*canvas.height,(profile.eyeWidth??25)/252*canvas.width,(profile.eyeHeight??14)/282*canvas.height,0,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(p[0]*canvas.width,p[1]*canvas.height,Math.max(.3,canvas.width/Math.max(1,canvas.getBoundingClientRect().width))*2,0,Math.PI*2);ctx.fill();const rx=(profile.eyeWidth??25)/252*canvas.width,ry=(profile.eyeHeight??14)/282*canvas.height;const hx=(p[0]*canvas.width)+rx*Math.SQRT1_2,hy=(p[1]*canvas.height)+ry*Math.SQRT1_2;const size=8*canvas.width/Math.max(1,canvas.getBoundingClientRect().width);ctx.fillStyle="#173b29";ctx.fillRect(hx-size/2,hy-size/2,size,size);ctx.strokeRect(hx-size/2,hy-size/2,size,size);ctx.fillStyle="#ffffff";}}
       });
       const canvas=canvases[2].current,ctx=canvas?.getContext("2d");
@@ -114,7 +129,7 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
       window.removeEventListener("resize", render);
       images.forEach(img=>img.removeEventListener("load",render));
     };
-  },[profile,source,target,mix,meshTriangles,showMesh,zoom,eyeCorrectionActive,showEyeRegions,meshColor]);
+  },[profile,source,target,mix,meshTriangles,showMesh,zoom,eyeCorrectionActive,showEyeRegions,meshColor,addingPoint,insertion]);
   async function save(active: boolean) {
     if (!loaded) { setMessage("Wait for the saved morph profile to finish loading before saving."); return; }
     const next={...profile,active};
@@ -132,29 +147,17 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
   useEffect(()=>{if(saveRequest && saveRequest.id!==handledSaveRequest.current){handledSaveRequest.current=saveRequest.id;void save(saveRequest.mode==="profile");}},[saveRequest]);
   function addMeshPoint(index: number, x: number, y: number) {
     const expression=profile.expressions[index];if(!expression)return;
-    const barycentric=(a:Point,b:Point,c:Point):[number,number,number] | null=>{
-      const den=(b[1]-c[1])*(a[0]-c[0])+(c[0]-b[0])*(a[1]-c[1]);
-      if(Math.abs(den)<1e-8)return null;
-      const u=((b[1]-c[1])*(x-c[0])+(c[0]-b[0])*(y-c[1]))/den;
-      const v=((c[1]-a[1])*(x-c[0])+(a[0]-c[0])*(y-c[1]))/den;
-      return [u,v,1-u-v];
-    };
-    for(let k=0;k<meshTriangles.length;k++){
-      const tri=meshTriangles[k]!, a=expression.points[tri[0]!]!,b=expression.points[tri[1]!]!,c=expression.points[tri[2]!]!;
-      const weights=barycentric(a,b,c);
-      if(!weights || weights.some(w=>w<-.0001))continue;
-      const pointId=expression.points.length;
-      const updated=profile.expressions.map(item=>{
-        const [i,j,l]=tri;const p=item.points[i!]!,q=item.points[j!]!,r=item.points[l!]!;
-        return {...item,points:[...item.points,[p[0]*weights[0]+q[0]*weights[1]+r[0]*weights[2],p[1]*weights[0]+q[1]*weights[1]+r[1]*weights[2]] as Point]};
-      });
-      const updatedTriangles=meshTriangles.filter((_,i)=>i!==k).concat([[tri[0]!,tri[1]!,pointId],[tri[1]!,tri[2]!,pointId],[tri[2]!,tri[0]!,pointId]]);
-      setProfile({...profile,active:false,expressions:updated,triangles:updatedTriangles});
-      setAddingPoint(false);
-      setMessage("Control point added to all expressions.");
-      return;
-    }
-    setMessage("Select a position inside a mesh triangle.");
+    const canvas=canvases[index===source?0:1].current,rect=canvas?.getBoundingClientRect();
+    const plan=planMeshInsertion(expression.points,meshTriangles,[x,y],rect?.width??252,rect?.height??282);
+    if (!plan) {setMessage("Choose a line or a triangle, away from existing nodes.");return;}
+    rememberMesh();
+    setProfile({...profile,active:false,triangles:plan.triangles,expressions:profile.expressions.map(item=>({
+      ...item,points:[...item.points,plan.vertices.reduce<Point>((p,vertex,i)=>[
+        p[0]+item.points[vertex]![0]*plan.weights[i]!,p[1]+item.points[vertex]![1]*plan.weights[i]!
+      ],[0,0])]
+    }))});
+    setInsertion(null);setAddingPoint(false);
+    setMessage(plan.edge ? "Line split in all expressions. Save to retain changes." : "Triangle split in all expressions. Save to retain changes.");
   }
   async function addFiles(files: FileList | null) {
     if(!files)return;
@@ -219,6 +222,7 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
   function copyMesh() {
     const from = profile.expressions[source];
     if (!from || source === target) return;
+    rememberMesh();
     setProfile(p => ({...p,active:false,expressions:p.expressions.map((expression,index) =>
       index === target ? {...expression,points:clone(from.points)} : expression)}));
     setMessage("Mesh copied from image 1 to image 2. Save to retain changes.");
@@ -231,6 +235,7 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
     if (index === 2) return;
     const canvas=canvases[index]?.current,expIndex=index===0?source:target,exp=profile.expressions[expIndex];if(!canvas||!exp)return;
     const rect=canvas.getBoundingClientRect(),x=(event.clientX-rect.left)/rect.width,y=(event.clientY-rect.top)/rect.height;
+    if (addingPoint && event.type==="pointermove") {const plan=planMeshInsertion(exp.points,meshTriangles,[x,y],rect.width,rect.height);setInsertion(plan?{index:expIndex,plan}:null);return;}
     if(event.type==="pointerup" || event.type==="pointercancel"){eyeDragging.current=null;dragging.current=null;return;}
     if(event.type==="pointermove" && dragging.current?.expression===expIndex){const {point,edge}=dragging.current;const nx=edge==="left"?0:edge==="right"?1:Math.max(0,Math.min(1,x));const ny=edge==="top"?0:edge==="bottom"?1:Math.max(0,Math.min(1,y));setProfile(p=>({...p,active:false,expressions:p.expressions.map((item,i)=>i===expIndex?{...item,points:item.points.map((v,j)=>j===point?[nx,ny] as Point:v)}:item)}));return;}
     if(event.type==="pointermove" && eyeDragging.current?.expression===expIndex){const {eye,resize}=eyeDragging.current;if(resize){const center=(profile.eyeCenters?.[exp.name]??[[.37,.39],[.63,.39]])[eye]!;setProfile(p=>({...p,active:false,eyeWidth:Math.max(10,Math.min(50,Math.abs(x-center[0])*252/Math.SQRT1_2)),eyeHeight:Math.max(5,Math.min(35,Math.abs(y-center[1])*282/Math.SQRT1_2))}));return;}setProfile(p=>{const name=p.expressions[expIndex]?.name;if(!name)return p;const centers=(p.eyeCenters?.[name]??[[.37,.39],[.63,.39]]).map((v,i)=>i===eye?[Math.max(0,Math.min(1,x)),Math.max(0,Math.min(1,y))] as Point:v);return {...p,active:false,eyeCenters:{...p.eyeCenters,[name]:centers}};});return;}
@@ -250,7 +255,7 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
     // Mesh editing only: eye regions cannot intercept vertex selection.
     let closest=12,point=-1;
     exp.points.forEach((p,i)=>{const d=Math.hypot((p[0]-x)*rect.width,(p[1]-y)*rect.height);if(d<closest){closest=d;point=i;}});
-    if(point>=0){const p=exp.points[point]!;const edge=p[0]===0?"left":p[0]===1?"right":p[1]===0?"top":p[1]===1?"bottom":null;dragging.current={expression:expIndex,point,edge};canvas.setPointerCapture(event.pointerId);}
+    if(point>=0){rememberMesh();const p=exp.points[point]!;const edge=p[0]===0?"left":p[0]===1?"right":p[1]===0?"top":p[1]===1?"bottom":null;dragging.current={expression:expIndex,point,edge};canvas.setPointerCapture(event.pointerId);}
 
   }
   useEffect(()=>{if(!playing)return;let frame=0;let last=0;let progress=mix/100;let direction=1;const tick=(now:number)=>{if(last){progress+=direction*(now-last)/morphDuration;if(progress>=1){progress=1;direction=-1;}if(progress<=0){progress=0;direction=1;}setMix(Math.round(progress*100));}last=now;frame=requestAnimationFrame(tick);};frame=requestAnimationFrame(tick);return()=>cancelAnimationFrame(frame);},[playing,source,target,morphDuration]);
@@ -263,6 +268,7 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
     <div className="morph-toolbar">
       {profile.expressions.length>=2 && (<div className="morph-toolbar-tools">
         <button type="button" onClick={()=>setShowMesh(v=>!v)}>{showMesh?"Hide mesh":"Show mesh"}</button>
+        <button type="button" disabled={!undoStack.length} onClick={()=>{const previous=undoStack[undoStack.length-1];if(previous){setProfile(p=>({...p,active:false,expressions:previous.expressions,triangles:previous.triangles!}));setUndoStack(stack=>stack.slice(0,-1));setInsertion(null);setMessage("Mesh change undone.");}}}>Undo mesh change</button>
         <button type="button" aria-pressed={addingPoint} onClick={()=>{setAddingPoint(v=>!v);setEyeEditMode(false);}}>{addingPoint?"Cancel point":"Add mesh point"}</button>
         <button type="button" onClick={()=>setZoom(v=>Math.max(100,v-25))}>−</button><span>{zoom}%</span><button type="button" onClick={()=>setZoom(v=>Math.min(400,v+25))}>+</button>
         <button type="button" onClick={()=>{setZoom(100);viewports.forEach(ref=>{if(ref.current){ref.current.scrollLeft=0;ref.current.scrollTop=0;}});}}>Fit</button>
@@ -277,7 +283,7 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
 
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(230px,1fr))",gap:12}}>
         {canvases.map((ref,i)=><div key={i} ref={viewports[i]} onScroll={()=>syncViews(i)} style={{overflow:"auto",maxHeight:"65vh",border:"1px solid var(--border)",borderRadius:8}}>
-          <canvas ref={ref} width={252} height={282} aria-label={["Source mesh","Target mesh","Morph preview"][i]} style={{display:"block",width:`calc(min(100%, 51vh) * ${zoom / 100})`,maxWidth:"none",height:"auto",aspectRatio:"252 / 282",touchAction:"none",cursor:spaceHeld?"grab":eyeEditMode?"move":"crosshair"}} onPointerDown={e=>movePoint(e,i)} onPointerMove={e=>movePoint(e,i)} onPointerUp={e=>movePoint(e,i)} onPointerCancel={e=>movePoint(e,i)}/>
+          <canvas ref={ref} width={252} height={282} aria-label={["Source mesh","Target mesh","Morph preview"][i]} style={{display:"block",width:`calc(min(100%, 51vh) * ${zoom / 100})`,maxWidth:"none",height:"auto",aspectRatio:"252 / 282",touchAction:"none",cursor:spaceHeld?"grab":eyeEditMode?"move":"crosshair"}} onPointerLeave={()=>setInsertion(null)} onPointerDown={e=>movePoint(e,i)} onPointerMove={e=>movePoint(e,i)} onPointerUp={e=>movePoint(e,i)} onPointerCancel={e=>movePoint(e,i)}/>
           {i<2 && <div style={{display:"flex",justifyContent:"center",gap:8,alignItems:"center",padding:8}}><button type="button" onClick={()=>i===0?setSource((source+profile.expressions.length-1)%profile.expressions.length):setTarget((target+profile.expressions.length-1)%profile.expressions.length)}>‹</button><select aria-label={i===0?"From":"To"} value={i===0?source:target} onChange={e=>i===0?setSource(Number(e.target.value)):setTarget(Number(e.target.value))}>{choices}</select><button type="button" onClick={()=>i===0?setSource((source+1)%profile.expressions.length):setTarget((target+1)%profile.expressions.length)}>›</button></div>}
           {i===2 && <div style={{display:"grid",gap:8,paddingBottom:10}}><div className="morph-transition" style={{display:"flex",alignItems:"center",gap:12,padding:"8px 12px",borderTop:"1px solid var(--border)"}}><button type="button" style={{justifySelf:"start"}} onClick={()=>setPlaying(v=>!v)}>{playing?"Pause":"Play ↔"}</button>{sliderRow("Transition",mix,0,100,"%",n=>{setPlaying(false);setMix(n);})}</div><label style={{display:"grid",gridTemplateColumns:"auto minmax(80px,1fr) auto",gap:10,alignItems:"center",padding:"0 12px",fontSize:13}}><span>Morph duration</span><input aria-label="Morph duration" type="range" min={0.3} max={6} step={0.1} value={morphDuration/1000} onChange={e=>{const duration=Number(e.target.value)*1000;setProfile(p=>({...p,active:false,morphDurations:{...p.morphDurations,[eyePairKey]:duration}}));}}/><span>{(morphDuration/1000).toFixed(1)} s</span></label></div>}
         </div>)}
