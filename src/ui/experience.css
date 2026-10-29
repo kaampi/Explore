@@ -174,7 +174,7 @@
   border-radius: 7px;
   background: none;
   text-align: left;
-  color: var(--text-dim);
+  color: #84676a;
   font-size: 20px;
   line-height: 1.35;
 }
@@ -183,7 +183,7 @@
 }
 .sb-sidebar nav button.is-active {
   background: var(--panel-raised);
-  color: var(--accent-active);
+  color: #84676a;
   font-weight: 600;
 }
 .sb-sidebar__quote {
