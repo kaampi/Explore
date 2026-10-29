@@ -225,25 +225,18 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
           {i===2 && <div style={{display:"grid",gap:8,paddingBottom:10}}><div className="morph-transition" style={{display:"flex",alignItems:"center",gap:12,padding:"8px 12px",borderTop:"1px solid var(--border)"}}><button type="button" style={{justifySelf:"start"}} onClick={()=>setPlaying(v=>!v)}>{playing?"Pause":"Play ↔"}</button>{sliderRow("Transition",mix,0,100,"%",n=>{setPlaying(false);setMix(n);})}</div><label style={{display:"grid",gridTemplateColumns:"auto minmax(80px,1fr) auto",gap:10,alignItems:"center",padding:"0 12px",fontSize:13}}><span>Morph duration</span><input aria-label="Morph duration" type="range" min={0.3} max={6} step={0.1} value={morphDuration/1000} onChange={e=>{const duration=Number(e.target.value)*1000;setProfile(p=>({...p,active:false,morphDurations:{...p.morphDurations,[eyePairKey]:duration}}));}}/><span>{(morphDuration/1000).toFixed(1)} s</span></label></div>}
         </div>)}
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"minmax(0,2fr) minmax(0,1fr)",gap:16,alignItems:"start",marginTop:16,padding:"14px 0",borderTop:"1px solid var(--border)"}}>
-        <div style={{display:"flex",flexWrap:"wrap",gap:20,alignItems:"center"}}>
-        <div style={{display:"grid",gap:14,paddingTop:7}}>
-          <label style={{display:"flex",gap:8,alignItems:"center",fontSize:13,fontWeight:400}}><input type="checkbox" checked={eyeCorrectionActive} onChange={e=>setProfile(p=>({...p,active:false,eyeCorrections:{...p.eyeCorrections,[eyePairKey]:e.target.checked}}))}/> Eye correction</label>
-          <div style={{display:"flex",gap:10,alignItems:"center",fontSize:13}}>
-            <span style={{fontWeight:eyeEditMode?400:700}}>Edit mesh</span>
-            <button type="button" role="switch" aria-label="Edit eye regions" aria-checked={eyeEditMode} onClick={()=>{setEyeEditMode(v=>!v);setAddingPoint(false);eyeDragging.current=null;dragging.current=null;}} style={{position:"relative",width:52,height:28,minWidth:52,padding:0,border:"1px solid var(--border)",borderRadius:20,background:eyeEditMode?"#92b75d":"#777",cursor:"pointer"}}>
-              <span style={{position:"absolute",top:2,left:eyeEditMode?26:2,width:22,height:22,borderRadius:"50%",background:"#fff",boxShadow:"0 1px 3px #0005",transition:"left 120ms"}}/>
-            </button>
-            <span style={{fontWeight:eyeEditMode?700:400}}>Edit eye regions</span>
+      <div style={{display:"flex",flexWrap:"wrap",gap:"20px 64px",alignItems:"center",marginTop:16,padding:"14px 0",borderTop:"1px solid var(--border)"}}>
+        <div style={{display:"grid",gap:20,minWidth:180}}>
+          <div role="group" aria-label="Editing mode" style={{display:"flex",width:160,border:"1px solid var(--border)",borderRadius:20,overflow:"hidden",background:"var(--surface)"}}>
+            {(["MESH","EYES"] as const).map((mode,index)=><button key={mode} type="button" aria-pressed={eyeEditMode===(index===1)} onClick={()=>{setEyeEditMode(index===1);setAddingPoint(false);eyeDragging.current=null;dragging.current=null;}} style={{flex:1,minHeight:26,padding:"3px 12px",border:0,borderRadius:20,background:eyeEditMode===(index===1)?"#afd29a":"transparent",color:eyeEditMode===(index===1)?"#173b29":"var(--text)",fontSize:12,fontWeight:400,cursor:"pointer"}}>{mode}</button>)}
           </div>
+          <label style={{display:"flex",gap:8,alignItems:"center",fontSize:13,fontWeight:400}}><input type="checkbox" checked={eyeCorrectionActive} onChange={e=>setProfile(p=>({...p,active:false,eyeCorrections:{...p.eyeCorrections,[eyePairKey]:e.target.checked}}))}/> Eye correction</label>
         </div>
-        <div style={{display:"grid",gap:8}}>
+        <div style={{display:"grid",gap:0,width:420,maxWidth:"100%"}}>
           {sliderRow("Eye transition midpoint",profile.eyeMidpoint??50,0,100,"%",n=>setProfile(p=>({...p,active:false,eyeMidpoint:n})))}
           {sliderRow("Eye transition duration",profile.eyeDuration??30,5,100,"%",n=>setProfile(p=>({...p,active:false,eyeDuration:n})))}
+          {sliderRow("Eye strength",profile.eyeStrength??80,0,100,"%",n=>setProfile(p=>({...p,active:false,eyeStrength:n})))}
         </div>
-        </div>
-        <div>{sliderRow("Eye strength",profile.eyeStrength??80,0,100,"%",n=>setProfile(p=>({...p,active:false,eyeStrength:n})))}</div>
-
       </div>
     </>}
     {message && <p role="status">{message}</p>}
