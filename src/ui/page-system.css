@@ -108,3 +108,12 @@
 .studio-nav-group > div { display: flex; gap: 4px; flex-wrap: wrap; }
 .sb-studio-wrap .studio-nav { align-items: flex-end; }
 @media(max-width:700px) { .sb-sidebar .sb-sidebar-utilities { margin-top: 12px; padding-top: 8px; } .studio-nav-group { padding-right: 8px; } }
+
+/* Morph Studio inherits the selected shell theme instead of forcing dark surfaces. */
+.morph-studio-dialog { color-scheme: inherit; font: 14px/1.6 var(--font-ui); }
+.morph-studio-dialog .morph-studio-editor { color: var(--text); background: var(--panel); }
+.sandbox-root .morph-studio-dialog button { min-height: 36px; padding: 7px 12px; background: var(--panel-raised); color: var(--text); border: 1px solid var(--border); border-radius: 8px; font: 600 13px/1.4 var(--font-ui); }
+.sandbox-root .morph-studio-dialog button:hover:not(:disabled) { border-color: var(--page-accent); }
+.morph-studio-dialog select { font: inherit; color: var(--text); background: var(--panel-raised); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; min-width: 0; }
+.morph-studio-dialog input[type="range"], .morph-studio-dialog input[type="checkbox"] { accent-color: var(--page-accent); }
+.morph-studio-dialog button:focus-visible, .morph-studio-dialog select:focus-visible { outline: 3px solid var(--page-accent); outline-offset: 2px; }

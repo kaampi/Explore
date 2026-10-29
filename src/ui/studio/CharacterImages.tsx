@@ -83,7 +83,7 @@ export function CharacterImages({ characterId, repo, portrait, onPortrait }: { c
     <div style={{marginTop:10,display:"flex",alignItems:"center",gap:12}}><button type="button" onClick={()=>setArchiveOpen(true)} style={{fontSize:13}}>Visa bildarkiv{pictures.length ? ` (${pictures.length})` : ""}</button>{pictures.length>3 && <span style={{fontSize:12,opacity:.75}}>Visar 3 av {pictures.length} bilder</span>}</div>
     {status && <p role="status">{status}</p>}
     {archiveOpen && <div role="dialog" aria-modal="true" aria-label="Bildarkiv" style={{position:"fixed",inset:0,zIndex:10001,background:"rgba(0,0,0,.78)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-      <div style={{width:"min(900px,95vw)",maxHeight:"85vh",overflowY:"auto",padding:20,borderRadius:12,background:"#1c2524",color:"#f5f5f5",boxSizing:"border-box"}}>
+      <div style={{width:"min(900px,95vw)",maxHeight:"85vh",overflowY:"auto",padding:20,borderRadius:12,background:"var(--panel)",color:"var(--text)",boxSizing:"border-box"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,marginBottom:14}}><div><h2 style={{margin:0}}>Bildarkiv</h2><p style={{fontSize:13,opacity:.8,margin:"5px 0 0"}}>Dra bilder för att ändra ordning. Den första bilden blir standardporträtt.</p></div><button type="button" onClick={()=>setArchiveOpen(false)}>Close ✕</button></div>
         <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
           {pictures.map((item,index)=><div key={item.id} draggable onDragStart={e=>{draggingPicture.current=item.id;e.dataTransfer.effectAllowed="move";}} onDragOver={e=>{e.preventDefault();e.dataTransfer.dropEffect="move";}} onDrop={e=>{e.preventDefault();const from=draggingPicture.current;draggingPicture.current=null;if(from)void movePicture(from,item.id);}} onDragEnd={()=>{draggingPicture.current=null;}} style={{position:"relative",width:142,height:150,borderRadius:6,overflow:"hidden",background:"#25302e",cursor:"grab"}}>
@@ -97,7 +97,7 @@ export function CharacterImages({ characterId, repo, portrait, onPortrait }: { c
       </div>
     </div>}
     {open && <div role="dialog" aria-modal="true" aria-label="Morph Studio" style={{position:"fixed",inset:0,zIndex:10000,background:"rgba(0,0,0,.8)",display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <div style={{width:"90vw",height:"90vh",overflow:"auto",background:"#1c2524",color:"#f5f5f5",padding:20,borderRadius:12,boxSizing:"border-box"}}>
+      <div className="morph-studio-dialog" style={{width:"90vw",height:"90vh",overflow:"auto",background:"var(--panel)",color:"var(--text)",padding:20,borderRadius:12,boxSizing:"border-box"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><h2>Morph Studio</h2><div style={{display:"flex",gap:8,alignItems:"center"}}><button type="button" onClick={()=>setSaveRequest(p=>({id:(p?.id??0)+1,mode:"draft"}))}>Save draft</button><button type="button" onClick={()=>setSaveRequest(p=>({id:(p?.id??0)+1,mode:"profile"}))}>Save profile</button><button type="button" onClick={()=>void closeStudio()}>Close ✕</button></div></div>
         <MorphStudio characterId={characterId} repo={repo} saveRequest={saveRequest} gallery={emotion.map(g=>({name:(g.emotion.trim() || g.name.trim()).toLowerCase(),image:g.image}))}/>
       </div>
