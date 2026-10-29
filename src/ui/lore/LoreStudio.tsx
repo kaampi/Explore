@@ -127,9 +127,11 @@ export function LoreStudio({ repo }: { repo: IndexedDBRepository }) {
       <label className="sb-field">Import format<select disabled={busy} value={format} onChange={e => setFormat(e.target.value as ImportFormat)}>
         {Object.entries(IMPORT_FORMAT_LABELS).map(([value, title]) => <option key={value} value={value}>{title}</option>)}
       </select></label>
+      <div className="sb-lore-import-actions">
       <button className="sb-button sb-button--primary" disabled={busy} onClick={() => file.current?.click()}>Import lorebook</button>
       <input ref={avtFile} type="file" accept=".avt" hidden onChange={event => { const picked = event.target.files?.[0]; event.target.value = ""; void importAvt(picked); }} />
       <button className="sb-button" disabled={busy} onClick={() => avtFile.current?.click()}>Preview Aventuras .avt story</button>
+      </div>
     </>}
     {error && <p role="alert">{error}</p>}{message && <p role="status">{message}</p>}
     {avtPreview && <section className="sb-world-import-choice">
