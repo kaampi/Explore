@@ -27,7 +27,7 @@ export function MorphPortrait({ characterId, repo, fallback, className = "studio
       if (last) elapsed += Math.min(time - last, 100);
       last = time;
       // Hold each expression, then smoothly morph to the next, including last → first.
-      const { source, target, mix } = morphLoopStep(elapsed, profile.expressions.length);
+      const { source, target, mix } = morphLoopStep(elapsed, profile.expressions.length, profile.morphDurations ? profile.expressions.map((expression, index) => profile!.morphDurations?.[JSON.stringify([expression.name, profile!.expressions[(index + 1) % profile!.expressions.length]!.name])] ?? 1800) : undefined);
       renderMorphFrame(element, profile, images, source, target, mix);
       setPainted(true);
       frame = requestAnimationFrame(tick);
