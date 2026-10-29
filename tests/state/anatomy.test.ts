@@ -3,6 +3,21 @@ import { pinSessionAnatomy, validateAnatomicalRelation } from "../../src/state/a
 import type { Session } from "../../src/state/StateSchema";
 import { AnatomyTemplateSchema } from "../../src/state/StateSchema";
 import { BUILTIN_ANATOMY_TEMPLATES } from "../../src/state/builtinAnatomy";
+import { IDBFactory } from "fake-indexeddb";
+import { IndexedDBRepository } from "../../src/persistence/IndexedDBRepository";
+
+it("offers built-in anatomy on a fresh installation alongside saved custom plans", async () => {
+  const repo = new IndexedDBRepository(new IDBFactory(), "anatomy-options");
+  const initial = await repo.listAnatomyTemplates();
+  expect(initial).toHaveLength(11);
+  expect(initial.some(template => template.id === "builtin-humanoid")).toBe(true);
+  const custom = { ...initial[0]!, id: "custom-body", name: "My body plan" };
+  await repo.saveAnatomyTemplate(custom);
+  const options = await repo.listAnatomyTemplates();
+  expect(options).toHaveLength(12);
+  const pinned = pinSessionAnatomy({ characters: { hero: { anatomyTemplateId: "builtin-humanoid" } } } as unknown as Session, options);
+  expect(pinned.anatomyTemplates?.["builtin-humanoid"]?.parts.length).toBeGreaterThan(0);
+});
 
 describe("built-in body plan functions", () => {
   it.each(BUILTIN_ANATOMY_TEMPLATES)("provides valid movement and sensory functions for $name", template => {

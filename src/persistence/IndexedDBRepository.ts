@@ -1,4 +1,5 @@
 import { AnatomyTemplateSchema, type AnatomyTemplate } from "@state/StateSchema";
+import { BUILTIN_ANATOMY_TEMPLATES } from "@state/builtinAnatomy";
 import type { materializeWorld } from "../lore/materializeWorld";
 import { LorebookSchema, type Lorebook } from "../lore/LorebookSchema";
 import { IdeaSchema, type Idea } from "../ideas/IdeaSchema";
@@ -552,7 +553,11 @@ export class IndexedDBRepository {
   }
 
   async listAnatomyTemplates(): Promise<AnatomyTemplate[]> {
-    return (await this.getAllRecords(ANATOMY_STORE)).map((row) => AnatomyTemplateSchema.parse(row));
+    const builtInIds = new Set(BUILTIN_ANATOMY_TEMPLATES.map(template => template.id));
+    const custom = (await this.getAllRecords(ANATOMY_STORE))
+      .map(row => AnatomyTemplateSchema.parse(row))
+      .filter(template => !builtInIds.has(template.id));
+    return [...structuredClone(BUILTIN_ANATOMY_TEMPLATES), ...custom];
   }
 
   async saveAnatomyTemplate(template: AnatomyTemplate): Promise<void> {
