@@ -1834,3 +1834,10 @@
 .sb-header-language { width: auto; min-width: 105px; max-width: 160px; padding: 6px 8px; border-radius: 5px; background: transparent; color: inherit; border: 1px solid currentColor; font: inherit; font-size: 12px; cursor: pointer; }
 .sb-header-language option { color: #202020; background: #fff; }
 @media (max-width: 560px) { .sb-header-preferences { gap: 5px; } .sb-header-language { min-width: 0; max-width: 115px; font-size: 11px; } }
+
+/* Brand artwork keeps its original proportions and accent colors. */
+.sb-brand__logo { display: block; width: 240px; max-width: 100%; height: auto; }
+.sb-brand__logo--dark { display: none; }
+.sandbox-root[data-shell="dark"] .sb-brand__logo--light { display: none; }
+.sandbox-root[data-shell="dark"] .sb-brand__logo--dark { display: block; }
+@media (max-width: 600px) { .sb-brand__logo { width: 190px; } }

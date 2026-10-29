@@ -331,11 +331,8 @@ function SandboxApp() {
           onClick={() => navigate("home")}
           aria-label="kaampi Explore home"
         >
-          <span aria-hidden="true">✧</span>
-          <span>
-            Sandbox<span className="sb-brand__ai">AI</span>
-            <small>YOUR CREATIVE UNIVERSE</small>
-          </span>
+          <img className="sb-brand__logo sb-brand__logo--light" src="/brand/kaampi-explore.svg" alt="kaampi Explore" />
+          <img className="sb-brand__logo sb-brand__logo--dark" src="/brand/kaampi-explore-dark.svg" alt="kaampi Explore" />
         </button>
         <AppSwitcher onHome={() => navigate("home")} />
         <div className="sb-header-preferences"><HeaderLanguagePicker /><HeaderAppearanceToggle /></div>
