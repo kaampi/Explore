@@ -73,6 +73,7 @@
   background: var(--panel);
 }
 .sb-brand {
+  padding: 0;
   border: 0;
   background: none;
   display: flex;
