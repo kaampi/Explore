@@ -7,9 +7,7 @@ copying an application key. The browser version retains its existing server setu
 
 1. Update the kaampi Codex service to a build containing the pairing endpoints.
    Updating source files does not update an already running service or old installer.
-2. With Tauri's Windows prerequisites installed, run `npm install`, then
-   `npm run desktop:dev` in Explore. Rust, Microsoft C++ Build Tools and WebView2
-   are development prerequisites.
+2. Install a Windows desktop build from [Desktop build (Windows)](https://github.com/kaampi/Explore/actions/workflows/desktop-build.yml), or run `npm install` and `npm run desktop:dev` with the Tauri Windows development prerequisites installed. See the [running guide](running.md).
 3. Choose **kaampi Codex** near Settings, then **Connect to kaampi Codex**.
 4. Open Codex management. Unlock management using its existing administrator
    authentication, then find **Anslut appar**. Refresh the list if necessary.
@@ -38,6 +36,4 @@ Explore. The connection is to the local service at `127.0.0.1:43127`.
   projection as the browser server reader. Core ownership and sharing checks remain
   authoritative.
 
-This introduces the Windows desktop foundation and connection workflow, not a
-published desktop release. A live approval/credential-storage smoke test and a
-complete desktop feature review are required before distributing an installer.
+Windows installers are produced as alpha build artifacts; no signed stable desktop release is published yet. A live approval/credential-storage smoke test and a complete desktop feature review remain part of the release checklist.
