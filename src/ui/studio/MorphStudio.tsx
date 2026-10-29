@@ -228,7 +228,7 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
       <div style={{display:"grid",gridTemplateColumns:"minmax(0,2fr) minmax(0,1fr)",gap:16,alignItems:"start",marginTop:16,padding:"14px 0",borderTop:"1px solid var(--border)"}}>
         <div style={{display:"flex",flexWrap:"wrap",gap:20,alignItems:"center"}}>
         <div style={{display:"grid",gap:14,paddingTop:7}}>
-          <label style={{display:"flex",gap:8,alignItems:"center"}}><input type="checkbox" checked={eyeCorrectionActive} onChange={e=>setProfile(p=>({...p,active:false,eyeCorrections:{...p.eyeCorrections,[eyePairKey]:e.target.checked}}))}/> Eye correction</label>
+          <label style={{display:"flex",gap:8,alignItems:"center",fontSize:13,fontWeight:400}}><input type="checkbox" checked={eyeCorrectionActive} onChange={e=>setProfile(p=>({...p,active:false,eyeCorrections:{...p.eyeCorrections,[eyePairKey]:e.target.checked}}))}/> Eye correction</label>
           <div style={{display:"flex",gap:10,alignItems:"center",fontSize:13}}>
             <span style={{fontWeight:eyeEditMode?400:700}}>Edit mesh</span>
             <button type="button" role="switch" aria-label="Edit eye regions" aria-checked={eyeEditMode} onClick={()=>{setEyeEditMode(v=>!v);setAddingPoint(false);eyeDragging.current=null;dragging.current=null;}} style={{position:"relative",width:52,height:28,minWidth:52,padding:0,border:"1px solid var(--border)",borderRadius:20,background:eyeEditMode?"#92b75d":"#777",cursor:"pointer"}}>
