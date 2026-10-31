@@ -1,0 +1,5 @@
+import { expect,it } from "vitest";
+import { rectanglePoints,curvePoint,splitEdge,shapePath } from "../../src/library/mapShapes";
+import { WorldMapSchema } from "../../src/library/worldMap";
+it("splits a curved edge while preserving its geometry",()=>{const points=rectanglePoints();points[0]!.outgoing={x:.2,y:-.5};points[1]!.incoming={x:.8,y:-.5};const split=splitEdge(points,0,.4);expect(split).toHaveLength(5);for(const t of [0,.1,.4,.7,1]){const expected=curvePoint(points[0]!,points[1]!,t);const actual=t<=.4?curvePoint(split[0]!,split[1]!,t/.4):curvePoint(split[1]!,split[2]!,(t-.4)/.6);expect(actual.x).toBeCloseTo(expected.x,8);expect(actual.y).toBeCloseTo(expected.y,8);}});
+it("preserves editable shapes and edge anchors through parsing",()=>{const nodes=["a","b"].map(id=>({id,name:id,kind:"Place",x:50,y:50,shape:rectanglePoints()}));const map=WorldMapSchema.parse({nodes,routes:[{id:"r",from:"a",to:"b",fromAnchor:{x:1,y:.5},toAnchor:{x:0,y:.5},mode:"Walk",duration:"1 day",access:"open",bothWays:true}]});expect(map.nodes[0]?.shape).toHaveLength(4);expect(map.routes[0]?.fromAnchor?.x).toBe(1);expect(shapePath(rectanglePoints(),p=>p)).toContain(" Z");});

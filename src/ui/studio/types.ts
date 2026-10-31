@@ -5,6 +5,7 @@ export type StudioView =
   | "characters"
   | "anatomy"
   | "places"
+  | "maps"
   | "objects"
   | "voices"
   | "stories"

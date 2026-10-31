@@ -1,3 +1,4 @@
+import { mapContext } from "@library/worldMap";
 import {
   campaignPlayerIsFilled,
   whatNowSetsFromScene,
@@ -46,7 +47,7 @@ export function sceneStartHere(place: PlaceTemplate, startRoomId: string | undef
 export function realmPlayFields(realm: RealmTemplate | undefined): Pick<SceneSetup, "realmNote" | "realmBrief" | "realmVisual"> {
   if (!realm) return {};
   const note = realm.note.trim();
-  const brief = realm.brief?.trim();
+  const brief = [realm.brief?.trim() || realm.note.trim(), mapContext(realm.worldMap)].filter(Boolean).join("\n\n");
   const visual = { ...copyPictureFields(realm), ...copyAudioFields(realm) };
   const hasVisual = Boolean(
     visual.thumbDataUrl || visual.imageDataUrl || visual.gallery?.length || visual.audioDataUrl || visual.audioGallery?.length

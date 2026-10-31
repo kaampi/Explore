@@ -1,3 +1,4 @@
+import { openGuide } from "../guide/GuidePanel";
 import { useEffect, useState } from "react";
 import "./anatomy.css";
 import { anatomyImageFromFile } from "./anatomyUpload";
@@ -85,6 +86,7 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
 
   const builtIn = !!draft && isBuiltInAnatomy(draft.id);
   return <section className="anatomy" aria-label="Anatomy library">
+    <nav aria-label="Anatomy help" style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:20}}>{[["anatomy-intro","What is Anatomy?"],["anatomy-choose","Choose a body plan"],["anatomy-custom","Customize a body plan"],["anatomy-use","Use Anatomy on a character"]].map(([id,label])=><button className="anatomy-button" key={id} type="button" onClick={()=>openGuide(id)}>Help: {label}</button>)}</nav>
     <header className="anatomy-header">
       <div><span className="anatomy-eyebrow">CHARACTER FOUNDATIONS</span><h2>{draft ? draft.name : "Anatomy Library"}</h2>
       <p>{draft ? "Explore the body, one part at a time." : "A shared structure for different kinds of bodies."}</p>

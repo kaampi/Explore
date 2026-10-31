@@ -1,3 +1,4 @@
+import { openGuide } from "../guide/GuidePanel";
 import { planMeshInsertion, type MeshInsertion } from "./meshInsertion";
 import { renderMorphFrame, type Point, type Profile, type Expression } from "./morphRenderer";
 import { originalPoints, originalTriangles } from "./originalMorphMesh";
@@ -259,13 +260,13 @@ export function MorphStudio({ characterId, repo, gallery = [], saveRequest }: { 
 
   }
   useEffect(()=>{if(!playing)return;let frame=0;let last=0;let progress=mix/100;let direction=1;const tick=(now:number)=>{if(last){progress+=direction*(now-last)/morphDuration;if(progress>=1){progress=1;direction=-1;}if(progress<=0){progress=0;direction=1;}setMix(Math.round(progress*100));}last=now;frame=requestAnimationFrame(tick);};frame=requestAnimationFrame(tick);return()=>cancelAnimationFrame(frame);},[playing,source,target,morphDuration]);
-  useEffect(()=>{const down=(e:KeyboardEvent)=>{if(e.code==="Space" && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement) && !(e.target instanceof HTMLSelectElement)){e.preventDefault();setSpaceHeld(true);}};const up=(e:KeyboardEvent)=>{if(e.code==="Space")setSpaceHeld(false);};window.addEventListener("keydown",down);window.addEventListener("keyup",up);return()=>{window.removeEventListener("keydown",down);window.removeEventListener("keyup",up);};},[]);
+  useEffect(()=>{const down=(e:KeyboardEvent)=>{if(!document.querySelector(".sb-guide-window") && e.code==="Space" && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement) && !(e.target instanceof HTMLSelectElement)){e.preventDefault();setSpaceHeld(true);}};const up=(e:KeyboardEvent)=>{if(e.code==="Space")setSpaceHeld(false);};window.addEventListener("keydown",down);window.addEventListener("keyup",up);return()=>{window.removeEventListener("keydown",down);window.removeEventListener("keyup",up);};},[]);
   useEffect(()=>{const nodes=canvases.map(ref=>ref.current).filter((node):node is HTMLCanvasElement=>Boolean(node));const onWheel=(event:WheelEvent)=>{if(!event.ctrlKey)return;event.preventDefault();setZoom(value=>Math.max(100,Math.min(400,value+(event.deltaY<0?25:-25))));};nodes.forEach(node=>node.addEventListener("wheel",onWheel,{passive:false}));return()=>nodes.forEach(node=>node.removeEventListener("wheel",onWheel));},[profile.expressions.length]);
   const sliderRow=(label:string,value:number,min:number,max:number,unit:string,onChange:(n:number)=>void,compact=false)=> <label style={{display:"grid",gridTemplateColumns:"minmax(130px,1fr) minmax(90px,1.1fr) 46px",alignItems:"center",gap:8,minHeight:compact?28:34,fontSize:13}}><span>{label}</span><input style={{width:"100%",margin:0}} type="range" min={min} max={max} value={value} onChange={e=>onChange(Number(e.target.value))}/><span style={{textAlign:"right",fontVariantNumeric:"tabular-nums"}}>{value}{unit}</span></label>;
   const choices=profile.expressions.map((item,i)=><option key={i} value={i}>{item.name}</option>);
   return <section className="setup-field morph-studio-editor" style={{marginTop:20,padding:16,border:"1px solid var(--border)",borderRadius:12}}>
 
-    <div className="morph-toolbar">
+    <nav aria-label="Morph Studio help" style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:12}}>{[["morph-start","Start with two portraits"],["morph-mesh","Align the mesh"],["morph-eyes","Adjust the eyes"],["morph-preview","Preview and timing"],["morph-save","Save and back up"]].map(([id,label])=><button key={id} type="button" onClick={()=>{setPlaying(false);openGuide(id);}}>Help: {label}</button>)}</nav><div className="morph-toolbar">
       {profile.expressions.length>=2 && (<div className="morph-toolbar-tools">
         <button type="button" onClick={()=>setShowMesh(v=>!v)}>{showMesh?"Hide mesh":"Show mesh"}</button>
         <button type="button" disabled={!undoStack.length} onClick={()=>{const previous=undoStack[undoStack.length-1];if(previous){setProfile(p=>({...p,active:false,expressions:previous.expressions,triangles:previous.triangles!}));setUndoStack(stack=>stack.slice(0,-1));setInsertion(null);setMessage("Mesh change undone.");}}}>Undo mesh change</button>

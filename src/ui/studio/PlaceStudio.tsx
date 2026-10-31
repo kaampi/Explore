@@ -685,7 +685,7 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
         built,
         previous ?? (realmDraft.createdAt ? { createdAt: realmDraft.createdAt } : undefined)
       );
-      await repo.saveRealm(saved);
+      await repo.saveRealm({ ...saved, ...(previous?.worldMap ? { worldMap: previous.worldMap } : {}) });
       await refresh();
       setSelectedRealmId(saved.id);
       setRealmDraft(realmDraftFrom(saved));

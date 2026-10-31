@@ -1,0 +1,3 @@
+import { expect,it } from "vitest";
+import { WorldMapSchema,mapContext } from "../../src/library/worldMap";
+it("preserves local terrain properties without applying them to the parent",()=>{const map=WorldMapSchema.parse({nodes:[{id:"forest",name:"Forest",kind:"Forest",x:50,y:50},{id:"thicket",name:"Thicket",kind:"Dense woodland",parentId:"forest",isArea:true,passage:"difficult",travelMultiplier:2,x:50,y:50}],routes:[]});expect(map.nodes[0]?.travelMultiplier).toBeUndefined();expect(map.nodes[1]?.parentId).toBe("forest");expect(mapContext(map)).toContain("local subarea, not the whole parent");expect(mapContext(map)).toContain("travel multiplier: 2");});

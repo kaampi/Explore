@@ -1,3 +1,4 @@
+import { WorldMapStudio } from "./WorldMapStudio";
 import { LoreStudio } from "../lore/LoreStudio";
 import { useState } from "react";
 import type { IndexedDBRepository, StudioResume } from "@persistence/IndexedDBRepository";
@@ -19,6 +20,7 @@ const NAV: { id: StudioView; label: string; group: "library" | "play" }[] = [
   { id: "lorebooks", label: "Lorebooks", group: "library" },
   { id: "characters", label: "Characters", group: "library" },
   { id: "anatomy", label: "Anatomy", group: "library" },
+  { id: "maps", label: "Maps", group: "library" },
   { id: "places", label: "Locations", group: "library" },
   { id: "objects", label: "Objects", group: "library" },
   { id: "voices", label: "Voices", group: "library" },
@@ -51,7 +53,7 @@ export function StudioShell({
       <nav className="studio-nav" aria-label="Library">
         {[
           { title: "Characters & creatures", ids: ["characters", "anatomy", "voices"] },
-          { title: "World", ids: ["places", "objects", "lorebooks"] },
+          { title: "World", ids: ["places", "maps", "objects", "lorebooks"] },
           { title: "Story & play", ids: ["stories", "rulesets"] },
         ].map(group => <div className="studio-nav-group" role="group" aria-label={group.title} key={group.title}>
           <span className="studio-nav-group__title">{group.title}</span>
@@ -83,6 +85,7 @@ export function StudioShell({
           {view === "characters" && <CharacterStudio repo={repo} />}
           {view === "anatomy" && <AnatomyStudio repo={repo} />}
           {view === "places" && <PlaceStudio repo={repo} />}
+          {view === "maps" && <WorldMapStudio repo={repo} />}
           {view === "objects" && <ObjectStudio repo={repo} />}
           {view === "voices" && <VoiceStudio repo={repo} />}
           {view === "stories" && <StoryStudio repo={repo} />}

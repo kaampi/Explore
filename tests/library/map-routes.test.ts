@@ -1,0 +1,6 @@
+import { expect,it } from "vitest";
+import { routeLength,routePoints } from "../../src/library/mapRoutes";
+import { applyMapScale } from "../../src/library/mapTravel";
+import { WorldMapSchema } from "../../src/library/worldMap";
+it("uses the drawn path rather than straight distance for travel time",()=>{const nodes=[{id:"a",name:"A",kind:"Place",x:10,y:20},{id:"b",name:"B",kind:"Place",x:40,y:20}];const route={id:"r",from:"a",to:"b",mode:"Walk",type:"path",duration:"",access:"open",bothWays:true,geometry:[{x:17.5,y:20},{x:25,y:70},{x:32.5,y:20}]};const map=WorldMapSchema.parse({nodes,routes:[route]});const points=routePoints(map.routes[0]!,map.nodes[0]!,map.nodes[1]!);expect(routeLength(points)).toBeGreaterThan(3);const result=applyMapScale(map,"",1440);expect(parseFloat(result.routes[0]!.duration)).toBeGreaterThan(3);expect(map.routes[0]!.type).toBe("path");});
+it("keeps endpoints attached while retaining intermediate path points",()=>{const map=WorldMapSchema.parse({nodes:[{id:"a",name:"A",kind:"Place",x:10,y:20},{id:"b",name:"B",kind:"Place",x:40,y:20}],routes:[{id:"r",from:"a",to:"b",mode:"Boat",duration:"",access:"open",bothWays:true,type:"ferry",geometry:[{x:17.5,y:20},{x:25,y:40},{x:32.5,y:20}]}]});const points=routePoints(map.routes[0]!,{...map.nodes[0]!,x:5},map.nodes[1]!);expect(points[0]!.x).toBe(12.5);expect(points[1]!.y).toBe(40);});

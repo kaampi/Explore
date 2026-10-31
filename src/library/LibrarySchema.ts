@@ -1,3 +1,4 @@
+import { WorldMapSchema } from "./worldMap";
 import {
   ApproximateAgeSchema,
   AttributeDefSchema,
@@ -119,6 +120,7 @@ export const FALLBACK_REALM_ID = "example-realm-dunbaar";
  * fallback backdrop). Intro is for the player; brief is for Pass 1.
  */
 export const RealmTemplateSchema = z.object({
+  worldMap: WorldMapSchema.optional(),
   id: z.string().min(1),
   name: z.string().min(1),
   /** Player-facing atlas / Cast blurb. Not Here. */
