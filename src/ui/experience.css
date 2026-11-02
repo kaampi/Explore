@@ -166,7 +166,7 @@
   display: grid;
   gap: 5px;
 }
-.sb-sidebar nav button {
+.sb-sidebar nav > button {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -179,10 +179,10 @@
   font-size: 20px;
   line-height: 1.35;
 }
-.sb-sidebar nav button span {
+.sb-sidebar nav > button span {
   font-size: inherit;
 }
-.sb-sidebar nav button.is-active {
+.sb-sidebar nav > button.is-active {
   background: var(--panel-raised);
   color: #84676a;
   font-weight: 600;
@@ -1264,7 +1264,7 @@
     overflow-x: auto;
     gap: 4px;
   }
-  .sb-sidebar nav button {
+  .sb-sidebar nav > button {
     padding: 7px 10px;
     white-space: nowrap;
     flex-shrink: 0;

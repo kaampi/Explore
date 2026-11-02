@@ -45,6 +45,51 @@ function makeEngine(provider: LLMProvider = new MockProvider({ responseChunks: [
 }
 
 describe("SessionEngine.runTurn — happy path", () => {
+  it("ends a completed sleep awake even if extraction proposes asleep", async () => {
+    const session = makeSession(); session.gameClock = {totalMinutes:23*60};
+    session.player = {position:{value:"bar", lock:"unlocked"}, status:{value:"awake",lock:"unlocked"}};
+    const log = new EventLog(), stateEngine = new StateEngine(session, log);
+    const engine = new SessionEngine(stateEngine, new LLMAdapter({primary:new MockProvider({responseChunks:["Morning arrives."]})}), log,
+      () => [{path:"player.status", value:"asleep", source:"ai_inference"}]);
+    await engine.runTurn("sleep", "emma", "I sleep for two hours");
+    expect(stateEngine.getSession().gameClock?.totalMinutes).toBe(25*60);
+    expect(stateEngine.getSession().player?.status.value).toBe("awake");
+  });
+  it("charges a declared wait once, including across reply regeneration", async () => {
+    const session = makeSession(); session.gameClock = {totalMinutes:480};
+    const log = new EventLog(), stateEngine = new StateEngine(session, log);
+    const engine = new SessionEngine(stateEngine, new LLMAdapter({primary:new MockProvider({responseChunks:["Time passes."]})}), log);
+    await engine.runTurn("wait", "emma", "I wait for 30 minutes.");
+    expect(stateEngine.getSession().gameClock?.totalMinutes).toBe(510);
+    await engine.runTurn("wait", "emma", "I wait for 30 minutes.");
+    expect(stateEngine.getSession().gameClock?.totalMinutes).toBe(510);
+    await engine.regenerateLastTurn("regen-wait");
+    expect(stateEngine.getSession().gameClock?.totalMinutes).toBe(510);
+    await engine.runTurn("talk", "emma", "How are you?");
+    expect(stateEngine.getSession().gameClock?.totalMinutes).toBe(510);
+  });
+  it("signals finished dialogue before background extraction completes", async () => {
+    const log = new EventLog();
+    let release!: () => void;
+    let extractionStarted!: () => void;
+    const started = new Promise<void>(resolve => { extractionStarted = resolve; });
+    const pending = new Promise<void>(resolve => { release = resolve; });
+    const engine = new SessionEngine(new StateEngine(makeSession(), log),
+      new LLMAdapter({ primary: new MockProvider({ responseChunks: ["Hello"] }) }), log,
+      async () => { extractionStarted(); await pending; return []; });
+    let replyComplete = false;
+    let turnComplete = false;
+    const turn = engine.runTurn("queued-test", "emma", "Hi", {
+      onReplyComplete: () => { replyComplete = true; }
+    }).then(() => { turnComplete = true; });
+    await started;
+    expect(replyComplete).toBe(true);
+    expect(turnComplete).toBe(false);
+    expect(engine.getState()).toBe("extracting");
+    release();
+    await turn;
+    expect(engine.getState()).toBe("idle");
+  });
   it("runs a full turn and returns the assembled reply text", async () => {
     const { sessionEngine } = makeEngine();
     const result = await sessionEngine.runTurn("turn-1", "emma", "Hej Emma!");
@@ -256,7 +301,8 @@ describe("SessionEngine.runTurn — happy path", () => {
 
     const result = await sessionEngine.runTurn("turn-1", "emma", "I walk into Emmas room");
 
-    expect(result.mutationsRejected).toBe(1);
+    // Unsupported NPC movement is now filtered before state mutation validation.
+    expect(result.mutationsRejected).toBe(0);
     expect(stateEngine.getSession().player?.position.value).toBe("Emma's room");
     expect(stateEngine.getSession().player?.status.value).toBe("awake");
     expect(stateEngine.getSession().characters.emma?.position.value).toBe("Emma's room");

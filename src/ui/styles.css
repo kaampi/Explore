@@ -3121,3 +3121,19 @@ textarea.setup-field__story {
   aspect-ratio: 1;
   flex-shrink: 0;
 }
+
+.chat-world-status { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 18px; border-bottom: 1px solid var(--line, #ddd8ce); font-size: 14px; }
+.chat-world-status time { white-space: nowrap; font-variant-numeric: tabular-nums; opacity: .8; }
+
+.chat-time-controls { margin: 6px 0; font-size: 13px; }
+.chat-time-controls summary { cursor: pointer; width: fit-content; opacity: .85; }
+.chat-time-controls p { opacity: .75; margin: 8px 0; }
+.chat-time-controls .setup-row { align-items: end; flex-wrap: wrap; gap: 10px; }
+.chat-time-controls label { display: grid; gap: 4px; }
+.chat-time-controls input { max-width: 90px; }
+
+.chat-journey { padding: 14px 16px; margin: 8px 0; border: 1px solid var(--line, #ddd8ce); border-radius: 12px; font-size: 14px; }
+.chat-journey > div:first-child { display: grid; gap: 5px; }
+.chat-journey span, .chat-journey p { opacity: .8; font-size: 13px; }
+.chat-journey progress { width: 100%; height: 6px; margin-top: 12px; accent-color: #86686b; }
+.chat-journey__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }

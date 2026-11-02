@@ -26,9 +26,12 @@ fn token() -> Result<String, String> {
     Err("Desktop pairing currently requires Windows".into())
 }
 fn identity() -> Result<Value, String> {
+    check_identity(&token()?)
+}
+fn check_identity(secret: &str) -> Result<Value, String> {
     let result: Value = agent()
         .get(&format!("{CORE}/v1/identity"))
-        .header("Authorization", format!("Bearer {}", token()?))
+        .header("Authorization", format!("Bearer {secret}"))
         .call()
         .map_err(|_| "Codex is unavailable or the connection was revoked")?
         .body_mut()
@@ -40,12 +43,29 @@ fn identity() -> Result<Value, String> {
     Ok(result)
 }
 #[tauri::command]
+pub async fn core_pair(token: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        if token.len() != 64 || !token.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b)) {
+            return Err("Invalid Explore connection key".into());
+        }
+        check_identity(&token)?;
+        #[cfg(target_os = "windows")]
+        { credential()?.set_password(&token).map_err(|_| "Could not save Codex connection".into()) }
+        #[cfg(not(target_os = "windows"))]
+        { Err("Desktop pairing currently requires Windows".into()) }
+    }).await.map_err(|_| "Pairing failed".to_string())?
+}
+#[tauri::command]
 pub async fn core_begin(app: tauri::AppHandle) -> Result<Value, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let result: Value = agent()
             .post(&format!("{CORE}/v1/pairing"))
             .send_json(json!({"app":"sandbox"}))
-            .map_err(|_| "Codex is unavailable or needs the pairing update")?
+            .map_err(|error| match error {
+                ureq::Error::StatusCode(401) | ureq::Error::StatusCode(404) =>
+                    "This Codex service does not support approval pairing yet. Connect manually with an Explore key, or restart an updated Codex service.",
+                _ => "Could not start pairing. Check that Codex is running on this computer.",
+            })?
             .body_mut()
             .read_json()
             .map_err(|_| "Invalid pairing response")?;

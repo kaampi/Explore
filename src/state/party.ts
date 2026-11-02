@@ -21,6 +21,7 @@ function escapeRegExp(value: string): string {
 }
 
 function placeKey(session: Session, pos: string): string {
+  if (/^(?:here|här)$/i.test(pos.trim())) { const location=session.scene?.location?.trim(); if(location&&!/^(?:here|här)$/i.test(location)) return placeKey(session,location); }
   const room = matchRoomMention(pos, session);
   if (room) return foldPlace(room);
   if (isVenueFloor(pos, session) || isBarishPlace(pos)) return "__floor__";
@@ -42,6 +43,8 @@ export function isLeftBehind(session: Session, characterId: string): boolean {
   const here = session.player?.position.value?.trim() ?? "";
   if (!character || !here) return false;
   if (travelingPartyIds(session).includes(characterId)) return false;
+  const playerRef=session.player?.locationRef,characterRef=character.locationRef;
+  if(playerRef&&characterRef)return playerRef.placeId!==characterRef.placeId||playerRef.side!==characterRef.side;
   return !sameHere(session, character.position.value);
 }
 

@@ -1,0 +1,3 @@
+import { expect,it } from "vitest";
+import { WorldMapSchema,mapContext } from "../../src/library/worldMap";
+it("retains encounter settings for places and routes and describes them as setup",()=>{const encounter={frequency:"often",participants:"Travellers",tone:"Friendly"};const map=WorldMapSchema.parse({nodes:[{id:"a",name:"House",kind:"Building",x:20,y:50,encounter},{id:"b",name:"Forest",kind:"Forest",x:80,y:50}],routes:[{id:"r",from:"a",to:"b",mode:"Walk",duration:"1 day",access:"open",bothWays:true,encounter:{...encounter,frequency:"rarely",tone:"Dangerous"}}]});expect(map.nodes[0]?.encounter?.frequency).toBe("often");expect(map.routes[0]?.encounter?.tone).toBe("Dangerous");expect(mapContext(map)).toContain("not an encounter that has already happened");});

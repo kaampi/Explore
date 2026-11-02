@@ -8,6 +8,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             companion_apps::open_companion_app,
             core_bridge::core_begin,
+            core_bridge::core_pair,
             core_bridge::core_poll,
             core_bridge::core_connection,
             core_bridge::core_disconnect,

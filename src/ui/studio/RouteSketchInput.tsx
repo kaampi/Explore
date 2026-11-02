@@ -1,0 +1,10 @@
+import { useRef,useState } from 'react';
+import type { WorldMap } from '@library/worldMap';
+import type { XY } from '@library/mapShapes';
+import { addRouteSketch,sketchSnap } from '@library/routeSketch';
+export function RouteSketchInput({map,level,type,autoJunctions,onChange,onError}:{map:WorldMap;level:string;type:'road'|'path';autoJunctions:boolean;onChange:(map:WorldMap)=>void;onError:(text:string)=>void}){
+ const stroke=useRef<XY[]|null>(null),[preview,setPreview]=useState<XY[]>([]),[hover,setHover]=useState<ReturnType<typeof sketchSnap>>(null);
+ const point=(e:React.PointerEvent<SVGRectElement>)=>{const p=new DOMPoint(e.clientX,e.clientY).matrixTransform(e.currentTarget.ownerSVGElement!.getScreenCTM()!.inverse());return {x:Math.max(0,Math.min(100,p.x/8)),y:Math.max(0,Math.min(100,p.y/6))};};
+ function finish(p:XY){const points=stroke.current;if(!points)return;stroke.current=null;setPreview([]);points.push(p);try{onChange(addRouteSketch(map,level,points,type,autoJunctions));}catch(e){onError(e instanceof Error?e.message:String(e));}}
+ return <g><rect width="800" height="600" fill="transparent" style={{touchAction:'none',cursor:'crosshair'}} onPointerDown={e=>{if(e.button!==0)return;e.preventDefault();const p=point(e);stroke.current=[p];setPreview([p]);e.currentTarget.setPointerCapture(e.pointerId);}} onPointerMove={e=>{const p=point(e);setHover(sketchSnap(map,level,p));const points=stroke.current;if(!points)return;const last=points.at(-1)!;if(Math.hypot((p.x-last.x)*8,(p.y-last.y)*6)<5)return;points.push(p);setPreview([...points]);}} onPointerUp={e=>finish(point(e))} onPointerCancel={()=>{stroke.current=null;setPreview([]);}} onLostPointerCapture={()=>{stroke.current=null;setPreview([]);}}/>{preview.length>0&&<polyline points={preview.map(p=>`${p.x*8},${p.y*6}`).join(' ')} fill="none" stroke="#a85836" strokeWidth="3" strokeDasharray={type==='path'?'5 4':undefined} pointerEvents="none"/>}{hover&&<g pointerEvents="none"><circle cx={hover.point.x*8} cy={hover.point.y*6} r="10" fill="none" stroke="#a85836" strokeWidth="2"/><text x={hover.point.x*8+14} y={hover.point.y*6-12} fontSize="12">Connect: {hover.label}</text></g>}</g>;
+}

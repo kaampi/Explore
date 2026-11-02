@@ -1,4 +1,5 @@
 import { describePhysicalState } from "../state/physicalContinuity";
+import { formatGameTime, gameTimeOfDay } from "@state/gameClock";
 import type { ChatMessage } from "@llm/types";
 import {
   ConversationTurnSchema,
@@ -159,6 +160,16 @@ function buildStateSummaryBlock(session: Session): ContextBlock {
       : "Scene: (unset)"
   ];
   const env = session.scene?.environment;
+  if (session.journey) {
+    const j = session.journey;
+    sceneParts.push(`Active journey: from ${j.originName} to ${j.destination.location}. You are stopped ALONG THE ROUTE, not at the departure or destination. ${j.completedStages} stage(s) completed; ${j.remainingTravelMinutes} minutes of active travel remain. ${j.plan?"These are player-planned stages and stops; do not replace them with automatic eight-hour stages.":"Eight active travel hours make one stage; map travel days include overnight opportunities between stages."} ${j.phase === "overnight" ? "An overnight stop is due; pause for the player's choice of rest or pushing on." : j.phase === "pause" ? `Planned pause at ${j.currentStop ?? "the route"}; no overnight stay is required. Remain here until the player continues.` : "Rest is complete; remain stopped until the player chooses to continue."} Do not arrive, continue travel, charge rest twice, invent a mapped inn/campsite, or describe the destination's interior. Only travelling party members are here. ${j.pushedOn ? "The player chose to push on without rest; acknowledge the missed rest without inventing an injury or numeric fatigue penalty." : ""}`);
+    const event = j.opportunity;
+    if (j.routeInfo) sceneParts.push(`Authored conditions along the journey (not proof these crossings have already been passed): ${j.routeInfo}`);
+    if (event?.triggered && j.encounter) sceneParts.push(`This ${event.kind} stage has an authored encounter opportunity: ${j.encounter.participants}. Tone: ${j.encounter.tone || "unspecified"}. Introduce at most one suitable opportunity and leave choices to the player. This opportunity belongs to this stage: follow it if already introduced in history, do not introduce it again on later messages.`);
+    else sceneParts.push("No new encounter was selected for this stop. Continue established events or quiet interaction; do not invent an arrival just because another chat message was sent.");
+  }
+  if (session.gameClock) sceneParts.push(`Game clock: ${formatGameTime(session.gameClock.totalMinutes)} (${gameTimeOfDay(session.gameClock.totalMinutes)}, 24-hour clock: 08:00 is 8 AM). This is authoritative fictional time, not real time. Match the time of day; sleeping does not imply night. Do not continue old night/moon/stars descriptions when the clock now indicates daytime. Indoor darkness may still be part of the established setting. Do not invent elapsed hours, nights or days. Only explicit game actions advance this clock.`);
+  if (session.gameClock?.lastAdvance) sceneParts.push(`Most recent clock advance: ${session.gameClock.lastAdvance.reason}, ${session.gameClock.lastAdvance.minutes} minutes. This is already included in the clock, not additional time. A completed sleep/rest time skip ends at the shown time; do not keep the player asleep solely because the previous action was sleep. Do not invent a new encounter just because time passed.`);
   if (env && !stage) {
     const envBits: string[] = [];
     if (env.lighting) envBits.push(`lighting: ${env.lighting}`);
@@ -226,6 +237,18 @@ function buildStateSummaryBlock(session: Session): ContextBlock {
       "Objects (writer fact — a character does not name one until it is in sight or the player showed it). An unnamed thing they hold is not a listed relic.",
       ...session.objects.map((object) => {
         const extra: string[] = [];
+        const location = object.startingLocation;
+        if (location?.kind === "object") {
+          const parent = session.objects?.find(o => o.id === location.objectId);
+          extra.push(`inside ${parent?.name ?? location.objectId}; reveal only when the container and all outer containers are open and in sight`);
+        } else if (location?.kind === "place") extra.push(`place ${location.placeId}`);
+        else if (location?.kind === "character") extra.push(`carried by ${location.characterId}`);
+        else if (location?.kind === "player") extra.push("carried by player");
+        if (object.openable) extra.push(object.isOpen ? "open" : "closed");
+        if (object.portable !== undefined) extra.push(object.portable ? "portable" : "fixed in place");
+        if (object.storyRole) extra.push(`story role ${object.storyRole}`);
+        if (object.storyImportance) extra.push(`author-only importance: ${object.storyImportance}`);
+        if (object.readableContent) extra.push(`author-only readable content, reveal only when the player reads or examines it and has access: ${object.readableContent}`);
         if (object.weight !== undefined) extra.push(`weight ${object.weight}`);
         if (object.difficulty !== undefined) extra.push(`difficulty ${object.difficulty}`);
         if (object.checkAttribute) extra.push(`check ${object.checkAttribute}`);
@@ -347,6 +370,17 @@ export function assembleContext(session: Session, options: AssembleOptions = {})
   const closenessBlocks = closenessBlocksForSession(session);
   const rawBlocks: ContextBlock[] = [
     preamble,
+    ...(session.journey ? [{
+      id: "journey-grounding", source: "system_rule" as const, priority: 1, required: true,
+      content: `TRAVEL IN PROGRESS: The player is along the route from ${session.journey.originName} to ${session.journey.destination.location}, not at either endpoint. The destination name is a direction, NOT the current setting. Do not describe its forest, trees, canopy, buildings or other destination features as current surroundings before arrival. Use only authored route facts for the intervening terrain; if terrain is unspecified, keep descriptions neutral and focus on the journey or the player's action. Prior AI embellishments do not establish terrain. ${session.journey.routeInfo ?? "No route terrain has been specified."}`
+    }] : []),
+    ...(session.spatialPlaces?.length ? [{
+      id: "mapped-world-grounding",
+      source: "system_rule" as const,
+      priority: 1,
+      required: true,
+      content: "Authored world: ground narration in established scene facts, place descriptions, objects and events. Bring those details to life with fitting sensory language, without adding unsupported facts. Do not introduce new significant objects, books, clues, people, exits, secrets or hazards merely to decorate a reply. A genre stereotype is not evidence that something exists here. Follow explicit player or scenario instructions that introduce new content. An earlier AI embellishment alone does not establish world canon. When the player looks around or returns, describe what is established rather than inventing a discovery."
+    }] : []),
     ...closenessBlocks,
     ...(voiceBlock ? [voiceBlock] : []),
     ...(storyBlock ? [storyBlock] : []),
@@ -676,12 +710,13 @@ function thirdPersonLines(
       ? "A shower is not a room here. Do not walk anyone to the toilets unless they named the toilets, bathroom, loo, or WC."
       : undefined;
   const lead = player?.outOfSight
-    ? `Write in third person. You are the narrator of the player's here. Do not write as ${name} and do not put ${name} in this beat.`
+    ? `Narrate the player's surroundings in second person: you / your. You are the narrator of the current place. Do not write as ${name} and do not put ${name} in this beat.`
     : unheard
       ? `Write in third person. Use ${person}. You are the narrator. ${address}`
       : `Write in third person about ${name}. You are not ${name}. ${address}`;
   return [
     lead,
+    "Narrative viewpoint: address the player directly as you / your (du / dig / din in Swedish). Third-person instructions apply to NPCs only. Never call the player 'the player' or use they/their for the player in narration. Wrong: The player walks along the road. Right: You walk along the road. Describe only player actions they chose; do not invent their thoughts, feelings or decisions.",
     ...(player?.outOfSight || !(fullName && fullName !== name) ? [] : [`Refer to ${name} as ${person}.`]),
     ...(player?.outOfSight ? [] : secrecy),
     tense,

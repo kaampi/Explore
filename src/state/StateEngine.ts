@@ -1,3 +1,5 @@
+import { initializeSpatialReferences, resolveLocation, locationLabel, type SpatialPlace } from "./spatialLocation";
+import { beginJourney, advanceJourney, recordJourneyRest, removePlannedJourneyStop, travelWorkMinutes, TRAVEL_STAGE_MINUTES, JourneyError } from "./journey";
 import { validateAnatomicalRelation } from "./anatomy";
 import { applyPhysicalChange, type PhysicalChange } from "./physicalContinuity";
 import { EventLog } from "@events/EventLog";
@@ -48,6 +50,7 @@ export type MutationResult =
  * so undo skips past them when walking backward through the log.
  */
 export const UNDOABLE_EVENT_TYPES = new Set([
+  "game_time_advanced",
   "state_mutation_committed",
   "physical_state_changed",
   "lock_state_changed",
@@ -72,7 +75,7 @@ export class StateEngine {
   constructor(
     private session: Session,
     private eventLog: EventLog
-  ) {}
+  ) { initializeSpatialReferences(this.session); }
 
   /**
    * Returns a read-only snapshot of the session. This is a frozen clone,
@@ -80,6 +83,8 @@ export class StateEngine {
    * §51). External code, including the UI, must go through
    * proposeMutation()/proposeLockChange() to change anything.
    */
+  registerSpatialPlaces(places:SpatialPlace[]):void { initializeSpatialReferences(this.session,places); }
+
   getSession(): Readonly<Session> {
     return deepFreeze(structuredClone(this.session));
   }
@@ -186,6 +191,10 @@ export class StateEngine {
       }
     }
 
+    const positionMatch=/^(player|characters\.([^.]+))\.position$/.exec(proposal.path);
+    const resolvedPosition=positionMatch&&this.session.spatialPlaces?.length&&typeof value==="string"?resolveLocation(this.session,value):undefined;
+    if(positionMatch&&this.session.spatialPlaces?.length&&!resolvedPosition)return {committed:false,reason:"Position must refer to one known map place. Describe local posture separately."};
+    if(resolvedPosition)value=locationLabel(this.session,resolvedPosition);
     // 2. Authority / Lock Validation
     const authority = resolveAuthority({ source: proposal.source, fieldLock: target.lock });
     if (!authority.allowed) {
@@ -202,14 +211,20 @@ export class StateEngine {
 
     // 4. Commit
     const previousValue = target.field.value;
+    const positionActor = positionMatch
+      ? positionMatch[1] === "player" ? this.session.player : this.session.characters[positionMatch[2]!]
+      : undefined;
+    const previousLocationRef = positionActor?.locationRef;
     target.container[target.key] = { ...target.field, value };
+    if(resolvedPosition&&positionMatch){const actor=positionMatch[1]==="player"?this.session.player:this.session.characters[positionMatch[2]!];if(actor)actor.locationRef=resolvedPosition;}
     this.session.stateVersion = nextVersion(this.session.stateVersion);
 
     this.eventLog.append({
       turn: this.session.stateVersion,
       timestamp: new Date().toISOString(),
       type: "state_mutation_committed",
-      payload: { path: proposal.path, value, previousValue, source: proposal.source }
+      payload: { path: proposal.path, value, previousValue, source: proposal.source,
+        ...(positionMatch ? { previousLocationRef: previousLocationRef ?? null } : {}) }
     });
 
     return { committed: true, newStateVersion: this.session.stateVersion };
@@ -832,6 +847,24 @@ export class StateEngine {
     const p = (event.payload ?? {}) as Record<string, unknown>;
 
     switch (event.type) {
+      case "game_time_advanced": {
+        if ("previousJourney" in p) {
+          const previous = p.previousJourney as Session["journey"] | null;
+          const current = this.session.journey;
+          if (previous?.id !== current?.id || previous?.completedStages !== current?.completedStages ||
+            JSON.stringify(previous?.plan?.stops)!==JSON.stringify(current?.plan?.stops)||
+            ("placeId" in p && p.placeId !== (this.session.scene?.placeId ?? null))) {
+            return {ok:false, reason:"Cannot undo this time change after travelling to another stage or place."};
+          }
+        }
+        if (p.previousClock) this.session.gameClock = p.previousClock as NonNullable<Session["gameClock"]>;
+        else delete this.session.gameClock;
+        if ("previousJourney" in p) {
+          if (p.previousJourney) this.session.journey = p.previousJourney as NonNullable<Session["journey"]>;
+          else delete this.session.journey;
+        }
+        return {ok: true};
+      }
       case "physical_state_changed": {
         this.session.physical = p.previousState as Session["physical"];
         return { ok: true };
@@ -840,6 +873,17 @@ export class StateEngine {
         const target = this.resolveLockableTarget(p.path as string);
         if (!target) return { ok: false, reason: `Cannot undo: target path no longer resolvable (${String(p.path)}).` };
         target.container[target.key] = { ...target.field, value: p.previousValue };
+        const positionMatch = /^(player|characters\.([^.]+))\.position$/.exec(p.path as string);
+        if (positionMatch) {
+          const actor = positionMatch[1] === "player" ? this.session.player : this.session.characters[positionMatch[2]!];
+          if (actor) {
+            const previousRef = "previousLocationRef" in p
+              ? p.previousLocationRef as NonNullable<Session["player"]>["locationRef"] | null
+              : typeof p.previousValue === "string" ? resolveLocation(this.session, p.previousValue) : undefined;
+            if (previousRef) actor.locationRef = previousRef;
+            else delete actor.locationRef;
+          }
+        }
         return { ok: true };
       }
       case "lock_state_changed": {
@@ -1250,15 +1294,57 @@ export class StateEngine {
     });
   }
 
+  advanceGameTime(minutes: number, reason: string): void {
+    if (!this.session.gameClock || !Number.isSafeInteger(minutes) || minutes <= 0) return;
+    const totalMinutes = this.session.gameClock.totalMinutes + minutes;
+    if (!Number.isSafeInteger(totalMinutes)) return;
+    const previousClock = structuredClone(this.session.gameClock);
+    const previousJourney = this.session.journey ? structuredClone(this.session.journey) : null;
+    this.session.gameClock = {totalMinutes, lastAdvance: {minutes, reason}};
+    if (reason === "rest" || reason === "sleep") recordJourneyRest(this.session, minutes);
+    this.session.stateVersion = nextVersion(this.session.stateVersion);
+    this.eventLog.append({turn: this.session.stateVersion, timestamp: new Date().toISOString(),
+      type: "game_time_advanced", payload: {previousClock, previousJourney, placeId:this.session.scene?.placeId ?? null, minutes, reason}});
+  }
+
   travelToLandmark(patch: LandmarkTravelPatch): void {
-    if (this.session.scene?.placeId === patch.placeId) return;
+    if (this.session.journey) throw new JourneyError("Continue the current journey before choosing another destination.");
+    if (this.session.scene?.placeId === patch.placeId && this.session.scene?.location === patch.location) return;
+    const work = travelWorkMinutes(patch);
+    if (work !== undefined && (work > TRAVEL_STAGE_MINUTES || patch.plan?.stops.length)) {
+      beginJourney(this.session, patch);
+      this.session.stateVersion = nextVersion(this.session.stateVersion);
+      this.logJourneyStage();
+      return;
+    }
+    if (patch.travelDays !== undefined && work !== undefined) patch = {...patch, travelMinutes:work};
     applyLandmarkTravel(this.session, patch);
     this.eventLog.append({
       turn: this.session.stateVersion,
       timestamp: new Date().toISOString(),
       type: "landmark_traveled",
-      payload: { placeId: patch.placeId, location: patch.location }
+      payload: { placeId: patch.placeId, location: patch.location, travelMinutes: patch.travelMinutes ?? null,
+        gameMinutes: this.session.gameClock?.totalMinutes ?? null }
     });
+  }
+
+  removeJourneyStop(index: number): void {
+    const label=this.session.journey?.plan?.stops[index]?.label;
+    removePlannedJourneyStop(this.session,index);
+    this.session.stateVersion=nextVersion(this.session.stateVersion);
+    this.eventLog.append({turn:this.session.stateVersion,timestamp:new Date().toISOString(),type:"journey_plan_changed",payload:{action:"remove_stop",index,label}});
+  }
+
+  continueJourney(pushOn = false): void {
+    advanceJourney(this.session, pushOn);
+    this.session.stateVersion = nextVersion(this.session.stateVersion);
+    this.logJourneyStage();
+  }
+
+  private logJourneyStage(): void {
+    this.eventLog.append({turn:this.session.stateVersion, timestamp:new Date().toISOString(), type:"journey_stage_completed",
+      payload:{location:this.session.scene?.location, remainingTravelMinutes:this.session.journey?.remainingTravelMinutes ?? 0,
+        completedStages:this.session.journey?.completedStages ?? null, gameMinutes:this.session.gameClock?.totalMinutes}});
   }
 
   syncPartyFromPlayerText(playerMessage: string, focusId: string): void {

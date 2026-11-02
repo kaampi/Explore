@@ -1,3 +1,4 @@
+import { initializeSpatialReferences } from "@state/spatialLocation";
 import type {
   CharacterTemplate,
   PlaceTemplate,
@@ -34,9 +35,10 @@ export function quickCharacterSession(
   const draft = {
     ...characterDraftFromTemplate(character),
     lore: character.lore,
+    position: place?.name ?? "A quiet meeting place",
     ...(options.ruleset ? { stats } : {}),
   };
-  return createSessionFromSetup(
+  const session=createSessionFromSetup(
     {
       location: place?.name ?? "A quiet meeting place",
       lighting: place?.lighting ?? "soft light",
@@ -63,4 +65,6 @@ export function quickCharacterSession(
     },
     sessionId,
   );
+  initializeSpatialReferences(session,options.realm?.worldMap?.nodes.filter(n=>n.placeId).map(n=>({id:n.placeId!,name:n.name,kind:n.kind}))??[]);
+  return session;
 }

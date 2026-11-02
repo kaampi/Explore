@@ -7,6 +7,8 @@ import { useAppearance } from "../themes/ThemeProvider";
 import { Dot } from "./Dot";
 import { displayCharacterName, narratorLabel, primaryCharacter } from "@session/createSession";
 import type { Session } from "@state/StateSchema";
+import { formatGameTime } from "@state/gameClock";
+import { RoutePlanner } from "./RoutePlanner";
 import { beatLocation, isWhatNowStay, resolveWhatNowRoom, WHAT_NOW_STAY } from "@state/playerDestination";
 import { mapExits } from "@state/roomExits";
 import { mapLandmarkTravels } from "@state/landmarkTravel";
@@ -120,10 +122,12 @@ export function ChatPanel({ canSend = true, onCheckConnection, repo, conversatio
     useSession,
     phase,
     streamingText,
+    replyComplete,
     streamingCharacterId,
     streamingNarrator,
     lastError,
     sendMessage,
+    removeJourneyStop,
     regenerate,
     replay,
     inspectTurn,
@@ -151,6 +155,12 @@ export function ChatPanel({ canSend = true, onCheckConnection, repo, conversatio
   const toldBy = narratorLabel(session) ?? characterName;
   const [draft, setDraft] = useState(() => { try { return sessionStorage.getItem(`sandboxai-draft:${session.id}`) ?? ""; } catch { return ""; } });
   useEffect(() => { try { if (draft) sessionStorage.setItem(`sandboxai-draft:${session.id}`, draft); else sessionStorage.removeItem(`sandboxai-draft:${session.id}`); } catch { /* Draft remains in the composer. */ } }, [draft, session.id]);
+  const [queuedMessage, setQueuedMessage] = useState<string | null>(null);
+  const [planningJourney, setPlanningJourney] = useState(false);
+  const [timeAction, setTimeAction] = useState("wait");
+  const [timeAmount, setTimeAmount] = useState("30");
+  const [timeUnit, setTimeUnit] = useState("minutes");
+  const queuedMessageRef = useRef<string | null>(null);
   const [editingTurn, setEditingTurn] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState("");
   const [editError, setEditError] = useState<string | null>(null);
@@ -201,7 +211,7 @@ export function ChatPanel({ canSend = true, onCheckConnection, repo, conversatio
   }, [conversation.length, streamingText]);
 
   const fork = whatNowBlocksComposer(session);
-  const exits = [...mapExits(session), ...mapLandmarkTravels(session, travelPlaces)];
+  const exits = session.journey ? [] : [...mapExits(session), ...mapLandmarkTravels(session, travelPlaces)];
   const slots = partySlots(session);
   const staying = new Set(holdingPartyIds(session));
   const later = waitlistSlots(session);
@@ -224,9 +234,24 @@ export function ChatPanel({ canSend = true, onCheckConnection, repo, conversatio
     input.focus();
   }, [busy, editingTurn, fork, canSend]);
 
+  useEffect(() => {
+    if (busy || !canSend || fork || phase === "error" || !queuedMessageRef.current) return;
+    const text = queuedMessageRef.current;
+    queuedMessageRef.current = null;
+    setQueuedMessage(null);
+    void sendMessage(text);
+  }, [busy, canSend, fork, phase, sendMessage]);
+
   async function handleSend() {
     const text = draft.trim();
-    if (!text || busy || fork || !canSend) return;
+    if (!text || (busy && !replyComplete) || queuedMessageRef.current || fork || !canSend) return;
+    if (busy) {
+      queuedMessageRef.current = text;
+      setQueuedMessage(text);
+      setDraft("");
+      inputRef.current?.focus();
+      return;
+    }
     setDraft("");
     inputRef.current?.focus();
     await sendMessage(text);
@@ -314,6 +339,14 @@ export function ChatPanel({ canSend = true, onCheckConnection, repo, conversatio
 
   return (
     <div className={repo ? "chat-panel chat-panel--ideas" : "chat-panel"}>
+      {planningJourney && repo && <RoutePlanner repo={repo} session={session} onClose={()=>setPlanningJourney(false)} onStart={(destinationId,name,plan)=>{
+        setPlanningJourney(false);void sendMessage(`I go to ${name}.`,{travelPlaceId:destinationId,plan});
+      }}/>}
+      {session.gameClock && <div className="chat-world-status" aria-label="Current place and game time">
+        <span>{session.scene?.location ?? "Current scene"}</span>
+        {repo&&!session.journey&&<button type="button" className="sb-link" disabled={busy||!canSend||Boolean(queuedMessage)} onClick={()=>setPlanningJourney(true)}>Plan journey</button>}
+        <time title={session.gameClock.lastAdvance ? `${session.gameClock.lastAdvance.reason}: +${session.gameClock.lastAdvance.minutes} minutes` : "Fictional time; independent of real time"}>{formatGameTime(session.gameClock.totalMinutes)}</time>
+      </div>}
       {repo && <div className="sb-idea-capture">
         {capturing ? <><span>{selectedTurns.size} selected</span><button type="button" disabled={busy || !selectedTurns.size} onClick={() => capture(selectedTurns)}>Save selection as idea</button><button type="button" onClick={() => { setCapturing(false); setSelectedTurns(new Set()); }}>Cancel selection</button></> : <button type="button" disabled={busy || !conversation.length} onClick={() => { setCapturing(true); setIdeaNotice(""); }}>Capture ideas</button>}
         {onIdeas && <button type="button" disabled={busy} onClick={onIdeas}>My ideas</button>}
@@ -514,7 +547,7 @@ export function ChatPanel({ canSend = true, onCheckConnection, repo, conversatio
         })}
 
         {showLog && busy && streamingText && (
-          <div className="message message--character message--streaming">
+          <div className={`message message--character${replyComplete ? "" : " message--streaming"}`}>
             <span className="message__attribution">
               <Dot kind="ai" />
               {streamingNarrator || narratorLabel(session)
@@ -538,6 +571,30 @@ export function ChatPanel({ canSend = true, onCheckConnection, repo, conversatio
       </div>
 
       <div className="chat-composer">
+        {session.journey && <section className="chat-journey" aria-label="Journey progress">
+          <div><strong>Journey to {session.journey.destination.location}</strong><span>Stage {session.journey.completedStages} complete · {Math.ceil(session.journey.remainingTravelMinutes / 60)} travel hours remaining</span></div>
+          <progress aria-label="Journey progress" max={session.journey.totalTravelMinutes} value={session.journey.totalTravelMinutes - session.journey.remainingTravelMinutes} />
+          <p>{session.journey.currentStop && <strong>{session.journey.currentStop}. </strong>}{session.journey.phase === "overnight" ? "An overnight stop is due. Rest here, play out the evening, or choose to push on." : session.journey.phase === "pause" ? "You are at your planned stop. Explore or pause here, then continue when ready." : "You have rested. Continue when you are ready; talking here does not move the journey forward."}</p>
+          <div className="chat-journey__actions">
+            {session.journey.phase === "overnight" && <button type="button" disabled={busy || !canSend} onClick={() => void sendMessage("I rest until morning.")}>Rest until morning · 08:00</button>}
+            <button type="button" disabled={busy || !canSend || session.journey.phase === "overnight"} onClick={() => void sendMessage("I continue the journey.")}>{session.journey.phase === "pause" ? "Skip pause and continue" : "Continue journey"}</button>
+            {session.journey.phase === "overnight" && <button type="button" className="sb-link" disabled={busy || !canSend} onClick={() => void sendMessage("I continue the journey without rest.")}>Continue without rest</button>}
+          </div>
+          {session.journey.plan&&session.journey.plan.stops.length>session.journey.completedStages&&<details className="chat-time-controls"><summary>Upcoming stops</summary><ul>{session.journey.plan.stops.slice(session.journey.completedStages).map((stop,i)=><li key={`${i}-${stop.fraction}`}>{stop.label} · {stop.kind==="overnight"?"Overnight":"Pause"} <button type="button" className="sb-link" disabled={busy} aria-label={`Remove stop: ${stop.label}`} onClick={()=>removeJourneyStop(session.journey!.completedStages+i)}>Remove</button></li>)}</ul></details>}
+        </section>}
+        {session.gameClock && !fork && <details className="chat-time-controls">
+          <summary>Pass time</summary>
+          <p>Choose how much fictional time passes here. Conversation length and real time do not move the clock.</p>
+          <div className="setup-row">
+            <label>Action<select aria-label="Time action" value={timeAction} onChange={e => {setTimeAction(e.target.value); if(e.target.value === "sleep"){setTimeAmount("8");setTimeUnit("hours");}}}><option value="wait">Wait</option><option value="rest">Rest</option><option value="sleep">Sleep</option></select></label>
+            <label>Duration<input aria-label="Time duration" type="number" min="1" step="1" value={timeAmount} onChange={e => setTimeAmount(e.target.value)} /></label>
+            <label>Unit<select aria-label="Time unit" value={timeUnit} onChange={e => setTimeUnit(e.target.value)}><option value="minutes">Minutes</option><option value="hours">Hours</option></select></label>
+            <button type="button" disabled={busy || !canSend || !Number.isSafeInteger(Number(timeAmount)) || Number(timeAmount) <= 0} onClick={() => void sendMessage(`I ${timeAction} for ${timeAmount} ${timeUnit}.`)}>Pass time</button>
+            <button type="button" disabled={busy || !canSend} onClick={() => void sendMessage(`I ${timeAction} until morning.`)}>Until morning · 08:00</button>
+          </div>
+        </details>}
+        {busy && replyComplete && <p role="status" className="sb-chat-connection-hint">Updating the world… You can send your next message.</p>}
+        {queuedMessage && <p role="status" className="sb-chat-connection-hint">Queued: {queuedMessage} <button type="button" className="sb-link" onClick={() => { queuedMessageRef.current = null; setQueuedMessage(null); setDraft(current => current || queuedMessage); }}>Cancel</button></p>}
         {!canSend && <p className="sb-chat-connection-hint" id="sb-chat-connection-hint">You can write a draft while AI connects. {onCheckConnection && <button type="button" className="sb-link" onClick={onCheckConnection}>Set up AI</button>}</p>}
         {lastError && phase === "error" && <div className="chat-error">{lastError} {onCheckConnection && <button type="button" className="sb-link" onClick={onCheckConnection}>AI connection</button>}</div>}
         {fork && editingTurn === null ? (
@@ -703,8 +760,8 @@ export function ChatPanel({ canSend = true, onCheckConnection, repo, conversatio
                 : `Say something to ${characterName}…`
           }
         />
-        <button onClick={() => void handleSend()} disabled={busy || !canSend || !draft.trim()}>
-          {busy ? "…" : "Send"}
+        <button onClick={() => void handleSend()} disabled={(busy && !replyComplete) || Boolean(queuedMessage) || !canSend || !draft.trim()}>
+          {queuedMessage ? "Queued" : "Send"}
         </button>
         </>
         )}

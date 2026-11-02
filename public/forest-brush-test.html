@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="sv"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Explore · Skogspensel</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#eeeade;color:#293c32;font:16px system-ui}main{max-width:1100px;margin:auto;padding:28px}h1{font-size:26px;margin:0 0 8px}p{line-height:1.5}header{margin-bottom:20px}.tools{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:14px}button{padding:10px 16px;border:1px solid #a5ad9d;border-radius:6px;background:#faf8f0;color:inherit;cursor:pointer}button[aria-pressed=true]{background:#355641;color:white}label{display:flex;gap:10px;align-items:center}canvas{display:block;width:100%;background:#f8f4e8;border:1px solid #b5bba9;border-radius:8px;touch-action:none;cursor:crosshair}small{display:block;margin-top:12px;color:#5c675a}.variants{display:flex;gap:22px;align-items:end;margin-top:20px}.variants img{height:72px;width:auto}
+</style>
+<main><header><h1>Skog, sjö och berg · penselprov</h1><p>Välj höjd och måla berg: ljusgrå bas, mörkgrå högre partier och vita toppar. Måla om för att höja eller sänka. Skog kan växa på låg nivå.</p></header>
+<div class="tools"><button id="paint" aria-pressed="true">Måla skog</button><button id="erase" aria-pressed="false">Sudda skog</button><button id="lake" aria-pressed="false">Måla sjö</button><button id="river" aria-pressed="false">Rita å · källa → mynning</button><button id="removeRiver">Ångra senaste å</button><button id="eraseLake" aria-pressed="false">Sudda sjö / ö</button><button id="low" aria-pressed="false">Lågt · ljusgrå</button><button id="mid" aria-pressed="false">Högre · mörkgrå</button><button id="peak" aria-pressed="false">Topp · vit</button><button id="eraseHeight" aria-pressed="false">Sudda berg</button><button id="finishMountain">Färdigställ berg</button><button id="editMountain" disabled>Forma berg</button><span id="mountainState">Formläge</span><label>Pensel <input id="radius" type="range" min="12" max="130" value="65"><output id="size">65</output></label><button id="undo">Ångra</button><button id="reset">Återställ exemplet</button><button id="clear">Töm</button></div>
+<canvas id="map" width="1000" height="640" aria-label="Provyta för skogspensel"></canvas><small id="status">Laddar träden…</small><small>Visuellt prototyptest. Sparas i den här webbläsaren och ändrar inga världskartor. Trädens placering är stabil.</small><div class="variants" id="variants"></div></main>
+<script>
+const canvas=document.querySelector('#map'),ctx=canvas.getContext('2d'),W=250,H=160,CELL=4;
+let field=new Uint8Array(W*H),distance=new Uint16Array(W*H),mode='paint',drawing=false,last=null,history=[];
+let rivers=[],activeRiver=null;
+let finalized=false;
+let water=new Uint8Array(W*H),heights=new Uint8Array(W*H),heightPaths=null;
+const images=[];
+function random(n){let a=(n+0x9e3779b9)>>>0;a=Math.imul(a^(a>>>16),0x21f0aaad);a=Math.imul(a^(a>>>15),0x735a2d97);return ((a^(a>>>15))>>>0)/4294967296;}
+const candidates=[];let index=0;
+const buckets=new Map(),spacing=8;
+for(let id=0;id<28000;id++){const x=random(id*7)*1000,y=random(id*7+1)*640,bx=Math.floor(x/spacing),by=Math.floor(y/spacing);let close=false;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++)for(const p of buckets.get(`${bx+dx},${by+dy}`)||[])if(Math.hypot(x-p.x,y-p.y)<spacing)close=true;if(close)continue;const t={x,y,variant:Math.floor(random(id*7+2)*4),scale:.88+random(id*7+3)*.3,chance:random(id*7+4)};candidates.push(t);const key=`${bx},${by}`;if(!buckets.has(key))buckets.set(key,[]);buckets.get(key).push(t);}
+candidates.sort((a,b)=>a.y-b.y);
+const scene=document.createElement('canvas');scene.width=1000;scene.height=640;const sceneContext=scene.getContext('2d');let hover=null;
+function show(){ctx.clearRect(0,0,1000,640);ctx.drawImage(scene,0,0);if(hover){ctx.save();ctx.beginPath();ctx.arc(hover.x,hover.y,+document.querySelector('#radius').value,0,Math.PI*2);ctx.strokeStyle=mode==='erase'||mode==='eraseLake'?'#a54f36':mode==='lake'?'#39758b':'#355641';ctx.lineWidth=1.5;ctx.setLineDash([5,4]);ctx.stroke();ctx.restore();}}
+function stamp(x,y,r,remove,target=field){for(let gy=Math.max(0,Math.floor((y-r)/CELL));gy<Math.min(H,Math.ceil((y+r)/CELL));gy++)for(let gx=Math.max(0,Math.floor((x-r)/CELL));gx<Math.min(W,Math.ceil((x+r)/CELL));gx++)if(Math.hypot((gx+.5)*CELL-x,(gy+.5)*CELL-y)<=r)target[gy*W+gx]=remove?0:1;}
+function example(){field.fill(0);for(let x=210;x<790;x+=18)stamp(x,320+Math.sin(x/130)*65,145,false);stamp(500,320,66,true);}
+function remember(){history.push({forest:field.slice(),water:water.slice(),heights:heights.slice(),rivers:structuredClone(rivers)});if(history.length>30)history.shift();}
+function persist(){try{localStorage.setItem('explore-forest-brush-v1',JSON.stringify(Array.from(field)));localStorage.setItem('explore-lake-brush-v1',JSON.stringify(Array.from(water)));localStorage.setItem('explore-height-brush-v1',JSON.stringify(Array.from(heights)));localStorage.setItem('explore-rivers-v1',JSON.stringify(rivers));}catch{} }
+
+// Trace the water boundary once per frame, then round its corners with quadratic curves.
+function waterContour(source=water,threshold=1,angular=false){
+ const links=new Map(),key=(x,y)=>x+','+y;
+ const add=(a,b)=>{const k=key(...a);if(!links.has(k))links.set(k,[]);links.get(k).push(b);};
+ const table={1:[[3,0]],2:[[0,1]],3:[[3,1]],4:[[1,2]],5:[[3,0],[1,2]],6:[[0,2]],7:[[3,2]],8:[[2,3]],9:[[2,0]],10:[[0,1],[2,3]],11:[[2,1]],12:[[1,3]],13:[[1,0]],14:[[0,3]]};
+ const at=(x,y)=>x>=0&&y>=0&&x<W&&y<H&&source[y*W+x]>=threshold?1:0;
+ for(let y=-1;y<H;y++)for(let x=-1;x<W;x++){
+ const code=at(x,y)+2*at(x+1,y)+4*at(x+1,y+1)+8*at(x,y+1);if(code===0||code===15)continue;const edges=[[x*2+2,y*2+1],[x*2+3,y*2+2],[x*2+2,y*2+3],[x*2+1,y*2+2]];
+ for(const [a,b] of table[code]||[]){add(edges[a],edges[b]);add(edges[b],edges[a]);}}
+ const path=new Path2D();
+ while(links.size){const first=links.keys().next().value,start=first.split(',').map(Number),points=[start];let current=start,previous=null;
+ for(let guard=0;guard<100000;guard++){const k=key(...current),neighbors=links.get(k);if(!neighbors?.length)break;const next=neighbors.find(p=>!previous||key(...p)!==key(...previous))||neighbors[0];links.delete(k);previous=current;current=next;if(key(...current)===first)break;points.push(current);}
+ if(points.length<3)continue;
+ if(angular){
+  // A shared spatial displacement keeps adjacent height bands coherent.
+  const noise=(x,y,seed)=>{const gx=Math.floor(x/14),gy=Math.floor(y/14),u=(x/14-gx),v=(y/14-gy),sample=(a,b)=>random(Math.imul(a,73856093)^Math.imul(b,19349663)^seed)*2-1;return (sample(gx,gy)*(1-u)+sample(gx+1,gy)*u)*(1-v)+(sample(gx,gy+1)*(1-u)+sample(gx+1,gy+1)*u)*v;};
+  const vertices=[];let next=0;for(let i=0;i<points.length;i++){if(i<next)continue;const p=points[i];const snow=threshold===3;
+  // Snow has a finer broken edge, with stable fingers into the exposed rock.
+  const prev=points[(i+points.length-2)%points.length],after=points[(i+2)%points.length],dx=after[0]-prev[0],dy=after[1]-prev[1],length=Math.hypot(dx,dy)||1;
+  const tooth=snow?(random(i*31+947)-.5)*5:0;
+  vertices.push([p[0]+noise(p[0],p[1],1729)*3-dy/length*tooth,p[1]+noise(p[0],p[1],7919)*3+dx/length*tooth]);next=i+(snow?2+Math.floor(random(i+193)*3):5+Math.floor(random(i+threshold*571)*5));}
+  if(vertices.length<3)vertices.splice(0,vertices.length,...points);
+  path.moveTo(vertices[0][0]*CELL/2,vertices[0][1]*CELL/2);for(let i=1;i<vertices.length;i++)path.lineTo(vertices[i][0]*CELL/2,vertices[i][1]*CELL/2);path.closePath();continue;
+ }
+ // Remove raster-scale bumps without changing the stored water or island mask.
+ for(let pass=0;pass<3;pass++){const copy=points.map((p,i)=>{const a=points[(i+points.length-2)%points.length],b=points[(i+2)%points.length];return [(a[0]+2*p[0]+b[0])/4,(a[1]+2*p[1]+b[1])/4];});points.splice(0,points.length,...copy);}
+ if(points.length>12){const fewer=points.filter((_,i)=>i%3===0);points.splice(0,points.length,...fewer);}
+ const scale=CELL/2,last=points[points.length-1],firstPoint=points[0];path.moveTo((last[0]+firstPoint[0])*scale/2,(last[1]+firstPoint[1])*scale/2);
+ for(let i=0;i<points.length;i++){const p=points[i],n=points[(i+1)%points.length];path.quadraticCurveTo(p[0]*scale,p[1]*scale,(p[0]+n[0])*scale/2,(p[1]+n[1])*scale/2);}path.closePath();
+ }return path;
+}
+let pendingFrame=0;
+function scheduleRender(){if(!pendingFrame)pendingFrame=requestAnimationFrame(()=>{pendingFrame=0;render();});}
+
+const queue=new Int32Array(W*H),ground=document.createElement("canvas");ground.width=W;ground.height=H;const groundContext=ground.getContext("2d"),groundPixels=groundContext.createImageData(W,H);
+
+const mountainLayer=document.createElement('canvas');mountainLayer.width=1000;mountainLayer.height=640;const mountainContext=mountainLayer.getContext('2d');
+function drawRidges(ctx,outline,level){
+ const band=level+1,outer=[],inner=[];
+ const at=(x,y)=>x>=0&&y>=0&&x<W&&y<H?heights[y*W+x]:0;
+ for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){
+  const h=at(x,y),adj=[at(x-1,y),at(x+1,y),at(x,y-1),at(x,y+1)];
+  if(h>=band&&adj.some(v=>v<band))outer.push({x:x*CELL+2,y:y*CELL+2});
+  if(h>band&&adj.some(v=>v===band))inner.push({x:x*CELL+2,y:y*CELL+2});
+ }
+ if(!outer.length)return;
+ // A standalone height band needs its own interior crests, even without snow.
+ const visited=new Uint8Array(W*H);
+ for(let seed=0;seed<heights.length;seed++){
+  if(visited[seed]||heights[seed]<band)continue;
+  const todo=[seed],cells=[];visited[seed]=1;let sx=0,sy=0,hasHigher=false;
+  for(let head=0;head<todo.length;head++){const i=todo[head],x=i%W,y=Math.floor(i/W);cells.push(i);sx+=x;sy+=y;if(heights[i]>band)hasHigher=true;for(const n of [x>0?i-1:-1,x<W-1?i+1:-1,y>0?i-W:-1,y<H-1?i+W:-1])if(n>=0&&!visited[n]&&heights[n]>=band){visited[n]=1;todo.push(n);}}
+  if(hasHigher)continue;
+  const centerX=sx/cells.length,centerY=sy/cells.length;let anchor=cells[0],best=Infinity;
+  for(const i of cells){const d=Math.hypot(i%W-centerX,Math.floor(i/W)-centerY);if(d<best){best=d;anchor=i;}}
+  const center={x:(anchor%W)*CELL+2,y:Math.floor(anchor/W)*CELL+2};
+  const membership=new Set(cells);const localEdge=outer.filter(p=>membership.has(Math.floor(p.y/CELL)*W+Math.floor(p.x/CELL)));
+  const selected=[];for(const edge of localEdge){if(selected.some(p=>Math.hypot(p.x-edge.x,p.y-edge.y)<65))continue;selected.push(edge);const p={x:center.x+(edge.x-center.x)*.38,y:center.y+(edge.y-center.y)*.38};const gx=Math.floor(p.x/CELL),gy=Math.floor(p.y/CELL);if(heights[gy*W+gx]>=band)inner.push(p);}
+ }
+ if(!inner.length)return;
+ ctx.save();ctx.clip(outline,'evenodd');const used=[];
+ for(const start of inner){if(used.some(p=>Math.hypot(p.x-start.x,p.y-start.y)<24))continue;
+  let end=null,best=Infinity;for(const p of outer){const d=Math.hypot(p.x-start.x,p.y-start.y);if(d<best){best=d;end=p;}}if(!end||best<15)continue;used.push(start);
+  const dx=end.x-start.x,dy=end.y-start.y,nx=-dy/best,ny=dx/best,seed=Math.floor(start.x*97+start.y*193),bend=(random(seed)-.5)*Math.min(20,best*.25),width=Math.min(13,best*.12);
+  const spine=[start,{x:start.x+dx*.34+nx*bend,y:start.y+dy*.34+ny*bend},{x:start.x+dx*.68-nx*bend*.4,y:start.y+dy*.68-ny*bend*.4},end];
+  for(const side of [-1,1]){ctx.beginPath();ctx.moveTo(start.x,start.y);for(const p of spine.slice(1))ctx.lineTo(p.x,p.y);ctx.lineTo(spine[2].x+nx*width*side,spine[2].y+ny*width*side);ctx.lineTo(spine[1].x+nx*width*.7*side,spine[1].y+ny*width*.7*side);ctx.closePath();ctx.fillStyle=side===1?'rgba(35,47,50,.10)':'rgba(255,255,245,.12)';ctx.fill();}
+  ctx.beginPath();ctx.moveTo(start.x,start.y);for(const p of spine.slice(1))ctx.lineTo(p.x,p.y);ctx.strokeStyle='rgba(46,59,59,.15)';ctx.lineWidth=.85;ctx.stroke();
+ }ctx.restore();
+}
+function drawSnowRelief(ctx,outline){
+ const edge=[];let cx=0,cy=0,count=0;
+ const snow=(x,y)=>x>=0&&y>=0&&x<W&&y<H&&heights[y*W+x]===3;
+ for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(snow(x,y)){cx+=x*CELL+2;cy+=y*CELL+2;count++;if(!snow(x-1,y)||!snow(x+1,y)||!snow(x,y-1)||!snow(x,y+1))edge.push({x:x*CELL+2,y:y*CELL+2});}
+ if(!count)return;cx/=count;cy/=count;
+ const peaks=[];
+ for(let ty=0;ty<H;ty+=24)for(let tx=0;tx<W;tx+=24){let best=null,depth=0;
+  for(let y=ty;y<Math.min(H,ty+24);y+=3)for(let x=tx;x<Math.min(W,tx+24);x+=3){if(!snow(x,y))continue;const p={x:x*CELL+2,y:y*CELL+2};let d=Infinity;for(const e of edge)d=Math.min(d,Math.hypot(e.x-p.x,e.y-p.y));if(d>depth){best=p;depth=d;}}
+  if(best&&depth>12&&!peaks.some(p=>Math.hypot(p.x-best.x,p.y-best.y)<65))peaks.push(best);
+ }
+ if(!peaks.length)peaks.push({x:cx,y:cy});
+ ctx.save();ctx.clip(outline,'evenodd');const used=[];
+ // Broad snow faces run from an interior crest toward the same boundary as the rock ridges.
+ for(const end of edge){if(used.some(p=>Math.hypot(p.x-end.x,p.y-end.y)<90))continue;used.push(end);
+ const peak=peaks.reduce((a,b)=>Math.hypot(a.x-end.x,a.y-end.y)<Math.hypot(b.x-end.x,b.y-end.y)?a:b);const dx=end.x-peak.x,dy=end.y-peak.y,len=Math.hypot(dx,dy);if(len<24)continue;const nx=-dy/len,ny=dx/len,seed=Math.floor(end.x*97+end.y*193),offset=(random(seed)-.5)*16;
+ const start={x:peak.x+dx*.12+nx*offset,y:peak.y+dy*.12+ny*offset},mid={x:peak.x+dx*.57+nx*offset*.5,y:peak.y+dy*.57+ny*offset*.5};const width=Math.min(22,len*.19);
+ ctx.beginPath();ctx.moveTo(start.x,start.y);ctx.lineTo(mid.x,mid.y);ctx.lineTo(end.x,end.y);ctx.lineTo(mid.x+nx*width,mid.y+ny*width);ctx.closePath();ctx.fillStyle='rgba(117,143,158,.10)';ctx.fill();
+ ctx.beginPath();ctx.moveTo(start.x,start.y);ctx.lineTo(mid.x,mid.y);ctx.lineTo(end.x,end.y);ctx.lineTo(mid.x-nx*width*.7,mid.y-ny*width*.7);ctx.closePath();ctx.fillStyle='rgba(255,255,255,.32)';ctx.fill();
+ }ctx.restore();
+}
+function reliefNoise(x,y){const ix=Math.floor(x),iy=Math.floor(y),u=x-ix,v=y-iy,a=u*u*(3-2*u),b=v*v*(3-2*v),n=(x,y)=>random(Math.imul(x,73856093)^Math.imul(y,19349663));return (n(ix,iy)*(1-a)+n(ix+1,iy)*a)*(1-b)+(n(ix,iy+1)*(1-a)+n(ix+1,iy+1)*a)*b;}
+function smoothField(input,passes){let a=Float32Array.from(input),b=new Float32Array(a.length);for(let pass=0;pass<passes;pass++){for(let y=0;y<H;y++)for(let x=0;x<W;x++){const i=y*W+x;b[i]=(a[y*W+Math.max(0,x-1)]+2*a[i]+a[y*W+Math.min(W-1,x+1)])/4;}for(let y=0;y<H;y++)for(let x=0;x<W;x++){const i=y*W+x;a[i]=(b[Math.max(0,y-1)*W+x]+2*b[i]+b[Math.min(H-1,y+1)*W+x])/4;}}return a;}
+function renderTerrainRelief(){
+ let elevation=new Float32Array(W*H),edgeDistance=new Uint16Array(W*H);
+ for(let band=1;band<=3;band++){
+  edgeDistance.fill(65535);let head=0,tail=0;
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){const i=y*W+x;if(heights[i]<band||x===0||y===0||x===W-1||y===H-1){edgeDistance[i]=0;queue[tail++]=i;}}
+  while(head<tail){const i=queue[head++],x=i%W,y=Math.floor(i/W),d=edgeDistance[i]+1;for(const j of [x>0?i-1:-1,x<W-1?i+1:-1,y>0?i-W:-1,y<H-1?i+W:-1])if(j>=0&&edgeDistance[j]>d){edgeDistance[j]=d;queue[tail++]=j;}}
+  for(let i=0;i<elevation.length;i++)if(heights[i]>=band){const depth=Math.min(1,edgeDistance[i]/(band===1?18:12));elevation[i]+=depth*depth*(3-2*depth)*(band===1?18:24);}
+ }
+ elevation=smoothField(elevation,10);
+ for(let y=0;y<H;y++)for(let x=0;x<W;x++){const i=y*W+x;if(!heights[i])continue;const warp=reliefNoise(x/22,y/22)*5,large=1-Math.abs(reliefNoise(x/13+warp,y/17)*2-1),small=1-Math.abs(reliefNoise(x/5,y/6+warp)*2-1);elevation[i]*=.65+large*.27+small*.08;}
+ elevation=smoothField(elevation,3);const colorHeight=smoothField(heights,18);
+ const surface=document.createElement('canvas');surface.width=1000;surface.height=640;const painter=surface.getContext('2d'),pixels=painter.createImageData(1000,640);
+ const sample=(data,x,y)=>{x=Math.max(0,Math.min(W-1,x));y=Math.max(0,Math.min(H-1,y));const ix=Math.floor(x),iy=Math.floor(y),u=x-ix,v=y-iy,j=iy*W+ix,k=Math.min(H-1,iy+1)*W+ix,nx=Math.min(W-1,ix+1)-ix;return (data[j]*(1-u)+data[j+nx]*u)*(1-v)+(data[k]*(1-u)+data[k+nx]*u)*v;};
+ for(let py=0;py<640;py++)for(let px=0;px<1000;px++){
+ const x=(px+.5)/CELL-.5,y=(py+.5)/CELL-.5,h=sample(colorHeight,x,y),z=sample(elevation,x,y);if(h<.05)continue;
+ const gx=(sample(elevation,x+.65,y)-sample(elevation,x-.65,y))*.30,gy=(sample(elevation,x,y+.65)-sample(elevation,x,y-.65))*.30;
+ const fine=reliefNoise(x/2.1,y/2.7),detail=(fine-.5)*.055;
+ const lighting=(-(gx+detail)*.55-(gy-detail)*.5+1)/Math.sqrt(gx*gx+gy*gy+1),shade=Math.max(.62,Math.min(1.2,.70+lighting*.40));
+ const snow=Math.max(0,Math.min(1,(h-2.35)*2.8)),high=Math.max(0,Math.min(1,(h-1.3)*1.8)),low=[179,177,157],rock=[144,149,140],white=[240,242,237],grain=(fine-.5)*4,i=(py*1000+px)*4;
+ for(let c=0;c<3;c++){const base=low[c]*(1-high)+rock[c]*high,color=base*(1-snow)+white[c]*snow;pixels.data[i+c]=Math.min(255,color*shade+grain);}
+ pixels.data[i+3]=Math.min(255,z*36);
+ }
+ painter.putImageData(pixels,0,0);mountainContext.drawImage(surface,0,0);
+
+}
+function renderIllustratedMountains(){
+ const ctx=mountainContext;
+ // A quiet foothill wash ties the individual silhouettes to the authored area.
+ ctx.save();ctx.fillStyle='#b6b6a0';ctx.globalAlpha=.24;ctx.filter='blur(7px)';ctx.fill(heightPaths[0],'evenodd');ctx.restore();
+ const peaks=[];
+ for(let row=0;row<22;row++)for(let col=0;col<29;col++){
+  const id=row*29+col,x=col*36+18+(random(id*7+401)-.5)*24,y=row*32+16+(random(id*7+402)-.5)*20;
+  if(x>=1000||y>=640)continue;const band=heights[Math.floor(y/CELL)*W+Math.floor(x/CELL)];if(!band)continue;
+  const size=(band===1?34:band===2?70:100)*(.88+random(id*7+403)*.24),variant=Math.floor(random(id*7+404)*3);
+  // Give the larger silhouettes room without changing the authored footprint.
+  if(peaks.some(p=>Math.hypot(p.x-x,p.y-y)<(band===3?39:band===2?30:22)))continue;
+  peaks.push({x,y,band,size,variant,id});
+ }
+ peaks.sort((a,b)=>a.y-b.y);
+ for(const p of peaks){const {x,y,size:r,band,variant}=p,w=r*(.68+variant*.06),tip=x+(variant-1)*r*.13,top=y-r;
+  // All variants share the trees' flat fills, olive-grey outlines and upper-left light.
+  ctx.beginPath();ctx.moveTo(x-w,y);ctx.lineTo(x-w*.56,y-r*.35);ctx.lineTo(tip-r*.17,top+r*.32);ctx.lineTo(tip,top);ctx.lineTo(tip+r*.23,top+r*.37);ctx.lineTo(x+w*.60,y-r*.32);ctx.lineTo(x+w,y);ctx.quadraticCurveTo(x,y+r*.08,x-w,y);ctx.closePath();ctx.fillStyle=band===1?'#b5b49b':'#a0a58e';ctx.fill();ctx.strokeStyle='#64715d';ctx.lineWidth=1.1;ctx.lineJoin='round';ctx.stroke();
+  ctx.beginPath();ctx.moveTo(tip,top+1);ctx.lineTo(tip+r*.23,top+r*.37);ctx.lineTo(x+w*.60,y-r*.32);ctx.lineTo(x+w-1,y);ctx.lineTo(x+r*.08,y);ctx.lineTo(tip+r*.05,top+r*.52);ctx.lineTo(tip-r*.07,top+r*.32);ctx.closePath();ctx.fillStyle='#7d8976';ctx.fill();
+  if(band===3){ctx.beginPath();ctx.moveTo(tip,top);ctx.lineTo(tip+r*.23,top+r*.37);ctx.lineTo(tip+r*.31,top+r*.47);ctx.lineTo(tip+r*.09,top+r*.39);ctx.lineTo(tip,top+r*.50);ctx.lineTo(tip-r*.10,top+r*.38);ctx.lineTo(tip-r*.26,top+r*.47);ctx.lineTo(tip-r*.17,top+r*.32);ctx.closePath();ctx.fillStyle='#f4f3e9';ctx.fill();ctx.strokeStyle='#899383';ctx.lineWidth=.7;ctx.stroke();}
+  ctx.beginPath();ctx.moveTo(tip-r*.07,top+r*.34);ctx.lineTo(tip-r*.16,top+r*.58);ctx.lineTo(x-r*.24,y-r*.14);ctx.strokeStyle='#64715d';ctx.lineWidth=.75;ctx.stroke();
+ }
+}
+
+function rebuildMountains(){
+ heightPaths=[1,2,3].map(level=>waterContour(heights,level,true));const ctx=mountainContext;ctx.clearRect(0,0,1000,640);if(finalized){renderIllustratedMountains();return;}
+ ['#b4b3a9','#777e7d','#f5f5f0'].forEach((color,i)=>{
+  ctx.save();ctx.fillStyle=color;
+  if(i<2){ctx.filter='blur('+ (i===0?10:7)+'px)';ctx.fill(heightPaths[i],'evenodd');ctx.filter='none';ctx.globalAlpha=.35;ctx.fill(heightPaths[i],'evenodd');}
+  else{ctx.fill(heightPaths[i],'evenodd');ctx.strokeStyle='#d4d9d5';ctx.lineWidth=.8;ctx.stroke(heightPaths[i]);}
+  ctx.restore();
+ });
+}
+function riverWidths(river){
+ const pts=river.points,lengths=[0],height=p=>heights[Math.floor(p.y/CELL)*W+Math.floor(p.x/CELL)]||0;
+ for(let i=1;i<pts.length;i++)lengths.push(lengths[i-1]+Math.hypot(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y));
+ const mountain=pts.length&&height(pts[0])>0;let exit=mountain?pts.findIndex(p=>height(p)===0):0;if(exit<0)exit=pts.length-1;
+ const reach=mountain?Math.max(24,lengths[exit]||24):Math.min(70,lengths.at(-1)||70);
+ return lengths.map(d=>{const t=Math.min(1,d/reach),blend=t*t*(3-2*t);return Math.min(2,river.width*.3)+(river.width-Math.min(2,river.width*.3))*blend;});
+}
+function drawRivers(ctx){
+ let uphill=0,falls=0;const height=p=>heights[Math.floor(p.y/CELL)*W+Math.floor(p.x/CELL)]||0;
+ ctx.save();const land=new Path2D();land.rect(0,0,1000,640);land.addPath(waterContour());ctx.clip(land,'evenodd');
+ for(const river of rivers){const pts=river.points;if(pts.length<2)continue;const widths=riverWidths(river);
+ ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
+ // Two passes keep banks outside a continuous, gradually widening water surface.
+ for(const bank of [true,false])for(let i=1;i<pts.length;i++){const a=pts[i-1],b=pts[i],steps=Math.max(1,Math.ceil(Math.hypot(b.x-a.x,b.y-a.y)/2));for(let j=0;j<steps;j++){const t=j/steps,u=(j+1)/steps;ctx.beginPath();ctx.moveTo(a.x+(b.x-a.x)*t,a.y+(b.y-a.y)*t);ctx.lineTo(a.x+(b.x-a.x)*u,a.y+(b.y-a.y)*u);ctx.strokeStyle=bank?'#739caa':'#aacfdc';ctx.lineWidth=widths[i-1]+(widths[i]-widths[i-1])*(t+u)/2+(bank?1.5:0);ctx.stroke();}}
+ for(let i=1;i<pts.length;i++){const a=pts[i-1],b=pts[i],delta=height(b)-height(a);if(delta>0){uphill++;ctx.beginPath();ctx.arc(b.x,b.y,4,0,Math.PI*2);ctx.strokeStyle='#ad633e';ctx.lineWidth=1.5;ctx.stroke();}else if(delta<0){falls++;const angle=Math.atan2(b.y-a.y,b.x-a.x),nx=-Math.sin(angle),ny=Math.cos(angle);ctx.strokeStyle='#f5fcfa';ctx.lineWidth=1.2;for(let j=0;j<3;j++){const x=b.x-Math.cos(angle)*j*3,y=b.y-Math.sin(angle)*j*3;ctx.beginPath();ctx.moveTo(x-nx*widths[i]*.4,y-ny*widths[i]*.4);ctx.lineTo(x+nx*widths[i]*.4,y+ny*widths[i]*.4);ctx.stroke();}}}
+ ctx.restore();
+ }ctx.restore();return {uphill,falls};
+}
+function render(){
+ let head=0,tail=0;distance.fill(65535);
+ for(let y=0;y<H;y++)for(let x=0;x<W;x++){const i=y*W+x;if(!field[i]||water[i]||x===0||y===0||x===W-1||y===H-1){distance[i]=0;queue[tail++]=i;}}
+ while(head<tail){const i=queue[head++],x=i%W,y=Math.floor(i/W);const d=distance[i]+1;if(x>0&&distance[i-1]>d){distance[i-1]=d;queue[tail++]=i-1;}if(x<W-1&&distance[i+1]>d){distance[i+1]=d;queue[tail++]=i+1;}if(y>0&&distance[i-W]>d){distance[i-W]=d;queue[tail++]=i-W;}if(y<H-1&&distance[i+W]>d){distance[i+W]=d;queue[tail++]=i+W;}}
+ const ctx=sceneContext;ctx.fillStyle='#f8f4e8';ctx.fillRect(0,0,1000,640);
+ if(!heightPaths)rebuildMountains();ctx.drawImage(mountainLayer,0,0);
+ // A faint ground wash fades with the same distance field as the trees.
+ const pixels=groundPixels.data;for(let i=0;i<W*H;i++){pixels[i*4]=124;pixels[i*4+1]=148;pixels[i*4+2]=88;pixels[i*4+3]=field[i]&&!water[i]?Math.min(33,distance[i]*3):0;}groundContext.putImageData(groundPixels,0,0);ctx.drawImage(ground,0,0,1000,640);
+ let count=0;
+ for(const t of candidates){
+  const i=Math.min(H-1,Math.floor(t.y/CELL))*W+Math.min(W-1,Math.floor(t.x/CELL));if(!field[i]||heights[i]>=2)continue;
+  // Broad, uneven fringes follow the current outline, including erased clearings.
+  const grouping=(Math.sin(t.x/23+Math.sin(t.y/37)*1.7)+Math.cos(t.y/19-t.x/43)+2)/4;
+  const fringeWidth=66+24*grouping;
+  const depth=Math.min(1,distance[i]*CELL/fringeWidth);
+  const blend=depth*depth*(3-2*depth);
+  const density=.035+.835*blend+.12*grouping*(1-blend);
+  if(t.chance>density)continue;
+  const height=(17+15*blend)*t.scale,width=height*63/83;
+
+  const image=images[t.variant];
+  ctx.drawImage(image,t.x-width/2,t.y-height,width,height);count++;
+ }
+ const shoreline=waterContour();ctx.fillStyle='#aacfdc';ctx.fill(shoreline,'evenodd');ctx.strokeStyle='#83aebb';ctx.lineWidth=1;ctx.stroke(shoreline);
+ const riverInfo=drawRivers(ctx);
+ document.querySelector('#status').textContent=`${count} träd · fyra varianter · ${rivers.length} åar · ${riverInfo.falls} möjliga fall · ${riverInfo.uphill} höjdsteg uppför (orange)`;show();
+}
+function point(e){const b=canvas.getBoundingClientRect();return {x:(e.clientX-b.left)*1000/b.width,y:(e.clientY-b.top)*640/b.height};}
+function heightStamp(x,y,r,value){if(finalized)setMountainMode(false);heightPaths=null;for(let gy=Math.max(0,Math.floor((y-r)/CELL));gy<Math.min(H,Math.ceil((y+r)/CELL));gy++)for(let gx=Math.max(0,Math.floor((x-r)/CELL));gx<Math.min(W,Math.ceil((x+r)/CELL));gx++)if(Math.hypot((gx+.5)*CELL-x,(gy+.5)*CELL-y)<=r)heights[gy*W+gx]=value;}
+function stroke(p){if(mode==='river'){if(!activeRiver){activeRiver={width:Math.max(3,Math.min(18,+document.querySelector('#radius').value/5)),points:[]};rivers.push(activeRiver);}const a=activeRiver.points.at(-1);if(!a||Math.hypot(a.x-p.x,a.y-p.y)>4)activeRiver.points.push({x:Math.max(0,Math.min(999,p.x)),y:Math.max(0,Math.min(639,p.y))});scheduleRender();return;}const r=+document.querySelector('#radius').value,start=last||p,steps=Math.max(1,Math.ceil(Math.hypot(p.x-start.x,p.y-start.y)/(r*.2)));for(let i=1;i<=steps;i++){const x=start.x+(p.x-start.x)*i/steps,y=start.y+(p.y-start.y)*i/steps;if(['low','mid','peak','eraseHeight'].includes(mode))heightStamp(x,y,r,{low:1,mid:2,peak:3,eraseHeight:0}[mode]);else stamp(x,y,r,mode==='erase'||mode==='eraseLake',mode==='lake'||mode==='eraseLake'?water:field);}last=p;scheduleRender();}
+canvas.onpointerdown=e=>{if(e.button!==0||images.length!==4)return;e.preventDefault();remember();drawing=true;last=null;canvas.setPointerCapture(e.pointerId);stroke(point(e));};
+canvas.onpointermove=e=>{hover=point(e);if(drawing&&(e.buttons&1))stroke(hover);else if(drawing)finish();else if(!pendingFrame)show();};canvas.onpointerleave=()=>{hover=null;show();};
+function finish(){if(!drawing)return;drawing=false;last=null;activeRiver=null;persist();scheduleRender();}canvas.onpointerup=finish;canvas.onpointercancel=finish;canvas.onlostpointercapture=finish;
+function setMountainMode(value){finalized=value;heightPaths=null;document.querySelector('#mountainState').textContent=value?'Färdigställt':'Formläge';document.querySelector('#editMountain').disabled=!value;document.querySelector('#finishMountain').disabled=value;}
+document.querySelector('#editMountain').onclick=()=>{setMountainMode(false);render();};
+document.querySelector('#finishMountain').onclick=()=>{finish();document.querySelector('#mountainState').textContent='Bearbetar berget…';document.querySelector('#finishMountain').disabled=true;setTimeout(()=>{try{setMountainMode(true);render();}catch(error){setMountainMode(false);document.querySelector('#mountainState').textContent='Kunde inte färdigställa: '+error.message;}},25);};
+document.querySelector('#removeRiver').onclick=()=>{if(rivers.length){remember();rivers.pop();persist();render();}};
+const modes=['river','paint','erase','lake','eraseLake','low','mid','peak','eraseHeight'];
+for(const m of modes)document.querySelector('#'+m).onclick=()=>{finish();if(['low','mid','peak','eraseHeight'].includes(m)&&finalized){setMountainMode(false);scheduleRender();}mode=m;for(const v of modes)document.querySelector('#'+v).setAttribute('aria-pressed',String(v===mode));show();};
+document.querySelector('#radius').oninput=e=>{document.querySelector('#size').value=e.target.value;show();};
+document.querySelector('#undo').onclick=()=>{if(history.length){const old=history.pop();field=old.forest;water=old.water;heights=old.heights;rivers=old.rivers;activeRiver=null;setMountainMode(false);render();persist();}};
+document.querySelector('#reset').onclick=()=>{remember();example();water.fill(0);heights.fill(0);rivers=[];activeRiver=null;setMountainMode(false);render();persist();};
+document.querySelector('#clear').onclick=()=>{remember();field.fill(0);water.fill(0);render();persist();};
+Promise.all([1,2,3,4].map(n=>new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=reject;img.src=`/map-assets/trees/pinetree${n}.svg`;}))).then(loaded=>{images.push(...loaded);for(const image of images)document.querySelector('#variants').append(image.cloneNode());example();try{const saved=JSON.parse(localStorage.getItem('explore-forest-brush-v1'));if(Array.isArray(saved)&&saved.length===field.length&&saved.every(n=>n===0||n===1))field=Uint8Array.from(saved);const savedWater=JSON.parse(localStorage.getItem('explore-lake-brush-v1'));if(Array.isArray(savedWater)&&savedWater.length===water.length&&savedWater.every(n=>n===0||n===1))water=Uint8Array.from(savedWater);const savedHeights=JSON.parse(localStorage.getItem('explore-height-brush-v1'));if(Array.isArray(savedHeights)&&savedHeights.length===heights.length&&savedHeights.every(n=>Number.isInteger(n)&&n>=0&&n<=3))heights=Uint8Array.from(savedHeights);const savedRivers=JSON.parse(localStorage.getItem('explore-rivers-v1'));if(Array.isArray(savedRivers)&&savedRivers.every(r=>r&&Number.isFinite(r.width)&&r.width>=3&&r.width<=18&&Array.isArray(r.points)&&r.points.every(p=>Number.isFinite(p.x)&&p.x>=0&&p.x<1000&&Number.isFinite(p.y)&&p.y>=0&&p.y<640)))rivers=savedRivers;}catch{}render();}).catch(()=>document.querySelector('#status').textContent='Träden kunde inte laddas. Öppna provet via Explore-adressen.');
+</script></html>
+
+

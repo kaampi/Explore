@@ -1,0 +1,10 @@
+import { expect,it } from "vitest";
+import { guardAbsentPositions } from "../../src/state/npcPositionGuard";
+import { quickCharacterSession } from "../../src/ui/home/quickStart";
+import { exampleCharacterTemplate } from "../../src/library/exampleTemplates";
+const fixture=()=>{const s=quickCharacterSession(exampleCharacterTemplate(),"npc-guard");const id=Object.keys(s.characters)[0]!;s.scene!.location="Outside Witches cottage";s.player!.position.value="Outside Witches cottage";s.characters[id]!.position.value="inside kitchen";return {s,id};};
+it("keeps Mona in the kitchen when looking around outside produces a forest position",()=>{const {s,id}=fixture();const mood={path:`characters.${id}.mood`,value:"curious"};expect(guardAbsentPositions([{path:`characters.${id}.position`,value:"inside forest"},mood],s)).toEqual([mood]);expect(s.characters[id]!.position.value).toBe("inside kitchen");});
+it("guards all absent characters, not just the focused speaker",()=>{const {s,id}=fixture();s.characters.other={...s.characters[id]!,position:{value:"bedroom",lock:"unlocked"}};expect(guardAbsentPositions([{path:"characters.other.position",value:"inside forest"}],s)).toEqual([]);});
+it("preserves unchanged positions and engine-authorized party movement",()=>{const {s,id}=fixture();const proposal={path:`characters.${id}.position`,value:"inside kitchen"};expect(guardAbsentPositions([proposal],s)).toEqual([proposal]);s.partyIds=[id];expect(guardAbsentPositions([{...proposal,value:"Outside Witches cottage"}],s)).toHaveLength(1);});
+
+it("does not rename a present character's room without movement in the reply",()=>{const {s,id}=fixture();s.player!.position.value="inside kitchen";s.scene!.location="Kitchen";const proposal={path:`characters.${id}.position`,value:"inside cottage"};expect(guardAbsentPositions([proposal],s,{reply:'She raises an eyebrow. "Help yourself to tea."',focusId:id})).toEqual([]);expect(guardAbsentPositions([proposal],s,{reply:'She walks into the cottage.',focusId:id})).toEqual([proposal]);});

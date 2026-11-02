@@ -1,3 +1,5 @@
+import { ObjectLocationSchema } from "@library/objectLocation";
+import { RoutePlanSchema } from "@library/routePlan";
 import { z } from "zod";
 
 /**
@@ -214,7 +216,10 @@ export const ApproximateAgeSchema = z.preprocess((val) => {
 // Character State — §5.1
 // ---------------------------------------------------------------------------
 
+export const SpatialLocationSchema=z.object({placeId:z.string().min(1),side:z.enum(["at","inside","outside"])});
 export const CharacterStateSchema = z.object({
+  locationRef: SpatialLocationSchema.optional(),
+  positionDetail:z.string().optional(),
   sourceLibraryId: z.string().min(1).optional(),
   /** Optional reference to a reusable anatomical template. */
   anatomyTemplateId: z.string().min(1).max(100).optional(),
@@ -326,6 +331,26 @@ export const LayerSchema = z.object({
 });
 export type Layer = z.infer<typeof LayerSchema>;
 
+export const JourneySchema = z.object({
+  plan: RoutePlanSchema.optional(),
+  currentStop: z.string().optional(),
+  routeInfo: z.string().optional(),
+  id: z.string().min(1),
+  originName: z.string(),
+  destination: WorldStateSchema,
+  destinationLayers: z.array(LayerSchema),
+  totalTravelMinutes: z.number().int().positive(),
+  remainingTravelMinutes: z.number().int().nonnegative(),
+  completedStages: z.number().int().nonnegative(),
+  restMinutes: z.number().int().nonnegative(),
+  phase: z.enum(["overnight", "ready", "pause"]),
+  encounter: z.object({frequency:z.enum(["never","rarely","sometimes","often"]),participants:z.string(),tone:z.string()}).optional(),
+  opportunity: z.object({kind:z.enum(["travel","camp"]),triggered:z.boolean()}).optional(),
+  campChecked: z.boolean(),
+  pushedOn: z.boolean()
+});
+export type Journey = z.infer<typeof JourneySchema>;
+
 // ---------------------------------------------------------------------------
 // Memory — §16-19 (full retrieval/ranking lands in Phase 4)
 // ---------------------------------------------------------------------------
@@ -419,6 +444,8 @@ export const RuntimeConfigSchema = z.object({
 });
 
 export const PlayerStateSchema = z.object({
+  locationRef:SpatialLocationSchema.optional(),
+  positionDetail:z.string().optional(),
   position: lockable(z.string()),
   status: lockable(z.string()),
   name: z.string().optional(),
@@ -436,6 +463,14 @@ export const SceneObjectSchema = z.object({
   name: z.string().min(1),
   note: z.string().default(""),
   tags: z.array(z.string()).default([]),
+  startingLocation: ObjectLocationSchema.optional(),
+  readableContent: z.string().optional(),
+  openable: z.boolean().optional(),
+  isOpen: z.boolean().optional(),
+  portable: z.boolean().optional(),
+  lockable: z.boolean().optional(),
+  storyRole: z.enum(["background", "useful", "critical"]).optional(),
+  storyImportance: z.string().optional(),
   weight: z.number().nonnegative().optional(),
   difficulty: z.number().nonnegative().optional(),
   checkAttribute: z.string().min(1).optional()
@@ -501,6 +536,8 @@ export const AnatomyTemplateSchema = z.object({
 export type AnatomyTemplate = z.infer<typeof AnatomyTemplateSchema>;
 
 export const SessionSchema = z.object({
+  journey: JourneySchema.optional(),
+  gameClock: z.object({ totalMinutes: z.number().int().nonnegative(), lastAdvance: z.object({minutes: z.number().int().nonnegative(), reason: z.string()}).optional() }).optional(),
   schemaVersion: z.number().int().positive(),
   id: z.string(),
   runtime: RuntimeConfigSchema,
@@ -508,6 +545,7 @@ export const SessionSchema = z.object({
 
   characters: z.record(z.string(), CharacterStateSchema).default({}),
   /** Session-pinned template snapshots: updates to a library template cannot alter active play. */
+  spatialPlaces:z.array(z.object({id:z.string().min(1),name:z.string().min(1),kind:z.string().optional()})).optional(),
   anatomyTemplates: z.record(z.string(), AnatomyTemplateSchema).optional(),
   /** Canonical physical continuity, independent of chat history. */
   physical: PhysicalStateSchema.optional(),

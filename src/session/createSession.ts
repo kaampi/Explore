@@ -1,3 +1,4 @@
+import type { ObjectTemplate } from "@library/LibrarySchema";
 import { formatPersonName } from "@library/personName";
 import { DEFAULT_OLLAMA_MODEL } from "@llm/providers/OllamaProvider";
 import {
@@ -96,7 +97,7 @@ export interface SceneSetup {
   };
   ruleset?: { name: string; attributes: AttributeDef[] };
   characters: CharacterDraft[];
-  objects?: Array<{
+  objects?: Array<Pick<ObjectTemplate, "startingLocation" | "readableContent" | "openable" | "portable" | "lockable" | "storyRole" | "storyImportance"> & {
     id: string;
     name: string;
     note?: string;
@@ -481,6 +482,13 @@ export function createSessionFromSetup(setup: SceneSetup, sessionId: string): Se
         id: item.id,
         name: item.name.trim(),
         note: item.note?.trim() ?? "",
+        ...(item.startingLocation ? { startingLocation: item.startingLocation } : {}),
+        ...(item.readableContent ? { readableContent: item.readableContent } : {}),
+        ...(item.openable !== undefined ? { openable: item.openable, isOpen: false } : {}),
+        ...(item.portable !== undefined ? { portable: item.portable } : {}),
+        ...(item.lockable !== undefined ? { lockable: item.lockable } : {}),
+        ...(item.storyRole ? { storyRole: item.storyRole } : {}),
+        ...(item.storyImportance ? { storyImportance: item.storyImportance } : {}),
         tags: item.tags ?? [],
         ...(item.weight !== undefined ? { weight: item.weight } : {}),
         ...(item.difficulty !== undefined ? { difficulty: item.difficulty } : {}),

@@ -1,3 +1,6 @@
+import { guardAbsentPositions } from "@state/npcPositionGuard";
+import { timeActionFromText } from "@state/gameClock";
+import { journeyActionFromText, validateJourneyContinue, JourneyError } from "@state/journey";
 import { describePhysicalState } from "@state/physicalContinuity";
 import { StateEngine, type MutationProposal } from "@state/StateEngine";
 import type { AuthoritySource } from "@state/AuthorityResolver";
@@ -86,6 +89,8 @@ const defaultProposalExtractor: ProposalExtractor = () => [];
 export interface RunTurnCallbacks {
   /** Invoked once per Pass 1 text chunk as it streams in, for live UI rendering. */
   onTextDelta?: (delta: string) => void;
+  /** Dialogue finished; world updates may still be running. */
+  onReplyComplete?: () => void;
   /** Invoked after the player message is in conversation history, before Pass 1 streams. */
   onPlayerMessageAppended?: () => void;
   /** Invoked after spatial writes (room change) so the UI can switch backdrop before tokens. */
@@ -93,6 +98,8 @@ export interface RunTurnCallbacks {
 }
 
 export interface RunTurnOptions {
+  /** Internal marker: continuation already changed the route state before dialogue. */
+  journeyContinuation?: boolean;
   /** What now? destination — a listed room or the venue floor. */
   goTo?: string;
   /** Walk to another landmark in this realm. Swaps Here before Pass 1. */
@@ -205,6 +212,12 @@ export class SessionEngine {
       throw new SessionNotIdleError(this.state);
     }
 
+    const journeyAction = journeyActionFromText(playerMessage);
+    if (journeyAction) validateJourneyContinue(this.stateEngine.getSession(), journeyAction === "push-on");
+    if (this.stateEngine.getSession().journey && (options.travel || options.goTo)) {
+      throw new JourneyError("Continue the current journey before choosing another destination.");
+    }
+
     const intercept = resolveWhatNowIntercept(this.stateEngine.getSession(), playerMessage, options.goTo);
     if (intercept.kind === "open") {
       this.stateEngine.armWhatNowSet(intercept.setId);
@@ -235,9 +248,21 @@ export class SessionEngine {
         throw new TurnFailedError(turnId, `Could not append player message: ${appendPlayerResult.reason}`);
       }
 
+      // Player-declared elapsed time is durable: regenerating the reply must not charge it again.
+      if (journeyAction) this.stateEngine.continueJourney(journeyAction === "push-on");
+      const clock = this.stateEngine.getSession().gameClock;
+      const timeAction = clock && !options.travel ? timeActionFromText(playerMessage, clock.totalMinutes) : undefined;
+      if (timeAction) {
+        this.stateEngine.advanceGameTime(timeAction.minutes, timeAction.kind);
+        const live = this.stateEngine.getSession();
+        if (timeAction.kind === "sleep" && live.player?.status.lock === "unlocked") {
+          this.stateEngine.proposeMutation({path:"player.status", value:"awake", source:"player_manual_state", expectedStateVersion:live.stateVersion});
+        }
+      }
       callbacks.onPlayerMessageAppended?.();
       return await this.runDialogueAndCommit(turnId, characterId, playerMessage, callbacks, {
         ...options,
+        ...(journeyAction ? {journeyContinuation:true} : {}),
         ...(goTo ? { goTo } : {})
       });
     } catch (err) {
@@ -372,15 +397,16 @@ export class SessionEngine {
     const previousStage = sceneStageKey(this.stateEngine.getSession());
     const previousPlace = sceneStageLabel(this.stateEngine.getSession());
     const notesBeforeMove = standingNotesForSummarizer(this.stateEngine.getSession());
-    this.stateEngine.openRoomsNamedInText(playerMessage);
-    if (options.goTo?.trim()) this.stateEngine.openRoomAtDest(options.goTo.trim());
+    const inTransit = Boolean(this.stateEngine.getSession().journey);
+    if (!inTransit) this.stateEngine.openRoomsNamedInText(playerMessage);
+    if (!inTransit && options.goTo?.trim()) this.stateEngine.openRoomAtDest(options.goTo.trim());
     this.stateEngine.syncPartyFromPlayerText(playerMessage, characterId);
     if (options.travel) this.stateEngine.travelToLandmark(options.travel);
     const walkedIn = destinationRoomFromPlayerText(
       playerMessage,
       this.stateEngine.getSession()
     );
-    if (!options.travel) {
+    if (!options.travel && !inTransit && !options.journeyContinuation) {
       applyPlayerDestinationOn(
         this.stateEngine,
         playerMessage,
@@ -493,21 +519,26 @@ export class SessionEngine {
 
     fullText = closeReplyIfCut(stripPass1InstructionLeak(fullText));
 
+    callbacks.onReplyComplete?.();
     this.state = transition(this.state, "stream_complete"); // -> extracting
 
     const liveSession = this.stateEngine.getSession();
-    const proposalInputs = filterUninvitedFollowProposals(
+    const proposalInputs = guardAbsentPositions(filterUninvitedFollowProposals(
       dropAiPlayerPosition(
-        await this.proposalExtractor(
+        (await this.proposalExtractor(
           fullText,
           characterId,
           liveSnapshotFor(liveSession, characterId),
           playerMessage
-        )
+        )).filter(proposal => {
+          // A completed sleep time skip ends awake, rather than starting a new sleep.
+          const clock = liveSession.gameClock;
+          return !(clock && timeActionFromText(playerMessage, clock.totalMinutes)?.kind === "sleep" && proposal.path === "player.status");
+        })
       ),
       liveSession,
       characterId
-    );
+    ), liveSession, {reply:fullText,focusId:characterId});
 
     this.state = transition(this.state, "proposals_ready"); // -> committing
 

@@ -1,0 +1,24 @@
+import { expect,it } from "vitest";
+import { quickCharacterSession } from "../../src/ui/home/quickStart";
+import { exampleCharacterTemplate } from "../../src/library/exampleTemplates";
+import { newPlaceTemplate,newRealmTemplate } from "../../src/library/LibrarySchema";
+import { StateEngine } from "../../src/state/StateEngine";
+import { EventLog } from "../../src/events/EventLog";
+import { initializeSpatialReferences,resolveLocation } from "../../src/state/spatialLocation";
+import { landmarkTravelPatch } from "../../src/session/landmarkTravel";
+import { isLeftBehind } from "../../src/state/party";
+import { SessionSchema } from "../../src/state/StateSchema";
+const fixture=()=>{const p=newPlaceTemplate({id:"k",realmId:"w",name:"Kitchen"});const w=newRealmTemplate({id:"w",name:"World",note:"",source:"player",worldMap:{nodes:[{id:"nk",placeId:"k",name:"Kitchen",kind:"Room",x:50,y:50,description:"",population:"",characterIds:[]}],routes:[]}});return quickCharacterSession(exampleCharacterTemplate(),"s",{place:p,realm:w});};
+it("restores the exact place reference when undoing movement",()=>{
+ const s=fixture(),engine=new StateEngine(s,new EventLog());
+ engine.registerSpatialPlaces([{id:"c",name:"Cottage",kind:"Building"}]);
+ expect(engine.proposeMutation({path:"player.position",value:"Outside Cottage",source:"player_manual_state",expectedStateVersion:engine.getSession().stateVersion}).committed).toBe(true);
+ expect(engine.getSession().player?.locationRef).toEqual({placeId:"c",side:"outside"});
+ expect(engine.undoLastMutation("player_manual_state",engine.getSession().stateVersion).committed).toBe(true);
+ expect(engine.getSession().player?.locationRef).toEqual({placeId:"k",side:"inside"});
+ expect(engine.getSession().player?.position.value).toBe("Kitchen");
+});
+it("starts with persisted place references rather than relative here",()=>{const s=fixture(),id=Object.keys(s.characters)[0]!;expect(s.player?.locationRef).toEqual({placeId:"k",side:"inside"});expect(s.characters[id]?.locationRef).toEqual(s.player?.locationRef);expect(SessionSchema.parse(s).player?.locationRef?.placeId).toBe("k");});
+it("keeps the NPC in the room while the player goes outside",()=>{const s=fixture(),id=Object.keys(s.characters)[0]!,engine=new StateEngine(s,new EventLog());engine.registerSpatialPlaces([{id:"c",name:"Cottage",kind:"Building"}]);const p=newPlaceTemplate({id:"c",realmId:"w",name:"Outside Cottage"});engine.travelToLandmark(landmarkTravelPatch(p));const result=engine.getSession();expect(result.player?.locationRef).toEqual({placeId:"c",side:"outside"});expect(result.characters[id]?.locationRef).toEqual({placeId:"k",side:"inside"});expect(isLeftBehind(result,id)).toBe(true);});
+it("rejects invented locations and accepts a known alias through state validation",()=>{const s=fixture(),id=Object.keys(s.characters)[0]!,engine=new StateEngine(s,new EventLog());const proposal={path:`characters.${id}.position`,value:"inside imaginary forest",source:"player_manual_state" as const,expectedStateVersion:s.stateVersion};expect(engine.proposeMutation(proposal).committed).toBe(false);expect(engine.proposeMutation({...proposal,value:"inside Kitchen"}).committed).toBe(true);expect(engine.getSession().characters[id]?.locationRef?.placeId).toBe("k");});
+it("does not guess between duplicate names or upgrade free chat to mapped play",()=>{const s=fixture();initializeSpatialReferences(s,[{id:"k2",name:"Kitchen",kind:"Room"}]);expect(resolveLocation(s,"Kitchen")).toBeUndefined();const free=quickCharacterSession(exampleCharacterTemplate(),"free");initializeSpatialReferences(free);expect(free.spatialPlaces).toBeUndefined();});

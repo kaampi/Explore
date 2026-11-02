@@ -22,3 +22,7 @@ Questions to revisit:
 - [ ] Waterfall pattern should take visual precedence over overlapping rapids.
 - [ ] Terrain effects by travel mode, including explicit impassability for particular vehicles.
 - [ ] Grid-based house plans, irregular rooms, connected stairs/floors and keyed doors, as discussed.
+
+## Game time and journeys
+
+- [ ] Design narrative time, journey stages, overnight stops, encounters, simple rest and injury effects when developing gameplay. See [game-time-and-journeys-ideas.md](game-time-and-journeys-ideas.md) for agreed directions and open questions. These are future design notes, not implemented gameplay.

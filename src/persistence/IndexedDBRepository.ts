@@ -1,4 +1,6 @@
+import { PlaceBlueprintSchema,starterBlueprints,type PlaceBlueprint } from "@library/placeBlueprint";
 import { AnatomyTemplateSchema, type AnatomyTemplate } from "@state/StateSchema";
+import { validateObjectNesting, objectContents } from "@library/objectLocation";
 import { BUILTIN_ANATOMY_TEMPLATES } from "@state/builtinAnatomy";
 import mona from "../library/examples/mona.json";
 import monaMorph from "../library/examples/mona-morph.json";
@@ -771,6 +773,8 @@ export class IndexedDBRepository {
       template,
       parseObjectTemplate,
     );
+    const nestingError = validateObjectNesting(parsed, await this.listObjects());
+    if (nestingError) throw new Error(nestingError);
     await this.putRecord(OBJECTS_STORE, parsed);
   }
 
@@ -781,6 +785,9 @@ export class IndexedDBRepository {
   }
 
   async deleteObject(id: string): Promise<void> {
+    if (objectContents(await this.listObjects(), id).length) {
+      throw new Error("Move the objects inside this container before deleting it.");
+    }
     await this.deleteRecord(OBJECTS_STORE, id);
   }
 
@@ -814,6 +821,8 @@ export class IndexedDBRepository {
   }
 
   /** Character morph profiles are UI-only assets kept in the existing IndexedDB prefs store. */
+  async listPlaceBlueprints():Promise<PlaceBlueprint[]>{const r=await this.getRecord(PREFS_STORE,'place-blueprints');if(!r)return starterBlueprints.map(t=>({...t,tags:[...t.tags]}));if(typeof r!=='object'||!('items' in r))throw Error('Invalid place template library');return PlaceBlueprintSchema.array().parse(r.items);}
+  async savePlaceBlueprints(items:PlaceBlueprint[]):Promise<void>{await this.putRecord(PREFS_STORE,{id:'place-blueprints',items:PlaceBlueprintSchema.array().parse(items)});}
   async saveCharacterMorph(characterId: string, profile: unknown): Promise<void> {
     if (!characterId.trim()) throw new Error("Character ID is required.");
     await this.putRecord(PREFS_STORE, { id: `character-morph:${characterId}`, profile });

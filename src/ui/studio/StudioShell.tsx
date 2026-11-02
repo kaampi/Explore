@@ -1,4 +1,5 @@
-import { WorldMapStudio } from "./WorldMapStudio";
+import { PlaceBlueprintStudio } from "./PlaceBlueprintStudio";
+import { MapLibrary } from "./MapLibrary";
 import { LoreStudio } from "../lore/LoreStudio";
 import { useState } from "react";
 import type { IndexedDBRepository, StudioResume } from "@persistence/IndexedDBRepository";
@@ -8,7 +9,6 @@ import { CampaignStudio } from "./CampaignStudio";
 import { AdventureStudio } from "./AdventureStudio";
 import { AnatomyStudio } from "./AnatomyStudio";
 import { CharacterStudio } from "./CharacterStudio";
-import { PlaceStudio } from "./PlaceStudio";
 import { ObjectStudio } from "./ObjectStudio";
 import { VoiceStudio } from "./VoiceStudio";
 import { StoryStudio } from "./StoryStudio";
@@ -20,8 +20,8 @@ const NAV: { id: StudioView; label: string; group: "library" | "play" }[] = [
   { id: "lorebooks", label: "Lorebooks", group: "library" },
   { id: "characters", label: "Characters", group: "library" },
   { id: "anatomy", label: "Anatomy", group: "library" },
-  { id: "maps", label: "Maps", group: "library" },
-  { id: "places", label: "Locations", group: "library" },
+  { id: "place-templates", label: "Location templates", group: "library" },
+  { id: "maps", label: "World Maps", group: "library" },
   { id: "objects", label: "Objects", group: "library" },
   { id: "voices", label: "Voices", group: "library" },
   { id: "stories", label: "Stories", group: "library" },
@@ -44,17 +44,18 @@ export function StudioShell({
   resume: StudioResume | null;
   onStart: (session: Session) => void;
 }) {
-  const [view, updateView] = useState<StudioView>(initialView);
-  function setView(next: StudioView) { updateView(next); onViewChange?.(next); }
+  const [view, updateView] = useState<StudioView>(initialView === "places" ? "maps" : initialView);
+  const [templateDirty,setTemplateDirty]=useState(false);
+  function setView(next: StudioView) { if(next!==view&&templateDirty&&!confirm("Discard unsaved template changes?"))return;if(next!==view)setTemplateDirty(false); const destination = next === "places" ? "maps" : next; updateView(destination); onViewChange?.(destination); }
   const [catalogTick, setCatalogTick] = useState(0);
 
   return (
     <div className="studio">
       <nav className="studio-nav" aria-label="Library">
         {[
-          { title: "Characters & creatures", ids: ["characters", "anatomy", "voices"] },
-          { title: "World", ids: ["places", "maps", "objects", "lorebooks"] },
-          { title: "Story & play", ids: ["stories", "rulesets"] },
+          { title: "Characters & creatures", ids: ["characters", "anatomy"] },
+          { title: "World", ids: ["place-templates", "maps", "objects", "lorebooks"] },
+          { title: "Story & play", ids: ["voices", "stories", "rulesets"] },
         ].map(group => <div className="studio-nav-group" role="group" aria-label={group.title} key={group.title}>
           <span className="studio-nav-group__title">{group.title}</span>
           <div>{group.ids.map(id => { const item = NAV.find(entry => entry.id === id)!; return <button key={item.id} type="button" className={`studio-nav__tab ${view === item.id ? "studio-nav__tab--active" : ""}`} aria-current={view === item.id ? "page" : undefined} onClick={() => setView(item.id)}>{item.label}</button>; })}</div>
@@ -84,8 +85,8 @@ export function StudioShell({
           {view === "lorebooks" && <LoreStudio repo={repo} />}
           {view === "characters" && <CharacterStudio repo={repo} />}
           {view === "anatomy" && <AnatomyStudio repo={repo} />}
-          {view === "places" && <PlaceStudio repo={repo} />}
-          {view === "maps" && <WorldMapStudio repo={repo} />}
+          {view === "place-templates" && <PlaceBlueprintStudio repo={repo} onDirtyChange={setTemplateDirty} />}
+          {view === "maps" && <MapLibrary repo={repo} />}
           {view === "objects" && <ObjectStudio repo={repo} />}
           {view === "voices" && <VoiceStudio repo={repo} />}
           {view === "stories" && <StoryStudio repo={repo} />}

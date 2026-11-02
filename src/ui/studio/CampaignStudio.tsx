@@ -687,7 +687,7 @@ export function CampaignStudio({
                   });
                 }}
               >
-                <option value="">{visibleRealms.length === 0 ? "Create a realm on Locations first" : "Choose a realm"}</option>
+                <option value="">{visibleRealms.length === 0 ? "Create a world in World Maps first" : "Choose a realm"}</option>
                 {visibleRealms.map((item) => (
                   <option key={item.id} value={item.id}>
                     {item.name}

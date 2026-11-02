@@ -47,7 +47,7 @@ export function sceneStartHere(place: PlaceTemplate, startRoomId: string | undef
 export function realmPlayFields(realm: RealmTemplate | undefined): Pick<SceneSetup, "realmNote" | "realmBrief" | "realmVisual"> {
   if (!realm) return {};
   const note = realm.note.trim();
-  const brief = [realm.brief?.trim() || realm.note.trim(), mapContext(realm.worldMap)].filter(Boolean).join("\n\n");
+  const brief = [realm.brief?.trim() || realm.note.trim(), realm.instructions?.trim(), mapContext(realm.worldMap)].filter(Boolean).join("\n\n");
   const visual = { ...copyPictureFields(realm), ...copyAudioFields(realm) };
   const hasVisual = Boolean(
     visual.thumbDataUrl || visual.imageDataUrl || visual.gallery?.length || visual.audioDataUrl || visual.audioGallery?.length
@@ -131,6 +131,21 @@ export function setupFromCampaignScene(args: {
     .map((id) => objects.find((item) => item.id === id))
     .filter((item): item is ObjectTemplate => Boolean(item));
 
+  // Carry the entire containment chain and contents into the session snapshot.
+  const included = new Set(pickedObjects.map(o => o.id));
+  let added = true;
+  while (added) {
+    added = false;
+    for (const object of objects) {
+      if (included.has(object.id)) continue;
+      const parent = object.startingLocation;
+      const neededParent = pickedObjects.some(o => o.startingLocation?.kind === "object" && o.startingLocation.objectId === object.id);
+      if (neededParent || parent?.kind === "object" && included.has(parent.objectId)) {
+        pickedObjects.push(object); included.add(object.id); added = true;
+      }
+    }
+  }
+
   const onceBeats = scene.triggers
     .map((trigger) => ({
       content: trigger.content.trim(),
@@ -201,6 +216,13 @@ export function setupFromCampaignScene(args: {
         name: item.name,
         note: item.note,
         tags: item.tags,
+        ...(item.startingLocation ? { startingLocation: item.startingLocation } : item.placeId ? {startingLocation: {kind: "place" as const, placeId: item.placeId}} : {}),
+        ...(item.readableContent ? {readableContent: item.readableContent} : {}),
+        ...(item.openable !== undefined ? {openable: item.openable} : {}),
+        ...(item.portable !== undefined ? {portable: item.portable} : {}),
+        ...(item.lockable !== undefined ? {lockable: item.lockable} : {}),
+        ...(item.storyRole ? {storyRole: item.storyRole} : {}),
+        ...(item.storyImportance ? {storyImportance: item.storyImportance} : {}),
         ...(item.weight !== undefined ? { weight: item.weight } : {}),
         ...(item.difficulty !== undefined ? { difficulty: item.difficulty } : {}),
         ...(item.checkAttribute ? { checkAttribute: item.checkAttribute } : {})

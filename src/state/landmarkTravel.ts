@@ -1,3 +1,6 @@
+import { initializeSpatialReferences, resolveLocation } from "./spatialLocation";
+import { INITIAL_GAME_MINUTES } from "./gameClock";
+import type { RoutePlan } from "@library/routePlan";
 import type { Layer, SceneRoom, Session } from "./StateSchema";
 import { copyAudioFields } from "./placeAudio";
 import { copyPictureFields } from "./placePictures";
@@ -12,6 +15,12 @@ export type LandmarkRef = {
 };
 
 export type LandmarkTravelPatch = {
+  plan?: RoutePlan;
+  routeInfo?: string;
+  travelMinutes?: number;
+  /** Map estimates expressed in travel days, rather than continuous 24-hour movement. */
+  travelDays?: number;
+  encounter?: NonNullable<Session["journey"]>["encounter"];
   placeId: string;
   location: string;
   lighting?: string;
@@ -79,7 +88,16 @@ export function mapLandmarkTravels(session: Session, places: LandmarkRef[]): Lan
 }
 
 export function applyLandmarkTravel(session: Session, patch: LandmarkTravelPatch): void {
+  if (patch.travelMinutes !== undefined && Number.isSafeInteger(patch.travelMinutes) && patch.travelMinutes >= 0) {
+    const total = (session.gameClock?.totalMinutes ?? INITIAL_GAME_MINUTES) + patch.travelMinutes;
+    if (Number.isSafeInteger(total)) session.gameClock = { totalMinutes: total,
+      lastAdvance: {minutes: patch.travelMinutes, reason: `Travel to ${patch.location}`} };
+  }
+  initializeSpatialReferences(session);
   const previous = session.scene;
+  // Resolve relative positions before changing what "here" refers to.
+  const departure = session.player?.position.value?.trim() || previous?.location;
+  if(departure){for(const character of Object.values(session.characters)){if(character.position.lock === "unlocked" && /^(?:here|här)$/i.test(character.position.value.trim()))character.position={...character.position,value:departure};}}
   session.scene = {
     location: patch.location,
     placeId: patch.placeId,
@@ -108,15 +126,20 @@ export function applyLandmarkTravel(session: Session, patch: LandmarkTravelPatch
     ...session.layers.filter((layer) => !layer.id.startsWith("layer-place")),
     ...patch.placeLayers
   ];
+  if (patch.routeInfo) session.layers.push({id:"layer-place-route",type:"environment",priority:11,content:`Route just travelled (do not repeat the journey): ${patch.routeInfo}`,active:true,aiGenerated:false});
 
+  if(session.spatialPlaces?.length)initializeSpatialReferences(session,[{id:patch.placeId,name:patch.location.replace(/^Outside\s+/i,"")}]);
+  const destinationRef=resolveLocation(session,patch.location);
   const here = patch.location;
   if (session.player && session.player.position.lock === "unlocked") {
     session.player.position = { ...session.player.position, value: here };
+    if(destinationRef)session.player.locationRef=destinationRef;
   }
   for (const id of travelingPartyIds(session)) {
     const character = session.characters[id];
     if (character && character.position.lock === "unlocked") {
       character.position = { ...character.position, value: here };
+      if(destinationRef)character.locationRef=destinationRef;
     }
   }
 }

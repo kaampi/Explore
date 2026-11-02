@@ -1,3 +1,4 @@
+import { ObjectLocationSchema } from "./objectLocation";
 import { WorldMapSchema } from "./worldMap";
 import {
   ApproximateAgeSchema,
@@ -121,6 +122,7 @@ export const FALLBACK_REALM_ID = "example-realm-dunbaar";
  */
 export const RealmTemplateSchema = z.object({
   worldMap: WorldMapSchema.optional(),
+  instructions: z.string().optional(),
   id: z.string().min(1),
   name: z.string().min(1),
   /** Player-facing atlas / Cast blurb. Not Here. */
@@ -181,6 +183,14 @@ export const ObjectTemplateSchema = z.object({
   tags: z.array(z.string().min(1)).default(() => []),
   storyId: z.string().min(1).optional(),
   placeId: z.string().min(1).optional(),
+  imageDataUrl: z.string().optional(),
+  storyRole: z.enum(["background", "useful", "critical"]).optional(),
+  storyImportance: z.string().optional(),
+  startingLocation: ObjectLocationSchema.optional(),
+  readableContent: z.string().optional(),
+  portable: z.boolean().optional(),
+  openable: z.boolean().optional(),
+  lockable: z.boolean().optional(),
   weight: z.number().nonnegative().optional(),
   difficulty: z.number().nonnegative().optional(),
   checkAttribute: z.string().min(1).optional(),

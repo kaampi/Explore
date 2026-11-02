@@ -9,6 +9,7 @@ export function CodexConnection() {
   const [attempt, setAttempt] = useState<{ code: string; expiresAt: string } | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [manualKey, setManualKey] = useState("");
   const desktop = isTauri();
   async function refresh() { setStatus(await invoke("core_connection")); }
   useEffect(() => { if (open && desktop) void refresh().catch(reason => setError(String(reason))); }, [open, desktop]);
@@ -40,9 +41,18 @@ export function CodexConnection() {
         <p role="status">{status.paired ? status.reachable ? "Connected to Codex." : "Paired. Codex is currently unavailable." : "Explore is not connected to Codex."}</p>
         {attempt ? <div className="codex-pairing-request"><strong>Waiting for approval · {attempt.code}</strong><p>Open Codex, find kaampi Explore under Anslut appar, compare this code and choose Tillåt. The request expires after five minutes.</p>
           <button className="sb-button" onClick={() => void run(() => openUrl("http://127.0.0.1:43127/admin"))}>Open Codex</button>
-        </div> : !status.paired && <button className="sb-button" disabled={busy} onClick={() => void run(async () => { setAttempt(await invoke("core_begin")); })}>Connect to kaampi Codex</button>}
+        </div> : !status.paired && <button className="sb-button" disabled={busy} onClick={() => void run(async () => { const response = await invoke<{ code: string; expiresAt: string }>("core_begin"); if (!response?.code || !Number.isFinite(Date.parse(response.expiresAt))) throw new Error("Codex returned an invalid pairing response. Try connecting manually with an Explore key."); setAttempt(response); })}>Connect to kaampi Codex</button>}
         {status.paired && <div className="sb-dialog__actions"><button className="sb-button" disabled={busy} onClick={() => void run(refresh)}>Check connection</button><button className="sb-button" disabled={busy} onClick={() => void run(async () => { await invoke("core_disconnect"); setAttempt(null); await refresh(); })}>Disconnect this device</button></div>}
       </>}
+      {desktop && !status.paired && !attempt && <details>
+        <summary>Connect manually with an Explore key</summary>
+        <p>Use the connection key issued for Explore (sandbox) by Codex. Each app needs its own key.</p>
+        <label>Explore connection key<input type="password" autoComplete="off" value={manualKey} disabled={busy} onChange={event => setManualKey(event.target.value)} /></label>
+        <button type="button" className="sb-button" disabled={busy || !manualKey.trim()} onClick={() => void run(async () => {
+          await invoke("core_pair", { token: manualKey.trim() });
+          setManualKey(""); setAttempt(null); await refresh();
+        })}>{busy ? "Connecting…" : "Connect with key"}</button>
+      </details>}
       {error && <p role="alert">{error}</p>}
     </Modal>}
   </>;

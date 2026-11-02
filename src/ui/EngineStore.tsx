@@ -1,5 +1,8 @@
+import { EngineContext } from "./EngineContext";
+import { resolveMapMovement, resolvePlannedMapMovement, MapMovementError } from "@session/mapMovement";
+import { JourneyError } from "@state/journey";
+import { RoutePlanSchema, type RoutePlan } from "@library/routePlan";
 import React, {
-  createContext,
   useContext,
   useMemo,
   useRef,
@@ -64,17 +67,18 @@ import { draftSceneHandoff } from "@state/sceneHandoff";
 
 export type ChatPhase = "idle" | "streaming" | "error";
 
-interface EngineContextValue {
+export interface EngineContextValue {
   useSession: () => Session;
   useEventLog: () => readonly StateEvent[];
   phase: ChatPhase;
   streamingText: string;
+  replyComplete: boolean;
   streamingCharacterId: string | null;
   streamingNarrator: boolean;
   lastError: string | null;
   sendMessage: (
     text: string,
-    options?: { goTo?: string; travelPlaceId?: string },
+    options?: { goTo?: string; travelPlaceId?: string; plan?: RoutePlan },
   ) => Promise<void>;
   regenerate: (note?: string) => Promise<void>;
   replay: (conversationTurn: number, note?: string) => Promise<void>;
@@ -91,6 +95,7 @@ interface EngineContextValue {
   }) => void;
   setLayerKeywords: (layerId: string, keywords: string[]) => void;
   removeLayer: (layerId: string) => void;
+  removeJourneyStop: (index:number)=>void;
   compactLayers: (
     scope: "pending" | CompactableType,
   ) => Promise<{ ok: boolean; reason?: string }>;
@@ -115,7 +120,7 @@ interface EngineContextValue {
   resetSession: () => Promise<void>;
 }
 
-const EngineContext = createContext<EngineContextValue | null>(null);
+
 
 export function useEngine(): EngineContextValue {
   const ctx = useContext(EngineContext);
@@ -143,6 +148,7 @@ export function EngineProvider({
   );
   const [phase, setPhase] = useState<ChatPhase>("idle");
   const [streamingText, setStreamingText] = useState("");
+  const [replyComplete, setReplyComplete] = useState(false);
   const [streamingCharacterId, setStreamingCharacterId] = useState<
     string | null
   >(null);
@@ -308,15 +314,20 @@ export function EngineProvider({
   const sendMessage = useCallback(
     async (
       text: string,
-      options?: { goTo?: string; travelPlaceId?: string },
+      options?: { goTo?: string; travelPlaceId?: string; plan?: RoutePlan },
     ) => {
       setPhase("streaming");
-      setStreamingText("");
+      setStreamingText(""); setReplyComplete(false);
       setLastError(null);
       const turnId = crypto.randomUUID();
 
       try {
-        const session = stateEngine.getSession();
+        let session = stateEngine.getSession();
+        const spatialWorlds=await repo.listRealms();
+        stateEngine.registerSpatialPlaces(spatialWorlds.filter(w=>w.worldMap?.nodes.some(n=>n.placeId===session.scene?.placeId)).flatMap(w=>w.worldMap?.nodes.filter(n=>n.placeId).map(n=>({id:n.placeId!,name:n.name,kind:n.kind}))??[]));
+        session=stateEngine.getSession();
+        const plan=options?.plan?RoutePlanSchema.parse(options.plan):undefined;
+        if(plan&&(plan.fromPlaceId!==session.scene?.placeId||session.journey))throw new JourneyError("Your position changed. Open the route planner again.");
         const speakingAsId =
           focusCharacterId(session, text) ?? primaryCharacter(session)?.id;
         if (!speakingAsId) {
@@ -329,6 +340,7 @@ export function EngineProvider({
           const live = stateEngine.getSession();
           setStreamingNarrator(isLeftBehind(live, speakingAsId));
         };
+        const mapMovement = session.journey ? {handled:true} : plan?.legs ? resolvePlannedMapMovement(text,session,spatialWorlds,placesRef.current,plan) : !options?.goTo?.trim() ? resolveMapMovement(text,session,spatialWorlds,placesRef.current,options?.travelPlaceId?.trim(),plan) : {handled:false};
         let travel = options?.travelPlaceId?.trim()
           ? (() => {
               const place = placesRef.current.find(
@@ -337,7 +349,9 @@ export function EngineProvider({
               return place ? landmarkTravelPatch(place) : undefined;
             })()
           : undefined;
-        if (!travel && !options?.goTo?.trim()) {
+        if(mapMovement.place) travel={...landmarkTravelPatch(mapMovement.place),...(mapMovement.travelMinutes !== undefined ? {travelMinutes: mapMovement.travelMinutes} : {}), ...(mapMovement.travelDays !== undefined ? {travelDays:mapMovement.travelDays} : {}), ...(mapMovement.encounter ? {encounter:mapMovement.encounter} : {}), ...(mapMovement.routeInfo ? {routeInfo:mapMovement.routeInfo} : {})};
+        if(plan){if(!travel||!mapMovement.place)throw new JourneyError("The planned route could not be resolved. Open the planner again.");travel={...travel,plan};}
+        if (!mapMovement.handled && !travel && !options?.goTo?.trim()) {
           const exits = mapLandmarkTravels(session, placesRef.current);
           const hay = foldPlace(text);
           if (/\b(?:walk|go|gå|head|leave)\b/i.test(text)) {
@@ -364,6 +378,7 @@ export function EngineProvider({
           text,
           {
             onTextDelta: (delta) => setStreamingText((prev) => prev + delta),
+            onReplyComplete: () => setReplyComplete(true),
             onPlayerMessageAppended: refreshSnapshots,
             onSessionUpdated: syncStreamingFace,
           },
@@ -373,7 +388,7 @@ export function EngineProvider({
           },
         );
         setPhase("idle");
-        setStreamingText("");
+        setStreamingText(""); setReplyComplete(false);
         setStreamingCharacterId(null);
         setStreamingNarrator(false);
         if (!result.openedWhatNow) setHasCompletedTurn(true);
@@ -381,32 +396,32 @@ export function EngineProvider({
       } catch (err) {
         if (err instanceof WhatNowRequiredError) {
           setPhase("idle");
-          setStreamingText("");
+          setStreamingText(""); setReplyComplete(false);
           setStreamingCharacterId(null);
           setStreamingNarrator(false);
           refreshSnapshots();
           return;
         }
         setPhase("error");
-        setStreamingText("");
+        setStreamingText(""); setReplyComplete(false);
         setStreamingCharacterId(null);
         setStreamingNarrator(false);
         console.error("Turn failed:", err); // full cause chain visible in DevTools, even though the UI message is short
         const message =
-          err instanceof TurnFailedError
+          err instanceof TurnFailedError || err instanceof MapMovementError || err instanceof JourneyError
             ? err.message
             : "Something went wrong with this turn.";
         setLastError(message);
         refreshSnapshots(); // the player message may have committed even if the turn later failed
       }
     },
-    [refreshSnapshots, sessionEngineRef],
+    [refreshSnapshots, sessionEngineRef, repo, stateEngine],
   );
 
   const regenerate = useCallback(
     async (note?: string) => {
       setPhase("streaming");
-      setStreamingText("");
+      setStreamingText(""); setReplyComplete(false);
       setLastError(null);
       const turnId = crypto.randomUUID();
 
@@ -425,6 +440,7 @@ export function EngineProvider({
           turnId,
           {
             onTextDelta: (delta) => setStreamingText((prev) => prev + delta),
+            onReplyComplete: () => setReplyComplete(true),
             onSessionUpdated: () => {
               refreshSnapshots();
               if (speakingAsId)
@@ -436,13 +452,13 @@ export function EngineProvider({
           trimmed ? { note: trimmed } : {},
         );
         setPhase("idle");
-        setStreamingText("");
+        setStreamingText(""); setReplyComplete(false);
         setStreamingCharacterId(null);
         setStreamingNarrator(false);
         refreshSnapshots();
       } catch (err) {
         setPhase("error");
-        setStreamingText("");
+        setStreamingText(""); setReplyComplete(false);
         setStreamingCharacterId(null);
         setStreamingNarrator(false);
         console.error("Regeneration failed:", err);
@@ -458,7 +474,7 @@ export function EngineProvider({
   const replay = useCallback(
     async (conversationTurn: number, note?: string) => {
       setPhase("streaming");
-      setStreamingText("");
+      setStreamingText(""); setReplyComplete(false);
       setLastError(null);
       setInspectTurn(null);
       const turnId = crypto.randomUUID();
@@ -479,6 +495,7 @@ export function EngineProvider({
           conversationTurn,
           {
             onTextDelta: (delta) => setStreamingText((prev) => prev + delta),
+            onReplyComplete: () => setReplyComplete(true),
             onSessionUpdated: () => {
               refreshSnapshots();
               if (speakingAsId)
@@ -491,13 +508,13 @@ export function EngineProvider({
         );
         setHasCompletedTurn(true);
         setPhase("idle");
-        setStreamingText("");
+        setStreamingText(""); setReplyComplete(false);
         setStreamingCharacterId(null);
         setStreamingNarrator(false);
         refreshSnapshots();
       } catch (err) {
         setPhase("error");
-        setStreamingText("");
+        setStreamingText(""); setReplyComplete(false);
         setStreamingCharacterId(null);
         setStreamingNarrator(false);
         console.error("Replay failed:", err);
@@ -802,10 +819,16 @@ export function EngineProvider({
   );
 
   const value: EngineContextValue = {
+    removeJourneyStop:(index)=>{
+      if(phase==="streaming")return;
+      try{stateEngine.removeJourneyStop(index);setLastError(null);refreshSnapshots();}
+      catch(err){setLastError(err instanceof Error?err.message:"Could not remove the stop.");setPhase("error");}
+    },
     useSession,
     useEventLog,
     phase,
     streamingText,
+    replyComplete,
     streamingCharacterId,
     streamingNarrator,
     lastError,
