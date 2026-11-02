@@ -1,3 +1,4 @@
+import { configDefaults } from "vitest/config";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { localAppsPlugin } from "./server/localApps";
@@ -26,6 +27,7 @@ export default defineConfig({
     }
   },
   test: {
+    exclude: [...configDefaults.exclude, "temp/**"],
     environment: "node",
     globals: true
   }

@@ -716,7 +716,7 @@ function thirdPersonLines(
       : `Write in third person about ${name}. You are not ${name}. ${address}`;
   return [
     lead,
-    "Narrative viewpoint: address the player directly as you / your (du / dig / din in Swedish). Third-person instructions apply to NPCs only. Never call the player 'the player' or use they/their for the player in narration. Wrong: The player walks along the road. Right: You walk along the road. Describe only player actions they chose; do not invent their thoughts, feelings or decisions.",
+    "Address the player as you / your (du / dig / din in Swedish). Third-person instructions apply to NPCs only. Never call the player 'the player' or use they/their for the player in narration. Wrong: The player walks along the road. Right: You walk along the road. Describe only player actions they chose; do not invent their thoughts, feelings or decisions.",
     ...(player?.outOfSight || !(fullName && fullName !== name) ? [] : [`Refer to ${name} as ${person}.`]),
     ...(player?.outOfSight ? [] : secrecy),
     tense,
