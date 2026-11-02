@@ -12,6 +12,7 @@ export function CodexConnection() {
   const [manualKey, setManualKey] = useState("");
   const desktop = isTauri();
   async function refresh() { setStatus(await invoke("core_connection")); }
+  useEffect(()=>{if(!desktop)return;let cancelled=false;const check=()=>{void invoke<{paired:boolean;reachable:boolean}>('core_connection').then(value=>{if(!cancelled)setStatus(value);}).catch(()=>{if(!cancelled)setStatus({paired:false,reachable:false});});};check();const timer=setInterval(check,15000);window.addEventListener('focus',check);return()=>{cancelled=true;clearInterval(timer);window.removeEventListener('focus',check);};},[desktop]);
   useEffect(() => { if (open && desktop) void refresh().catch(reason => setError(String(reason))); }, [open, desktop]);
   useEffect(() => {
     if (!attempt) return;
@@ -34,7 +35,7 @@ export function CodexConnection() {
     setBusy(true); setError("");
     try { await work(); } catch (reason) { setError(String(reason)); } finally { setBusy(false); }
   }
-  return <><button type="button" onClick={() => setOpen(true)}>⇄ <span>kaampi Codex</span></button>
+  return <><button type="button" className="sb-codex-status" title={status.paired&&status.reachable?'Codex connected':'Codex not connected'} aria-label={status.paired&&status.reachable?'Codex connected':'Codex not connected'} onClick={() => setOpen(true)}><span>Codex</span><span className={'sb-codex-dot '+(status.paired&&status.reachable?'is-connected':'is-disconnected')} aria-hidden="true"/></button>
     {open && <Modal title="Connect to kaampi Codex" onClose={() => setOpen(false)}>
       <p>Connect Explore to the Codex service on this computer. Each app keeps ownership of its own content.</p>
       {!desktop ? <p>This connection is available in the Windows desktop app. The browser version keeps its existing server connection.</p> : <>

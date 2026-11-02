@@ -93,6 +93,7 @@ function SandboxApp() {
   const { t } = useLanguage();
   const { forgetConversation } = useAppearance();
   const [repo] = useState(() => getRepository());
+  const resumePlay=useRef((()=>{try{return sessionStorage.getItem('explore-last-view')==='play';}catch{return false;}})());
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const live = useRef<Session | null>(null);
   const [resume, setResume] = useState<StudioResume | null>(null);
@@ -132,6 +133,7 @@ function SandboxApp() {
       ]);
       if (cancelled) return;
       setLive(loaded);
+      if(loaded&&resumePlay.current)setView("play");
       setCatalog(conversations);
       setResume(
         loaded
@@ -150,6 +152,7 @@ function SandboxApp() {
     };
   }, [repo, setLive]);
 
+  useEffect(()=>{if(session===undefined)return;try{sessionStorage.setItem('explore-last-view',view==='play'?'play':'home');}catch{}},[view,session]);
   async function refreshCatalog() {
     try {
       setCatalog(await repo.listConversations());
@@ -328,7 +331,7 @@ function SandboxApp() {
       <ConversationAppearance
         id={view === "play" ? (session?.id ?? null) : null}
       />
-      <header className="sb-header">
+      <header className="sb-header"><div className="sb-header-start">
         <button
           type="button"
           className="sb-brand"
@@ -338,8 +341,9 @@ function SandboxApp() {
           <img className="sb-brand__logo sb-brand__logo--light" src="/brand/kaampi-explore.svg" alt="kaampi Explore" />
           <img className="sb-brand__logo sb-brand__logo--dark" src="/brand/kaampi-explore-dark.svg" alt="kaampi Explore" />
         </button>
+        {view!=="play"&&<nav className="sb-header-utilities" aria-label="Help and settings"><button type="button" onClick={()=>openGuide()}>{t('guide')}</button><button type="button" onClick={()=>setAppearanceOpen(true)}>{t('settings')}</button></nav>}</div>
         <AppSwitcher onHome={() => navigate("home")} />
-        <div className="sb-header-preferences"><HeaderLanguagePicker /><HeaderAppearanceToggle /></div>
+        <div className="sb-header-preferences"><CodexConnection /><HeaderLanguagePicker /><HeaderAppearanceToggle /></div>
       </header>
       {operationError && (
         <div className="sb-operation-error" role="alert">
@@ -414,11 +418,6 @@ function SandboxApp() {
                   ↗ <span>{t("continue")}</span>
                 </button>
               )}
-            </nav>
-            <nav className="sb-sidebar-utilities" aria-label="Help and settings">
-              <CodexConnection />
-              <button type="button" className={view === "guide" ? "is-active" : ""} onClick={() => openGuide()}>? <span>{t("guide")}</span></button>
-              <button type="button" onClick={() => setAppearanceOpen(true)}>⚙ <span>{t("settings")}</span></button>
             </nav>
             <div className="sb-sidebar__quote">
               <span aria-hidden="true">❧</span>{t("tagline")}

@@ -149,7 +149,7 @@ export function ConnectionHelp({
     </section>
   );
 }
-export function HomeConnection() {
+export function HomeConnection({showSettings=true}:{showSettings?:boolean}) {
   const { discovery, preferredModel, chooseModel } = useConnection();
   const [open, setOpen] = useState(false);
   const status = modelReadiness(discovery, preferredModel);
@@ -166,9 +166,9 @@ export function HomeConnection() {
               ? `AI ready · ${preferredModel}`
               : "Explore now. Connect local AI when you're ready to chat."}
         </span>
-        <button type="button" className="sb-link" onClick={() => setOpen(true)}>
+        {showSettings&&<button type="button" className="sb-link" onClick={() => setOpen(true)}>
           {status === "ready" ? "AI settings" : "Set up AI"}
-        </button>
+        </button>}
       </div>
       {open && (
         <Modal title="Your local AI" onClose={() => setOpen(false)}>

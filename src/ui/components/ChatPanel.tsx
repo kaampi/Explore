@@ -1,3 +1,6 @@
+import type { CheckResult } from "../../checks/CheckEngine";
+import { ActionCheckDialog } from "./ActionCheckDialog";
+import { playerCheckStats } from "../../checks/playerCheck";
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 import { captureIdea, type Idea } from "../../ideas/IdeaSchema";
 import { IdeaEditor } from "../ideas/IdeaEditor";
@@ -5,6 +8,8 @@ import { useEffect, useRef, useState } from "react";
 import { useEngine } from "../EngineStore";
 import { useAppearance } from "../themes/ThemeProvider";
 import { Dot } from "./Dot";
+import { MessageMenu } from "./MessageMenu";
+import { Modal } from "./Modal";
 import { displayCharacterName, narratorLabel, primaryCharacter } from "@session/createSession";
 import type { Session } from "@state/StateSchema";
 import { formatGameTime } from "@state/gameClock";
@@ -28,6 +33,7 @@ import { ChatMorphPortrait } from "../studio/ChatMorphPortrait";
 const INTRO_FADE_MS = 520;
 
 interface DisplayTurn {
+  check?:CheckResult;
   turn: number;
   role: "player" | "character" | "system";
   speaker?: string;
@@ -36,7 +42,7 @@ interface DisplayTurn {
 }
 
 function speakerLabel(turn: DisplayTurn, session: Session, fallback: string): string {
-  if (turn.role === "player") return "you";
+  if (turn.role === "player") return session.player?.name?.trim() || "You";
   if (turn.role === "character" && turn.toldBy === "narrator") {
     return narratorLabel(session) ?? "Narrator";
   }
@@ -117,7 +123,7 @@ function MessageBody({ text }: { text: string }) {
   );
 }
 
-export function ChatPanel({ canSend = true, onCheckConnection, repo, conversationTitle, onIdeas }: { canSend?: boolean; onCheckConnection?: () => void; repo?: IndexedDBRepository; conversationTitle?: string | undefined; onIdeas?: (() => void) | undefined }) {
+export function ChatPanel({ checkRequest = 0, gameTools = false, canSend = true, onCheckConnection, repo, conversationTitle, onIdeas }: { checkRequest?: number; gameTools?: boolean; canSend?: boolean; onCheckConnection?: () => void; repo?: IndexedDBRepository; conversationTitle?: string | undefined; onIdeas?: (() => void) | undefined }) {
   const {
     useSession,
     phase,
@@ -164,8 +170,10 @@ export function ChatPanel({ canSend = true, onCheckConnection, repo, conversatio
   const [editingTurn, setEditingTurn] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState("");
   const [editError, setEditError] = useState<string | null>(null);
+  const [messageMenu, setMessageMenu] = useState<{turn: DisplayTurn; x: number; y: number} | null>(null);
   const [copiedTurn, setCopiedTurn] = useState<number | null>(null);
   const [regenNote, setRegenNote] = useState("");
+  const [regenerateOpen, setRegenerateOpen] = useState(false);
   const logRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const inputRowRef = useRef<HTMLDivElement>(null);
@@ -322,6 +330,7 @@ export function ChatPanel({ canSend = true, onCheckConnection, repo, conversatio
     if (busy || !canRegenerate || !canSend) return;
     const note = regenNote.trim();
     setRegenNote("");
+    setRegenerateOpen(false);
     await regenerate(note || undefined);
   }
 
@@ -337,8 +346,25 @@ export function ChatPanel({ canSend = true, onCheckConnection, repo, conversatio
     await replay(turn.turn);
   }
 
+  const [checkingAction,setCheckingAction]=useState(false);
+  useEffect(() => { if (checkRequest > 0) setCheckingAction(true); }, [checkRequest]);
   return (
     <div className={repo ? "chat-panel chat-panel--ideas" : "chat-panel"}>
+      {messageMenu && !busy && <MessageMenu x={messageMenu.x} y={messageMenu.y} onClose={() => setMessageMenu(null)} items={[
+        ...(repo ? [{label:"Save as idea", action:() => capture([messageMenu.turn.turn])}] : []),
+        {label:copiedTurn === messageMenu.turn.turn ? "Copied" : "Copy", action:() => { void copyTurn(messageMenu.turn); }},
+        {label:"Inspect", action:() => setInspectTurn(inspectTurn === messageMenu.turn.turn ? null : messageMenu.turn.turn)},
+        {label:"Edit", action:() => startEdit(messageMenu.turn)},
+        ...(canSend && canRegenerate && messageMenu.turn.role === "character" && messageMenu.turn.turn === conversation.at(-1)?.turn ? [{label:"Regenerate…", action:() => setRegenerateOpen(true)}] : []),
+        ...(canSend && !(messageMenu.turn.role === "character" && messageMenu.turn.turn === conversation.at(-1)?.turn) && chatBeatFor(liveTurns, messageMenu.turn.turn) ? [{label:"Replay", action:() => { void handleReplay(messageMenu.turn); }}] : [])
+      ]} />}
+      {regenerateOpen && <Modal title="Rewrite this reply" onClose={() => setRegenerateOpen(false)}>
+        <p>Generate a new version of the latest reply. You can add instructions below.</p>
+        <label>Optional instructions<textarea autoFocus value={regenNote} onChange={event => setRegenNote(event.target.value)} placeholder="What would you like to change?" /></label>
+        <div className="sb-dialog__actions"><button type="button" onClick={() => setRegenerateOpen(false)}>Cancel</button><button type="button" disabled={busy || !canSend || !canRegenerate} onClick={() => void handleRegenerate()}>Regenerate</button></div>
+      </Modal>}
+      {checkingAction&&<ActionCheckDialog session={session} onClose={()=>setCheckingAction(false)} onContinue={result=>{setCheckingAction(false);void sendMessage(result.action,{check:result});}}/>}
+      {!gameTools&&playerCheckStats(session).length>0&&<button type="button" disabled={busy||!canSend||!!session.journey} onClick={()=>setCheckingAction(true)}>Take a chance · Roll dice</button>}
       {planningJourney && repo && <RoutePlanner repo={repo} session={session} onClose={()=>setPlanningJourney(false)} onStart={(destinationId,name,plan)=>{
         setPlanningJourney(false);void sendMessage(`I go to ${name}.`,{travelPlaceId:destinationId,plan});
       }}/>}
@@ -384,13 +410,12 @@ export function ChatPanel({ canSend = true, onCheckConnection, repo, conversatio
           </div>
         ) : null}
         <div className="chat-log" ref={logRef}>
-        {showLog && conversation.map((turn, index) => {
-          const isLastCharacterTurn = turn.role === "character" && index === conversation.length - 1 && !busy;
+        {showLog && conversation.map((turn) => {
           const isEditing = editingTurn === turn.turn;
           const narratorCard =
             turn.role === "character" &&
             (turn.toldBy === "narrator" || Boolean(narratorLabel(session)));
-          const portrait =
+          const portrait = turn.role === "player" ? youPortrait :
             narratorCard || turn.role !== "character"
               ? undefined
               : characterPortraitUrl(session, turn.speaker);
@@ -401,6 +426,7 @@ export function ChatPanel({ canSend = true, onCheckConnection, repo, conversatio
           return (
             <div
               key={turn.turn}
+              onContextMenu={event => { if (busy || isEditing) return; event.preventDefault(); setMessageMenu({turn, x:event.clientX, y:event.clientY}); }}
               className={`message ${turn.role === "player" ? "message--player" : "message--character"}${
                 inspectTurn === turn.turn ? " message--inspect" : ""
               }`}
@@ -409,36 +435,7 @@ export function ChatPanel({ canSend = true, onCheckConnection, repo, conversatio
                 {repo && capturing && <label className="sb-idea-select"><input type="checkbox" aria-label={`Select message ${turn.turn} for idea`} checked={selectedTurns.has(turn.turn)} disabled={busy} onChange={event => { setSelectedTurns(current => { const next = new Set(current); if (event.target.checked) next.add(turn.turn); else next.delete(turn.turn); return next; }); }} />Select</label>}
                 <Dot kind={turn.role === "player" ? "player" : "ai"} />
                 {speakerLabel(turn, session, characterName)}
-                {!isEditing && !busy && (
-                  <>
-                    {repo && <button type="button" className="message__act" onClick={() => capture([turn.turn])}>Save as idea</button>}
-                    <button
-                      type="button"
-                      className="message__act"
-                      onClick={() => void copyTurn(turn)}
-                      title="Copy this message"
-                    >
-                      {copiedTurn === turn.turn ? "copied" : "copy"}
-                    </button>
-                    <button
-                      type="button"
-                      className="message__act"
-                      onClick={() => setInspectTurn(inspectTurn === turn.turn ? null : turn.turn)}
-                      title="Inspect this beat in the Inspector"
-                    >
-                      inspect
-                    </button>
-                    <button
-                      type="button"
-                      className="message__act"
-                      onClick={() => startEdit(turn)}
-                      title="Edit this message (manual correction, not a rewind)"
-                    >
-                      edit
-                    </button>
-                  </>
-                )}
-              </span>
+                {!isEditing && !busy && <button type="button" className="message__act message__menu-trigger" aria-label={`Message actions for ${speakerLabel(turn, session, characterName)}`} aria-haspopup="menu" onClick={event => { const rect = event.currentTarget.getBoundingClientRect(); setMessageMenu({turn, x: rect.left, y: rect.bottom}); }}>⋯</button>}              </span>
 
               {isEditing ? (
                 <div className={showFace ? "message__bubble message__bubble--portrait" : "message__bubble"}>
@@ -496,52 +493,12 @@ export function ChatPanel({ canSend = true, onCheckConnection, repo, conversatio
                   </div>
                 </div>
               ) : (
-                  <span className={showFace ? "message__bubble message__bubble--portrait" : "message__bubble"}>
+                  <div className={showFace ? "message__bubble message__bubble--portrait" : "message__bubble"}>
                   <CardFace src={portrait} narrator={narratorCard} morph={morph} />
-                  <MessageBody text={turn.content} />
-                </span>
+                  <div className="message__content"><MessageBody text={turn.content} />{turn.check&&<div className="action-check__hint" role="note">d100 · {turn.check.attributeName}: {turn.check.roll} / {turn.check.target} · {turn.check.success?'Success':'Setback'}</div>}</div>
+                </div>
               )}
 
-              {isLastCharacterTurn && canRegenerate && !isEditing && (
-                <div className="message__regen">
-                  <input
-                    className="message__regen-note"
-                    value={regenNote}
-                    onChange={(e) => setRegenNote(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        void handleRegenerate();
-                      }
-                    }}
-                    placeholder="Optional note — the door is locked…"
-                    aria-label="Note for regenerate"
-                    disabled={busy}
-                  />
-                  <button
-                    type="button"
-                    className="message__act"
-                    disabled={!canSend || busy}
-                    onClick={() => void handleRegenerate()}
-                    title="Regenerate this reply — undoes it and re-runs Pass 1 with the same message"
-                  >
-                    regenerate
-                  </button>
-                </div>
-              )}
-              {!isLastCharacterTurn && !isEditing && !busy && chatBeatFor(liveTurns, turn.turn) ? (
-                <div className="message__regen">
-                  <button
-                    type="button"
-                    className="message__act"
-                    disabled={!canSend}
-                    onClick={() => void handleReplay(turn)}
-                    title="Replay this beat — later chat is undone, then Pass 1 runs again"
-                  >
-                    replay
-                  </button>
-                </div>
-              ) : null}
             </div>
           );
         })}

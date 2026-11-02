@@ -260,7 +260,7 @@ export function createSessionFromSetup(setup: SceneSetup, sessionId: string): Se
       ...(draft.libraryId ? { sourceLibraryId: draft.libraryId } : {}),
       ...(draft.anatomyTemplateId ? { anatomyTemplateId: draft.anatomyTemplateId } : {}),
       name,
-      position: { value: draft.position.trim() || "here", lock: "unlocked" },
+      position: { value: !draft.position.trim()||draft.position.trim().toLowerCase()==="here"?setup.playerPosition?.trim()||setup.location: draft.position.trim(), lock: "unlocked" },
       mood: { value: draft.mood.trim() || "neutral", lock: "unlocked" },
       ...(familyName ? { familyName } : {}),
       ...(middleName ? { middleName } : {}),

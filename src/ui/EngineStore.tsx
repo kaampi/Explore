@@ -1,3 +1,4 @@
+import type { CheckResult } from "../checks/CheckEngine";
 import { EngineContext } from "./EngineContext";
 import { resolveMapMovement, resolvePlannedMapMovement, MapMovementError } from "@session/mapMovement";
 import { JourneyError } from "@state/journey";
@@ -78,7 +79,7 @@ export interface EngineContextValue {
   lastError: string | null;
   sendMessage: (
     text: string,
-    options?: { goTo?: string; travelPlaceId?: string; plan?: RoutePlan },
+    options?: { check?:CheckResult; goTo?: string; travelPlaceId?: string; plan?: RoutePlan },
   ) => Promise<void>;
   regenerate: (note?: string) => Promise<void>;
   replay: (conversationTurn: number, note?: string) => Promise<void>;
@@ -314,7 +315,7 @@ export function EngineProvider({
   const sendMessage = useCallback(
     async (
       text: string,
-      options?: { goTo?: string; travelPlaceId?: string; plan?: RoutePlan },
+      options?: { check?:CheckResult; goTo?: string; travelPlaceId?: string; plan?: RoutePlan },
     ) => {
       setPhase("streaming");
       setStreamingText(""); setReplyComplete(false);
@@ -328,8 +329,7 @@ export function EngineProvider({
         session=stateEngine.getSession();
         const plan=options?.plan?RoutePlanSchema.parse(options.plan):undefined;
         if(plan&&(plan.fromPlaceId!==session.scene?.placeId||session.journey))throw new JourneyError("Your position changed. Open the route planner again.");
-        const speakingAsId =
-          focusCharacterId(session, text) ?? primaryCharacter(session)?.id;
+        const speakingAsId = options?.check?.targetId ?? focusCharacterId(session, text) ?? primaryCharacter(session)?.id;
         if (!speakingAsId) {
           throw new Error("There is no character in this scene to speak.");
         }
@@ -340,7 +340,7 @@ export function EngineProvider({
           const live = stateEngine.getSession();
           setStreamingNarrator(isLeftBehind(live, speakingAsId));
         };
-        const mapMovement = session.journey ? {handled:true} : plan?.legs ? resolvePlannedMapMovement(text,session,spatialWorlds,placesRef.current,plan) : !options?.goTo?.trim() ? resolveMapMovement(text,session,spatialWorlds,placesRef.current,options?.travelPlaceId?.trim(),plan) : {handled:false};
+        const mapMovement = options?.check?{handled:true}:session.journey ? {handled:true} : plan?.legs ? resolvePlannedMapMovement(text,session,spatialWorlds,placesRef.current,plan) : !options?.goTo?.trim() ? resolveMapMovement(text,session,spatialWorlds,placesRef.current,options?.travelPlaceId?.trim(),plan) : {handled:false};
         let travel = options?.travelPlaceId?.trim()
           ? (() => {
               const place = placesRef.current.find(
@@ -351,7 +351,7 @@ export function EngineProvider({
           : undefined;
         if(mapMovement.place) travel={...landmarkTravelPatch(mapMovement.place),...(mapMovement.travelMinutes !== undefined ? {travelMinutes: mapMovement.travelMinutes} : {}), ...(mapMovement.travelDays !== undefined ? {travelDays:mapMovement.travelDays} : {}), ...(mapMovement.encounter ? {encounter:mapMovement.encounter} : {}), ...(mapMovement.routeInfo ? {routeInfo:mapMovement.routeInfo} : {})};
         if(plan){if(!travel||!mapMovement.place)throw new JourneyError("The planned route could not be resolved. Open the planner again.");travel={...travel,plan};}
-        if (!mapMovement.handled && !travel && !options?.goTo?.trim()) {
+        if (!options?.check && !mapMovement.handled && !travel && !options?.goTo?.trim()) {
           const exits = mapLandmarkTravels(session, placesRef.current);
           const hay = foldPlace(text);
           if (/\b(?:walk|go|gå|head|leave)\b/i.test(text)) {
@@ -383,6 +383,7 @@ export function EngineProvider({
             onSessionUpdated: syncStreamingFace,
           },
           {
+            ...(options?.check?{check:options.check}:{}),
             ...(options?.goTo?.trim() ? { goTo: options.goTo.trim() } : {}),
             ...(travel ? { travel } : {}),
           },

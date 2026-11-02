@@ -3137,3 +3137,52 @@ textarea.setup-field__story {
 .chat-journey span, .chat-journey p { opacity: .8; font-size: 13px; }
 .chat-journey progress { width: 100%; height: 6px; margin-top: 12px; accent-color: #86686b; }
 .chat-journey__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+
+.action-check {
+  width: min(680px, calc(100vw - 32px)); max-height: calc(100dvh - 32px);
+  overflow: auto; box-sizing: border-box; padding: 28px;
+  border: 1px solid #75633d; border-radius: 18px;
+  background: #181a1f; color: #f1e9da; box-shadow: 0 24px 100px #0009;
+  font: inherit;
+}
+.action-check::backdrop { background: #07090bc4; backdrop-filter: blur(3px); }
+.action-check__header { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.action-check__header h2 { font-size: 28px; margin: 6px 0 0; font-weight: 500; }
+.action-check__eyebrow { color: #c8ad75; font-size: 11px; letter-spacing: .14em; }
+.action-check button.action-check__sound { margin-top: 16px; padding: 6px 10px; font-size: 12px; }
+.action-check button { font: inherit; border: 1px solid #66583d; border-radius: 8px; padding: 10px 18px; background: #29282a; color: #f1e9da; cursor: pointer; }
+.action-check button:disabled { opacity: .45; cursor: default; }
+.action-check button:focus-visible, .action-check select:focus-visible, .action-check input:focus-visible { outline: 2px solid #e1bd78; outline-offset: 3px; }
+.action-check__participants { display: grid; grid-template-columns: 1fr 32px 1fr; gap: 16px; align-items: center; margin: 28px 0; }
+.action-check__participant { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; min-width: 0; }
+.action-check__participant img, .action-check__silhouette { width: 88px; height: 104px; border-radius: 12px; border: 1px solid #75633d; object-fit: cover; }
+.action-check__silhouette { display: grid; place-items: center; font-size: 25px; background: linear-gradient(160deg, #4a4438, #24262c); color: #d8c7a0; }
+.action-check__participant strong { font-size: 18px; overflow-wrap: anywhere; }
+.action-check__participant span:not(.action-check__silhouette) { color: #b7b1a6; font-size: 13px; }
+.action-check__between { text-align: center; color: #c8ad75; font-size: 24px; }
+.action-check__fields { display: grid; gap: 16px; }
+.action-check label { display: grid; gap: 7px; font-size: 12px; color: #c8c1b6; }
+.action-check select, .action-check input { width: 100%; min-width: 0; box-sizing: border-box; font: inherit; font-size: 15px; padding: 12px; border: 1px solid #4c4840; border-radius: 8px; background: #101216; color: #f1e9da; }
+.action-check__settings { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.action-check__hint { color: #aba69d; font-size: 13px; line-height: 1.6; }
+.action-check__footer { display: flex; justify-content: flex-end; gap: 12px; margin-top: 22px; }
+.action-check button.action-check__primary { background: #c8ad75; color: #17191d; font-weight: 600; }
+.action-check__attempt { text-align: center; color: #d7c8aa; margin-bottom: 12px; overflow-wrap: anywhere; }
+.action-check__tray { width: 100%; height: 230px; border-radius: 12px; background: radial-gradient(ellipse, #3a3542, #11141b); overflow: hidden; }
+.action-check__tray canvas { display: block; width: 100%; height: 100%; }
+.chat-panel>.chat-dice-roll{inset:0;padding:0;border:0;border-radius:0;background:transparent;overflow:hidden}.chat-panel>.chat-dice-roll>.action-check__tray{position:absolute;inset:0;width:100%;height:100%;min-height:0;max-height:none;border:0;border-radius:0;background:transparent;z-index:1}.chat-dice-roll>.chat-dice-roll__heading,.chat-dice-roll>.action-check__attempt,.chat-dice-roll>.action-check__outcome,.chat-dice-roll>.action-check__footer,.chat-dice-roll>.action-check__hint{position:absolute;z-index:2;background:var(--panel,#f8f4e8);border:1px solid var(--border,#a5ad9d);border-radius:8px;padding:10px 14px;margin:0;max-width:340px}.chat-dice-roll>.chat-dice-roll__heading{top:16px;right:18px}.chat-dice-roll>.action-check__attempt{top:16px;left:18px;max-width:min(45%,480px)}.chat-dice-roll>.action-check__outcome{right:18px;bottom:88px}.chat-dice-roll>.action-check__footer{right:18px;bottom:18px}.chat-dice-roll>.action-check__hint{left:18px;bottom:18px}@media(max-width:650px){.chat-dice-roll>.action-check__attempt{display:none}.chat-dice-roll>.chat-dice-roll__heading{top:8px;right:8px}.chat-dice-roll>.action-check__outcome{right:8px;bottom:80px}.chat-dice-roll>.action-check__footer{right:8px;bottom:8px}}
+.chat-panel{position:relative}.chat-dice-roll{position:absolute;inset:12px;z-index:40;display:flex;flex-direction:column;padding:20px;border:1px solid var(--border,#a5ad9d);border-radius:12px;background:color-mix(in srgb,var(--panel,#f8f4e8) 94%,transparent);color:var(--text,#293c32);overflow:auto}.chat-dice-roll__heading{display:flex;justify-content:space-between;align-items:center;gap:16px}.chat-dice-roll>.action-check__tray{flex:1;min-height:240px;border-radius:0;background:transparent}.chat-dice-roll>.action-check__footer{justify-content:center}.chat-dice-roll>.action-check__outcome{padding:12px}.chat-dice-roll .action-check__attempt{font-size:15px}@media(max-width:600px){.chat-dice-roll{inset:4px;padding:12px}.chat-dice-roll>.action-check__tray{min-height:180px}}
+.chat-panel>.chat-dice-roll>.action-check__outcome{top:50%;left:50%;right:auto;bottom:auto;transform:translate(-50%,-50%);width:max-content;max-width:calc(100% - 32px);box-sizing:border-box}
+.action-check__outcome { display: grid; gap: 8px; text-align: center; padding: 18px 0 0; }
+.action-check__outcome>.action-check__ok{justify-self:center;margin-top:8px;padding:6px 18px;border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;text-decoration:underline;text-underline-offset:4px}
+.action-check__outcome>.action-check__ok:hover{background:color-mix(in srgb,currentColor 8%,transparent)}
+.action-check__outcome strong { font-size: 28px; font-weight: 500; }
+.action-check__success { color: #a4d0aa; }
+.action-check__failure { color: #e0ae95; }
+.action-check__outcome small { color: #aba69d; }
+.message__check { font-size: 11px; color: #d7bc7d; border: 1px solid #66583d; border-radius: 5px; padding: 2px 6px; margin-left: 8px; }
+@media (max-width: 520px) {
+  .action-check { padding: 18px; }
+  .action-check__settings { grid-template-columns: 1fr; }
+  .action-check__tray { height: 200px; }
+}

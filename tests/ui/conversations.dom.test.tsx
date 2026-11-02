@@ -180,6 +180,21 @@ afterEach(async () => {
 });
 
 describe("conversation library journeys", () => {
+  it('returns directly to the open conversation after a page reload',async()=>{
+    await mount();await create('Ari');await send('Remember this gate.','Mara keeps watch by the gate.');
+    await act(async()=>{await new Promise(r=>setTimeout(r,320));root.unmount();});root=createRoot(container);
+    await act(async()=>root.render(<App/>));await waitFor(()=>!!container.querySelector('[aria-label="Your message"]'));
+    expect(container.querySelector('.chat-log')?.textContent).toContain('Mara keeps watch by the gate.');expect(container.querySelector('.sb-home')).toBeNull();
+  });
+  it('offers existing characters before creating someone new in Free play',async()=>{
+    await mount();await create('Ari');await home();await click(button('Free play'));
+    await waitFor(()=>!!container.querySelector('.sb-free-character-picker'));
+    const choice=Array.from(container.querySelectorAll<HTMLButtonElement>('.sb-free-character-picker button')).find(b=>b.textContent?.includes('Ari'));
+    expect(choice).toBeTruthy();expect(container.textContent).toContain('Create a new character');await click(choice!);
+    await waitFor(()=>!!Array.from(container.querySelectorAll('dialog')).find(d=>d.getAttribute('aria-label')==='Chat with Ari'));
+    expect(container.querySelector('.sb-free-character-picker')).toBeNull();
+  });
+
   it("confirms deletion by name, preserves on cancel/failure, and never restores the deleted active conversation", async () => {
     await mount(); await create("Ari");
     await send("A private note.", "Ari keeps it safe.");
@@ -258,7 +273,7 @@ describe("conversation library journeys", () => {
     await repo.close();
     await click(named("kaampi Explore home"));
     await waitFor(() => !!container.querySelector(".sb-home-connection"));
-    await click(button("Continue exploring →"));
+    await click(button("↗ Continue exploring"));
     await waitFor(
       () => !!container.querySelector('[aria-label="Your message"]'),
     );
@@ -304,7 +319,7 @@ describe("conversation library journeys", () => {
     });
     await repo.createConversation(saved);
     await mount();
-    await click(button("Continue exploring →"));
+    await click(button("↗ Continue exploring"));
     await waitFor(
       () => !!container.querySelector('[aria-label="Your message"]'),
     );
@@ -417,7 +432,7 @@ describe("conversation library journeys", () => {
     });
     root = createRoot(container);
     await mount();
-    await click(button("Continue exploring →"));
+    await click(button("↗ Continue exploring"));
     await waitFor(
       () => !!container.querySelector('[aria-label="Your message"]'),
     );
@@ -456,7 +471,7 @@ describe("conversation library journeys", () => {
     const repo = new IndexedDBRepository();
     expect(await repo.listSessionIds()).toHaveLength(1);
     await repo.close();
-    await click(button("Continue exploring →"));
+    await click(button("↗ Continue exploring"));
     await waitFor(
       () => !!container.querySelector('[aria-label="Your message"]'),
     );

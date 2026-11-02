@@ -196,7 +196,8 @@ describe("first-run conversation flow", () => {
   it("takes a new user from a name to the first streamed reply without opening model settings", async () => {
     online = true;
     await mount();
-    await click(button("Create your first character ＋"));
+    await click(button("Free play"));
+    await click(button("Create a new character"));
     await input(
       container.querySelector<HTMLInputElement>(
         'input[placeholder="What are they called?"]',
@@ -236,7 +237,8 @@ describe("first-run conversation flow", () => {
 
   it("keeps an offline draft and never sends it while reconnecting or choosing a model", async () => {
     await mount();
-    await click(button("Create your first character ＋"));
+    await click(button("Free play"));
+    await click(button("Create a new character"));
     const name = container.querySelector<HTMLInputElement>(
       'input[placeholder="What are they called?"]',
     )!;
@@ -286,7 +288,7 @@ describe("first-run conversation flow", () => {
     online = true;
     localStorage.setItem("sandboxai-preferred-model", "my-custom-model");
     await mount();
-    await click(button("Set up AI"));
+    await click(button("Settings"));
     expect(container.textContent).toContain("my-custom-model");
     expect(localStorage.getItem("sandboxai-preferred-model")).toBe(
       "my-custom-model",
@@ -300,8 +302,9 @@ describe("first-run conversation flow", () => {
       select.dispatchEvent(new Event("change", { bubbles: true }));
     });
     expect(localStorage.getItem("sandboxai-preferred-model")).toBe("chat-a");
-    await click(button("Back to my space"));
-    await click(button("Create your first character ＋"));
+    await click(button("Close dialog"));
+    await click(button("Free play"));
+    await click(button("Create a new character"));
     await input(
       container.querySelector<HTMLInputElement>(
         'input[placeholder="What are they called?"]',

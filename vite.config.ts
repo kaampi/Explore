@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { configDefaults } from "vitest/config";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
@@ -8,7 +9,9 @@ import path from "node:path";
 // Module boundaries mirror Master Spec §55. UI depends on engines;
 // engines never import from ui/. Enforce this socially for now,
 // consider an eslint import-boundary rule once the surface stabilizes.
+let exploreRevision='';try{exploreRevision=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();}catch{}
 export default defineConfig({
+  define: { 'import.meta.env.VITE_EXPLORE_REVISION': JSON.stringify(exploreRevision) },
   plugins: [react(), localAppsPlugin(), coreManuscriptsPlugin()],
   resolve: {
     alias: {

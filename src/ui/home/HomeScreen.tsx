@@ -1,3 +1,6 @@
+import { gateScenario } from "./gateScenario";
+import { PlayStartPaths } from "./PlayStartPaths";
+import { CheckUpdates } from "./CheckUpdates";
 import { useEffect, useState } from "react";
 import conversationsWorld from "../assets/conversations-world.webp";
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
@@ -72,6 +75,8 @@ export function HomeScreen({
   const { discovery, preferredModel, refresh } = useConnection();
   const [starting, setBusy] = useState(false);
   const busy = starting || navigationBusy;
+  const [rulesTest,setRulesTest]=useState(false);
+  const [freePicker,setFreePicker]=useState(false);
   const [creating, setCreating] = useState(false);
   const [quickName, setQuickName] = useState("");
   const [quickPersonality, setQuickPersonality] = useState("");
@@ -236,83 +241,20 @@ export function HomeScreen({
   }
   const chatFields = <ChatSetupFields places={chatPlaces} voices={chatVoices} rulesets={chatRulesets} placeId={chatPlaceId} voiceId={voiceId} rulesetId={rulesetId} onPlace={setChatPlaceId} onVoice={setVoiceId} onRuleset={setRulesetId} disabled={busy} />;
   return (
-    <main className="sb-home">
-      <div className="sb-breadcrumb">
-        Your creative space <span>/</span> kaampi Explore
-      </div>
-      <div className="sb-home-heading">
-        <div>
-          <h1>
-            A familiar face.
-            <br className="sb-mobile-break" />{" "}
-            <em>A world of possibilities.</em>
-          </h1>
-          <p>
-            Meet a character. Follow a thought. See where the conversation takes
-            you.
-          </p>
-        </div>
-        <span className="sb-flourish" aria-hidden="true">
-          ✧
-        </span>
-      </div>
+    <main className="sb-home sb-home--welcome">
+      <section className="sb-hero sb-hero--welcome" aria-label="Welcome to Explore">
+        <img className="sb-hero__image" src={conversationsWorld} alt="" fetchPriority="high"/>
+        <div className="sb-hero__shade"/>
+        <div className="sb-hero__content"><h1>A familiar face. <em>A world of possibilities.</em></h1><p>Every story has more to discover.</p><CheckUpdates /></div>
+      </section>
+      <PlayStartPaths onFree={()=>setFreePicker(true)} onStudio={view=>{if(view==='rulesets')setRulesTest(true);else onStudio(view);}} disabled={busy||!ready}/>
       {!ready ? (
         <p className="sb-muted" role="status">
           Opening your worlds…
         </p>
       ) : (
         <>
-          <section className="sb-hero">
-            <img className="sb-hero__image" src={conversationsWorld} alt="" fetchPriority="high" />
-            <div className="sb-hero__shade" />
-            <div className="sb-hero__content">
-              <span className="sb-eyebrow sb-hero__eyebrow">
-                {session ? "● YOUR LAST EXPLORATION" : "✧ BEGIN ANYWHERE"}
-              </span>
-              <h2>
-                {session
-                  ? currentTitle ||
-                    session.scene?.realm ||
-                    session.scene?.location ||
-                    `A conversation with ${person?.name ?? "your characters"}`
-                  : "Every conversation opens a door."}
-              </h2>
-              <p>
-                {session
-                  ? recent
-                    ? recent.slice(0, 190) + (recent.length > 190 ? "…" : "")
-                    : `Your meeting with ${person?.name ?? "the cast"} is ready to continue.`
-                  : "You don't need a manuscript, a world, or a plan. Just someone you're curious to meet."}
-              </p>
-              {session ? (
-                <button
-                  type="button"
-                  className="sb-button sb-button--cream"
-                  onClick={onResume}
-                >
-                  Continue exploring <span>→</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="sb-button sb-button--cream"
-                  onClick={openCreate}
-                >
-                  {characters.length
-                    ? "Create a character"
-                    : "Create your first character"}{" "}
-                  <span>＋</span>
-                </button>
-              )}
-              <div className="sb-hero__foot">
-                {session
-                  ? `${person?.name ?? "Your cast"} · Your conversation is saved locally`
-                  : "Or bring a character you already know — character card import is available in the library."}
-              </div>
-            </div>
-            <span className="sb-hero__caption">The beginning is yours.</span>
-          </section>
-          <HomeConnection />
+          <HomeConnection showSettings={false} />
           <CoreManuscripts repo={repo} />
           <section className="sb-home-section">
             <div className="sb-section-heading">
@@ -513,6 +455,8 @@ export function HomeScreen({
           {error}
         </p>
       )}
+      {rulesTest&&<Modal title="Try a game with rules" onClose={()=>{if(!busy)setRulesTest(false);}}><h3>A closed gate. One chance to persuade.</h3><p>Play a traveller asking the guard Mona Sanchez to let you into the city after dusk. No combat or world setup needed.</p><ul><li>Your Persuasion: <strong>60 / 100</strong></li><li>Normal difficulty: roll <strong>60 or lower</strong> on d100.</li><li>The game resolves the roll and the guard's yes/no decision. AI can continue the conversation afterward.</li></ul><p>In the conversation, choose <strong>Take a chance · Roll dice</strong>. Describe your attempt, roll, then continue the story. A working AI connection is needed for narration.</p><div className="sb-dialog__actions"><button type="button" disabled={busy} onClick={()=>{setRulesTest(false);onStudio('rulesets');}}>Manage rule-sets</button><button type="button" className="sb-button" disabled={busy} onClick={async()=>{setBusy(true);setError(null);try{const connection=discovery.state==='checking'?await refresh():discovery;const model=initialModel(preferredModel,connection.models)||session?.runtime.model;await onStart(gateScenario(sessionId,model));setRulesTest(false);}catch(e){setError(e instanceof Error?e.message:'Could not start the scenario.');}finally{setBusy(false);}}}>{busy?'Opening…':'Try the gate scenario'}</button></div>{error&&<p role="alert">{error}</p>}</Modal>}
+      {freePicker&&<Modal title="Choose someone to meet" wide onClose={()=>setFreePicker(false)}><p className="sb-muted">Start freely with a character from your library, try an example, or create someone new. No rule-set is required.</p><div className="sb-free-character-picker">{mergeWithExamples(characters,[exampleCharacterTemplate()]).map(character=><button type="button" key={character.id} disabled={busy} onClick={()=>{setFreePicker(false);openChatSetup(character);}}>{portraitSrc(character.portraitDataUrl)&&<img src={portraitSrc(character.portraitDataUrl)} alt=""/>}<span><strong>{formatPersonName(character.name,character.familyName,character.middleName)}</strong><small>{character.personality?.slice(0,150)||'Choose a setting and begin your conversation.'}</small></span><span aria-hidden="true">→</span></button>)}</div><div className="sb-dialog__actions"><button type="button" className="sb-link" onClick={()=>setFreePicker(false)}>Cancel</button><button type="button" className="sb-button" disabled={busy} onClick={()=>{setFreePicker(false);openCreate();}}>Create a new character</button></div></Modal>}
       {chatCharacter && <Modal title={`Chat with ${formatPersonName(chatCharacter.name, chatCharacter.familyName, chatCharacter.middleName)}`} onClose={() => { if (!busy) setChatCharacter(null); }}>
         <p className="sb-muted">Choose a setting, or leave everything as None and begin. All three choices are optional.</p>
         {chatFields}

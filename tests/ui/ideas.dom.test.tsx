@@ -202,8 +202,8 @@ describe("idea capture journeys", () => {
         await mount();
         await create("Ari");
         await send("A thought worth keeping.", "Ari smiles.");
-        const saveButtons = Array.from(container.querySelectorAll('button')).filter(b => b.textContent === "Save as idea");
-        await click(saveButtons[0]!);
+        await click(container.querySelector<HTMLButtonElement>('.message__menu-trigger')!);
+        await click(Array.from(document.querySelectorAll<HTMLElement>('[role="menuitem"]')).find(item => item.textContent === "Save as idea")!);
         const failing = vi.spyOn(IndexedDBRepository.prototype, 'saveIdea').mockRejectedValueOnce(new Error("Storage unavailable"));
         await click(button("Save idea"));
         await waitFor(() => container.textContent?.includes("Storage unavailable") ?? false);
@@ -220,7 +220,8 @@ describe("idea capture journeys", () => {
         await mount();
         await create("Ari");
         await send("Do not keep this.", "Understood.");
-        await click(Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Save as idea')!);
+        await click(container.querySelector<HTMLButtonElement>('.message__menu-trigger')!);
+        await click(Array.from(document.querySelectorAll<HTMLElement>('[role="menuitem"]')).find(item => item.textContent === "Save as idea")!);
         await click(button("Cancel"));
         await click(button("My ideas"));
         await waitFor(() => container.textContent?.includes("Keep something worth exploring") ?? false);

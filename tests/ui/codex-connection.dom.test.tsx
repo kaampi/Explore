@@ -22,6 +22,7 @@ it("requests native pairing, shows the comparison code and connects without aski
   const container = document.createElement("div"), root = createRoot(container);
   try {
     await act(async () => root.render(<CodexConnection />));
+    expect(container.querySelector('.sb-codex-dot')?.classList.contains('is-disconnected')).toBe(true);
     await act(async () => container.querySelector('button')!.click());
     const connect = Array.from(container.querySelectorAll('button')).find(button => button.textContent === "Connect to kaampi Codex")!;
     await act(async () => connect.click());
@@ -29,5 +30,6 @@ it("requests native pairing, shows the comparison code and connects without aski
     expect(container.querySelector('input')).toBeNull();
     await act(async () => vi.advanceTimersByTimeAsync(1100));
     expect(container.textContent).toContain("Connected to Codex.");
+    expect(container.querySelector(".sb-codex-dot")?.classList.contains("is-connected")).toBe(true);
   } finally { await act(async () => root.unmount()); vi.useRealTimers(); invoke.mockReset(); }
 });

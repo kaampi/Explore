@@ -1,3 +1,5 @@
+import { checkOutcomeInstruction,type CheckResult } from "../checks/CheckEngine";
+import { validatePlayerCheck } from "../checks/playerCheck";
 import { guardAbsentPositions } from "@state/npcPositionGuard";
 import { timeActionFromText } from "@state/gameClock";
 import { journeyActionFromText, validateJourneyContinue, JourneyError } from "@state/journey";
@@ -98,6 +100,7 @@ export interface RunTurnCallbacks {
 }
 
 export interface RunTurnOptions {
+  check?:CheckResult;
   /** Internal marker: continuation already changed the route state before dialogue. */
   journeyContinuation?: boolean;
   /** What now? destination — a listed room or the venue floor. */
@@ -164,6 +167,7 @@ export interface RollingMemoryConfig {
 
 /** What's needed to redo a turn's dialogue+mutations while keeping the same player message. */
 interface TurnManifest {
+  check?:CheckResult;
   turnId: string;
   characterId: string;
   playerMessage: string;
@@ -239,9 +243,10 @@ export class SessionEngine {
     try {
       this.state = transition(this.state, "start_turn"); // -> awaiting_response
 
+      if(options.check){validatePlayerCheck(this.stateEngine.getSession(),options.check);if(options.check.targetId!==characterId)throw Error("Check target must match the current character.");}
       const preTurnVersion = this.stateEngine.getSession().stateVersion;
       const appendPlayerResult = this.stateEngine.appendConversationTurn(
-        { role: "player", content: playerMessage },
+        { role: "player", content: playerMessage, ...(options.check?{check:options.check}:{}) },
         preTurnVersion
       );
       if (!appendPlayerResult.committed) {
@@ -316,6 +321,7 @@ export class SessionEngine {
 
       const regenNote = options.note?.trim();
       return await this.runDialogueAndCommit(newTurnId, manifest.characterId, manifest.playerMessage, callbacks, {
+        ...(manifest.check?{check:manifest.check}:{}),
         ...(regenNote ? { regenNote } : {})
       });
     } catch (err) {
@@ -375,6 +381,7 @@ export class SessionEngine {
       turnId: beat.reply.turn.toString(),
       characterId: beat.reply.speaker,
       playerMessage: beat.player.content,
+      ...(beat.player.check?{check:beat.player.check}:{}),
       eventIds: beatIds
     };
     return this.regenerateLastTurn(newTurnId, callbacks, options);
@@ -400,13 +407,13 @@ export class SessionEngine {
     const inTransit = Boolean(this.stateEngine.getSession().journey);
     if (!inTransit) this.stateEngine.openRoomsNamedInText(playerMessage);
     if (!inTransit && options.goTo?.trim()) this.stateEngine.openRoomAtDest(options.goTo.trim());
-    this.stateEngine.syncPartyFromPlayerText(playerMessage, characterId);
+    if(!options.check)this.stateEngine.syncPartyFromPlayerText(playerMessage, characterId);
     if (options.travel) this.stateEngine.travelToLandmark(options.travel);
-    const walkedIn = destinationRoomFromPlayerText(
+    const walkedIn = options.check?undefined:destinationRoomFromPlayerText(
       playerMessage,
       this.stateEngine.getSession()
     );
-    if (!options.travel && !inTransit && !options.journeyContinuation) {
+    if (!options.check && !options.travel && !inTransit && !options.journeyContinuation) {
       applyPlayerDestinationOn(
         this.stateEngine,
         playerMessage,
@@ -440,7 +447,7 @@ export class SessionEngine {
     const assembled = assembleContext(session, { continuation });
     const { turns } = parseConversationTurns(session, undefined);
     const trust = session.relationships[characterId]?.trust.value;
-    const favor = trust !== undefined ? checkFavor(trust, rollD100()) : undefined;
+    const favor = !options.check && trust !== undefined ? checkFavor(trust, rollD100()) : undefined;
     const stageRoom = sideRoomStage(session);
     const intro = herePrompt(session);
     const introForModel = intro
@@ -496,10 +503,24 @@ export class SessionEngine {
       ...(outOfSight ? { outOfSight: true } : {})
     });
 
+    if(options.check){
+      const outcome=checkOutcomeInstruction(options.check,session.ruleset?.name==='Gate test · d100'&&options.check.attributeId==='persuasion'?(options.check.success?'The guard accepts the traveller’s request, explicitly permits entry, and opens the city gate. Her decision is YES. The traveller remains outside until they choose to enter.':'The guard refuses this request and keeps the city gate closed. Her decision is NO for this attempt. The traveller remains outside.') : undefined);
+      // Some local chat templates honor only the initial system message.
+      // Keep the resolved outcome in the same authoritative system block as the scene rules.
+      const system=messages.filter(m=>m.role==='system').map(m=>m.content).join('\n\n');
+      const dialogue=messages.filter(m=>m.role!=='system');
+      messages.splice(0,messages.length,{role:'system',content:system+'\n\n'+outcome},...dialogue);
+    }
     this.state = transition(this.state, "provider_responding"); // -> streaming
 
     let fullText = "";
-    for await (const chunk of this.llmAdapter.streamCompletion({
+    const gateDecision=options.check&&session.ruleset?.name==='Gate test · d100'&&options.check.attributeId==='persuasion'
+      ? options.check.success
+        ? `${session.characters[characterId]?.name ?? 'The guard'} nods and draws back the bolt. "All right. You may enter." She opens the city gate and steps aside. You are still outside; the way into the city is now open.`
+        : `${session.characters[characterId]?.name ?? 'The guard'} shakes her head and keeps her hand on the bolt. "No. You must wait until morning." The city gate remains closed, and you remain outside.`
+      : undefined;
+    if(gateDecision){fullText=gateDecision;callbacks.onTextDelta?.(gateDecision);}
+    else for await (const chunk of this.llmAdapter.streamCompletion({
       messages,
       temperature: session.runtime.temperature,
       seed: session.runtime.seed,
@@ -648,7 +669,7 @@ export class SessionEngine {
     // Captured before Rolling Memory runs, so a condensation triggered
     // by this turn is never itself undone by a later Regenerate call —
     // condensation of *older* history is unrelated to this turn's reply.
-    this.lastTurnManifest = { turnId, characterId, playerMessage, eventIds: eventIdsThisTurn };
+    this.lastTurnManifest = { turnId, characterId, playerMessage, eventIds: eventIdsThisTurn,...(options.check?{check:options.check}:{}) };
 
     // Rolling Conversation Memory: opportunistic, best-effort. A
     // failure here must never fail a turn whose dialogue and

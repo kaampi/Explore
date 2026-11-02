@@ -1,3 +1,4 @@
+import { CheckResultSchema } from "../checks/CheckEngine";
 import { ObjectLocationSchema } from "@library/objectLocation";
 import { RoutePlanSchema } from "@library/routePlan";
 import { z } from "zod";
@@ -386,6 +387,7 @@ export const ConversationTurnSchema = z.object({
   speaker: z.string().optional(),
   /** Leftover NPC: the card is Narrator, not their portrait. */
   toldBy: z.enum(["narrator"]).optional(),
+  check: CheckResultSchema.optional(),
   content: z.string()
 });
 export type ConversationTurn = z.infer<typeof ConversationTurnSchema>;
@@ -646,13 +648,7 @@ export function safeParseSession(input: unknown) {
 }
 
 function withDefaultPlayer(session: Session): Session {
-  if (session.player) return session;
-  return {
-    ...session,
-    player: {
-      position: { value: session.scene?.location ?? "here", lock: "unlocked" },
-      status: { value: "awake", lock: "unlocked" }
-    }
-  };
+ const player=session.player??{position:{value:session.scene?.location??'here',lock:'unlocked' as const},status:{value:'awake',lock:'unlocked' as const}};
+ const here=player.position.value.trim();const characters=Object.fromEntries(Object.entries(session.characters).map(([id,c])=>[id,here&&c.position.value.trim().toLowerCase()==='here'?{...c,position:{...c.position,value:here}}:c]));
+ return {...session,player,characters};
 }
-
