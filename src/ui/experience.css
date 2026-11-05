@@ -1978,6 +1978,7 @@
 .sb-rules-scenarios small { color:var(--text-dim); line-height:1.5; }
 @media(max-width:600px) { .sb-rules-scenarios { grid-template-columns:1fr; } }
 .sb-hero--welcome .sb-update-check>.sb-button[data-update-available=true]{background:#f3bd59!important;color:#34412f!important;border-color:#ffdb8b;box-shadow:0 0 0 3px #f3bd5926}
+.sb-update-check__fallback{display:grid;gap:10px;margin-top:12px;max-width:100%}.sb-update-check__fallback label{display:grid;gap:6px;font-size:12px}.sb-update-check__fallback input{box-sizing:border-box;width:100%;min-width:0;padding:9px 10px;border:1px solid #f0eadc80;border-radius:6px;background:#fcfcf9;color:#26352e;font:inherit;font-size:12px}.sb-update-check__fallback button{justify-self:start}
 .combat-log summary{font-weight:600;font-size:13px;cursor:pointer;margin-bottom:10px}
 .combat-log ol{display:grid;gap:10px;list-style:none;padding:0;margin:0;max-height:200px;overflow:auto}
 .combat-log li{padding:0 0 10px;border-bottom:1px solid var(--border-soft,var(--border));font-size:12px;line-height:1.5}

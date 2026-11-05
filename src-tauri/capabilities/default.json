@@ -5,6 +5,12 @@
   ],
   "permissions": [
     "core:default",
-    "opener:allow-open-url"
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        { "url": "https://github.com/kaampi/Explore/actions/workflows/desktop-build.yml" },
+        { "url": "http://127.0.0.1:43127/admin" }
+      ]
+    }
   ]
 }
