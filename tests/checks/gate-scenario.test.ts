@@ -11,6 +11,7 @@ import type { CompletionRequest } from '../../src/llm/types';
 it('saves the gate check, grounds AI in its result, and keeps the roll on regeneration',async()=>{
  const session=gateScenario('gate-test','mock'),targetId=Object.keys(session.characters)[0]!;
  expect(session.characters[targetId]?.name).toBe('Mona');
+ expect(session.characters[targetId]?.sourceLibraryId).toBe('example-mona-sanchez');
  expect(session.characters[targetId]?.portraitDataUrl).toMatch(/^data:image\//);
  expect(session.player?.portraitDataUrl).toMatch(/^data:image\/jpeg;base64,/);
  const result=rollPlayerCheck(session,{id:'one-roll',action:'I ask Mara to let me through.',targetId,attributeId:'persuasion',difficulty:'normal'},()=>.34);

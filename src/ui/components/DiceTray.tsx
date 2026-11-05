@@ -2,8 +2,8 @@ import { useEffect, useId, useRef } from "react";
 import { percentileNotation } from "../../checks/CheckEngine";
 import type { DiceSound } from "../diceSound";
 
-export function DiceTray({ roll, sound, onSettled }: {
-  roll: number; sound: DiceSound | null; onSettled: (fallback: boolean) => void;
+export function DiceTray({ roll, sound, onSettled, throwFrom = "right" }: {
+  throwFrom?: "left" | "right"; roll: number; sound: DiceSound | null; onSettled: (fallback: boolean) => void;
 }) {
   const id = `dice-${useId().replace(/:/g, "")}`;
   const onSettledRef = useRef(onSettled);
@@ -47,7 +47,8 @@ export function DiceTray({ roll, sound, onSettled }: {
         box.resizeWorld = () => {};
         const throwBox=box;
         box.startClickThrow=(notation:string)=>{
-          const vector={x:-throwBox.display.currentWidth*.9,y:throwBox.display.currentHeight*.12};
+          // The dice library spawns opposite the velocity: positive x enters from the left.
+          const vector={x:(throwFrom === "left" ? 1 : -1)*throwBox.display.currentWidth*.9,y:throwBox.display.currentHeight*.12};
           const distance=Math.hypot(vector.x,vector.y)+100;
           return throwBox.getNotationVectors(notation,vector,3.3*distance*throwBox.strength,distance);
         };
@@ -89,7 +90,7 @@ export function DiceTray({ roll, sound, onSettled }: {
         }, 200);
       }
     };
-  }, [id, roll, sound]);
+  }, [id, roll, sound, throwFrom]);
 
-  return <div id={id} className="action-check__tray" aria-label="Percentile dice: tens and units" />;
+  return <div id={id} className="action-check__tray" data-throw-from={throwFrom} aria-label="Percentile dice: tens and units" />;
 }

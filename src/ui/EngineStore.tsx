@@ -1,4 +1,9 @@
+import type { AdventureTransition } from '../game/AdventureSchema';
+import type { EncounterRequest } from '../game/EncounterSchema';
+import { ActionSaveError } from '../persistence/ActionSaveError';
 import type { CheckResult } from "../checks/CheckEngine";
+import type { GateRequest } from "../checks/gateEncounter";
+import { interpretGateIntent, type GateIntent } from "../checks/gateIntent";
 import { EngineContext } from "./EngineContext";
 import { resolveMapMovement, resolvePlannedMapMovement, MapMovementError } from "@session/mapMovement";
 import { JourneyError } from "@state/journey";
@@ -69,6 +74,13 @@ import { draftSceneHandoff } from "@state/sceneHandoff";
 export type ChatPhase = "idle" | "streaming" | "error";
 
 export interface EngineContextValue {
+  transitionAdventure:(request:AdventureTransition)=>Promise<void>;
+  setCombatArtwork: (actorId:string,image:string|null)=>Promise<void>;
+  executeEncounterAction: (request:EncounterRequest)=>Promise<void>;
+  saveEncounter: ()=>Promise<void>;
+  executeGateAction: (request:GateRequest)=>Promise<void>;
+  saveGateScene: ()=>Promise<void>;
+  interpretGateText: (text:string,signal?:AbortSignal)=>Promise<GateIntent>;
   useSession: () => Session;
   useEventLog: () => readonly StateEvent[];
   phase: ChatPhase;
@@ -143,7 +155,7 @@ export function EngineProvider({
     resume: StudioResume | null,
   ) => Promise<void>;
 }) {
-  const { backend, baseUrl } = useConnection();
+  const { backend, baseUrl, discovery } = useConnection();
   const [ollamaModel, setOllamaModelState] = useState(
     () => initialSession.runtime.model.trim() || DEFAULT_OLLAMA_MODEL,
   );
@@ -180,7 +192,10 @@ export function EngineProvider({
   // events and SessionEngine's turn_committed events would live in two
   // disconnected logs and Inspector Mode couldn't show one true trace.
   const sharedEventLogRef = useRef<EventLog>();
-  if (!sharedEventLogRef.current) sharedEventLogRef.current = new EventLog();
+  if (!sharedEventLogRef.current) {
+    sharedEventLogRef.current = new EventLog();
+    if(initialSession.gateEncounter||initialSession.encounter)for(const event of initialSession.events)sharedEventLogRef.current.append(event);
+  }
   const sharedEventLog = sharedEventLogRef.current;
 
   const stateEngineRef = useRef<StateEngine>();
@@ -317,6 +332,7 @@ export function EngineProvider({
       text: string,
       options?: { check?:CheckResult; goTo?: string; travelPlaceId?: string; plan?: RoutePlan },
     ) => {
+      if(stateEngine.getSession().gateEncounter||stateEngine.getSession().encounter){setLastError('Use Say or Do in this encounter. Free text cannot change its rules.');return;}
       setPhase("streaming");
       setStreamingText(""); setReplyComplete(false);
       setLastError(null);
@@ -421,6 +437,7 @@ export function EngineProvider({
 
   const regenerate = useCallback(
     async (note?: string) => {
+      if(stateEngine.getSession().gateEncounter||stateEngine.getSession().encounter)return;
       setPhase("streaming");
       setStreamingText(""); setReplyComplete(false);
       setLastError(null);
@@ -474,6 +491,7 @@ export function EngineProvider({
 
   const replay = useCallback(
     async (conversationTurn: number, note?: string) => {
+      if(stateEngine.getSession().gateEncounter||stateEngine.getSession().encounter)return;
       setPhase("streaming");
       setStreamingText(""); setReplyComplete(false);
       setLastError(null);
@@ -697,6 +715,7 @@ export function EngineProvider({
   );
 
   const undo = useCallback((): { ok: boolean; reason?: string } => {
+    if(stateEngine.getSession().gateEncounter||stateEngine.getSession().encounter)return {ok:false,reason:'Rewinding is disabled in authored encounters.'};
     const currentVersion = stateEngine.getSession().stateVersion;
     const result = stateEngine.undoLastMutation(
       "player_manual_state",
@@ -820,6 +839,27 @@ export function EngineProvider({
   );
 
   const value: EngineContextValue = {
+    transitionAdventure:async request=>{stateEngine.transitionAdventure(request);eventLogSnapshotRef.current=sharedEventLog.all();notifySession();try{await repo.saveSession(stateEngine.getSession());}catch(error){throw new ActionSaveError(error);}},
+    setCombatArtwork:async(actorId,image)=>{stateEngine.setCombatArtwork(actorId,image);notifySession();await repo.saveSession(stateEngine.getSession());},
+    saveEncounter:()=>repo.saveSession(stateEngine.getSession()),
+    executeEncounterAction:async request=>{
+      stateEngine.executeEncounterAction(request);
+      eventLogSnapshotRef.current=sharedEventLog.all();
+      notifySession();
+      try{await repo.saveSession(stateEngine.getSession());}catch(error){throw new ActionSaveError(error);}
+    },
+    executeGateAction:async request=>{
+      stateEngine.executeGateAction(request);
+      eventLogSnapshotRef.current=sharedEventLog.all();
+      notifySession();
+      await repo.saveSession(stateEngine.getSession());
+    },
+    saveGateScene:()=>repo.saveSession(stateEngine.getSession()),
+    interpretGateText:(text,signal)=>{
+      const current=stateEngine.getSession().gateEncounter;
+      if(!current)return Promise.resolve({status:'unknown' as const,revision:0});
+      return interpretGateIntent(text,current,discovery?.state==='available'?pass1Adapter:undefined,signal);
+    },
     removeJourneyStop:(index)=>{
       if(phase==="streaming")return;
       try{stateEngine.removeJourneyStop(index);setLastError(null);refreshSnapshots();}

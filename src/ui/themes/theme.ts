@@ -14,7 +14,9 @@ export const PlayThemeSchema = z.object({
   textSize: z.number().int().min(15).max(26),
   textWidth: z.number().int().min(480).max(1000),
   font: z.enum(["serif", "sans"]),
-  backgroundMode: z.enum(["scene", "custom", "none"]),
+  backgroundMode: z.enum(["scene", "custom", "none", "pattern"]),
+  backgroundPattern: z.enum(["bubbles", "linen", "cork", "tweed", "geometric"]).default("linen"),
+  patternStrength: z.number().min(0).max(1).default(0.5),
   backgroundDataUrl: z
     .string()
     .regex(/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/)
@@ -30,6 +32,8 @@ const base = {
   textWidth: 760,
   font: "serif" as const,
   backgroundMode: "scene" as const,
+  backgroundPattern: "linen" as const,
+  patternStrength: 0.5,
 };
 export const PRESET_THEMES: PlayTheme[] = [
   {

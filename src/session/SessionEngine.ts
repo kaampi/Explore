@@ -207,6 +207,7 @@ export class SessionEngine {
     callbacks: RunTurnCallbacks = {},
     options: RunTurnOptions = {}
   ): Promise<TurnResult> {
+    if(this.stateEngine.getSession().gateEncounter||this.stateEngine.getSession().encounter)throw new Error('Authored encounters resolve actions through the game engine, not generated dialogue.');
     const cached = this.committedTurns.get(turnId);
     if (cached) {
       return { ...cached, idempotentReplay: true };
@@ -293,6 +294,7 @@ export class SessionEngine {
     callbacks: RunTurnCallbacks = {},
     options: { note?: string } = {}
   ): Promise<TurnResult> {
+    if(this.stateEngine.getSession().gateEncounter||this.stateEngine.getSession().encounter)throw new Error('Authored encounters cannot regenerate or replay resolved actions.');
     const cached = this.committedTurns.get(newTurnId);
     if (cached) {
       return { ...cached, idempotentReplay: true };
@@ -343,6 +345,7 @@ export class SessionEngine {
     callbacks: RunTurnCallbacks = {},
     options: { note?: string } = {}
   ): Promise<TurnResult> {
+    if(this.stateEngine.getSession().gateEncounter||this.stateEngine.getSession().encounter)throw new Error('Authored encounters cannot regenerate or replay resolved actions.');
     const cached = this.committedTurns.get(newTurnId);
     if (cached) {
       return { ...cached, idempotentReplay: true };

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CampaignScene, StoryboardChapter, StoryboardLink, StoryboardPosition } from "@library/LibrarySchema";
 import { formatKeywordList, parseKeywordList } from "@layers/keywords";
 import { linksFromScene, linksToScene, removeSceneLink, setScenePosition, upsertSceneLink } from "@library/storyboardLinks";
@@ -16,8 +16,8 @@ import { downloadJson } from "./studioShared";
  * and which of them make up a chapter for export to the writing tool.
  * Drag a card to move it; drag from its port to another card to link
  * them; click a line to edit what it requires and sets. Purely
- * authoring-time (§ project_spec) — Start still plays one scene at a
- * time; this is the map, not a live auto-chain between them.
+ * authoring-time (§ project_spec). PlayableStoryboard uses these same
+ * links as explicit player choices between pinned encounter scenes.
  */
 
 const CARD_W = 200;
@@ -44,6 +44,7 @@ function inPort(pos: StoryboardPosition): StoryboardPosition {
 }
 
 function bezierPath(a: StoryboardPosition, b: StoryboardPosition): string {
+  if(b.x<=a.x)return `M${a.x},${a.y} C${a.x+60},${a.y+180} ${Math.max(5,b.x-30)},${b.y+180} ${b.x},${b.y}`;
   const dx = Math.max(40, Math.abs(b.x - a.x) / 2);
   return `M${a.x},${a.y} C${a.x + dx},${a.y} ${b.x - dx},${b.y} ${b.x},${b.y}`;
 }
@@ -55,8 +56,11 @@ export function StoryboardCanvas({
   campaignName,
   onScenesChange,
   onLinksChange,
-  onChaptersChange
+  onChaptersChange,externalInspector=false,onSelectScene,onSelectLink,onCanvasContext,selectedSceneId,activeLinkId,connectionFromSceneId,onConnectionEnd
 }: {
+  onCanvasContext?:((target:{x:number;y:number;position:StoryboardPosition;sceneId?:string;linkId?:string})=>void)|undefined;selectedSceneId?:string|undefined;activeLinkId?:string|undefined;
+  externalInspector?:boolean;onSelectScene?:((id:string)=>void)|undefined;onSelectLink?:((id:string|null)=>void)|undefined;
+  connectionFromSceneId?:string|null|undefined;onConnectionEnd?:(()=>void)|undefined;
   scenes: CampaignScene[];
   links: StoryboardLink[];
   chapters: StoryboardChapter[];
@@ -71,13 +75,17 @@ export function StoryboardCanvas({
   const [connectFrom, setConnectFrom] = useState<string | null>(null);
   const [draftPoint, setDraftPoint] = useState<StoryboardPosition | null>(null);
   const [hoverTarget, setHoverTarget] = useState<string | null>(null);
-  const [selectedLinkId, setSelectedLinkId] = useState<string | null>(null);
+  const [selectedLinkId, setSelectedLinkState] = useState<string | null>(null);
+  function setSelectedLinkId(id:string|null){setSelectedLinkState(id);onSelectLink?.(id); }
 
   const positioned = scenes.map((scene, index) => ({
     scene,
     pos: scene.position ?? defaultPosition(index)
   }));
   const byId = new Map(positioned.map((item) => [item.scene.id, item]));
+  const activeConnectFrom=connectionFromSceneId??connectFrom;
+  useEffect(()=>{if(connectionFromSceneId){setConnectFrom(null);setDragId(null);setDraftPoint(null);setHoverTarget(null);}},[connectionFromSceneId]);
+  useEffect(()=>{if(!activeConnectFrom)return;const cancel=(event:KeyboardEvent)=>{if(event.key!=='Escape')return;event.preventDefault();setConnectFrom(null);setDraftPoint(null);setHoverTarget(null);onConnectionEnd?.();};window.addEventListener('keydown',cancel);return()=>window.removeEventListener('keydown',cancel);},[activeConnectFrom,onConnectionEnd]);
   const sceneLabel = (id: string) => byId.get(id)?.scene.name.trim() || "Untitled scene";
 
   function pointFromEvent(event: { clientX: number; clientY: number }): StoryboardPosition {
@@ -91,17 +99,22 @@ export function StoryboardCanvas({
   }
 
   function startDrag(event: React.PointerEvent, sceneId: string) {
+    if(event.button!==0)return;
+    if(connectionFromSceneId){finishConnection(connectionFromSceneId,sceneId);return;}
     const item = byId.get(sceneId);
     if (!item) return;
     const p = pointFromEvent(event);
     dragOffset.current = { x: p.x - item.pos.x, y: p.y - item.pos.y };
-    setDragId(sceneId);
+    if(event.button!==0)return;
+    setDragId(sceneId);onSelectScene?.(sceneId);
     setSelectedLinkId(null);
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
   }
 
   function startConnect(event: React.PointerEvent, sceneId: string) {
+    if(event.button!==0)return;
     event.stopPropagation();
+    onConnectionEnd?.();
     setConnectFrom(sceneId);
     setDraftPoint(pointFromEvent(event));
     setSelectedLinkId(null);
@@ -115,7 +128,7 @@ export function StoryboardCanvas({
       onScenesChange(setScenePosition(scenes, dragId, next));
       return;
     }
-    if (connectFrom) {
+    if (activeConnectFrom) {
       setDraftPoint(p);
       const el = document.elementFromPoint(event.clientX, event.clientY);
       const cardEl = el instanceof Element ? el.closest<HTMLElement>("[data-scene-id]") : null;
@@ -123,25 +136,32 @@ export function StoryboardCanvas({
     }
   }
 
-  function endConnect() {
-    if (connectFrom && hoverTarget && hoverTarget !== connectFrom) {
-      const existing = links.find((l) => l.fromSceneId === connectFrom && l.toSceneId === hoverTarget);
-      if (existing) {
-        setSelectedLinkId(existing.id);
-      } else {
-        const created: StoryboardLink = {
-          id: crypto.randomUUID(),
-          fromSceneId: connectFrom,
-          toSceneId: hoverTarget,
-          requiresFlags: [],
-          requiresAbsentFlags: [],
-          setsFlags: [],
-          label: ""
-        };
-        onLinksChange(upsertSceneLink(links, created));
-        setSelectedLinkId(created.id);
-      }
+  function finishConnection(fromSceneId:string,toSceneId:string) {
+    if(fromSceneId===toSceneId||!byId.has(fromSceneId)||!byId.has(toSceneId))return;
+    const existing = links.find((l) => l.fromSceneId === fromSceneId && l.toSceneId === toSceneId);
+    if (existing) {
+      setSelectedLinkId(existing.id);
+    } else {
+      const created: StoryboardLink = {
+        id: crypto.randomUUID(),
+        fromSceneId,
+        toSceneId,
+        requiresFlags: [],
+        requiresAbsentFlags: [],
+        setsFlags: [],
+        label: ""
+      };
+      onLinksChange(upsertSceneLink(links, created));
+      setSelectedLinkId(created.id);
     }
+    onConnectionEnd?.();
+    setConnectFrom(null);
+    setDraftPoint(null);
+    setHoverTarget(null);
+  }
+
+  function endConnect() {
+    if(connectFrom&&hoverTarget)finishConnection(connectFrom,hoverTarget);
     setConnectFrom(null);
     setDraftPoint(null);
     setHoverTarget(null);
@@ -149,7 +169,8 @@ export function StoryboardCanvas({
 
   function onBoardPointerUp() {
     setDragId(null);
-    if (connectFrom) endConnect();
+    if(connectionFromSceneId&&hoverTarget)finishConnection(connectionFromSceneId,hoverTarget);
+    else if (connectFrom) endConnect();
   }
 
   const selectedLink = links.find((item) => item.id === selectedLinkId) ?? null;
@@ -162,8 +183,7 @@ export function StoryboardCanvas({
   return (
     <div className="storyboard">
       <p className="form-section__lede">
-        Drag a card to move it. Drag from the dot on its right edge onto another card to connect them. Click a line
-        to set what it requires or sets.
+        {connectionFromSceneId?`Connecting from ${sceneLabel(connectionFromSceneId)}. Move to the destination scene and click to attach. Escape cancels.`:'Drag a card to move it. Drag from the dot on its right edge onto another card to connect them. Click a line to set what it requires or sets.'}
       </p>
 
       <div className="storyboard-chapters">
@@ -210,7 +230,8 @@ export function StoryboardCanvas({
 
       <div
         ref={boardRef}
-        className="storyboard-board"
+        className={`storyboard-board${activeConnectFrom?' is-connecting':''}`}
+        aria-label="Storyboard workspace" onContextMenu={event=>{if(!onCanvasContext)return;event.preventDefault();const element=event.target as Element,sceneId=element.closest<HTMLElement>('[data-scene-id]')?.dataset.sceneId,linkId=element.closest<SVGElement>('[data-link-id]')?.dataset.linkId;onCanvasContext({x:event.clientX,y:event.clientY,position:pointFromEvent(event),...(sceneId?{sceneId}:{}),...(linkId?{linkId}:{})});}}
         onPointerMove={onBoardPointerMove}
         onPointerUp={onBoardPointerUp}
         onPointerLeave={() => {
@@ -230,26 +251,26 @@ export function StoryboardCanvas({
             const a = outPort(from.pos);
             const b = inPort(to.pos);
             const blocks = link.requiresAbsentFlags.length > 0;
-            const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+            const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 + (b.x<=a.x?125:0) };
             return (
-              <g key={link.id}>
+              <g key={link.id} data-link-id={link.id}>
                 <path d={bezierPath(a, b)} className="storyboard-line-hit" onClick={() => setSelectedLinkId(link.id)} />
                 <path
                   d={bezierPath(a, b)}
-                  className={`storyboard-line${blocks ? " storyboard-line--blocks" : ""}${selectedLinkId === link.id ? " is-selected" : ""}`}
+                  className={`storyboard-line${blocks ? " storyboard-line--blocks" : ""}${(activeLinkId??selectedLinkId) === link.id ? " is-selected" : ""}`}
                   markerEnd="url(#storyboard-arrow)"
                 />
                 {link.label.trim() ? (
-                  <text x={mid.x} y={mid.y - 8} className="storyboard-line-label" textAnchor="middle">
+                  <text x={mid.x} y={externalInspector&&b.x>a.x?Math.min(from.pos.y,to.pos.y)-12:mid.y-8} className="storyboard-line-label" textAnchor="middle">
                     {link.label}
                   </text>
                 ) : null}
               </g>
             );
           })}
-          {connectFrom && draftPoint && byId.get(connectFrom) ? (
+          {activeConnectFrom && byId.get(activeConnectFrom) ? (
             <path
-              d={bezierPath(outPort(byId.get(connectFrom)!.pos), draftPoint)}
+              d={bezierPath(outPort(byId.get(activeConnectFrom)!.pos), draftPoint??{x:outPort(byId.get(activeConnectFrom)!.pos).x+55,y:outPort(byId.get(activeConnectFrom)!.pos).y})}
               className="storyboard-line storyboard-line--draft"
             />
           ) : null}
@@ -262,8 +283,9 @@ export function StoryboardCanvas({
           <div
             key={scene.id}
             data-scene-id={scene.id}
-            className={`storyboard-card${connectFrom && hoverTarget === scene.id ? " is-drop-target" : ""}`}
+            className={`storyboard-card${selectedSceneId===scene.id?" is-selected":""}${activeConnectFrom&&activeConnectFrom!==scene.id&&hoverTarget === scene.id ? " is-drop-target" : ""}`}
             style={{
+              boxSizing:"border-box",
               left: pos.x,
               top: pos.y,
               width: CARD_W,
@@ -302,7 +324,7 @@ export function StoryboardCanvas({
         {scenes.length === 0 ? <p className="inspector-empty">Add a scene on the Scenes tab first.</p> : null}
       </div>
 
-      {selectedLink ? (
+      {selectedLink&&!externalInspector ? (
         <div className="storyboard-inspector">
           <div className="storyboard-inspector__head">
             <span>

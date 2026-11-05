@@ -3,6 +3,7 @@ import { Modal } from "../components/Modal";
 import { PRESET_THEMES, contrastRatio, type PlayTheme } from "./theme";
 import { playThemeStyle, useAppearance } from "./ThemeProvider";
 import { backgroundFromFile } from "./themeStorage";
+import { PatternSettings, BACKGROUND_PATTERNS } from "./BackgroundSettings";
 
 export function AppearanceDialog({ onClose }: { onClose: () => void }) {
   return <Modal title="Make yourself at home" onClose={onClose} wide><AppearanceSettingsContent onClose={onClose} /></Modal>;
@@ -116,8 +117,10 @@ export function AppearanceSettingsContent({ onClose }: { onClose: () => void }) 
                 <option value="scene">Follow the scene</option>
                 <option value="custom">Keep my background</option>
                 <option value="none">Plain background</option>
+                <option value="pattern">Pattern</option>
               </select>
             </label>
+            {theme.backgroundMode === "pattern" && <PatternSettings />}
             {theme.backgroundMode === "custom" && (
               <div className="sb-upload">
                 <label className="sb-field">
@@ -210,6 +213,7 @@ export function AppearanceSettingsContent({ onClose }: { onClose: () => void }) 
             )}
           </div>
           <div className="sb-theme-preview" style={playThemeStyle(theme)}>
+            {theme.backgroundMode === "pattern" && <div className="sb-theme-preview__pattern" style={{backgroundImage:`url(${BACKGROUND_PATTERNS.find(item=>item.id===theme.backgroundPattern)?.url})`,opacity:theme.patternStrength}} />}
             {theme.backgroundMode === "custom" && theme.backgroundDataUrl && (
               <img
                 src={theme.backgroundDataUrl}

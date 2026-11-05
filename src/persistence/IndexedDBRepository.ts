@@ -7,6 +7,7 @@ import monaMorph from "../library/examples/mona-morph.json";
 import type { materializeWorld } from "../lore/materializeWorld";
 import { LorebookSchema, type Lorebook } from "../lore/LorebookSchema";
 import { IdeaSchema, type Idea } from "../ideas/IdeaSchema";
+import { upgradeMissingMessengerSession } from '../scenarios/missingMessenger';
 import {
   ConversationEntrySchema,
   conversationEntry,
@@ -508,7 +509,7 @@ export class IndexedDBRepository {
     if (!parsed.success) {
       throw new SchemaValidationError(id, parsed.error.message);
     }
-    return dropSessionPortraits(parsed.data);
+    return dropSessionPortraits(upgradeMissingMessengerSession(parsed.data));
   }
 
   async deleteSession(id: string): Promise<void> {
@@ -606,7 +607,22 @@ export class IndexedDBRepository {
       const marker = "example-mona-installed-v1";
       const checked = preferences.get(marker);
       checked.onsuccess = () => {
-        if (checked.result) return;
+        if (checked.result) {
+          // Extend the installed example without replacing edited expressions.
+          const stored = preferences.get(`character-morph:${character.id}`);
+          stored.onsuccess = () => {
+            const profile = stored.result?.profile;
+            if (!profile || !Array.isArray(profile.expressions)) return;
+            const additions = monaMorph.expressions.filter(item =>
+              ["neutral", "stressed"].includes(item.name) && !profile.expressions.some((existing: {name:string}) => existing.name === item.name));
+            if (!additions.length) return;
+            preferences.put({...stored.result, profile: {...profile,
+              expressions: [...profile.expressions, ...additions],
+              gallery: [...(profile.gallery ?? []), ...monaMorph.gallery.filter(item => additions.some(expression => expression.name === item.name))]
+            }});
+          };
+          return;
+        }
         const characters = tx.objectStore(CHARACTERS_STORE);
         const existing = characters.get(character.id);
         existing.onsuccess = () => {

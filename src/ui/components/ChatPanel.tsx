@@ -5,11 +5,13 @@ import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 import { captureIdea, type Idea } from "../../ideas/IdeaSchema";
 import { IdeaEditor } from "../ideas/IdeaEditor";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useEngine } from "../EngineStore";
 import { useAppearance } from "../themes/ThemeProvider";
 import { Dot } from "./Dot";
 import { MessageMenu } from "./MessageMenu";
 import { Modal } from "./Modal";
+import { BACKGROUND_PATTERNS } from "../themes/BackgroundSettings";
 import { displayCharacterName, narratorLabel, primaryCharacter } from "@session/createSession";
 import type { Session } from "@state/StateSchema";
 import { formatGameTime } from "@state/gameClock";
@@ -123,7 +125,7 @@ function MessageBody({ text }: { text: string }) {
   );
 }
 
-export function ChatPanel({ checkRequest = 0, gameTools = false, canSend = true, onCheckConnection, repo, conversationTitle, onIdeas }: { checkRequest?: number; gameTools?: boolean; canSend?: boolean; onCheckConnection?: () => void; repo?: IndexedDBRepository; conversationTitle?: string | undefined; onIdeas?: (() => void) | undefined }) {
+export function ChatPanel({ partyTarget = null, checkRequest = 0, gameTools = false, canSend = true, onCheckConnection, repo, conversationTitle, onIdeas }: { partyTarget?: HTMLElement | null; checkRequest?: number; gameTools?: boolean; canSend?: boolean; onCheckConnection?: () => void; repo?: IndexedDBRepository; conversationTitle?: string | undefined; onIdeas?: (() => void) | undefined }) {
   const {
     useSession,
     phase,
@@ -346,6 +348,95 @@ export function ChatPanel({ checkRequest = 0, gameTools = false, canSend = true,
     await replay(turn.turn);
   }
 
+  const partyContent = (
+<div className="chat-exits chat-party">
+          <div className="chat-party__row">
+            <div className="chat-party__group">
+              <p className="chat-exits__label">My Party</p>
+              <div className="chat-party__faces">
+            <div className="chat-party__you" title={youLabel}>
+              {youPortrait ? (
+                <img className="chat-party__face" src={youPortrait} alt="" />
+              ) : (
+                <span className="chat-party__face chat-party__face--empty">{youLabel.slice(0, 1)}</span>
+              )}
+            </div>
+            {slots.map((slot, index) => {
+              if (slot.kind === "empty") {
+                return <div key={`empty-${index}`} className="chat-party__slot chat-party__slot--empty" />;
+              }
+              const src = portraitSrc(slot.portrait);
+              const held = staying.has(slot.id);
+              return (
+                <div key={slot.id} className="chat-party__member">
+                  <button
+                    type="button"
+                    className={`chat-party__slot chat-party__slot--on${held ? " chat-party__slot--hold" : ""}`}
+                    disabled={busy || editingTurn !== null}
+                    title={`${slot.name} is in the party — tap to drop them to Prospects`}
+                    onClick={() => leaveParty(slot.id)}
+                  >
+                    {expressions[slot.id] ? (<ChatMorphPortrait key={`${session.id}:${slot.id}`} value={expressions[slot.id]!} fallback={src} className="chat-party__face" />) : src ? (<img className="chat-party__face" src={src} alt="" />
+                    ) : (
+                      <span className="chat-party__face chat-party__face--empty">{slot.name.slice(0, 1)}</span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    className="chat-party__stay"
+                    disabled={busy || editingTurn !== null}
+                    title={held ? `${slot.name} stays here — tap Come to follow again` : `Stay: ${slot.name} keeps the party slot and does not follow`}
+                    onClick={() => (held ? followParty(slot.id) : holdParty(slot.id))}
+                  >
+                    {held ? "Come" : "Stay"}
+                  </button>
+                </div>
+              );
+            })}
+              </div>
+            </div>
+            <div className="chat-party__later">
+              <p className="chat-exits__label">Prospects</p>
+              <div className="chat-party__faces">
+            {later.map((slot, index) => {
+              if (slot.kind === "empty") {
+                return (
+                  <div
+                    key={`later-empty-${index}`}
+                    className="chat-party__slot chat-party__slot--empty chat-party__slot--later"
+                    title="Someone who asked to join can wait here"
+                  />
+                );
+              }
+              const src = portraitSrc(slot.portrait);
+              const canRecruit = canAcceptParty(session, slot.id);
+              return (
+                <button
+                  key={slot.id}
+                  type="button"
+                  className="chat-party__slot chat-party__slot--pending chat-party__slot--later"
+                  disabled={busy || editingTurn !== null || !canRecruit}
+                  title={
+                    canRecruit
+                      ? `${slot.name} — tap to recruit`
+                      : acceptedPartyIds(session).length >= PARTY_SLOTS
+                        ? `${slot.name} is here — the party is full. Someone has to leave first.`
+                        : `${slot.name} — go back to this place to recruit.`
+                  }
+                  onClick={() => acceptParty(slot.id)}
+                >
+                  {expressions[slot.id] ? (<ChatMorphPortrait key={`${session.id}:${slot.id}`} value={expressions[slot.id]!} fallback={src} className="chat-party__face" />) : src ? (<img className="chat-party__face" src={src} alt="" />
+                  ) : (
+                    <span className="chat-party__face chat-party__face--empty">{slot.name.slice(0, 1)}</span>
+                  )}
+                </button>
+              );
+            })}
+              </div>
+            </div>
+          </div>
+        </div>
+  );
   const [checkingAction,setCheckingAction]=useState(false);
   useEffect(() => { if (checkRequest > 0) setCheckingAction(true); }, [checkRequest]);
   return (
@@ -381,6 +472,7 @@ export function ChatPanel({ checkRequest = 0, gameTools = false, canSend = true,
       {idea && repo && <IdeaEditor idea={idea} repo={repo} onClose={() => setIdea(null)} onSaved={() => { setIdea(null); setCapturing(false); setSelectedTurns(new Set()); setIdeaNotice("Idea saved in My ideas."); }} />}
 
       <div className={backdrop.pictures.length > 0 ? "chat-stage chat-stage--backdrop" : "chat-stage"}>
+        {theme.backgroundMode === "pattern" && <div className="chat-pattern-backdrop" aria-hidden="true" style={{backgroundImage:`url(${BACKGROUND_PATTERNS.find(item=>item.id===theme.backgroundPattern)?.url})`,opacity:theme.patternStrength}} />}
         {backdrop.pictures.length > 0 ? (
           <ChatBackdrop
             key={beatLocation(session) ?? "venue"}
@@ -576,93 +668,7 @@ export function ChatPanel({ checkRequest = 0, gameTools = false, canSend = true,
             </div>
           </div>
         ) : null}
-        <div className="chat-exits chat-party">
-          <div className="chat-party__row">
-            <div className="chat-party__group">
-              <p className="chat-exits__label">My Party</p>
-              <div className="chat-party__faces">
-            <div className="chat-party__you" title={youLabel}>
-              {youPortrait ? (
-                <img className="chat-party__face" src={youPortrait} alt="" />
-              ) : (
-                <span className="chat-party__face chat-party__face--empty">{youLabel.slice(0, 1)}</span>
-              )}
-            </div>
-            {slots.map((slot, index) => {
-              if (slot.kind === "empty") {
-                return <div key={`empty-${index}`} className="chat-party__slot chat-party__slot--empty" />;
-              }
-              const src = portraitSrc(slot.portrait);
-              const held = staying.has(slot.id);
-              return (
-                <div key={slot.id} className="chat-party__member">
-                  <button
-                    type="button"
-                    className={`chat-party__slot chat-party__slot--on${held ? " chat-party__slot--hold" : ""}`}
-                    disabled={busy || editingTurn !== null}
-                    title={`${slot.name} is in the party — tap to drop them to Prospects`}
-                    onClick={() => leaveParty(slot.id)}
-                  >
-                    {expressions[slot.id] ? (<ChatMorphPortrait key={`${session.id}:${slot.id}`} value={expressions[slot.id]!} fallback={src} className="chat-party__face" />) : src ? (<img className="chat-party__face" src={src} alt="" />
-                    ) : (
-                      <span className="chat-party__face chat-party__face--empty">{slot.name.slice(0, 1)}</span>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    className="chat-party__stay"
-                    disabled={busy || editingTurn !== null}
-                    title={held ? `${slot.name} stays here — tap Come to follow again` : `Stay: ${slot.name} keeps the party slot and does not follow`}
-                    onClick={() => (held ? followParty(slot.id) : holdParty(slot.id))}
-                  >
-                    {held ? "Come" : "Stay"}
-                  </button>
-                </div>
-              );
-            })}
-              </div>
-            </div>
-            <div className="chat-party__later">
-              <p className="chat-exits__label">Prospects</p>
-              <div className="chat-party__faces">
-            {later.map((slot, index) => {
-              if (slot.kind === "empty") {
-                return (
-                  <div
-                    key={`later-empty-${index}`}
-                    className="chat-party__slot chat-party__slot--empty chat-party__slot--later"
-                    title="Someone who asked to join can wait here"
-                  />
-                );
-              }
-              const src = portraitSrc(slot.portrait);
-              const canRecruit = canAcceptParty(session, slot.id);
-              return (
-                <button
-                  key={slot.id}
-                  type="button"
-                  className="chat-party__slot chat-party__slot--pending chat-party__slot--later"
-                  disabled={busy || editingTurn !== null || !canRecruit}
-                  title={
-                    canRecruit
-                      ? `${slot.name} — tap to recruit`
-                      : acceptedPartyIds(session).length >= PARTY_SLOTS
-                        ? `${slot.name} is here — the party is full. Someone has to leave first.`
-                        : `${slot.name} — go back to this place to recruit.`
-                  }
-                  onClick={() => acceptParty(slot.id)}
-                >
-                  {expressions[slot.id] ? (<ChatMorphPortrait key={`${session.id}:${slot.id}`} value={expressions[slot.id]!} fallback={src} className="chat-party__face" />) : src ? (<img className="chat-party__face" src={src} alt="" />
-                  ) : (
-                    <span className="chat-party__face chat-party__face--empty">{slot.name.slice(0, 1)}</span>
-                  )}
-                </button>
-              );
-            })}
-              </div>
-            </div>
-          </div>
-        </div>
+        {gameTools ? (partyTarget ? createPortal(partyContent, partyTarget) : null) : partyContent}
         {exits.length > 0 ? (
           <div className="chat-exits">
             <p className="chat-exits__label">Go</p>

@@ -1,5 +1,9 @@
+import { AdventureRunSchema } from '../game/AdventureSchema';
 import { CheckResultSchema } from "../checks/CheckEngine";
 import { ObjectLocationSchema } from "@library/objectLocation";
+import { GateEncounterSchema } from "../checks/gateEncounter";
+import { EncounterGameSchema } from "../game/EncounterSchema";
+import { CombatArtworkSchema } from './combatArtwork';
 import { RoutePlanSchema } from "@library/routePlan";
 import { z } from "zod";
 
@@ -538,6 +542,9 @@ export const AnatomyTemplateSchema = z.object({
 export type AnatomyTemplate = z.infer<typeof AnatomyTemplateSchema>;
 
 export const SessionSchema = z.object({
+  combatArtwork: CombatArtworkSchema.optional(),
+  encounter: EncounterGameSchema.optional(),
+  gateEncounter: GateEncounterSchema.optional(),
   journey: JourneySchema.optional(),
   gameClock: z.object({ totalMinutes: z.number().int().nonnegative(), lastAdvance: z.object({minutes: z.number().int().nonnegative(), reason: z.string()}).optional() }).optional(),
   schemaVersion: z.number().int().positive(),
@@ -619,6 +626,7 @@ export const SessionSchema = z.object({
   outgoingHandoff: z.string().optional(),
   /** Library campaign this play came from. Missing = a one-off scene. */
   campaignId: z.string().min(1).optional(),
+  adventure:AdventureRunSchema.optional(),
   /** Authored scene that was Started. Studio uses this to land after new scene. */
   sceneId: z.string().min(1).optional(),
   player: PlayerStateSchema.optional(),

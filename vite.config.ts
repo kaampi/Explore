@@ -13,6 +13,14 @@ let exploreRevision='';try{exploreRevision=execFileSync('git',['rev-parse','HEAD
 export default defineConfig({
   define: { 'import.meta.env.VITE_EXPLORE_REVISION': JSON.stringify(exploreRevision) },
   plugins: [react(), localAppsPlugin(), coreManuscriptsPlugin()],
+  server: {
+    watch: {
+      // Windows can briefly lock copied assets and crash native file watchers.
+      usePolling: true,
+      interval: 500,
+      ignored: ["**/src-tauri/**", "**/temp/**"]
+    }
+  },
   resolve: {
     alias: {
       "@session": path.resolve(__dirname, "src/session"),

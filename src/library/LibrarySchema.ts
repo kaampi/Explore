@@ -1,3 +1,6 @@
+import { AdventureLinkSchema,AdventureGoalSchema } from '../game/AdventureSchema';
+import { upgradeMissingMessengerCampaign } from '../scenarios/missingMessenger';
+import { EncounterGameSchema } from '../game/EncounterSchema';
 import { ObjectLocationSchema } from "./objectLocation";
 import { WorldMapSchema } from "./worldMap";
 import {
@@ -227,19 +230,7 @@ export type CampaignTrigger = z.infer<typeof CampaignTriggerSchema>;
  * what a future "which scenes are open" view reads, and what the
  * Storyboard canvas draws as an arrow between two scene cards.
  */
-export const StoryboardLinkSchema = z.object({
-  id: z.string().min(1),
-  fromSceneId: z.string().min(1),
-  toSceneId: z.string().min(1),
-  /** Story flags that must be present for this path to be open. */
-  requiresFlags: z.array(z.string().min(1)).default(() => []),
-  /** Story flags that must be absent — the case a plain requirement can't express. */
-  requiresAbsentFlags: z.array(z.string().min(1)).default(() => []),
-  /** Story flags this path sets when taken. */
-  setsFlags: z.array(z.string().min(1)).default(() => []),
-  /** Short chip text on the connector, e.g. "spelaren väljer". */
-  label: z.string().default("")
-});
+export const StoryboardLinkSchema = AdventureLinkSchema;
 export type StoryboardLink = z.infer<typeof StoryboardLinkSchema>;
 
 /** Canvas placement for a scene card on the Storyboard. Missing = not yet placed. */
@@ -364,6 +355,8 @@ export const CampaignSceneSchema = z.preprocess(
   z.object({
     id: z.string().min(1),
     name: z.string().default(""),
+    encounter:EncounterGameSchema.optional(),
+    mapNodeId:z.string().min(1).optional(),usePlaceIntro:z.boolean().optional(),
     placeId: z.string().default(""),
     /** Empty = the landmark floor. Otherwise a focal room id on that place. */
     startRoomId: z.string().default(""),
@@ -387,6 +380,8 @@ export type CampaignScene = z.infer<typeof CampaignSceneSchema>;
 export const CampaignTemplateSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
+  mapWorldId:z.string().min(1).optional(),
+  goal:AdventureGoalSchema.optional(),exampleId:z.string().optional(),exampleVersion:z.number().int().nonnegative().optional(),
   /** Player-facing. Never sent to the model. */
   playerIntro: z.string().default(""),
   /** Writer premise for Pass 1. Characters do not automatically know it. */
@@ -524,7 +519,7 @@ export function parseObjectTemplate(input: unknown): ObjectTemplate {
 }
 
 export function parseCampaignTemplate(input: unknown): CampaignTemplate {
-  return CampaignTemplateSchema.parse(input);
+  return CampaignTemplateSchema.parse(upgradeMissingMessengerCampaign(CampaignTemplateSchema.parse(input)));
 }
 
 export function nowIso(): string {

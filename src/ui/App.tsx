@@ -1,4 +1,5 @@
 import { CodexConnection } from "./connection/CodexConnection";
+import { UpdateProvider } from './home/UpdateProvider';
 import { attachLorebooks } from "../lore/attachLorebooks";
 import { IdeaLibrary } from "./ideas/IdeaLibrary";
 import { GuidePanel, GuideHost, openGuide } from "./guide/GuidePanel";
@@ -213,8 +214,8 @@ function SandboxApp() {
       setResume(nextResume);
       setLive(fresh);
       setGeneration((value) => value + 1);
-      setView("play");
       await refreshCatalog();
+      setView("play");
     });
   }
   async function openConversation(id: string) {
@@ -493,7 +494,7 @@ export default function App() {
     <LanguageProvider>
       <ThemeProvider>
         <ConnectionProvider>
-          <SandboxApp />
+          <UpdateProvider><SandboxApp /></UpdateProvider>
         </ConnectionProvider>
       </ThemeProvider>
     </LanguageProvider>

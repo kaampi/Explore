@@ -1,3 +1,4 @@
+import { startPlayableCampaign } from './adventureStart';
 import { mapContext } from "@library/worldMap";
 import {
   campaignPlayerIsFilled,
@@ -250,6 +251,7 @@ export function sessionFromCampaignScene(
   },
   sessionId: string
 ): { ok: true; session: Session } | { ok: false; reason: string } {
+  if(args.scene.encounter){try{return {ok:true,session:startPlayableCampaign(args.campaign,args.scene,args.places,sessionId,args.realms)};}catch(error){return {ok:false,reason:error instanceof Error?error.message:'Could not start this adventure.'};}}
   const built = setupFromCampaignScene(args);
   if (!built.ok) return built;
   return { ok: true, session: createSessionFromSetup(built.setup, sessionId) };

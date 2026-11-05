@@ -1,4 +1,5 @@
 import { MorphExplainer } from "./MorphExplainer";
+import { mapTopics, storyboardTopics } from "./worldGuideTopics";
 import { Modal } from "../components/Modal";
 import "./guide.css";
 import { useEffect, useState } from "react";
@@ -94,7 +95,7 @@ export const GUIDE_TOPICS: Topic[] = [
     },
     {
       "title": "1. Open AI Settings",
-      "body": "Click Settings at the bottom of the left sidebar. AI Settings appears beside Appearance & Themes. Under AI engine, choose Ollama or Strata (OpenAI-compatible), matching the engine you actually run."
+      "body": "Open Settings from Explore’s top menu, then AI Settings. Under AI engine, choose Ollama or Strata (OpenAI-compatible), matching the engine you actually run."
     },
     {
       "title": "2. Connect with Ollama",
@@ -164,17 +165,17 @@ export const GUIDE_TOPICS: Topic[] = [
     { title: "Anatomy and voice", body: "Advanced settings can describe body structure and narration style. You can leave them at their defaults for your first conversation." }
   ] },
   { id: "worlds", label: "Worlds", title: "Give your story a place", intro: "Your world can be one you create in Explore or one you import. Worlds, places and lore help the AI understand its setting.", steps: [
-    { title: "Worlds and places", body: "Start with a world you have created or imported, then review its places. Add or adapt locations where characters can meet or travel as needed." },
+    { title: "Worlds and places", body: "Open My library → World Maps to create a world and its actual locations. Map Studio lets you paint terrain, place entities and connect routes. The Map Studio chapters below walk through these steps. Location templates are reusable starting definitions; placed locations belong to a particular world." },
     { title: "Lorebooks", body: "Keep background information about people, locations and history in lorebooks. Relevant information can guide the conversation." },
     { title: "Objects and rules", body: "Describe important objects and create rulesets when you want the world to follow specific rules." }
   ] },
-  { id: "adventures", label: "Adventures", title: "Build a guided adventure", intro: "An adventure gives players a starting point and a direction, without writing every outcome in advance.", steps: [
-    { title: "Scenes", body: "Create scenes with characters, places and a situation to explore." },
-    { title: "Rulesets", body: "A ruleset defines how the game should work. Leave it optional when you want a looser conversation." },
-    { title: "Storylines", body: "Use a storyline to guide an adventure. For free exploration, you do not need one." }
+  { id: "adventures", label: "Adventure overview", title: "Build a playable adventure", intro: "An adventure combines places, playable situations and choices. Build the geography in Map Studio and the prepared situations in Storyboard Editor.", steps: [
+    { title: "Start small", body: "Open Adventures and create or select a campaign. Connected adventure example provides a small working adventure: ask Edda about a missing messenger, visit the watchtower, read the note and report back. Test this scene starts a new saved playthrough. My conversations resumes an existing run." },
+    { title: "A place and a scene are different", body: "A map location describes where something exists. A scene describes a situation there, such as investigating a ruin or having a private conversation. Multiple scenes can use the same place. A Storyboard connection controls a continuation; it is not itself a road or a travel-time calculation." },
+    { title: "Prepare the possibilities", body: "In Storyboard Editor, choose an Adventure map, select a scene’s Place on map and write its arrival text. Add Possible actions with prepared outcomes, optional skill rolls and discovery conditions. Connect scenes to make later choices available after the relevant outcomes. Continue to the following chapters for each step." }
   ] },
   { id: "continuity", label: "Memory and continuity", title: "Keeping the world consistent", intro: "kaampi Explore tries to remember what has changed, not just what was said.", steps: [
-    { title: "Persistent state", body: "Characters, places and relationships can change as you play. The engine tracks important changes separately from the AI's narration." },
+    { title: "Persistent state", body: "The engine tracks important changes separately from AI narration. A saved playable adventure retains conversation history, discoveries, player health and equipment across scene transitions. Each scene also has its own tracked state. Shared NPC relationship memory and automatic presence across all scenes are still being developed." },
     { title: "Physical continuity", body: "If both hands are holding something, your character should not suddenly use a third hand. Releasing a grip or changing position should happen explicitly." },
     { title: "AI limitations", body: "Local models can still make mistakes. If something seems wrong, note what happened and include the steps in a bug report." }
   ] },
@@ -446,7 +447,16 @@ const anatomyTopics: Topic[] = [
     ]
   }
 ];
-GUIDE_TOPICS.push(...anatomyTopics, ...morphTopics);
+GUIDE_TOPICS.push(...mapTopics, ...storyboardTopics, ...anatomyTopics, ...morphTopics);
+export const GUIDE_CHAPTERS = [
+  {title:'Getting started',ids:['explore','start','ai','play']},
+  {title:'Your world',ids:['worlds','characters']},
+  {title:'Map Studio',ids:mapTopics.map(topic=>topic.id)},
+  {title:'Adventures & Storyboard',ids:['adventures',...storyboardTopics.map(topic=>topic.id)]},
+  {title:'Anatomy',ids:anatomyTopics.map(topic=>topic.id)},
+  {title:'Morph Studio',ids:morphTopics.map(topic=>topic.id)},
+  {title:'Keep exploring',ids:['continuity','library','help']}
+];
 let lastTopic="explore";
 export function openGuide(topic="") {window.dispatchEvent(new CustomEvent("explore:guide",{detail:topic}));}
 export function GuideHost(){const [topic,setTopic]=useState<string|null>(null);useEffect(()=>{const open=(e:Event)=>setTopic((e as CustomEvent<string>).detail||lastTopic);window.addEventListener("explore:guide",open);return ()=>window.removeEventListener("explore:guide",open);},[]);return topic===null?null:<Modal title="Guide to kaampi Explore" onClose={()=>setTopic(null)} wide><div className="sb-guide-window"><GuidePanel key={topic} initialTopic={topic}/></div></Modal>;}
@@ -454,10 +464,10 @@ export function GuidePanel({initialTopic="explore"}:{initialTopic?:string}) {
   const [active, setActive] = useState(initialTopic);
   useEffect(()=>{lastTopic=active;},[active]);
   const topic = GUIDE_TOPICS.find(item => item.id === active) ?? GUIDE_TOPICS[0]!;
-  const orderedTopics = ["explore","start","ai","play","worlds","adventures","characters",...anatomyTopics.map(item=>item.id),...morphTopics.map(item=>item.id),"continuity","library","help"];
+  const orderedTopics = GUIDE_CHAPTERS.flatMap(chapter=>chapter.ids);
   const position = orderedTopics.indexOf(topic.id);
   return <main className="sb-guide" aria-label="kaampi Explore guide">
-<nav className="sb-guide__tabs" aria-label="Guide chapters"><h2>Contents</h2>{[{title:"Getting started",ids:["explore","start","ai","play"]},{title:"Your world",ids:["worlds","adventures","characters"]},{title:"Anatomy",ids:anatomyTopics.map(t=>t.id)},{title:"Morph Studio",ids:morphTopics.map(t=>t.id)},{title:"Keep exploring",ids:["continuity","library","help"]}].map(c=><div key={c.title}><h3>{c.title}</h3>{c.ids.map(id=>{const t=GUIDE_TOPICS.find(t=>t.id===id)!;return <button key={id} type="button" aria-current={active===id?"page":undefined} onClick={()=>setActive(id)}>{t.label}</button>;})}</div>)}</nav>    <section key={active} className="sb-guide__content" aria-live="polite">
+<nav className="sb-guide__tabs" aria-label="Guide chapters"><h2>Contents</h2>{GUIDE_CHAPTERS.map(c=><div key={c.title}><h3>{c.title}</h3>{c.ids.map(id=>{const t=GUIDE_TOPICS.find(t=>t.id===id)!;return <button key={id} type="button" aria-current={active===id?"page":undefined} onClick={()=>setActive(id)}>{t.label}</button>;})}</div>)}</nav>    <section key={active} className="sb-guide__content" aria-live="polite">
       <h2>{topic.title}</h2>
       <p>{topic.intro}</p>
 

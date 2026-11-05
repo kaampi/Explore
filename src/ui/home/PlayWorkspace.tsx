@@ -1,3 +1,5 @@
+import { EncounterPanel } from '../components/EncounterPanel';
+import { GateScenePanel } from '../components/GateScenePanel';
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 import { useEffect, useState } from "react";
 import type { Session } from "@state/StateSchema";
@@ -16,6 +18,8 @@ import { GameAudio } from "../audio/GameAudio";
 import { portraitSrc } from "../studio/portrait";
 import { playerCheckStats } from "../../checks/playerCheck";
 import gateBackground from "../assets/gate-play-background.jpg";
+import { BackgroundDialog } from "../themes/BackgroundSettings";
+import { MessageMenu } from "../components/MessageMenu";
 
 export function PlayWorkspace({
   onHome,
@@ -41,8 +45,11 @@ export function PlayWorkspace({
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [checkRequest, setCheckRequest] = useState(0);
+  const [partyTarget, setPartyTarget] = useState<HTMLElement | null>(null);
+  const [backgroundOpen, setBackgroundOpen] = useState(false);
+  const [backgroundMenu, setBackgroundMenu] = useState<{x:number;y:number}|null>(null);
   const withRules = !!session.ruleset;
-  const gatePreview = session.ruleset?.name === 'Gate test · d100';
+  const gatePreview = session.ruleset?.name === 'Gate test · d100' && library.active.backgroundMode === 'scene';
   const checkStats = playerCheckStats(session);
   const streaming = phase === "streaming";
   const readiness = modelReadiness(discovery, session.runtime.model);
@@ -56,7 +63,7 @@ export function PlayWorkspace({
         {portrait && <img className="sb-play-portrait" src={portrait} alt={`${person?.name ?? "Character"} portrait`} />}
         <div className="sb-play-title">
           <strong>
-            {title || primaryCharacter(session)?.name || "Your exploration"}
+            {session.encounter?.definition.title || title || primaryCharacter(session)?.name || "Your exploration"}
           </strong>
           <span>{session.scene?.location}</span>
         </div>
@@ -107,8 +114,10 @@ export function PlayWorkspace({
           </button>
         </div>
       </div>
+      {backgroundMenu && <MessageMenu x={backgroundMenu.x} y={backgroundMenu.y} onClose={()=>setBackgroundMenu(null)} items={[{label:"Choose background…",action:()=>setBackgroundOpen(true)},{label:"Customize appearance…",action:onAppearance}]} />}
+      {backgroundOpen && <BackgroundDialog onClose={()=>setBackgroundOpen(false)}/>}
       {settingsOpen && <StatusBar />}
-      {!canSend && (
+      {!canSend && !session.gateEncounter && !session.encounter && (
         <div className="sb-play-connection" role="status">
           <span>
             {readiness === "checking"
@@ -130,9 +139,11 @@ export function PlayWorkspace({
         className={`sb-play-layout${castOpen ? " sb-play-layout--cast" : ""}${inspectorOpen ? " sb-play-layout--inspector" : ""}`}
       >
         {castOpen && <CastPanel />}
-        <div className={`sb-themed-play${withRules ? " sb-themed-play--rules" : ""}${gatePreview ? " sb-themed-play--gate-preview" : ""}`} style={{...playThemeStyle(library.active), ...(gatePreview ? {backgroundImage:`url(${gateBackground})`} : {})}}>
+        <div onContextMenu={event=>{const target=event.target as HTMLElement;if(!target.closest(".chat-stage")||target.closest(".message,button,input,textarea,select,a,[role=dialog]"))return;event.preventDefault();setBackgroundMenu({x:event.clientX,y:event.clientY});}} className={`sb-themed-play${withRules ? " sb-themed-play--rules" : ""}${gatePreview ? " sb-themed-play--gate-preview" : ""}`} style={{...playThemeStyle(library.active), ...(gatePreview ? {backgroundImage:`url(${gateBackground})`} : {})}}>
+          {session.encounter ? <EncounterPanel onHome={onHome}/> : session.gateEncounter ? <GateScenePanel onHome={onHome} repo={repo}/> : <>
           <ChatPanel
             gameTools={withRules}
+            partyTarget={partyTarget}
             checkRequest={checkRequest}
             repo={repo}
             conversationTitle={title}
@@ -148,8 +159,10 @@ export function PlayWorkspace({
               {!!session.journey && <small>Finish or pause your journey before making a check.</small>}
             </section>
             <section><h3>{session.player?.name || "Your character"}</h3><dl>{checkStats.map(stat => <div key={stat.id}><dt>{stat.name}</dt><dd>{stat.value}</dd></div>)}</dl></section>
+            <section className="sb-game-toolbox__party" aria-label="Party and prospects" ref={setPartyTarget} />
             <section className="sb-game-toolbox__session"><h3>Your story stays with you</h3><p>Your conversation and resolved rolls are saved as you play.</p><button type="button" className="sb-link" disabled={streaming} onClick={() => onHome(session)}>Save & return home ↗</button></section>
           </aside>}
+          </>}
         </div>
         {inspectorOpen && <InspectorPanel />}
       </div>

@@ -1,0 +1,11 @@
+import { canMove, connected, findPath, lineOfSight } from '../game/geometry';
+import { gateDefinition, gateBarriers, type GatePosition } from '../scenarios/gateWorld';
+export { GATE_POSITIONS, POSITION_NAMES, type GatePosition } from '../scenarios/gateWorld';
+type Geometry = { gateOpen: boolean; wagonTipped: boolean; gateLocked?: boolean };
+const state = (s: Geometry) => ({ barriers: gateBarriers({ ...s, gateLocked: s.gateLocked ?? false }) });
+const definition = gateDefinition();
+export const canTraverse = (s: Geometry, from: GatePosition, to: GatePosition) => canMove(definition, state(s), from, to);
+export const isNeighbour = (from: GatePosition, to: GatePosition) => !!connected(definition, from, to);
+export const gatePath = (s: Geometry, from: GatePosition, to: GatePosition) => findPath(definition, state(s), from, to) as GatePosition[];
+export const gateLineOfSight = (s: Geometry, from: GatePosition, to: GatePosition) => lineOfSight(definition, state(s), from, to);
+export const rangedPenalty = (s: Geometry, target: GatePosition) => gateDefinition(s.wagonTipped).places.find(p => p.id === target)!.cover;

@@ -1,3 +1,6 @@
+import { chooseAdventureMap } from '../../library/adventureMap';
+import { StoryboardEditor } from './StoryboardEditor';
+import { connectedAdventureExample } from '../../library/playableCampaign';
 import { pinSessionAnatomy } from "@state/anatomy";
 import { useEffect, useRef, useState } from "react";
 import type { IndexedDBRepository, StudioResume } from "@persistence/IndexedDBRepository";
@@ -45,7 +48,6 @@ import {
 } from "@library/LibrarySchema";
 import { withOriginalTimestamps } from "@library/fromForm";
 import { removeLinksForScene } from "@library/storyboardLinks";
-import { StoryboardCanvas } from "./StoryboardCanvas";
 import { dropOversizedPortrait } from "@library/slimPortrait";
 import { BUILTIN_PRONOUNS, isBuiltinPronoun, normalizePronoun, pronounLabel } from "@state/pronouns";
 import { portraitDataUrlFromFile, PortraitError, portraitSrc } from "./portrait";
@@ -200,6 +202,7 @@ export function CampaignStudio({
   const [objects, setObjects] = useState<ObjectTemplate[]>([]);
   const [draft, setDraft] = useState<CampaignTemplate | null>(null);
   const [tab, setTab] = useState<Tab>("general");
+  const [storyboardOpen,setStoryboardOpen]=useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [freshNight, setFreshNight] = useState(false);
@@ -248,7 +251,7 @@ export function CampaignStudio({
         }
         resumeApplied.current = true;
         setDraft(found);
-        setTab("scenes");
+        setTab(found.scenes.some(scene=>scene.encounter)?"storyboard":"scenes");
         setFreshNight(true);
         setHandoffDraft(resume.handoff ?? "");
       })
@@ -272,7 +275,7 @@ export function CampaignStudio({
     const found = campaigns.find((item) => item.id === id);
     if (!found) return;
     setDraft(withCampaignRealm(found, visiblePlaces));
-    setTab("general");
+    setTab(found.scenes.some(scene=>scene.encounter)?"storyboard":"general");setStoryboardOpen(found.scenes.some(scene=>scene.encounter));
     setError(null);
     setNotice(null);
     setFreshNight(false);
@@ -294,6 +297,9 @@ export function CampaignStudio({
     setHandoffDraft("");
   }
 
+  async function loadConnectedExample(){
+    setBusy(true);setError(null);try{const built=connectedAdventureExample();await repo.saveRealm(built.realm);for(const p of built.places)await repo.savePlace(p);for(const c of built.characters)await repo.saveCharacter(c);for(const o of built.objects)await repo.saveObject(o);await refresh();setDraft(built.campaign);setTab('storyboard');setStoryboardOpen(true);setNotice('Explore the two scenes and their conditions, then choose Test this scene.');}catch(error){setError(error instanceof Error?error.message:'Could not load the example.');}finally{setBusy(false);}
+  }
   async function loadExampleCampaign() {
     const emma = visibleCharacters.find((item) => item.id === EXAMPLE_CHARACTER_ID) ?? exampleCharacterTemplate();
     const built = newCampaignTemplate({
@@ -409,12 +415,13 @@ export function CampaignStudio({
         campaigns.find((item) => item.id === draft.id)
       );
       await repo.saveCampaign(saved);
+      const [startPlaces,startRealms]=await Promise.all([repo.listPlaces(),repo.listRealms()]);
       const result = sessionFromCampaignScene(
         {
           campaign: saved,
           scene,
-          places: visiblePlaces,
-          realms: visibleRealms,
+          places: startPlaces,
+          realms: startRealms,
           characters: visibleCharacters,
           objects: visibleObjects,
           voices: visibleVoices,
@@ -540,6 +547,7 @@ export function CampaignStudio({
             <button type="button" className="setup-start" onClick={createNew}>
               New campaign
             </button>
+            <button type="button" className="setup-text-btn" disabled={busy} onClick={()=>void loadConnectedExample()}>Connected adventure example</button>
             <button type="button" className="setup-text-btn" onClick={() => void loadExampleCampaign()}>
               Load the example campaign
             </button>
@@ -589,7 +597,7 @@ export function CampaignStudio({
   }
 
   return (
-    <div className="studio-split campaign-workspace">
+    <div className={`studio-split campaign-workspace${tab==='storyboard'?' campaign-workspace--flow':''}`}>
       <nav className="campaign-nav" aria-label="Campaign parts">
         <p className="campaign-nav__kicker">Campaign</p>
         <p className="campaign-nav__name">{draft.name.trim() || "New campaign"}</p>
@@ -599,7 +607,7 @@ export function CampaignStudio({
             type="button"
             className={tab === item.id ? "campaign-nav__btn is-on" : "campaign-nav__btn"}
             aria-current={tab === item.id ? "page" : undefined}
-            onClick={() => setTab(item.id)}
+            onClick={() => {setTab(item.id);if(item.id==="storyboard")setStoryboardOpen(true);}}
           >
             {item.label}
           </button>
@@ -668,13 +676,14 @@ export function CampaignStudio({
                 onChange={(e) => {
                   const value = e.target.value;
                   if (!value) {
-                    const { realmId: _drop, ...rest } = draft;
+                    const { realmId: _drop,mapWorldId:_map, ...rest } = draft;
                     setDraft({
                       ...rest,
-                      scenes: draft.scenes.map((scene) => ({ ...scene, placeId: "", startRoomId: "" }))
+                      scenes: draft.scenes.map(({mapNodeId:_node,usePlaceIntro:_intro,...scene}) => ({ ...scene, placeId: "", startRoomId: "" }))
                     });
                     return;
                   }
+                  if(draft.mapWorldId){const selected=visibleRealms.find(w=>w.id===value);if(selected){setDraft(chooseAdventureMap(draft,selected,visiblePlaces));return;}}
                   const allowed = new Set(
                     visiblePlaces.filter((item) => item.realmId === value).map((item) => item.id)
                   );
@@ -1108,6 +1117,12 @@ export function CampaignStudio({
 
         {tab === "scenes" && (
           <section className="setup-section">
+            {draft.scenes.some(scene=>scene.encounter)?<>
+              <p className="panel-heading">Playable scenes</p>
+              <p className="form-section__lede">Edit scenes, actions and their connections in Storyboard. Test creates a new playthrough; continue an existing one from My conversations.</p>
+              <button type="button" className="setup-text-btn" onClick={()=>{setTab('storyboard');setStoryboardOpen(true);}}>Open Storyboard Editor →</button>
+              {draft.scenes.map(scene=><div key={scene.id} className="setup-section"><h3>{scene.name||'New scene'}</h3><p>{scene.encounter?.definition.description||'Not yet playable.'}</p><button type="button" disabled={busy||!scene.encounter||!scene.placeId} onClick={()=>void startScene(scene)}>Test this scene →</button></div>)}
+            </>:<>
             <div className="setup-section__head">
               <p className="panel-heading">Scenes in this campaign</p>
               <button
@@ -1168,21 +1183,13 @@ export function CampaignStudio({
                 canRemove={draft.scenes.length > 1}
               />
             ))}
+            </>}
           </section>
         )}
 
         {tab === "storyboard" && (
           <section className="setup-section">
-            <p className="panel-heading">How your scenes connect</p>
-            <StoryboardCanvas
-              scenes={draft.scenes}
-              links={draft.sceneLinks}
-              chapters={draft.chapters}
-              campaignName={draft.name}
-              onScenesChange={(scenes) => setDraft({ ...draft, scenes })}
-              onLinksChange={(sceneLinks) => setDraft({ ...draft, sceneLinks })}
-              onChaptersChange={(chapters) => setDraft({ ...draft, chapters })}
-            />
+            <h2>Your adventure, connected</h2><p className="form-section__lede">Build scenes and choices in a spacious editor. Your campaign details and draft stay here when you close it.</p><button type="button" className="setup-start" onClick={()=>setStoryboardOpen(true)}>Open Storyboard Editor →</button>{storyboardOpen&&<StoryboardEditor campaign={draft} places={draft.mapWorldId?visiblePlaces:campaignPlaces} worlds={visibleRealms} repo={repo} onRefresh={refresh} characters={campaignPeople} objects={campaignObjects} busy={busy} onChange={next=>{setDraft(next);setNotice(null);setError(null);}} onPlay={scene=>void startScene(scene)} onSave={()=>void save()} onClose={()=>setStoryboardOpen(false)} error={error} notice={notice}/>}
           </section>
         )}
 
@@ -1228,7 +1235,7 @@ function SceneCard({
   onStart: () => void;
   canRemove: boolean;
 }) {
-  const canStart = Boolean(scene.placeId) && scene.people.length > 0;
+  const canStart = Boolean(scene.placeId) && (!!scene.encounter||scene.people.length > 0);
 
   function togglePerson(id: string) {
     onPatch((current) => {

@@ -13,7 +13,8 @@ it("installs Mona and her activated morph once without overwriting edits or rest
   expect(mona.source).toBe("example");
   const profile = await repo.loadCharacterMorph(mona.id) as { active: boolean; expressions: { name: string; points: unknown[]; image: string }[]; eyeCorrections: unknown };
   expect(profile.active).toBe(true);
-  expect(profile.expressions).toHaveLength(5);
+  expect(profile.expressions).toHaveLength(7);
+  expect(profile.expressions.map(expression => expression.name)).toEqual(expect.arrayContaining(['neutral', 'stressed']));
   expect(profile.expressions.every(expression => expression.points.length === 57 && expression.image.startsWith("/examples/mona/"))).toBe(true);
   expect(profile.eyeCorrections).toBeDefined();
   await repo.saveCharacter({ ...mona, personality: "My edited version" });

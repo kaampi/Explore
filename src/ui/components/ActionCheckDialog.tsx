@@ -1,3 +1,5 @@
+import { DiceRollSurface } from './DiceRollSurface';
+import { RollResult } from './RollResult';
 import { useEffect, useRef, useState } from "react";
 import type { Session } from "@state/StateSchema";
 import { charactersHere } from "@state/sceneFocus";
@@ -55,19 +57,13 @@ export function ActionCheckDialog({ session, onClose, onContinue }: {
   }
 
   const soundToggle=<button type="button" className="action-check__sound" aria-pressed={soundEnabled} onClick={()=>{const value=!soundEnabled;setSoundEnabled(value);soundRef.current?.setEnabled(value);try{localStorage.setItem('sandbox-dice-sound',value?'on':'off');}catch{}}}>Dice sound: {soundEnabled?'On':'Off'}</button>;
-  if(result)return <section className="chat-dice-roll" aria-label="Action check on the chat surface"><div className="chat-dice-roll__heading"><strong>Action check · d100</strong>{soundToggle}</div>
+  if(result)return <DiceRollSurface label="Action check on the chat surface" onClosed={()=>{if(continuedRef.current)return;continuedRef.current=true;onContinue(result);}}>{(close,closing)=><><div className="chat-dice-roll__heading"><strong>Action check · d100</strong>{soundToggle}</div>
         <>
           <p className="action-check__attempt">{result.action}</p>
           {!settled || !fallback ? <DiceTray roll={result.roll} sound={soundRef.current} onSettled={(didFallback) => { setSettled(true); setFallback(didFallback); }} /> : null}
-          <div className="action-check__outcome" role="status" aria-live="polite">
-            {settled ? <><strong className={result.success ? "action-check__success" : "action-check__failure"}>{result.success ? "Success" : "Setback"}</strong>
-              <span>Rolled <b>{result.roll}</b> · needed {result.target} or lower</span>
-              <small>{result.attributeName} {result.value} · {DIFFICULTIES[result.difficulty].label}</small>
-              <button type="button" className="action-check__ok"
-                onClick={() => { if (continuedRef.current) return; continuedRef.current = true; onContinue(result); }}>OK</button></> : <strong>Rolling…</strong>}
-          </div>
+          {settled?<RollResult roll={result.roll} target={result.target} detail={result.attributeName} closing={closing} onConfirm={close}/>:<div className="action-check__outcome" role="status"><strong>Rolling…</strong></div>}
           {settled && fallback && <p className="action-check__hint">Showing the resolved roll without 3D animation.</p>}
-        </></section>;
+        </></>}</DiceRollSurface>;
   return (
     <dialog ref={dialogRef} className="action-check" aria-labelledby="action-check-title"
       onCancel={(event) => { event.preventDefault(); if (!result) onClose(); }}>

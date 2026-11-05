@@ -1,4 +1,10 @@
+import { advanceAdventure } from '../game/AdventureEngine';
+import type { AdventureTransition } from '../game/AdventureSchema';
 import { initializeSpatialReferences, resolveLocation, locationLabel, type SpatialPlace } from "./spatialLocation";
+import { resolveGateAction, POSITION_NAMES, type GateRequest } from "../checks/gateEncounter";
+import { resolveEncounterAction } from '../game/EncounterEngine';
+import type { EncounterRequest } from '../game/EncounterSchema';
+import { CombatFigureImageSchema } from './combatArtwork';
 import { beginJourney, advanceJourney, recordJourneyRest, removePlannedJourneyStop, travelWorkMinutes, TRAVEL_STAGE_MINUTES, JourneyError } from "./journey";
 import { validateAnatomicalRelation } from "./anatomy";
 import { applyPhysicalChange, type PhysicalChange } from "./physicalContinuity";
@@ -72,6 +78,54 @@ export const UNDOABLE_EVENT_TYPES = new Set([
  * "UI får inte direkt mutera kanoniskt state utan att gå genom State Engine").
  */
 export class StateEngine {
+  setCombatArtwork(actorId: string, image: string | null): void {
+    const participants = this.session.encounter ? Object.keys(this.session.encounter.state.actors) : this.session.gateEncounter ? ['player', 'mona', 'archer'] : [];
+    if (!participants.includes(actorId)) throw new Error('Unknown combat participant.');
+    const imageDataUrl = image === null ? null : CombatFigureImageSchema.parse(image);
+    this.session.combatArtwork ??= {};
+    if (imageDataUrl === null) delete this.session.combatArtwork[actorId];
+    else this.session.combatArtwork[actorId] = { imageDataUrl };
+    this.session.stateVersion++;
+  }
+  executeEncounterAction(request: EncounterRequest, rng: () => number = Math.random): void {
+    if(this.session.adventure&&request.expectedSceneId!==this.session.adventure.currentSceneId)throw new Error('The scene changed. Review your action again.');
+    if (!this.session.encounter) throw new Error('This session has no authored encounter.');
+    const next = resolveEncounterAction(this.session.encounter, request, rng), entry = next.history.at(-1)!;
+    const turn = Math.max(0, ...this.session.conversation.map(value => typeof value === 'object' && value !== null && 'turn' in value ? Number(value.turn) || 0 : 0)) + 1;
+    this.session.encounter = next;
+    this.session.stateVersion++;
+    this.session.conversation.push({ turn, role: 'player', content: entry.label,actionId:entry.id,actionSceneId:next.definition.id }, { turn: turn + 1, role: 'character', toldBy: 'narrator', content: entry.text,actionId:entry.id,actionSceneId:next.definition.id });
+    this.session.storyFlags = [...new Set([...this.session.storyFlags, ...next.state.flags])];
+    if (this.session.player) this.session.player.position = { ...this.session.player.position, value: next.definition.places.find(p => p.id === next.state.actors[next.definition.playerId]!.position)!.name };
+    const event = this.eventLog.append({ turn: this.session.stateVersion, timestamp: new Date().toISOString(), type: 'encounter_action_resolved', payload: entry });
+    this.session.events.push(event);
+  }
+  transitionAdventure(request:AdventureTransition):void {
+    const next=advanceAdventure(this.session,request),turn=Math.max(0,...this.session.conversation.map(t=>typeof t==='object'&&t!==null&&'turn' in t?Number(t.turn)||0:0))+1;
+    this.session.adventure=next.run;this.session.encounter=next.game;this.session.storyFlags=next.flags;this.session.sceneId=next.target.id;
+    if(this.session.scene)this.session.scene={...this.session.scene,location:next.target.location,placeId:next.target.placeId,note:next.game.definition.description};
+    if(this.session.player){this.session.player.position={...this.session.player.position,value:next.target.location};if(next.run.geography)this.session.player.locationRef={placeId:next.target.placeId,side:'at'};}
+    this.session.stateVersion++;
+    this.session.conversation.push({turn,role:'character',toldBy:'narrator',content:next.game.definition.description,adventureSceneId:next.target.id});
+    const event=this.eventLog.append({turn:this.session.stateVersion,timestamp:new Date().toISOString(),type:'adventure_scene_entered',payload:next.run.transitions.at(-1)});this.session.events.push(event);
+  }
+  /** Closed test scene: every consequence and its transcript commit together. */
+  executeGateAction(request: GateRequest, rng:()=>number=Math.random):void {
+    if(!this.session.gateEncounter)throw new Error('This is not the gatehouse test.');
+    const next=resolveGateAction(this.session.gateEncounter,request,rng);
+    const entry=next.history.at(-1)!;
+    const base=Math.max(0,...this.session.conversation.map(value=>typeof value==='object'&&value!==null&&'turn' in value?Number(value.turn)||0:0))+1;
+    this.session.gateEncounter=next;
+    this.session.stateVersion++;
+    this.session.conversation.push({turn:base,role:'player',content:entry.intention?`${entry.intention}\n\nAttempt: ${entry.action}`:entry.action},{turn:base+1,role:'character',...(entry.speaker==='mona'?{speaker:Object.keys(this.session.characters)[0]}:{toldBy:'narrator'}),content:entry.text});
+    this.session.storyFlags=[...new Set([...this.session.storyFlags,...next.flags])];
+    if(this.session.player)this.session.player.position={...this.session.player.position,value:POSITION_NAMES[next.position]};
+    const guard=Object.values(this.session.characters)[0];
+    if(guard){guard.position={...guard.position,value:POSITION_NAMES[next.monaPosition]};guard.mood={...guard.mood,value:next.monaHp===0?'incapacitated':next.monaDisposition==='surrendered'?'surrendered':next.monaDisposition==='fled'?'retreated':next.monaDefending?'defensive':next.phase==='combat'?'hostile':guard.mood.value};}
+    for(const object of this.session.objects??[])if(object.id==='gatehouse-port')object.isOpen=next.gateOpen;
+    const event=this.eventLog.append({turn:this.session.stateVersion,timestamp:new Date().toISOString(),type:'gate_action_resolved',payload:entry});
+    this.session.events.push(event);
+  }
   constructor(
     private session: Session,
     private eventLog: EventLog
@@ -329,6 +383,7 @@ export class StateEngine {
     source: AuthoritySource,
     expectedStateVersion: number
   ): MutationResult {
+    if(this.session.gateEncounter||this.session.encounter)return {committed:false,reason:'Transcript editing is disabled in authored encounters.'};
     const isAiSource = source === "ai_approved_state_mutation" || source === "ai_inference";
     if (isAiSource) {
       return { committed: false, reason: "AI-sourced requests can never edit dialogue." };
@@ -731,6 +786,7 @@ export class StateEngine {
    * the AI proposes or approves.
    */
   undoLastMutation(source: AuthoritySource, expectedStateVersion: number): MutationResult {
+    if(this.session.gateEncounter||this.session.encounter)return {committed:false,reason:'Rewinding is disabled in authored encounters.'};
     const isAiSource = source === "ai_approved_state_mutation" || source === "ai_inference";
     if (isAiSource) {
       return { committed: false, reason: "AI-sourced requests can never trigger undo." };
