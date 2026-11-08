@@ -39,6 +39,7 @@ export const WorldMapSchema = z.object({
     parentId: z.string().optional(), placeId: z.string().optional(),
     x: z.number().min(0).max(100), y: z.number().min(0).max(100),
     description: z.string().default(""), population: z.string().default(""),
+    factionIds: z.array(z.string().min(1)).optional(),
     characterIds: z.array(z.string()).default([])
   })),
   routes: z.array(z.object({

@@ -35,6 +35,7 @@ export function LibraryBackupBar({
         backup.rulesets.length +
         backup.objects.length +
         backup.campaigns.length +
+        (backup.factions?.length ?? 0) +
         (backup.lorebooks?.length ?? 0);
       setNotice(count === 0 ? "Nothing saved to export yet." : `Exported ${count} saved cards.`);
     } catch (err) {

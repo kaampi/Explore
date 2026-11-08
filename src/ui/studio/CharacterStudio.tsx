@@ -16,6 +16,7 @@ import {
 import type { CharacterPronoun } from "@state/StateSchema";
 import { BUILTIN_PRONOUNS, isBuiltinPronoun, normalizePronoun, pronounLabel } from "@state/pronouns";
 import { PickChips } from "./ChoiceChips";
+import { FactionField } from "./FactionField";
 import { withOriginalTimestamps } from "@library/fromForm";
 import { importSillyTavernFile } from "@library/sillyTavernImport";
 import { slugifyCharacterId } from "@session/createSession";
@@ -63,6 +64,7 @@ type Draft = {
   pronoun: CharacterPronoun | null;
   portraitDataUrl: string;
   tags: string;
+  factionIds?: string[] | undefined;
   source: LibrarySource;
   createdAt?: string;
 };
@@ -106,6 +108,7 @@ function draftFrom(template: CharacterTemplate): Draft {
       template.pronoun && template.pronoun.length <= 32 ? template.pronoun : null,
     portraitDataUrl: portraitSrc(template.portraitDataUrl) ?? "",
     source: template.source,
+    factionIds: template.factionIds,
     tags: formatTagList(ensureImportedTag(template.tags ?? [], template.source)),
     createdAt: template.createdAt
   };
@@ -292,6 +295,7 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
       ...(current.anatomyTemplateId ? { anatomyTemplateId: current.anatomyTemplateId } : {}),
       mood: current.mood,
       tags: parseTagList(current.tags),
+      factionIds: current.factionIds,
       position: "",
       scenario: "",
       source: current.source,
@@ -702,6 +706,7 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
                 {draft.portraitDataUrl ? "Change portrait" : "Add portrait"}
               </button>
             </div>}
+            <FactionField repo={repo} value={draft.factionIds} onChange={factionIds => setDraft({ ...draft, factionIds })} />
             {saved && draft.id && <CharacterImages key={draft.id} characterId={draft.id} repo={repo} portrait={draft.portraitDataUrl} onPortrait={applyPortrait} />}
             <div className="setup-field">
               <span className="setup-field__label">Pronoun</span>

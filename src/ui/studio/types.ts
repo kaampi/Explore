@@ -6,6 +6,7 @@ export type StudioView =
   | "anatomy"
   | "places"
   | "place-templates"
+  | "factions"
   | "maps"
   | "objects"
   | "voices"

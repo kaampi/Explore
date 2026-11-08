@@ -12,7 +12,11 @@ it('persists reusable templates and keeps placed copies independent',async()=>{
  await repo.savePlaceBlueprints(templates.map(t=>t.id===ruin.id?{...t,name:'Ancient ruin'}:t));
  expect((await new IndexedDBRepository(factory,'place-blueprint-test').listPlaceBlueprints()).find(t=>t.id===ruin.id)?.name).toBe('Ancient ruin');
  expect(forest.name).toBe('Ruin');expect(village.name).toBe('Ruin');
- const square=instantiateBlueprint(starterBlueprints.find(t=>t.kind==='Area')!);
+ const template={...starterBlueprints.find(t=>t.kind==='Area')!,factionIds:['guild']};
+ const square=instantiateBlueprint(template);
+ square.factionIds?.push('watch');
+ expect(template.factionIds).toEqual(['guild']);
+ expect(WorldMapSchema.parse({nodes:[square],routes:[]}).nodes[0]?.factionIds).toEqual(['guild','watch']);
  expect(square.isArea).not.toBe(true); // A generic region is not a terrain subarea clipped to its parent.
  expect(WorldMapSchema.parse({nodes:[square],routes:[]}).nodes[0]?.blueprintId).toBe(square.blueprintId);
 });

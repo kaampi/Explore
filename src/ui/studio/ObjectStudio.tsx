@@ -14,6 +14,7 @@ import {
 import { exampleObjectTemplates, mergeWithExamples } from "@library/exampleTemplates";
 import { withOriginalTimestamps } from "@library/fromForm";
 import { FormSection } from "./FormSection";
+import { FactionField } from "./FactionField";
 import { StudioList } from "./StudioList";
 import { SheetNameField } from "./SheetNameField";
 import { confirmRemove, shelfCaption, sourceCaption } from "./studioShared";
@@ -23,6 +24,7 @@ type Draft = {
   name: string;
   note: string;
   tags: string;
+  factionIds?: string[] | undefined;
   storyId: string;
   placeId: string;
   weight: string;
@@ -72,6 +74,7 @@ function draftFrom(template: ObjectTemplate): Draft {
     name: template.name,
     note: template.note,
     tags: formatTagList(template.tags),
+    factionIds: template.factionIds,
     storyId: template.storyId ?? "",
     placeId: template.startingLocation?.kind === "place" ? template.startingLocation.placeId : template.placeId ?? "",
     weight: template.weight !== undefined ? String(template.weight) : "",
@@ -164,6 +167,7 @@ export function ObjectStudio({ repo }: { repo: IndexedDBRepository }) {
         name,
         note: draft.note.trim(),
         tags: parseTagList(draft.tags),
+        factionIds: draft.factionIds,
         ...(draft.storyId ? { storyId: draft.storyId } : {}),
         ...(draft.locationKind === "place" ? { placeId: draft.placeId, startingLocation: { kind: "place" as const, placeId: draft.placeId } } :
           draft.locationKind === "character" ? { startingLocation: { kind: "character" as const, characterId: draft.characterId } } :
@@ -269,6 +273,7 @@ export function ObjectStudio({ repo }: { repo: IndexedDBRepository }) {
                 placeholder="relic, key, weapon"
               />
             </label>
+            <FactionField repo={repo} value={draft.factionIds} onChange={factionIds => setDraft({ ...draft, factionIds })} />
             <FormSection title="Picture" lede="Optional visual reference.">
               {draft.imageDataUrl && <div><img src={draft.imageDataUrl} alt={draft.name || "Object"} style={{maxWidth: 240, maxHeight: 200, objectFit: "contain", borderRadius: 12}} /><button type="button" onClick={() => setDraft({...draft, imageDataUrl: ""})}>Remove picture</button></div>}
               <input type="file" accept="image/png,image/jpeg,image/webp" aria-label="Object picture" onChange={event => {

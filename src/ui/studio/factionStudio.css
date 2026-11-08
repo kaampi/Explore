@@ -1,0 +1,288 @@
+.faction-studio {
+  grid-template-columns: minmax(190px, 250px) minmax(0, 1fr);
+}
+
+.faction-membership {
+  margin: 12px 0;
+  padding: 8px 12px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.faction-membership legend {
+  padding: 0 4px;
+  font-weight: 600;
+}
+
+fieldset.faction-membership > label {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 4px 0;
+}
+
+.faction-membership input[type="checkbox"] {
+  width: auto;
+  flex: none;
+}
+
+.faction-studio .studio-sheet.faction-sheet {
+  --faction-gutter: clamp(16px, 3vw, 36px);
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+  padding: 0;
+}
+
+.faction-sheet > form {
+  max-width: 1060px;
+}
+
+.faction-sheet :is(.faction-form, .faction-actions) {
+  margin-inline: var(--faction-gutter);
+}
+
+.faction-sheet .faction-intro {
+  max-width: calc(1060px - 2 * var(--faction-gutter));
+  margin: var(--faction-gutter) var(--faction-gutter) 0;
+}
+
+.faction-studio .studio-list__head .setup-text-btn {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.faction-cover {
+  position: relative;
+  isolation: isolate;
+  min-height: 320px;
+  display: grid;
+  align-items: end;
+  padding: clamp(18px, 3vw, 32px);
+  overflow: hidden;
+  background: radial-gradient(ellipse at top right, #526c62, transparent 70%), #182a2b;
+  color: #fbfaf4;
+}
+
+.faction-cover > div {
+  min-width: 0;
+}
+
+.faction-cover img,
+.faction-cover::after {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+}
+
+.faction-cover img {
+  object-fit: cover;
+  object-position: center top;
+}
+
+.faction-cover::after {
+  content: "";
+  background: linear-gradient(180deg, transparent 5%, #101a1ce8 100%);
+}
+
+.faction-cover > div > span {
+  font-size: 0.73rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.faction-cover h2 {
+  margin: 6px 0 0;
+}
+
+.faction-cover .studio-sheet__name {
+  margin: 0;
+  border-bottom-color: transparent;
+}
+
+.faction-cover .studio-sheet__name:focus-within {
+  border-bottom-color: currentColor;
+}
+
+.faction-cover .studio-sheet__name-icon,
+.faction-cover .studio-sheet__title {
+  color: inherit;
+}
+
+.faction-cover .studio-sheet__title {
+  font-size: clamp(1.65rem, 4vw, 2.8rem);
+  line-height: 1.12;
+}
+
+.faction-cover .studio-sheet__title::placeholder {
+  color: #fbfaf4d9;
+}
+
+.faction-form {
+  display: grid;
+  gap: 16px;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+  margin: 16px 0 0;
+}
+
+.faction-card {
+  padding: clamp(16px, 2.5vw, 24px);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+  min-width: 0;
+}
+
+.faction-card > :first-child {
+  margin-top: 0;
+}
+
+.faction-card h3 {
+  margin-bottom: 12px;
+}
+
+.faction-card p {
+  margin: 0 0 16px;
+  color: var(--muted);
+}
+
+.faction-card textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+}
+
+.faction-relationships {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 255px), 1fr));
+  gap: 12px;
+}
+
+.faction-relationship {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  min-width: 0;
+}
+
+.faction-relationship > .faction-relationship__field {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  margin: 0;
+}
+
+.faction-relationship__field select {
+  min-width: 0;
+  width: 100%;
+}
+
+.faction-relationship__list,
+.faction-gallery {
+  list-style: none;
+  padding: 0;
+}
+
+.faction-relationship__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 0;
+}
+
+.faction-relationship__list li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow-wrap: anywhere;
+}
+
+.faction-relationship__list button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 1.15em;
+  cursor: pointer;
+}
+
+.faction-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 12px 0 0;
+}
+
+.faction-gallery__image {
+  position: relative;
+  width: 142px;
+  height: 150px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.faction-gallery img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.faction-gallery__cover,
+.faction-gallery__remove {
+  position: absolute;
+  border: 0;
+  border-radius: 3px;
+  background: #151515de;
+  color: #fff;
+}
+
+.faction-gallery__cover {
+  bottom: 6px;
+  left: 6px;
+  padding: 3px 6px;
+  font-size: 0.75rem;
+}
+
+.faction-gallery__remove {
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+}
+
+.faction-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  position: sticky;
+  bottom: 0;
+  margin-top: 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+@media (max-width: 650px) {
+  .faction-studio {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .faction-studio .studio-list {
+    max-height: 28vh;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+}

@@ -1,0 +1,17 @@
+.add-picture-tile {
+  width: 142px;
+  height: 150px;
+  flex: 0 0 142px;
+  border: 1px dashed var(--sb-border, #778);
+  border-radius: 6px;
+  background: transparent;
+  font-size: 28px;
+  color: inherit;
+  cursor: pointer;
+}
+
+.add-picture-tile:hover:not(:disabled),
+.add-picture-tile:focus-visible {
+  background: var(--panel);
+  border-color: currentColor;
+}

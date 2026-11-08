@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 import { MorphStudio } from "./MorphStudio";
+import { AddPictureTile } from "./AddPictureTile";
 
 export type CharacterImage = { id: string; name: string; image: string; kind: "ordinary" | "emotion"; emotion: string };
 type StoredMorph = { version: 1; active: boolean; expressions: { name: string; image: string; points: [number,number][] }[]; gallery?: CharacterImage[]; [key: string]: unknown };
@@ -78,7 +79,7 @@ export function CharacterImages({ characterId, repo, portrait, onPortrait }: { c
         {index===0 && <span style={{position:"absolute",bottom:6,left:6,background:"rgba(0,0,0,.72)",color:"white",padding:"3px 6px",fontSize:11,borderRadius:3}}>Default</span>}
         <button type="button" aria-label={`Remove ${item.name}`} title="Remove image" onClick={()=>void removePicture(item)} style={{position:"absolute",right:4,top:4,minWidth:24,height:24,padding:0,background:"rgba(30,30,30,.8)",color:"#fff",border:"none",borderRadius:3,cursor:"pointer"}}>×</button>
       </div>)}
-      <button type="button" aria-label="Add pictures" title="Add pictures" onClick={()=>picker.current?.click()} style={{width:142,height:150,flex:"0 0 142px",border:"1px dashed var(--sb-border, #778)",borderRadius:6,background:"transparent",fontSize:28,cursor:"pointer",color:"inherit"}}>+</button>
+      <AddPictureTile onClick={() => picker.current?.click()} />
       <button type="button" aria-label="Open Morph Studio" title="Open Morph Studio" onClick={()=>{setSaveRequest(null);setOpen(true);}} style={{width:142,height:150,flex:"0 0 142px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,border:"1px solid #a9e8b4",borderRadius:6,background:"linear-gradient(145deg,#d4f9da,#a7e8b6)",color:"#173b29",fontSize:22,fontWeight:800,lineHeight:1.12,letterSpacing:1.3,textAlign:"center",cursor:"pointer",boxShadow:"0 2px 8px rgba(0,0,0,.12)"}}><span>MORPH</span><span>STUDIO</span>{emotion.length>0 && <span style={{fontSize:12,fontWeight:600,letterSpacing:0,marginTop:8}}>{emotion.length} expressions</span>}</button>
     </div>
     <div style={{marginTop:10,display:"flex",alignItems:"center",gap:12}}><button type="button" onClick={()=>setArchiveOpen(true)} style={{fontSize:13}}>Visa bildarkiv{pictures.length ? ` (${pictures.length})` : ""}</button>{pictures.length>3 && <span style={{fontSize:12,opacity:.75}}>Visar 3 av {pictures.length} bilder</span>}</div>
@@ -92,7 +93,7 @@ export function CharacterImages({ characterId, repo, portrait, onPortrait }: { c
             {index===0 && <span style={{position:"absolute",bottom:6,left:6,background:"rgba(0,0,0,.72)",color:"white",padding:"3px 6px",fontSize:11,borderRadius:3}}>Default</span>}
             <button type="button" aria-label={`Remove ${item.name}`} onClick={()=>void removePicture(item)} style={{position:"absolute",right:4,top:4,minWidth:24,height:24,padding:0,background:"rgba(30,30,30,.8)",color:"white",border:0,borderRadius:3,cursor:"pointer"}}>×</button>
           </div>)}
-          <button type="button" aria-label="Add pictures to archive" onClick={()=>picker.current?.click()} style={{width:142,height:150,border:"1px dashed #778",borderRadius:6,background:"transparent",color:"inherit",fontSize:28,cursor:"pointer"}}>+</button>
+          <AddPictureTile label="Add pictures to archive" onClick={() => picker.current?.click()} />
         </div>
         {!pictures.length && <p>Inga bilder ännu. Klicka på + för att lägga till bilder.</p>}
       </div>

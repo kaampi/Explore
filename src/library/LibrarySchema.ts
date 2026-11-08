@@ -31,6 +31,7 @@ export const CharacterLoreEntrySchema = z.object({
 export type CharacterLoreEntry = z.infer<typeof CharacterLoreEntrySchema>;
 
 export const CharacterTemplateSchema = z.object({
+  factionIds: z.array(z.string().min(1)).optional(),
   id: z.string().min(1),
   /** Given name — what narration calls them once it has been spoken. */
   name: z.string().min(1),
@@ -180,6 +181,7 @@ export type RulesetTemplate = z.infer<typeof RulesetTemplateSchema>;
  * (relic, key). storyId / placeId are optional homes — not locks.
  */
 export const ObjectTemplateSchema = z.object({
+  factionIds: z.array(z.string().min(1)).optional(),
   id: z.string().min(1),
   name: z.string().min(1),
   note: z.string().default(""),

@@ -1,3 +1,4 @@
+import { FactionSchema, type Faction } from "./factions";
 import { LorebookSchema, type Lorebook } from "../lore/LorebookSchema";
 import {
   parseCampaignTemplate,
@@ -33,11 +34,14 @@ export type LibraryBackup = {
   rulesets: RulesetTemplate[];
   objects: ObjectTemplate[];
   campaigns: CampaignTemplate[];
+  factions?: Faction[];
   lorebooks?: Lorebook[];
   characterMorphs?: Record<string, unknown>;
 };
 
 export type LibraryBackupStore = {
+  listFactions?(): Promise<Faction[]>;
+  saveFaction?(faction: Faction): Promise<void>;
   listLorebooks?(): Promise<{ entries: Lorebook[]; unreadable: number }>;
   saveLorebook?(book: Lorebook): Promise<void>;
   loadCharacterMorph?(id: string): Promise<unknown | null>;
@@ -94,7 +98,7 @@ function emptyBackup(exportedAt: string): LibraryBackup {
 }
 
 export async function collectLibraryBackup(store: LibraryBackupStore): Promise<LibraryBackup> {
-  const [characters, places, realms, stories, voices, rulesets, objects, campaigns, lorebooks] = await Promise.all([
+  const [characters, places, realms, stories, voices, rulesets, objects, campaigns, lorebooks, factions] = await Promise.all([
     store.listCharacters(),
     store.listPlaces(),
     store.listRealms(),
@@ -103,7 +107,8 @@ export async function collectLibraryBackup(store: LibraryBackupStore): Promise<L
     store.listRulesets(),
     store.listObjects(),
     store.listCampaigns(),
-    store.listLorebooks?.() ?? Promise.resolve({ entries: [], unreadable: 0 })
+    store.listLorebooks?.() ?? Promise.resolve({ entries: [], unreadable: 0 }),
+    store.listFactions?.() ?? Promise.resolve([])
   ]);
   if (lorebooks.unreadable) throw new LibraryBackupError("Some lorebooks could not be read. Export originals individually before replacing storage.");
   const characterMorphs: Record<string, unknown> = Object.create(null);
@@ -116,6 +121,7 @@ export async function collectLibraryBackup(store: LibraryBackupStore): Promise<L
   return {
     characterMorphs,
     lorebooks: lorebooks.entries,
+    factions,
     kind: LIBRARY_BACKUP_KIND,
     format: LIBRARY_BACKUP_FORMAT,
     exportedAt: new Date().toISOString(),
@@ -156,6 +162,7 @@ export function parseLibraryBackup(input: unknown): { backup: LibraryBackup; ski
     return out;
   };
 
+  backup.factions = take(row.factions, item => FactionSchema.parse(item));
   backup.lorebooks = take(row.lorebooks, item => LorebookSchema.parse(item));
   backup.characters = take(row.characters, recoverCharacterTemplate);
   if (row.characterMorphs && typeof row.characterMorphs === "object" && !Array.isArray(row.characterMorphs)) {
@@ -194,6 +201,10 @@ export async function restoreLibraryBackup(
     }
   };
 
+  for (const faction of backup.factions ?? []) await write(async () => {
+    if (!store.saveFaction) throw new LibraryBackupError("Faction storage is not available.");
+    await store.saveFaction(faction);
+  });
   for (const item of backup.realms) await write(() => store.saveRealm(item));
   for (const item of backup.places) await write(() => store.savePlace(item));
   for (const item of backup.characters) await write(async () => {
@@ -223,11 +234,14 @@ export function backupFilename(exportedAt: string): string {
 
 /** Portable character card using the same import format as a library backup. */
 export async function collectCharacterBackup(
-  store: Pick<LibraryBackupStore, "loadCharacterMorph">,
+  store: Pick<LibraryBackupStore, "loadCharacterMorph" | "listFactions">,
   character: CharacterTemplate
 ): Promise<LibraryBackup> {
   const backup = emptyBackup(new Date().toISOString());
   backup.characters = [character];
+  if (character.factionIds?.length && store.listFactions) {
+    backup.factions = (await store.listFactions()).filter(faction => character.factionIds?.includes(faction.id));
+  }
   const profile = await store.loadCharacterMorph?.(character.id);
   if (profile != null) backup.characterMorphs = { [character.id]: profile };
   return backup;

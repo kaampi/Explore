@@ -5,7 +5,8 @@ import {
   restoreLibraryBackup,
   type LibraryBackupStore
 } from "@library/libraryBackup";
-import { exampleCharacterTemplate, exampleVoiceTemplates } from "@library/exampleTemplates";
+import { exampleCharacterTemplate, exampleRealmDunbaar, exampleVoiceTemplates } from "@library/exampleTemplates";
+import { newObjectTemplate } from "@library/LibrarySchema";
 
 function memoryStore(seed: Partial<LibraryBackupStore> = {}): LibraryBackupStore & { voices: unknown[] } {
   const voices: unknown[] = [];
@@ -87,4 +88,70 @@ it("keeps existing morphs when importing older cards without morph data", async 
   let changed = false;
   await restoreLibraryBackup(memoryStore({ saveCharacterMorph: async () => { changed = true; } }), backup);
   expect(changed).toBe(false);
+});
+
+it("preserves faction definitions and affiliations across database upgrades and backups", async () => {
+  const { collectLibraryBackup, collectCharacterBackup } = await import("@library/libraryBackup");
+  const { IndexedDBRepository } = await import("../../src/persistence/IndexedDBRepository");
+  const { IDBFactory } = await import("fake-indexeddb");
+  const factory = new IDBFactory();
+  const character = exampleCharacterTemplate();
+  await new Promise<void>((resolve, reject) => {
+    const request = factory.open("factions", 13);
+    request.onupgradeneeded = () => {
+      request.result.createObjectStore("characters", { keyPath: "id" }).put(character);
+    };
+    request.onsuccess = () => {
+      request.result.close();
+      resolve();
+    };
+    request.onerror = () => reject(request.error);
+  });
+
+  const source = new IndexedDBRepository(factory, "factions");
+  expect((await source.loadCharacter(character.id)).factionIds).toBeUndefined();
+  const allies = { id: "pilots", name: "River Pilots", description: "" };
+  const rivals = { id: "toll", name: "Toll Wardens", description: "" };
+  const faction = {
+    id: "guild",
+    name: "Riverside Guild",
+    description: "Boat builders and merchants.",
+    history: "Founded after the river trade reopened.",
+    alliedFactionIds: [allies.id],
+    hostileFactionIds: [rivals.id],
+    images: [{
+      imageDataUrl: "data:image/jpeg;base64,YQ==",
+      thumbDataUrl: "data:image/jpeg;base64,Yg=="
+    }]
+  };
+  await source.saveFaction(allies);
+  await source.saveFaction(rivals);
+  await source.saveFaction(faction);
+  const card = { ...character, factionIds: [faction.id] };
+  await source.saveCharacter(card);
+  const object = newObjectTemplate({
+    name: "Guild seal", note: "", tags: [], source: "player", factionIds: [faction.id, allies.id]
+  });
+  await source.saveObject(object);
+  const realm = {
+    ...exampleRealmDunbaar(),
+    worldMap: {
+      nodes: [{
+        id: "port", name: "Port", kind: "Settlement", x: 50, y: 50,
+        description: "", population: "", characterIds: [], factionIds: [faction.id]
+      }],
+      routes: []
+    }
+  };
+  await source.saveRealm(realm);
+
+  expect((await collectCharacterBackup(source, card)).factions).toEqual([faction]);
+  const { backup, skipped } = parseLibraryBackup(JSON.parse(JSON.stringify(await collectLibraryBackup(source))));
+  expect(skipped).toBe(0);
+  const target = new IndexedDBRepository(new IDBFactory(), "restored");
+  expect((await restoreLibraryBackup(target, backup)).skipped).toBe(0);
+  expect(await target.listFactions()).toEqual([allies, faction, rivals]);
+  expect((await target.loadCharacter(card.id)).factionIds).toEqual([faction.id]);
+  expect((await target.loadObject(object.id)).factionIds).toEqual([faction.id, allies.id]);
+  expect((await target.loadRealm(realm.id)).worldMap?.nodes[0]?.factionIds).toEqual([faction.id]);
 });

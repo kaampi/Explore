@@ -1,4 +1,5 @@
 import { PlaceBlueprintStudio } from "./PlaceBlueprintStudio";
+import { FactionStudio } from "./FactionStudio";
 import { MapLibrary } from "./MapLibrary";
 import { LoreStudio } from "../lore/LoreStudio";
 import { useState } from "react";
@@ -21,6 +22,7 @@ const NAV: { id: StudioView; label: string; group: "library" | "play" }[] = [
   { id: "characters", label: "Characters", group: "library" },
   { id: "anatomy", label: "Anatomy", group: "library" },
   { id: "place-templates", label: "Location templates", group: "library" },
+  { id: "factions", label: "Factions", group: "library" },
   { id: "maps", label: "World Maps", group: "library" },
   { id: "objects", label: "Objects", group: "library" },
   { id: "voices", label: "Voices", group: "library" },
@@ -46,7 +48,7 @@ export function StudioShell({
 }) {
   const [view, updateView] = useState<StudioView>(initialView === "places" ? "maps" : initialView);
   const [templateDirty,setTemplateDirty]=useState(false);
-  function setView(next: StudioView) { if(next!==view&&templateDirty&&!confirm("Discard unsaved template changes?"))return;if(next!==view)setTemplateDirty(false); const destination = next === "places" ? "maps" : next; updateView(destination); onViewChange?.(destination); }
+  function setView(next: StudioView) { if(next!==view&&templateDirty&&!confirm("Discard unsaved changes?"))return;if(next!==view)setTemplateDirty(false); const destination = next === "places" ? "maps" : next; updateView(destination); onViewChange?.(destination); }
   const [catalogTick, setCatalogTick] = useState(0);
 
   return (
@@ -54,7 +56,7 @@ export function StudioShell({
       <nav className="studio-nav" aria-label="Library">
         {[
           { title: "Characters & creatures", ids: ["characters", "anatomy"] },
-          { title: "World", ids: ["place-templates", "maps", "objects", "lorebooks"] },
+          { title: "World", ids: ["place-templates", "maps", "factions", "objects", "lorebooks"] },
           { title: "Story & play", ids: ["voices", "stories", "rulesets"] },
         ].map(group => <div className="studio-nav-group" role="group" aria-label={group.title} key={group.title}>
           <span className="studio-nav-group__title">{group.title}</span>
@@ -86,6 +88,7 @@ export function StudioShell({
           {view === "characters" && <CharacterStudio repo={repo} />}
           {view === "anatomy" && <AnatomyStudio repo={repo} />}
           {view === "place-templates" && <PlaceBlueprintStudio repo={repo} onDirtyChange={setTemplateDirty} />}
+          {view === "factions" && <FactionStudio repo={repo} onDirtyChange={setTemplateDirty} />}
           {view === "maps" && <MapLibrary repo={repo} />}
           {view === "objects" && <ObjectStudio repo={repo} />}
           {view === "voices" && <VoiceStudio repo={repo} />}

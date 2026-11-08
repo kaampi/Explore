@@ -1,3 +1,4 @@
+import { FactionSchema, type Faction } from "../library/factions";
 import { PlaceBlueprintSchema,starterBlueprints,type PlaceBlueprint } from "@library/placeBlueprint";
 import { AnatomyTemplateSchema, type AnatomyTemplate } from "@state/StateSchema";
 import { validateObjectNesting, objectContents } from "@library/objectLocation";
@@ -74,6 +75,7 @@ const RULESETS_STORE = "rulesets";
 const OBJECTS_STORE = "objects";
 const CAMPAIGNS_STORE = "campaigns";
 const REALMS_STORE = "realms";
+const FACTIONS_STORE = "factions";
 const PREFS_STORE = "prefs";
 const STUDIO_RESUME_ID = "studio-resume";
 const CONVERSATIONS_STORE = "conversations";
@@ -81,7 +83,7 @@ const ACTIVE_CONVERSATION_ID = "active-conversation";
 const CONVERSATION_INDEX_ID = "conversation-index-v1";
 const IDEAS_STORE = "ideas";
 const LOREBOOKS_STORE = "lorebooks";
-const DB_VERSION = 13;
+const DB_VERSION = 14;
 const ANATOMY_STORE = "anatomy-templates";
 
 export type StudioResume = {
@@ -131,6 +133,7 @@ export class TemplateValidationError extends Error {
 }
 
 function ensureStores(db: IDBDatabase): void {
+  if (!db.objectStoreNames.contains(FACTIONS_STORE)) db.createObjectStore(FACTIONS_STORE, { keyPath: "id" });
   if (!db.objectStoreNames.contains(ANATOMY_STORE)) db.createObjectStore(ANATOMY_STORE, { keyPath: "id" });
   if (!db.objectStoreNames.contains(LOREBOOKS_STORE)) db.createObjectStore(LOREBOOKS_STORE, { keyPath: "id" });
   if (!db.objectStoreNames.contains(IDEAS_STORE))
@@ -697,6 +700,15 @@ export class IndexedDBRepository {
   async listPlaces(): Promise<PlaceTemplate[]> {
     const rows = await this.getAllRecords(PLACES_STORE);
     return parseLibraryList("place", rows, parsePlaceTemplate);
+  }
+
+  async saveFaction(faction: Faction): Promise<void> {
+    await this.putRecord(FACTIONS_STORE, FactionSchema.parse(faction));
+  }
+
+  async listFactions(): Promise<Faction[]> {
+    const rows = await this.getAllRecords(FACTIONS_STORE);
+    return rows.map(row => FactionSchema.parse(row)).sort((a, b) => a.name.localeCompare(b.name));
   }
 
   async saveRealm(template: RealmTemplate): Promise<void> {
