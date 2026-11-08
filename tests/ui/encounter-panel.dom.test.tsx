@@ -1,3 +1,4 @@
+import { innVisitExample } from '../../src/scenarios/innVisit';
 import { connectedAdventureExample } from '../../src/library/playableCampaign';
 import { startPlayableCampaign } from '../../src/session/adventureStart';
 import type { AdventureTransition } from '../../src/game/AdventureSchema';
@@ -114,4 +115,19 @@ it('answers a spoken greeting and a misspelled question as Edda, opening the aut
  const built=connectedAdventureExample(),ui=mount(startPlayableCampaign(built.campaign,built.campaign.scenes[0]!,built.places,'spoken-ui'));
  try{await ui.render();await type(ui.host,0,'Hi');await click(ui.host,'Say');expect(ui.host.querySelector('.chat-log')!.textContent).toContain('“Hello,” Edda says.');expect(ui.host.querySelectorAll('.message__attribution')[2]!.textContent).toBe('Edda');expect(ui.host.textContent).not.toContain('Follow the lead to the watchtower →');await type(ui.host,0,'Edda what can you tell me about the messanger?');await click(ui.host,'Say');expect(ui.host.querySelector('.chat-log')!.textContent).toContain('Edda points');expect(ui.host.querySelectorAll('.message__attribution')[4]!.textContent).toBe('Edda');expect(ui.host.textContent).toContain('Follow the lead to the watchtower →');expect(ui.engine.getSession().encounter!.state.attempts).toHaveLength(1);expect(ui.host.textContent).not.toContain('words alone');expect(ui.saved).toHaveLength(2);}
  finally{await ui.close();}
+});
+
+it('plays the mapped inn through direct buttons, keeps resolved passages quiet, and completes only outside',async()=>{
+ const built=innVisitExample(),seed=startPlayableCampaign(built.campaign,built.campaign.scenes[0]!,built.places,'inn-ui',[built.realm]),ui=mount(seed);
+ try{
+  await ui.render();await click(ui.host,'Enter the inn →');expect(ui.host.textContent).toContain('Objects here');
+  expect(Array.from(ui.host.querySelectorAll('button')).find(b=>b.textContent==='Unlock · Store room door')!.disabled).toBe(true);
+  expect(ui.host.textContent).not.toContain('Open · Kitchen door');
+  await click(ui.host,'Take the brass key');expect(ui.host.textContent).not.toContain('Objects here');
+  await click(ui.host,'Unlock · Store room door');await click(ui.host,'Open · Store room door');await click(ui.host,'Go to store room →');
+  await click(ui.host,'Read the guest ledger');await click(ui.host,'Take the guest ledger');expect(ui.host.textContent).not.toContain('Objects here');
+  expect(ui.host.textContent).not.toContain('✓ Adventure completed');expect(ui.host.querySelector('[aria-label="Resolved dice roll"]')).toBeNull();
+  await click(ui.host,'Go to common room →');await click(ui.host,'Leave the inn →');expect(ui.host.textContent).toContain('✓ Adventure completed');
+  expect(ui.saved.length).toBeGreaterThan(5);await click(ui.host,'Enter the inn →');expect(Array.from(ui.host.querySelectorAll('button')).some(b=>b.textContent==='Take the brass key')).toBe(false);expect(ui.host.textContent).toContain('Go to store room →');
+ }finally{await ui.close();}
 });

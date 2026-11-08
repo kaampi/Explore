@@ -1,3 +1,6 @@
+import { FurnitureSizeSchema } from "./interiorScale";
+import { FurnitureTypeSchema } from "./interiorFurniture";
+import { InteriorSchema } from "./interior";
 import { crossingSummary } from "./mapCrossings";
 import { z } from "zod";
 
@@ -14,8 +17,17 @@ export const WorldMapSchema = z.object({
   })).optional(),
   mapType: z.enum(["world","settlement","interior"]).optional(),
   nodes: z.array(z.object({
+    interior:InteriorSchema.optional(),
+    roomPolygon:z.array(z.object({x:z.number().finite().min(0).max(100),y:z.number().finite().min(0).max(100)})).min(3).max(200).optional(),
+    interiorPosition:z.object({x:z.number().finite().min(0).max(100),y:z.number().finite().min(0).max(100)}).optional(),
+    furnitureSizeMeters:FurnitureSizeSchema.optional(),
+    furnitureType:FurnitureTypeSchema.optional(),
+    settlementMarker:z.boolean().optional(),
+    entrance:z.enum(['open','locked','hidden','none']).optional(),
+    placementRule:z.enum(['shoreline']).optional(),
+    useSettlementLayout:z.boolean().optional(),
     blueprintId:z.string().optional(),
-    symbol:z.enum(["marker","cottage","longhouse","townhouse","inn"]).optional(),
+    symbol:z.enum(["marker","cottage","longhouse","townhouse","inn","fields","cattle","well","docks"]).optional(),
     isJunction: z.boolean().optional(),
     mountainFinalized: z.boolean().optional(),
     brush: z.array(z.object({x:z.number().min(0).max(800),y:z.number().min(0).max(600),radius:z.number().min(2).max(150),erase:z.boolean(),height:z.number().int().min(1).max(3).optional()})).max(30000).optional(),
@@ -51,7 +63,7 @@ export const WorldMapSchema = z.object({
     manualTime: z.boolean().optional(),
     speedKmh: z.number().positive().optional(),
     type: z.enum(["road","path","bridge","ferry","boat"]).optional(),
-    geometry: z.array(z.object({x:z.number().finite(),y:z.number().finite(),incoming:z.object({x:z.number().finite(),y:z.number().finite()}).optional(),outgoing:z.object({x:z.number().finite(),y:z.number().finite()}).optional()})).min(2).max(200).optional(),
+    geometry: z.array(z.object({mode:z.enum(["corner","smooth","free"]).optional(),x:z.number().finite(),y:z.number().finite(),incoming:z.object({x:z.number().finite(),y:z.number().finite()}).optional(),outgoing:z.object({x:z.number().finite(),y:z.number().finite()}).optional()})).min(2).max(200).optional(),
     fromAnchor: z.object({x:z.number().finite(),y:z.number().finite()}).optional(), toAnchor:z.object({x:z.number().finite(),y:z.number().finite()}).optional(),
     id: z.string(), from: z.string(), to: z.string(), mode: z.string(),
     duration: z.string(), access: z.enum(["open","locked","hidden"]), bothWays: z.boolean()
@@ -70,6 +82,12 @@ export type WorldMap = z.infer<typeof WorldMapSchema>;
 export type MapNode = WorldMap["nodes"][number];
 export function mapContext(map: WorldMap | undefined): string {
   if(!map?.nodes.length)return "";
+  const source=map,byId=new Map(source.nodes.map(n=>[n.id,n]));
+  const inside=(n:MapNode)=>{const seen=new Set<string>();let parent=n.parentId;while(parent&&!seen.has(parent)){seen.add(parent);const p=byId.get(parent);if(p?.interior)return true;parent=p?.parentId;}return false;};
+  const publicNodes=source.nodes.filter(n=>!inside(n)),ids=new Set(publicNodes.map(n=>n.id));map={...source,nodes:publicNodes,routes:source.routes.filter(r=>ids.has(r.from)&&ids.has(r.to))};
   const name=(id:string)=>map.nodes.find(n=>n.id===id)?.name??id;
-  return ["World map (authored geography, not current character positions):",...map.nodes.map(n=>`${n.name} (${n.kind}) is inside ${n.parentId?name(n.parentId):"the world"}. ${n.visibility&&n.visibility!=="visible"?` Player knowledge: ${n.visibility==="arrival"?"discover on arrival":"hidden until explicitly revealed"}. Do not reveal its name, exact location or details to the player before discovery; only appropriate sensory hints when approaching. `:""}${n.brush?` Painted ${n.kind.toLowerCase()} terrain near map position ${n.x.toFixed(1)}, ${n.y.toFixed(1)} (0–100 coordinates); approximate bounding size ${(n.width??0).toFixed(1)} by ${(n.height??0).toFixed(1)}. The painted footprint, not its bounding rectangle, defines the area. Erased gaps are underlying terrain, not automatically named clearings. `:""}${n.isJunction?` Route position: ${n.x.toFixed(2)}, ${n.y.toFixed(2)} on the containing map. `:""}${n.description}${encounterText(n.encounter)}${n.instructions?` Instructions: ${n.instructions}`:""}${n.characterIds.length?` Associated library character IDs (not current presence): ${n.characterIds.join(", ")}.`:""}${n.isArea?` This is a local subarea, not the whole parent. Passage: ${n.passage??"normal"}; travel multiplier: ${n.travelMultiplier??1}.`:""}${n.population?` Usual population, not guaranteed present: ${n.population}.`:""}`),...map.routes.map(r=>`${name(r.from)} ${r.bothWays?"↔":"→"} ${name(r.to)}: ${r.type??"route"}, ${r.mode}; travel time: ${r.duration||"unspecified"}; access: ${r.access}.${r.description?` Route surroundings: ${r.description}.`:""}${r.instructions?` Route instructions: ${r.instructions}.`:""}${r.areaIds?.length?` Passes through: ${r.areaIds.map(name).join(", ")}. Entry and exit are distinct geographic positions; do not treat the area as a single arrival point.`:""}${encounterText(r.encounter)}`),...crossingSummary(map),"Containment alone does not establish a traversable route. Do not assume instant travel or automatic access. Use these facts as context; actual movement must follow the scene."].join("\n");
+  return ["World map (authored geography, not current character positions):",...map.nodes.map(n=>`${n.name} (${n.kind}) is inside ${n.parentId?name(n.parentId):"the world"}. ${n.visibility&&n.visibility!=="visible"?` Player knowledge: ${n.visibility==="arrival"?"discover on arrival":"hidden until explicitly revealed"}. Do not reveal its name, exact location or details to the player before discovery; only appropriate sensory hints when approaching. `:""}${n.entrance?` Default building entrance: ${n.entrance}. Authored doorways retain their own access rules. `:""}${n.settlementMarker?" Settlement location marker only: the symbol has no geographic footprint. Its detailed contents use their own map scale. ":""}${n.brush?` Painted ${n.kind.toLowerCase()} terrain near map position ${n.x.toFixed(1)}, ${n.y.toFixed(1)} (0–100 coordinates); approximate bounding size ${(n.width??0).toFixed(1)} by ${(n.height??0).toFixed(1)}. The painted footprint, not its bounding rectangle, defines the area. Erased gaps are underlying terrain, not automatically named clearings. `:""}${n.isJunction?` Route position: ${n.x.toFixed(2)}, ${n.y.toFixed(2)} on the containing map. `:""}${n.description}${encounterText(n.encounter)}${n.instructions?` Instructions: ${n.instructions}`:""}${n.characterIds.length?` Associated library character IDs (not current presence): ${n.characterIds.join(", ")}.`:""}${n.isArea?` This is a local subarea, not the whole parent. Passage: ${n.passage??"normal"}; travel multiplier: ${n.travelMultiplier??1}.`:""}${n.population?` Usual population, not guaranteed present: ${n.population}.`:""}`),...map.routes.map(r=>`${name(r.from)} ${r.bothWays?"↔":"→"} ${name(r.to)}: ${r.type??"route"}, ${r.mode}; travel time: ${r.duration||"unspecified"}; access: ${r.access}.${r.description?` Route surroundings: ${r.description}.`:""}${r.instructions?` Route instructions: ${r.instructions}.`:""}${r.areaIds?.length?` Passes through: ${r.areaIds.map(name).join(", ")}. Entry and exit are distinct geographic positions; do not treat the area as a single arrival point.`:""}${encounterText(r.encounter)}`),...crossingSummary(map),"Containment alone does not establish a traversable route. Do not assume instant travel or automatic access. Use these facts as context; actual movement must follow the scene."].join("\n");
 }
+
+export const DEFAULT_MAP_BACKGROUND = "#d8e3ba";
+export function mapBackgroundColor(map:WorldMap,level=""){return (level?map.nodes.find(n=>n.id===level)?.mapBackground:map.background)??DEFAULT_MAP_BACKGROUND;}

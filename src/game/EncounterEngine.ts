@@ -26,19 +26,20 @@ export function validateEncounter(game: EncounterGame) {
   const unique = (ids: string[]) => new Set(ids).size === ids.length;
   if (s.sceneId !== d.id || !unique(d.places.map(p => p.id)) || !unique(d.weapons.map(w => w.id))) throw new Error('Invalid encounter definition.');
   const placeIds = new Set(d.places.map(p => p.id)), weaponIds = new Set(d.weapons.map(w => w.id));
-  if (!unique(d.items.map(item => item.id)) || !unique(Object.values(s.actors).flatMap(actor => actor.inventory))) throw new Error('Item instances must have one owner.');
+  if (!unique(d.items.map(item => item.id)) || !unique([...Object.values(s.actors).flatMap(actor => actor.inventory),...Object.keys(s.itemLocations)])) throw new Error('Item instances must have one owner.');
+  for(const [item,position] of Object.entries(s.itemLocations))if(!d.items.some(i=>i.id===item)||!placeIds.has(position))throw Error('Invalid loose item location.');
   const player = s.actors[d.playerId];
   if (!player || player.control !== 'player' || Object.values(s.actors).filter(a => a.control === 'player').length !== 1) throw new Error('An encounter needs one player-controlled actor.');
   for (const [key, actor] of Object.entries(s.actors)) {
     if (key !== actor.id || actor.hp > actor.maxHp || !placeIds.has(actor.position) || actor.weapons.some(id => !weaponIds.has(id))) throw new Error('Invalid actor reference.');
     if (actor.tactics && (!actor.weapons.includes(actor.tactics.preferredWeapon) || (actor.tactics.fallbackWeapon && !actor.weapons.includes(actor.tactics.fallbackWeapon)) || (actor.tactics.escapeTo && !placeIds.has(actor.tactics.escapeTo)) || actor.tactics.repositionTo.some(id => !placeIds.has(id)))) throw new Error('Invalid tactics reference.');
   }
-  for (const [key, barrier] of Object.entries(s.barriers)) if (barrier.id !== key) throw new Error('Invalid barrier reference.');
+  for (const [key, barrier] of Object.entries(s.barriers)) if (barrier.id !== key || barrier.position&&!placeIds.has(barrier.position)) throw new Error('Invalid barrier reference.');
   for (const link of [...d.connections, ...d.sightLines]) if (!placeIds.has(link.from) || !placeIds.has(link.to) || (link.barrierId && !s.barriers[link.barrierId])) throw new Error('Invalid place connection.');
   if (!unique(d.interactions.map(i => i.id))) throw new Error('Duplicate interaction IDs.');
   for (const interaction of d.interactions) {
     if ((interaction.counterpartyId && !s.actors[interaction.counterpartyId]) || (interaction.position && !placeIds.has(interaction.position))) throw new Error('Invalid interaction reference.');
-    for (const effect of [...interaction.success.effects, ...interaction.failure.effects]) if (effect.kind !== 'flag' && (!s.actors[effect.from] || !s.actors[effect.to] || effect.from === effect.to)) throw new Error('Invalid exchange reference.');
+    for (const effect of [...interaction.success.effects, ...interaction.failure.effects]) if(effect.kind==='take-item'){if(!d.items.some(i=>i.id===effect.itemId))throw Error('Unknown loose item.');}else if (effect.kind !== 'flag' && (!s.actors[effect.from] || !s.actors[effect.to] || effect.from === effect.to)) throw new Error('Invalid exchange reference.');
   }
   if (s.initiative && (!unique(s.initiative.order) || !s.initiative.order.includes(d.playerId) || s.initiative.order.some(id => !s.actors[id]) || s.cursor >= s.initiative.order.length)) throw new Error('Invalid turn order.');
   return game;
@@ -92,12 +93,12 @@ function moveActor(d: EncounterDefinition, s: EncounterState, actor: Actor, to: 
   const from = actor.position; actor.position = to; actor.movesLeft--;
   out.events.push({ kind: 'move', actorId: actor.id, from, to, reason });
 }
-function adjacentBarrier(d: EncounterDefinition, actor: Actor, barrierId: string) {
-  return d.connections.some(link => link.barrierId === barrierId && (link.from === actor.position || link.to === actor.position));
+function adjacentBarrier(d: EncounterDefinition, actor: Actor, barrierId: string, s:EncounterState) {
+  return s.barriers[barrierId]?.position===actor.position||d.connections.some(link => link.barrierId === barrierId && (link.from === actor.position || link.to === actor.position));
 }
 function interactionBlock(d: EncounterDefinition, s: EncounterState, actor: Actor, id: string, operation: 'unlock' | 'open') {
   const barrier = s.barriers[id];
-  if (!barrier || !adjacentBarrier(d, actor, id)) return 'Move to that barrier first.';
+  if (!barrier || !adjacentBarrier(d, actor, id,s)) return 'Move to that barrier first.';
   if (barrier.blocked) return 'That passage is barricaded.';
   if (operation === 'unlock') return !barrier.locked ? 'Already unlocked.' : !barrier.keyId || !actor.inventory.includes(barrier.keyId) ? 'You need the matching key.' : undefined;
   return barrier.locked ? 'It is locked.' : barrier.open ? 'Already open.' : undefined;

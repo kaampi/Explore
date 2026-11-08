@@ -1,3 +1,4 @@
+import { PlayerInventory } from './PlayerInventory';
 import { CombatStage } from '../combat/CombatStage';
 import { projectFighters } from '../combat/fighters';
 import { useCombatPlayback } from '../combat/useCombatPlayback';
@@ -7,7 +8,7 @@ import { CombatLog,gateCombatLog,isCombatRecord } from './CombatLog';
 import { HealthMeter } from './HealthMeter';
 export { HealthMeter } from './HealthMeter';
 import { combatOrder,ACTOR_NAMES } from '../../checks/gateCombat';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState,type ReactNode } from 'react';
 import { interpretGateIntent } from '../../checks/gateIntent';
 import { useEngine } from '../EngineStore';
 import { gateActionBlock, gateActionLabel, gateActionPreview, POSITION_NAMES, type GateAction, type GateRequest, type GateCheck } from '../../checks/gateEncounter';
@@ -19,7 +20,7 @@ import { IdeaEditor } from '../ideas/IdeaEditor';
 
 const GOOD=(check:GateCheck)=>check.degree==='success'||check.degree==='exceptional';
 const degreeLabel={exceptional:'Exceptional success',success:'Success',failure:'Setback',severe:'Severe setback'};
-export function GateScenePanel({onHome,repo}:{onHome:(session:Session)=>void;repo?:IndexedDBRepository}){
+export function GateScenePanel({onHome,repo,mapView}:{onHome:(session:Session)=>void;repo?:IndexedDBRepository;mapView?:ReactNode}){
  const {useSession,executeGateAction,saveGateScene,interpretGateText,setCombatArtwork}=useEngine(),session=useSession(),s=session.gateEncounter!;
  const [selectedTarget,setSelectedTarget]=useState<'mona'|'archer'>('mona');
  const [say,setSay]=useState(''),[action,setAction]=useState(''),[pending,setPending]=useState<GateRequest|null>(null),[notice,setNotice]=useState('');
@@ -102,8 +103,10 @@ export function GateScenePanel({onHome,repo}:{onHome:(session:Session)=>void;rep
    <CombatPlaybackOverlay playback={playback} names={{player:session.player?.name||'Traveller',mona:'Mona',archer:'Archer'}} soundOn={soundOn}/>
   </div>
   <aside className="sb-game-toolbox gate-scene-toolbox" aria-label="Gatehouse game tools">
+   {mapView&&<section className="sb-game-toolbox__map">{mapView}</section>}
    <header><span className="sb-game-toolbox__eyebrow">THE GATEHOUSE</span><h2>Your next move</h2><p>A fixed-world test. Write your own intentions or use the shortcuts.</p></header>
-   <section><HealthMeter name={session.player?.name||'Traveller'} value={fighters.player.hp} max={20}/><dl>{Object.entries(session.player?.stats??{}).map(([name,value])=><div key={name}><dt>{name}</dt><dd>{value}</dd></div>)}</dl><p>Sword · Bow · {s.arrows} arrows · Lockpicks{s.keyOwner==='player'?' · Iron key':''}</p></section>
+   <section><HealthMeter name={session.player?.name||'Traveller'} value={fighters.player.hp} max={20}/><dl>{Object.entries(session.player?.stats??{}).map(([name,value])=><div key={name}><dt>{name}</dt><dd>{value}</dd></div>)}</dl></section>
+   <PlayerInventory session={session}/>
    {!ended&&<><section><h3>{s.phase==='combat'?'Your action':'Things to try'}</h3><div className="gate-command-list">{commands.map(a=>{const reason=gateActionBlock(s,a);return <button key={a.kind} type="button" disabled={blockedUI||!!reason} title={reason??gateActionPreview(s,a).risk} onClick={()=>choose(a)}>{gateActionLabel(a)}</button>;})}</div></section>
    <section><h3>People & movement</h3><HealthMeter name="Mona" value={fighters.opponents[0]!.hp} max={16}/><p>{fighters.opponents[0]!.position} · {fighters.opponents[0]!.status.join(' · ')||'Watchful'}</p><HealthMeter name="Archer" value={fighters.opponents[1]!.hp} max={10}/><p>{fighters.opponents[1]!.position} · {fighters.opponents[1]!.status.join(' · ')||'Active'} · {s.archerArrows} arrows</p><div className="gate-command-list">{(Object.keys(POSITION_NAMES) as (keyof typeof POSITION_NAMES)[]).filter(to=>to!==s.position).map(to=>{const a:GateAction={kind:'move',to},reason=gateActionBlock(s,a);return <button key={to} type="button" title={reason} disabled={blockedUI||!!reason} onClick={()=>choose(a)}>{POSITION_NAMES[to]}</button>;})}</div></section>
    <section><h3>{s.phase==='combat'?'Combat':'Risky approaches'}</h3><div className="gate-command-list">{(['mona','archer'] as const).flatMap(target=>(['sword','bow'] as const).map(weapon=>{const a:GateAction={kind:'attack',target,weapon},reason=gateActionBlock(s,a);return <button key={`${target}:${weapon}`} title={reason??gateActionPreview(s,a).risk} type="button" disabled={blockedUI||!!reason} onClick={()=>choose(a)}>{gateActionLabel(a)}{reason?.startsWith('Out of')?' · out of reach':''}</button>;}))}{s.phase==='combat'&&<><button type="button" disabled={blockedUI||s.actionUsed} onClick={()=>choose({kind:'defend'})}>Defend</button><button type="button" disabled={blockedUI} onClick={()=>choose({kind:'end-turn'})}>End turn</button></>}</div></section></>}

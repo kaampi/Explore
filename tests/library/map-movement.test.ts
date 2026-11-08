@@ -44,3 +44,26 @@ it("uses the selected connection when the map has alternative routes",()=>{
  expect(move.travelMinutes).toBe(180);
  expect(()=>resolveMapMovement("I go to Forest",f.session,f.worlds,f.places,"forest",{worldId:"world",routeId:"removed"})).toThrow(/no longer reachable/);
 });
+
+it('enters and leaves a building through its default entrance without a path or generated rooms',()=>{
+ const f=fixture(),map=f.worlds[0]!.worldMap!,cottage=newPlaceTemplate({id:'cottage',realmId:'world',name:'Cottage',note:'A quiet cottage.'});f.places.push(cottage);map.nodes.push({id:'cottage',placeId:'cottage',parentId:'f',name:'Cottage',kind:'Building',entrance:'open',x:40,y:40,description:'',population:'',characterIds:[]});map.routes=[];f.session.scene!.placeId='forest';f.session.scene!.location='Forest';
+ const before=structuredClone(map),engine=new StateEngine(f.session,new EventLog()),approach=resolveMapMovement('I go to Cottage',engine.getSession(),f.worlds,f.places);expect(approach.place?.name).toBe('Outside Cottage');engine.travelToLandmark(landmarkTravelPatch(approach.place!));
+ const entry=resolveMapMovement('I step inside',engine.getSession(),f.worlds,f.places);expect(entry.place?.name).toBe('Cottage');expect(entry.place?.note).toBe('A quiet cottage.');engine.travelToLandmark(landmarkTravelPatch(entry.place!));expect(engine.getSession().scene?.location).toBe('Cottage');
+ const exit=resolveMapMovement('I go outside',engine.getSession(),f.worlds,f.places);expect(exit.place?.name).toBe('Outside Cottage');expect(map).toEqual(before);
+});
+
+it('respects locked, hidden, disabled and undiscovered default entrances and cannot enter from a distant place',()=>{
+ const f=fixture(),map=f.worlds[0]!.worldMap!,cottage=newPlaceTemplate({id:'cottage',realmId:'world',name:'Cottage'});f.places.push(cottage);const node={id:'cottage',placeId:'cottage',parentId:'f',name:'Cottage',kind:'Building',entrance:'open' as 'open'|'locked'|'hidden'|'none',x:40,y:40,description:'',population:'',characterIds:[]};map.nodes.push(node);map.routes=[];f.session.scene!.placeId='forest';f.session.scene!.location='Forest';
+ for(const state of ['locked','hidden','none'] as const){node.entrance=state;expect(()=>resolveMapMovement('I enter Cottage',f.session,f.worlds,f.places)).toThrow(/locked|entrance/);}
+ node.entrance='open';expect(resolveMapMovement('I enter Cottage',f.session,f.worlds,f.places).place?.id).toBe('cottage');map.nodes[map.nodes.length-1]={...node,visibility:'hidden'};expect(()=>resolveMapMovement('I enter Cottage',f.session,f.worlds,f.places)).toThrow(/not been revealed/);map.nodes[map.nodes.length-1]=node;f.session.scene!.placeId='kitchen';f.session.scene!.location='Kitchen';expect(()=>resolveMapMovement('I enter Cottage',f.session,f.worlds,f.places)).toThrow(/doorway/);
+});
+
+it('never bypasses authored locked or one-way doors with an automatic entrance',()=>{
+ const f=fixture(),map=f.worlds[0]!.worldMap!,cottage=newPlaceTemplate({id:'cottage',realmId:'world',name:'Cottage'});f.places.push(cottage);map.nodes.push({id:'cottage',placeId:'cottage',parentId:'f',name:'Cottage',kind:'Building',entrance:'open',x:30,y:30,description:'',population:'',characterIds:[]});map.nodes[0]!.parentId='cottage';map.routes[0]!.mode='Door';map.routes[0]!.access='locked';f.session.scene!.placeId='forest';f.session.scene!.location='Forest';
+ expect(()=>resolveMapMovement('I enter Cottage',f.session,f.worlds,f.places)).toThrow(/locked/);map.routes[0]!.access='open';expect(resolveMapMovement('I enter Cottage',f.session,f.worlds,f.places).place?.id).toBe('kitchen');map.routes[0]!.bothWays=false;expect(()=>resolveMapMovement('I enter Cottage',f.session,f.worlds,f.places)).toThrow(/doorway/);
+});
+
+it('uses a mapped door directly into the building from its exterior and respects its direction and lock',()=>{
+ const f=fixture(),map=f.worlds[0]!.worldMap!;f.places.push(newPlaceTemplate({id:'cottage',realmId:'world',name:'Cottage'}));map.nodes.push({id:'cottage',placeId:'cottage',parentId:'f',name:'Cottage',kind:'Building',entrance:'open',x:30,y:30,description:'',population:'',characterIds:[]});map.routes=[{id:'door',from:'f',to:'cottage',mode:'Door',duration:'A few steps',access:'open',bothWays:true}];f.session.scene!.placeId='cottage';f.session.scene!.location='Outside Cottage';
+ expect(resolveMapMovement('I enter Cottage',f.session,f.worlds,f.places).place?.id).toBe('cottage');map.routes[0]!.access='locked';expect(()=>resolveMapMovement('I enter Cottage',f.session,f.worlds,f.places)).toThrow(/locked/);f.session.scene!.location='Cottage';expect(()=>resolveMapMovement('I go outside',f.session,f.worlds,f.places)).toThrow(/locked/);map.routes[0]!.access='open';map.routes[0]!.bothWays=false;expect(()=>resolveMapMovement('I go outside',f.session,f.worlds,f.places)).toThrow(/one-way/);map.routes[0]!.from='cottage';map.routes[0]!.to='f';expect(resolveMapMovement('I go outside',f.session,f.worlds,f.places).place?.name).toBe('Outside Cottage');f.session.scene!.location='Outside Cottage';expect(()=>resolveMapMovement('I enter Cottage',f.session,f.worlds,f.places)).toThrow(/doorway/);
+});

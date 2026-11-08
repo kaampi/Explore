@@ -1,3 +1,5 @@
+import { encounterDescription } from '../game/sceneDescription';
+import { applyAdventurePresentation } from '../session/adventurePresentation';
 import { advanceAdventure } from '../game/AdventureEngine';
 import type { AdventureTransition } from '../game/AdventureSchema';
 import { initializeSpatialReferences, resolveLocation, locationLabel, type SpatialPlace } from "./spatialLocation";
@@ -93,6 +95,7 @@ export class StateEngine {
     const next = resolveEncounterAction(this.session.encounter, request, rng), entry = next.history.at(-1)!;
     const turn = Math.max(0, ...this.session.conversation.map(value => typeof value === 'object' && value !== null && 'turn' in value ? Number(value.turn) || 0 : 0)) + 1;
     this.session.encounter = next;
+    if(this.session.scene)this.session.scene.note=encounterDescription(next.definition,next.state);
     this.session.stateVersion++;
     this.session.conversation.push({ turn, role: 'player', content: entry.label,actionId:entry.id,actionSceneId:next.definition.id }, { turn: turn + 1, role: 'character', toldBy: 'narrator', content: entry.text,actionId:entry.id,actionSceneId:next.definition.id });
     this.session.storyFlags = [...new Set([...this.session.storyFlags, ...next.state.flags])];
@@ -103,10 +106,11 @@ export class StateEngine {
   transitionAdventure(request:AdventureTransition):void {
     const next=advanceAdventure(this.session,request),turn=Math.max(0,...this.session.conversation.map(t=>typeof t==='object'&&t!==null&&'turn' in t?Number(t.turn)||0:0))+1;
     this.session.adventure=next.run;this.session.encounter=next.game;this.session.storyFlags=next.flags;this.session.sceneId=next.target.id;
-    if(this.session.scene)this.session.scene={...this.session.scene,location:next.target.location,placeId:next.target.placeId,note:next.game.definition.description};
+    if(this.session.scene)this.session.scene={...this.session.scene,location:next.target.location,placeId:next.target.placeId,note:encounterDescription(next.game.definition,next.game.state)};
     if(this.session.player){this.session.player.position={...this.session.player.position,value:next.target.location};if(next.run.geography)this.session.player.locationRef={placeId:next.target.placeId,side:'at'};}
+    applyAdventurePresentation(this.session);
     this.session.stateVersion++;
-    this.session.conversation.push({turn,role:'character',toldBy:'narrator',content:next.game.definition.description,adventureSceneId:next.target.id});
+    this.session.conversation.push({turn,role:'character',toldBy:'narrator',content:encounterDescription(next.game.definition,next.game.state),adventureSceneId:next.target.id});
     const event=this.eventLog.append({turn:this.session.stateVersion,timestamp:new Date().toISOString(),type:'adventure_scene_entered',payload:next.run.transitions.at(-1)});this.session.events.push(event);
   }
   /** Closed test scene: every consequence and its transcript commit together. */

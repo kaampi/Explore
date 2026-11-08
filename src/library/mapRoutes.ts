@@ -4,6 +4,7 @@ import { curvePoint,type ShapePoint } from "./mapShapes";
 type Route=WorldMap["routes"][number];
 export function routePoints(route:Route,a:MapNode,b:MapNode):ShapePoint[]{
  const anchor=(n:MapNode,other:MapNode,point?:{x:number;y:number})=>{
+  if(n.settlementMarker)return {x:n.x,y:n.y};
   if(point){const p=mapPosition(n,point);return {x:p.x/8,y:p.y/6};}
   const dx=other.x-n.x,dy=other.y-n.y,t=Math.min(dx?((n.width??15)/2)/Math.abs(dx):Infinity,dy?((n.height??(44/6))/2)/Math.abs(dy):Infinity,1);
   return {x:n.x+dx*t,y:n.y+dy*t};

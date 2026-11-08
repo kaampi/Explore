@@ -11,12 +11,17 @@ export function validateAdventure(run:AdventureRun){
  for(const [id,game] of Object.entries(run.savedScenes)){if(!ids.includes(id)||game.definition.id!==id||game.definition.playerId!==playerId)throw Error('A saved scene must belong to this adventure and use the same player.');validateEncounter(game);}
  for(const [id,actor] of Object.entries(run.actors))if(actor.id!==id)throw Error('A persistent character must use its own ID.');
  for(const link of run.links)if(!ids.includes(link.fromSceneId)||!ids.includes(link.toSceneId)||link.fromSceneId===link.toSceneId)throw Error('A connection must lead to another existing scene.');
+ for(const link of run.links){const from=run.scenes.find(s=>s.id===link.fromSceneId)!;for(const id of link.requiresOpenBarriers??[])if(!from.game.state.barriers[id])throw Error('A connection requires an unknown door.');}
+ const shared=new Map<string,string|undefined>();for(const scene of run.scenes)for(const barrier of Object.values(scene.game.state.barriers))if(barrier.shared){if(shared.has(barrier.id)&&shared.get(barrier.id)!==barrier.keyId)throw Error('A shared door must use the same key.');shared.set(barrier.id,barrier.keyId);}
+ for(const [id,barrier] of Object.entries(run.barriers??{}))if(id!==barrier.id||!barrier.shared||!shared.has(id)||shared.get(id)!==barrier.keyId)throw Error('An unknown persistent door cannot be restored.');
  return run;
 }
+export function adventureBarriers(session:Session){return {...session.adventure?.barriers,...session.encounter?.state.barriers};}
 export function adventureOptions(session:Session){
  const run=session.adventure;if(!run)return [];
+ const doors=adventureBarriers(session);
  const flags=new Set([...session.storyFlags,...(session.encounter?.state.flags??[])]);
- return run.links.filter(link=>link.fromSceneId===run.currentSceneId&&link.requiresFlags.every(f=>flags.has(f))&&link.requiresAbsentFlags.every(f=>!flags.has(f))).map(link=>({id:link.id,label:link.label||run.scenes.find(s=>s.id===link.toSceneId)!.name}));
+ return run.links.filter(link=>link.fromSceneId===run.currentSceneId&&link.requiresFlags.every(f=>flags.has(f))&&link.requiresAbsentFlags.every(f=>!flags.has(f))&&(link.requiresOpenBarriers??[]).every(id=>doors[id]?.open&&!doors[id]?.locked&&!doors[id]?.blocked)).map(link=>({id:link.id,label:link.label||run.scenes.find(s=>s.id===link.toSceneId)!.name}));
 }
 export function adventureCompleted(session:Session){
  const goal=session.adventure?.goal,flags=new Set([...session.storyFlags,...(session.encounter?.state.flags??[])]);
@@ -32,6 +37,7 @@ export function advanceAdventure(session:Session,raw:AdventureTransition){
  const link=run.links.find(l=>l.id===request.linkId);if(!link||!adventureOptions(session).some(l=>l.id===link.id))throw Error('That connection is not available from this scene.');
  const target=run.scenes.find(s=>s.id===link.toSceneId)!;
  run.savedScenes[run.currentSceneId]=structuredClone(current);
+ run.barriers??={};for(const [id,b] of Object.entries(current.state.barriers))if(b.shared)run.barriers[id]=structuredClone(b);
  for(const actor of Object.values(current.state.actors))run.actors[actor.id]=structuredClone(actor);
  const game=EncounterGameSchema.parse(structuredClone(run.savedScenes[target.id]??target.game));
  const owners=new Map(Object.entries(run.actors).flatMap(([id,a])=>a.inventory.map(item=>[item,id] as const)));
@@ -40,6 +46,8 @@ export function advanceAdventure(session:Session,raw:AdventureTransition){
   if(carried)game.state.actors[id]={...structuredClone(carried),position:authored.position,actionsLeft:game.definition.rules.actionsPerTurn,movesLeft:game.definition.rules.movesPerTurn,defending:false};
   game.state.actors[id]!.inventory=game.state.actors[id]!.inventory.filter(item=>!owners.has(item)||owners.get(item)===id);
  }
+ for(const item of Object.keys(game.state.itemLocations))if(owners.has(item))delete game.state.itemLocations[item];
+ for(const [id,b] of Object.entries(game.state.barriers)){const shared=run.barriers[id];if(b.shared&&shared)game.state.barriers[id]={...b,open:shared.open,locked:shared.locked,blocked:shared.blocked};}
  const flags=[...new Set([...session.storyFlags,...current.state.flags,...link.setsFlags])];
  game.state.flags=[...new Set([...game.state.flags,...flags])];
  validateEncounter(game);
@@ -54,8 +62,8 @@ export function adventureHistoryEntry(session:Session,turn:{actionId?:string;act
 }
 /** Shared equipment definitions keep carried weapons usable after a scene change. */
 export function unifyAdventureEquipment(run:AdventureRun){
- const weapons=new Map<string,EncounterGame['definition']['weapons'][number]>(),items=new Map<string,{id:string;name:string}>();
- for(const scene of run.scenes){for(const weapon of scene.game.definition.weapons){const old=weapons.get(weapon.id);if(old&&JSON.stringify(old)!==JSON.stringify(weapon))throw Error('A shared weapon must have the same rules in every scene.');weapons.set(weapon.id,weapon);}for(const item of scene.game.definition.items)items.set(item.id,item);}
+ const weapons=new Map<string,EncounterGame['definition']['weapons'][number]>(),items=new Map<string,EncounterGame['definition']['items'][number]>();
+ for(const scene of run.scenes){for(const weapon of scene.game.definition.weapons){const old=weapons.get(weapon.id);if(old&&JSON.stringify(old)!==JSON.stringify(weapon))throw Error('A shared weapon must have the same rules in every scene.');weapons.set(weapon.id,weapon);}for(const item of scene.game.definition.items)items.set(item.id,{...items.get(item.id),...item});}
  for(const scene of run.scenes){scene.game.definition.weapons=[...weapons.values()];scene.game.definition.items=[...items.values()];}
  return validateAdventure(run);
 }

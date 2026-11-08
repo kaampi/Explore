@@ -16,26 +16,210 @@
 .playable-storyboard__inspector textarea{resize:vertical;line-height:1.5}.playable-storyboard__inspector fieldset{border:1px solid var(--border);border-radius:6px;padding:9px;margin:0}.playable-storyboard__inspector legend{font-size:12px;padding:0 5px}
 .playable-check{display:flex;gap:8px;align-items:flex-start;font-size:12px;line-height:1.5;margin:7px 0}.playable-check input{accent-color:var(--adventure-accent);flex:none;margin:3px 0}
 .playable-action{border:1px solid var(--border);border-radius:7px;padding:9px}.playable-action>label{margin-top:10px}.playable-action summary{font-size:13px;cursor:pointer}.playable-action>button{margin-top:9px}
-.playable-storyboard__test{border-top:1px solid var(--border);margin-top:8px;padding-top:15px}.playable-storyboard__test>button{width:100%;background:var(--adventure-accent);color:#fff}.playable-storyboard__test ul{font-size:12px;line-height:1.5;padding-left:18px}
 .playable-storyboard .playable-remove{font-size:11px;color:var(--text-dim);background:transparent}.playable-storyboard .playable-hint{font-size:12px;margin:0}
 @container(min-width:980px){.playable-storyboard__layout{grid-template-columns:170px minmax(0,1fr) 310px}.playable-storyboard__inspector{grid-column:auto;max-height:72vh}}
 @container(max-width:520px){.playable-storyboard__layout{grid-template-columns:1fr}.playable-storyboard__list{grid-template-columns:1fr 1fr}.playable-storyboard__list>h3{grid-column:1/-1}.playable-storyboard__inspector{grid-column:auto}}
 .playable-storyboard__canvas,.playable-storyboard__canvas .storyboard{min-width:0}
 .campaign-workspace--flow .campaign-workspace__sheet{max-width:none;min-width:0;box-sizing:border-box}
 .playable-adventure-goal{margin:0 0 18px;padding:12px;border:1px solid var(--border);border-radius:7px}.playable-adventure-goal summary{cursor:pointer;font-size:13px}.playable-adventure-goal>label{display:grid;gap:7px;font-size:12px;margin-bottom:12px}.playable-adventure-goal input:not([type=checkbox]){padding:8px;background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:5px}.playable-adventure-goal fieldset{border:1px solid var(--border);border-radius:5px}.playable-adventure-goal legend{font-size:12px}
-.playable-storyboard__toolbar{position:sticky;top:0;z-index:4;display:flex;align-items:center;justify-content:space-between;gap:15px;margin:0 0 14px;padding:12px 15px;background:var(--panel);border:1px solid var(--border);border-radius:8px;box-shadow:0 3px 12px #00000009}.playable-storyboard__toolbar>div{display:grid;gap:5px;min-width:0}.playable-storyboard__toolbar strong{font-size:14px;overflow-wrap:anywhere}.playable-storyboard__toolbar button{flex:none;background:var(--adventure-accent);border-color:var(--adventure-accent);color:white;font-weight:600;padding:11px 17px}.playable-storyboard__toolbar button:hover:not(:disabled){background:#74585c}.playable-actions{min-width:0;display:grid;gap:12px}
+.playable-storyboard__toolbar{position:sticky;top:0;z-index:4;display:flex;align-items:center;justify-content:space-between;gap:15px;margin:0 0 14px;padding:12px 15px;background:var(--panel);border:1px solid var(--border);border-radius:8px;box-shadow:0 3px 12px #00000009}.playable-storyboard__toolbar strong{font-size:14px;overflow-wrap:anywhere}.playable-storyboard__toolbar > button{flex:none;background:var(--adventure-accent);border-color:var(--adventure-accent);color:white;font-weight:600;padding:11px 17px}.playable-storyboard__toolbar > button:hover:not(:disabled){background:#74585c}.playable-actions{min-width:0;display:grid;gap:12px}
 .sb-dialog:has(>.storyboard-editor-window){width:97vw;max-width:none;height:96dvh;max-height:96dvh;padding:14px;box-sizing:border-box;overflow:hidden}
 .sb-dialog:has(>.storyboard-editor-window)>.sb-dialog__heading{height:42px;margin-bottom:12px;flex:none}.sb-dialog:has(>.storyboard-editor-window)>.sb-dialog__heading h2{font-size:24px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .storyboard-editor-window{height:calc(100% - 54px);min-height:0;display:flex;flex-direction:column;gap:8px;overflow:hidden}.storyboard-editor-status{font-size:11px;color:var(--text-dim);flex:none;line-height:1.4}.storyboard-editor-status [role=alert]{color:var(--accent-danger)}
 .playable-storyboard--expanded{display:flex;flex-direction:column;min-height:0;flex:1;gap:12px;container-type:normal}.playable-storyboard--expanded>.playable-storyboard__intro{display:none}.playable-storyboard--expanded>.playable-storyboard__toolbar{position:static;flex:none;margin:0;box-shadow:none;padding:10px 13px}
-.playable-storyboard__tools{display:flex!important;align-items:center;gap:8px;flex-wrap:wrap}.playable-storyboard__tools button{white-space:nowrap}
 .playable-storyboard--expanded .playable-storyboard__layout{flex:1;min-height:0;display:grid;grid-template-columns:200px minmax(230px,1fr) 330px;align-items:stretch;gap:12px}
 .playable-storyboard--expanded .playable-storyboard__list{overflow:auto;display:block;min-height:0;padding:14px;background:var(--panel);border:1px solid var(--border);border-radius:9px}.playable-storyboard--expanded .playable-storyboard__list>button{width:100%;margin-bottom:8px}.playable-storyboard--expanded .playable-adventure-goal{margin:16px 0 0;padding:10px}.playable-storyboard--expanded .playable-adventure-goal input:not([type=checkbox]){width:100%;box-sizing:border-box}
 .playable-storyboard--expanded .playable-storyboard__inspector{grid-column:auto;max-height:none;min-height:0;align-content:start;padding:15px;overflow:auto}
 .playable-storyboard--expanded .playable-storyboard__canvas{min-height:0;display:flex}.playable-storyboard--expanded .storyboard{display:flex;flex:1;flex-direction:column;min-height:0}.playable-storyboard--expanded .storyboard>.form-section__lede{flex:none;margin:0 0 9px;font-size:12px}.playable-storyboard--expanded .storyboard-board{height:auto;min-height:0;flex:1;border-radius:9px}
 .playable-storyboard .storyboard-card.is-selected{border:2px solid var(--adventure-accent);box-shadow:0 3px 14px #86696d22}.playable-storyboard--expanded .message-context-menu button{border:0;border-radius:0;background:transparent;text-align:left}
-@media(max-width:1100px){.playable-storyboard--expanded .playable-storyboard__layout{grid-template-columns:170px minmax(190px,1fr) 290px}.playable-storyboard--expanded .playable-storyboard__toolbar{align-items:flex-start}.playable-storyboard--expanded .playable-storyboard__tools button{padding:9px 11px}}
+@media(max-width:1100px){.playable-storyboard--expanded .playable-storyboard__layout{grid-template-columns:170px minmax(190px,1fr) 290px}.playable-storyboard--expanded .playable-storyboard__toolbar{align-items:flex-start}.playable-storyboard--expanded .playable-storyboard__toolbar > button{padding:9px 11px}}
 @media(max-width:760px){.playable-storyboard--expanded .playable-storyboard__layout{grid-template-columns:145px minmax(180px,1fr) 260px;overflow:auto}.playable-storyboard--expanded>.playable-storyboard__toolbar{flex-direction:column;gap:9px}.sb-dialog:has(>.storyboard-editor-window)>.sb-dialog__heading h2{font-size:19px}}
 .storyboard-map-toolbar{display:flex;flex:none;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--panel)}.storyboard-map-toolbar>label{display:flex;align-items:center;gap:10px;font-size:12px}.storyboard-map-toolbar select{min-width:210px;max-width:330px;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text)}.storyboard-map-toolbar>button{padding:8px 11px;border:1px solid var(--border);border-radius:5px;background:var(--panel);color:var(--text);cursor:pointer}.storyboard-map-toolbar>span{font-size:11px;color:var(--text-dim)}
 .scene-map-place{display:grid;gap:10px}.scene-map-place svg{height:130px;width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px}.scene-map-place svg circle{fill:var(--text-dim);opacity:.4}.scene-map-place svg circle.is-selected{fill:#86696d;opacity:1}.scene-map-place svg text{font-size:5px;fill:var(--text)}
 .storyboard-board.is-connecting,.storyboard-board.is-connecting .storyboard-card{cursor:crosshair}
+
+.storyboard-outline__tools {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 9px;
+}
+
+.storyboard-outline__tools button {
+  flex: 1;
+  padding: 6px;
+}
+
+.storyboard-outline__branch {
+  display: grid;
+  gap: 5px;
+  padding: 0;
+  margin: 0 0 7px;
+  list-style: none;
+  min-width: 0;
+}
+
+.storyboard-outline__branch .storyboard-outline__branch {
+  margin: 4px 0 2px 7px;
+  padding-left: 5px;
+  border-left: 1px solid var(--border);
+}
+
+.storyboard-outline__section {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: stretch;
+  gap: 3px;
+}
+
+.storyboard-outline__section button,
+.storyboard-outline__scene {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.playable-storyboard__list .storyboard-outline__section button:first-child {
+  padding: 0;
+  place-items: center;
+}
+
+.playable-storyboard__list .storyboard-outline__scene {
+  width: 100%;
+}
+
+.storyboard-section {
+  --section-color: #8e695e;
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px solid color-mix(in srgb, var(--section-color) 50%, var(--border));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--section-color) 8%, transparent);
+  pointer-events: none;
+}
+
+.storyboard-section--group { --section-color: #537f76; }
+.storyboard-section.is-selected { outline: 2px solid var(--section-color); }
+.storyboard-section.is-folded {
+  background: var(--panel-raised);
+  pointer-events: auto;
+}
+
+.storyboard-section__header {
+  height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+  border-radius: 9px 9px 0 0;
+  background: color-mix(in srgb, var(--section-color) 16%, var(--panel));
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.storyboard-section__header button.storyboard-section__title {
+  min-width: 0;
+  flex: 0 1 auto;
+  display: grid;
+  padding: 0;
+  border: none;
+  text-align: left;
+  background: transparent;
+}
+
+.storyboard-section__title strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.storyboard-section__title small { text-transform: uppercase; }
+.storyboard-section__count { margin-left: auto; font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+.storyboard-section__summary { display: grid; gap: 5px; padding: 10px; font-size: 12px; cursor: grab; touch-action: none; user-select: none; }
+.storyboard-section__summary span { font-size: 11px; color: var(--text-dim); }
+
+.playable-storyboard button.storyboard-section__resize {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 22px;
+  height: 22px;
+  z-index: 1;
+  padding: 0;
+  border: 0;
+  border-radius: 0 0 9px 0;
+  background: transparent;
+  cursor: nwse-resize;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.storyboard-section__resize::after {
+  content: '';
+  position: absolute;
+  inset: 5px 4px 4px 5px;
+  background: linear-gradient(135deg, transparent 49%, var(--section-color) 49% 57%, transparent 57% 74%, var(--section-color) 74% 82%, transparent 82%);
+}
+
+.storyboard-workflow {
+  display: flex;
+  gap: 5px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.storyboard-workflow button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  text-align: left;
+  min-width: 122px;
+  background: transparent;
+  border-color: transparent;
+}
+
+.storyboard-workflow button[aria-current="step"] {
+  background: color-mix(in srgb, var(--adventure-accent) 14%, var(--panel));
+  border-color: var(--adventure-accent);
+}
+
+.storyboard-workflow button strong,
+.storyboard-workflow button small { display: block; }
+.storyboard-workflow button small { letter-spacing: 0; margin-top: 3px; }
+.storyboard-workflow__number {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--bg);
+  font-variant-numeric: tabular-nums;
+}
+
+.storyboard-panel-heading h3 { margin: 4px 0 0; font-size: 18px; overflow-wrap: anywhere; }
+.storyboard-form-block { display: grid; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.storyboard-actions-heading, .storyboard-panel-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.storyboard-actions-heading h4 { margin: 0; }
+.storyboard-next, .storyboard-review {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 7px;
+  border-left: 3px solid var(--adventure-accent);
+  background: color-mix(in srgb, var(--adventure-accent) 10%, var(--panel));
+}
+.storyboard-review ul { display: grid; gap: 5px; margin: 8px 0 0; padding: 0; list-style: none; }
+.storyboard-review li button { width: 100%; text-align: left; }
+.storyboard-connection-list { display: grid; gap: 6px; }
+.storyboard-connection-list button { display: grid; gap: 4px; text-align: left; }
+.storyboard-connection-list button span { color: var(--text-dim); overflow-wrap: anywhere; }
+.storyboard-action-options { margin-top: 10px; }
+.storyboard-action-options > label, .storyboard-action-options > fieldset { margin-top: 8px; }
+.playable-storyboard button.storyboard-primary { background: var(--adventure-accent); border-color: var(--adventure-accent); color: white; font-weight: 600; }
+.playable-storyboard button.storyboard-primary:hover:not(:disabled) { background: #74585c; }
+.storyboard-back { justify-self: start; }
+
+@media (max-width: 760px) {
+  .storyboard-workflow { width: 100%; }
+  .storyboard-workflow button { min-width: 0; flex: 1; padding: 6px; }
+  .storyboard-workflow__number { width: 18px; height: 18px; }
+}

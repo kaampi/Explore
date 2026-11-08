@@ -95,6 +95,7 @@ export function applyLandmarkTravel(session: Session, patch: LandmarkTravelPatch
   }
   initializeSpatialReferences(session);
   const previous = session.scene;
+  session.visitedMapPlaceIds=[...new Set([...(session.visitedMapPlaceIds??[]),...(previous?.placeId?[previous.placeId]:[]),patch.placeId])];
   // Resolve relative positions before changing what "here" refers to.
   const departure = session.player?.position.value?.trim() || previous?.location;
   if(departure){for(const character of Object.values(session.characters)){if(character.position.lock === "unlocked" && /^(?:here|här)$/i.test(character.position.value.trim()))character.position={...character.position,value:departure};}}

@@ -28,10 +28,11 @@ export const PlaceSchema = z.object({
 });
 export const BarrierSchema = z.object({
   id, name: z.string().min(1), open: z.boolean(), locked: z.boolean(), blocked: z.boolean().default(false),
-  keyId: id.optional()
+  keyId: id.optional(), position:id.optional(), shared:z.boolean().optional()
 });
 const LinkSchema = z.object({ from: id, to: id, barrierId: id.optional() });
 const EffectSchema = z.discriminatedUnion('kind', [
+  z.object({kind:z.literal('take-item'),itemId:id}).strict(),
   z.object({ kind: z.literal('flag'), flag: id }).strict(),
   z.object({ kind: z.literal('transfer-item'), itemId: id, from: id, to: id }).strict(),
   z.object({ kind: z.literal('transfer-resource'), resource: id, amount: z.number().finite().positive(), from: id, to: id }).strict()
@@ -49,11 +50,12 @@ export const InteractionSchema = z.object({
 export type Interaction = z.infer<typeof InteractionSchema>;
 export const EncounterDefinitionSchema = z.object({
   id, title: z.string().min(1), description: z.string(), playerId: id,
+  descriptions:z.array(z.object({requiresFlags:z.array(id).default([]),excludesFlags:z.array(id).default([]),text:z.string().min(1)})).optional(),
   rules: z.object({ id: id.default('d100'), actionsPerTurn: z.number().int().min(1).max(10).default(1), movesPerTurn: z.number().int().min(1).max(10).default(1), defensePenalty: z.number().nonnegative().default(20), unreadyTargetBonus:z.number().nonnegative().default(20), exceptionalDamage: z.number().nonnegative().default(2) }),
   places: z.array(PlaceSchema).min(1), connections: z.array(LinkSchema),
   // Visibility is authored independently of movement: seeing a balcony does not make it reachable.
   sightLines: z.array(LinkSchema), weapons: z.array(WeaponSchema),
-  items: z.array(z.object({ id, name: z.string().min(1) })).default([]),
+  items: z.array(z.object({ id, name: z.string().min(1), description:z.string().optional(), readableContent:z.string().optional(), imageDataUrl:z.string().optional() })).default([]),
   hostilities: z.array(z.tuple([id, id])), interactions: z.array(InteractionSchema).default([])
 });
 export type EncounterDefinition = z.infer<typeof EncounterDefinitionSchema>;
@@ -84,6 +86,7 @@ export const EncounterStateSchema = z.object({
   version: z.literal(1), sceneId: id, revision: z.number().int().nonnegative(),
   phase: z.enum(['exploration', 'combat', 'complete', 'defeated']), round: z.number().int().nonnegative(),
   cursor: z.number().int().nonnegative(), actors: z.record(ActorSchema), barriers: z.record(BarrierSchema),
+  itemLocations:z.record(id).default({}),
   flags: z.array(id).default([]), attempts: z.array(id).default([]),
   initiative: z.object({ rolls: z.record(z.number().int().positive()), order: z.array(id).min(1) }).optional()
 });

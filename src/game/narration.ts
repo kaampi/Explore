@@ -1,3 +1,4 @@
+import { encounterDescription } from './sceneDescription';
 import type { EncounterAction, EncounterEvent, EncounterDefinition, EncounterState } from './EncounterSchema';
 export function actionLabel(d: EncounterDefinition, s: EncounterState, action: EncounterAction) {
   if (action.kind === 'attack') return `${d.weapons.find(w => w.id === action.weaponId)?.name ?? action.weaponId} · ${s.actors[action.targetId]?.name ?? action.targetId}`;
@@ -30,7 +31,7 @@ export function describeEvents(d: EncounterDefinition, s: EncounterState, events
       case 'say': return `${who(event.actorId)} says: “${event.text}”`;
       case 'speech-reply': return event.text;
       case 'interaction': return event.text;
-      case 'look': return `${d.description} ${Object.values(s.actors).map(a => `${a.name}: ${where(a.position)}, ${a.hp}/${a.maxHp} health${a.disposition !== 'active' ? ', ' + a.disposition : ''}.`).join(' ')}`;
+      case 'look': return `${encounterDescription(d,s)} ${Object.values(s.actors).map(a => `${a.name}: ${where(a.position)}, ${a.hp}/${a.maxHp} health${a.disposition !== 'active' ? ', ' + a.disposition : ''}.`).join(' ')}`;
     }
   }).join(' ');
 }

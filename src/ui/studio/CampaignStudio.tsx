@@ -1,3 +1,5 @@
+import { installInnExample } from '../../scenarios/innVisit';
+import { EmmaInnExampleDialog } from './EmmaInnExampleDialog';
 import { chooseAdventureMap } from '../../library/adventureMap';
 import { StoryboardEditor } from './StoryboardEditor';
 import { connectedAdventureExample } from '../../library/playableCampaign';
@@ -203,6 +205,7 @@ export function CampaignStudio({
   const [draft, setDraft] = useState<CampaignTemplate | null>(null);
   const [tab, setTab] = useState<Tab>("general");
   const [storyboardOpen,setStoryboardOpen]=useState(false);
+  const [emmaExampleOpen, setEmmaExampleOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [freshNight, setFreshNight] = useState(false);
@@ -297,6 +300,26 @@ export function CampaignStudio({
     setHandoffDraft("");
   }
 
+  async function loadInnExample(){
+    setBusy(true);setError(null);try{const built=await installInnExample(repo);await refresh();setDraft(built.campaign);setTab('storyboard');setStoryboardOpen(true);setNotice('An editable inn, its rooms and adventure are saved. Choose Test this scene, or open the inn in World maps.');}catch(error){setError(error instanceof Error?error.message:'Could not load the inn.');}finally{setBusy(false);}
+  }
+  async function loadEmmaExample(campaign: CampaignTemplate) {
+    setBusy(true);
+    setError(null);
+    try {
+      await repo.saveCampaign(campaign);
+      setCampaigns(items => [campaign, ...items]);
+      setEmmaExampleOpen(false);
+      setDraft(campaign);
+      setTab('storyboard');
+      setStoryboardOpen(true);
+      setNotice('Start with “Vid bardisken”. Select an action or connection to see what makes it available.');
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Could not save the adventure.');
+    } finally {
+      setBusy(false);
+    }
+  }
   async function loadConnectedExample(){
     setBusy(true);setError(null);try{const built=connectedAdventureExample();await repo.saveRealm(built.realm);for(const p of built.places)await repo.savePlace(p);for(const c of built.characters)await repo.saveCharacter(c);for(const o of built.objects)await repo.saveObject(o);await refresh();setDraft(built.campaign);setTab('storyboard');setStoryboardOpen(true);setNotice('Explore the two scenes and their conditions, then choose Test this scene.');}catch(error){setError(error instanceof Error?error.message:'Could not load the example.');}finally{setBusy(false);}
   }
@@ -547,7 +570,8 @@ export function CampaignStudio({
             <button type="button" className="setup-start" onClick={createNew}>
               New campaign
             </button>
-            <button type="button" className="setup-text-btn" disabled={busy} onClick={()=>void loadConnectedExample()}>Connected adventure example</button>
+            <button type="button" className="setup-text-btn" disabled={busy} onClick={()=>void loadConnectedExample()}>Connected adventure example</button><button type="button" className="setup-text-btn" disabled={busy} onClick={()=>void loadInnExample()}>Inn & rooms example</button>
+            <button type="button" className="setup-text-btn" disabled={busy} onClick={() => { setError(null); setEmmaExampleOpen(true); }}>Emma och Einar</button>
             <button type="button" className="setup-text-btn" onClick={() => void loadExampleCampaign()}>
               Load the example campaign
             </button>
@@ -555,6 +579,8 @@ export function CampaignStudio({
               One-off scene
             </button>
           </div>
+          {emmaExampleOpen && <EmmaInnExampleDialog characters={characters} worlds={realms} places={places}
+            busy={busy} error={error} onCreate={loadEmmaExample} onClose={() => setEmmaExampleOpen(false)} />}
         </div>
       </div>
     );

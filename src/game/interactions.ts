@@ -1,9 +1,10 @@
 import type { EncounterOutput, EncounterDefinition, EncounterState, Interaction } from './EncounterSchema';
 import { encounterRules, type RulesAdapter } from './rules';
 
-function applyEffects(s: EncounterState, effects: Interaction['success']['effects']) {
+function applyEffects(d:EncounterDefinition,s: EncounterState, effects: Interaction['success']['effects']) {
   for (const effect of effects) {
     if (effect.kind === 'flag') { if (!s.flags.includes(effect.flag)) s.flags.push(effect.flag); continue; }
+    if(effect.kind==='take-item'){const player=s.actors[d.playerId]!;if(!d.items.some(i=>i.id===effect.itemId)||s.itemLocations[effect.itemId]!==player.position)throw Error('That item is not available here.');if(Object.values(s.actors).some(a=>a.inventory.includes(effect.itemId)))throw Error('That item already has an owner.');delete s.itemLocations[effect.itemId];player.inventory.push(effect.itemId);continue;}
     const from = s.actors[effect.from], to = s.actors[effect.to];
     if (!from || !to) throw new Error('Unknown party in this exchange.');
     if (effect.kind === 'transfer-item') {
@@ -30,7 +31,7 @@ export function interactionBlock(d: EncounterDefinition, s: EncounterState, id: 
   if (interaction.requiresFlags.some(flag => !s.flags.includes(flag)) || interaction.excludesFlags.some(flag => s.flags.includes(flag))) return 'The conditions for this opportunity are not met.';
   if (interaction.check && player.stats[interaction.check.stat] === undefined) return 'The required skill is missing.';
   // Check BOTH branches before rolling, including cumulative transfers. Invalid offers never consume a roll.
-  try { applyEffects(structuredClone(s), interaction.success.effects); applyEffects(structuredClone(s), interaction.failure.effects); }
+  try { applyEffects(d,structuredClone(s), interaction.success.effects); applyEffects(d,structuredClone(s), interaction.failure.effects); }
   catch (error) { return error instanceof Error ? error.message : 'This exchange is unavailable.'; }
 }
 export function performInteraction(d: EncounterDefinition, s: EncounterState, id: string, out: EncounterOutput, rng: () => number, adapters?: readonly RulesAdapter[]) {
@@ -42,7 +43,7 @@ export function performInteraction(d: EncounterDefinition, s: EncounterState, id
     out.checks.push(check); success = check.degree === 'success' || check.degree === 'exceptional';
   }
   const outcome = success ? interaction.success : interaction.failure;
-  applyEffects(s, outcome.effects); s.attempts.push(id);
+  applyEffects(d,s, outcome.effects); s.attempts.push(id);
   if (s.phase === 'combat' && interaction.costsAction) player.actionsLeft--;
   out.events.push({ kind: 'interaction', actorId: player.id, interactionId: id, text: outcome.text });
 }

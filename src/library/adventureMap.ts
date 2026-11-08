@@ -1,3 +1,4 @@
+import { inheritedMapImage,interiorPlaceBrief } from "./interior";
 import { newPlaceTemplate,type CampaignTemplate,type CampaignScene,type PlaceTemplate,type RealmTemplate } from './LibrarySchema';
 import type { MapNode } from './worldMap';
 
@@ -6,11 +7,12 @@ export type AdventureMapPlace={node:MapNode;place:PlaceTemplate;path:string};
 export function adventureMapPlaces(world:RealmTemplate|undefined,places:PlaceTemplate[]):AdventureMapPlace[]{
  if(!world?.worldMap)return [];
  const nodes=world.worldMap.nodes,byId=new Map(nodes.map(node=>[node.id,node]));
- return nodes.filter(node=>!node.isJunction).map(node=>{
+ return nodes.filter(node=>!node.isJunction&&node.kind!=='Furniture').map(node=>{
   const id=node.placeId??node.id,base=places.find(p=>p.id===id&&p.realmId===world.id);
   const chain=[node.name],seen=new Set([node.id]);let parent=node.parentId;
   while(parent&&!seen.has(parent)){seen.add(parent);const p=byId.get(parent);if(!p)break;chain.unshift(p.name);parent=p.parentId;}
-  const place=newPlaceTemplate({...base,id,realmId:world.id,name:node.name,note:node.intro??(node.description||base?.note||''),brief:node.description||base?.brief||'',lighting:node.lighting??base?.lighting??'',noise:node.noise??base?.noise??'',...(node.imageDataUrl!==undefined?{imageDataUrl:node.imageDataUrl,thumbDataUrl:node.imageDataUrl}:{}),...(node.audioDataUrl!==undefined?{audioDataUrl:node.audioDataUrl}:{}),...(node.images?{gallery:node.images.slice(1).map(imageDataUrl=>({imageDataUrl,thumbDataUrl:imageDataUrl}))}:{})});
+  const mapImage=inheritedMapImage(world.worldMap!,node.id,places);
+  const place=newPlaceTemplate({...base,id,realmId:world.id,name:node.name,note:node.intro??(node.description||base?.note||''),brief:interiorPlaceBrief(world.worldMap!,node.id)??(node.description||base?.brief||''),lighting:node.lighting??base?.lighting??'',noise:node.noise??base?.noise??'',...(mapImage?{imageDataUrl:mapImage,thumbDataUrl:mapImage}:{}),...(node.audioDataUrl!==undefined?{audioDataUrl:node.audioDataUrl}:{}),...(node.images?{gallery:node.images.slice(1).map(imageDataUrl=>({imageDataUrl,thumbDataUrl:imageDataUrl}))}:{})});
   place.createdAt=base?.createdAt??world.createdAt;place.updatedAt=world.updatedAt;
   return {node,place,path:chain.join(' / ')};
  });

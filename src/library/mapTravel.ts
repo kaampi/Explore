@@ -2,8 +2,8 @@ import { terrainTravel } from "./mapTerrain";
 import type { MapNode, WorldMap } from "./worldMap";
 /** Distance between rectangle edges, in visible 40px grid cells. */
 export function travelGap(a:MapNode,b:MapNode):number {
-  const dx=Math.max(0,Math.abs(a.x-b.x)-((a.width??15)+(b.width??15))/2)*8;
-  const dy=Math.max(0,Math.abs(a.y-b.y)-((a.height??(44/6))+(b.height??(44/6)))/2)*6;
+  const dx=Math.max(0,Math.abs(a.x-b.x)-((a.settlementMarker?0:a.width??15)+(b.settlementMarker?0:b.width??15))/2)*8;
+  const dy=Math.max(0,Math.abs(a.y-b.y)-((a.settlementMarker?0:a.height??(44/6))+(b.settlementMarker?0:b.height??(44/6)))/2)*6;
   return Math.hypot(dx,dy)/40;
 }
 /** Scale estimates from a stable snapshot; descriptive travel conditions stay unchanged. */

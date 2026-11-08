@@ -636,6 +636,7 @@ export const SessionSchema = z.object({
 
   memory: MemorySchema.default({ episodic: [], semantic: [], relational: [] }),
   conversation: z.array(z.unknown()).default([]),
+  visitedMapPlaceIds:z.array(z.string()).optional(),
   events: z.array(StateEventSchema).default([]),
   snapshots: z.array(z.unknown()).default([]),
   diagnostics: z.array(z.unknown()).default([])

@@ -12,6 +12,7 @@ it('persists reusable templates and keeps placed copies independent',async()=>{
  await repo.savePlaceBlueprints(templates.map(t=>t.id===ruin.id?{...t,name:'Ancient ruin'}:t));
  expect((await new IndexedDBRepository(factory,'place-blueprint-test').listPlaceBlueprints()).find(t=>t.id===ruin.id)?.name).toBe('Ancient ruin');
  expect(forest.name).toBe('Ruin');expect(village.name).toBe('Ruin');
+ expect(forest.entrance).toBe('open');expect(instantiateBlueprint({...ruin,entrance:'locked'}).entrance).toBe('locked');expect(instantiateBlueprint({...ruin,entrance:'none'}).entrance).toBe('none');
  const template={...starterBlueprints.find(t=>t.kind==='Area')!,factionIds:['guild']};
  const square=instantiateBlueprint(template);
  square.factionIds?.push('watch');

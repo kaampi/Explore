@@ -242,6 +242,25 @@ export const StoryboardPositionSchema = z.object({
 });
 export type StoryboardPosition = z.infer<typeof StoryboardPositionSchema>;
 
+const storyboardSectionFields = {
+  id: z.string().min(1),
+  title: z.string(),
+  position: StoryboardPositionSchema.optional(),
+  collapsed: z.boolean().optional()
+};
+
+const StoryboardSectionSizeSchema = z.object({
+  width: z.number().finite().positive(),
+  height: z.number().finite().positive()
+});
+export type StoryboardSectionSize = z.infer<typeof StoryboardSectionSizeSchema>;
+
+export const StoryboardSectionSchema = z.discriminatedUnion('kind', [
+  z.object({ ...storyboardSectionFields, kind: z.literal('act') }),
+  z.object({ ...storyboardSectionFields, kind: z.literal('group'), actId: z.string().min(1).optional(), size: StoryboardSectionSizeSchema.optional() })
+]);
+export type StoryboardSection = z.infer<typeof StoryboardSectionSchema>;
+
 /**
  * A chapter groups Storyboard scenes for export to the writing tool
  * (chapter shells: title + brief, no prose — StoryBook AI drafts that).
@@ -369,6 +388,7 @@ export const CampaignSceneSchema = z.preprocess(
     whatNowSets: z.array(WhatNowSetSchema).default(() => []),
     /** Card position on the Storyboard canvas. Missing = not yet placed. */
     position: StoryboardPositionSchema.optional(),
+    storyboardSectionId: z.string().min(1).optional(),
     /** Which Storyboard chapter this scene is grouped into, if any. */
     chapterId: z.string().min(1).optional()
   })
@@ -404,6 +424,7 @@ export const CampaignTemplateSchema = z.object({
   sceneLinks: z.array(StoryboardLinkSchema).default(() => []),
   /** Storyboard chapter groups, for chapter-shell export to the writing tool. */
   chapters: z.array(StoryboardChapterSchema).default(() => []),
+  storyboardSections: z.array(StoryboardSectionSchema).optional(),
   /**
    * Character-shelf Look for. Empty = All. `__unsorted__` = no tags.
    * Does not change who already belongs. Not used on Objects.

@@ -1,3 +1,6 @@
+import { copyPictureFields } from '../state/placePictures';
+import { encounterDescription } from '../game/sceneDescription';
+import { applyAdventurePresentation } from './adventurePresentation';
 import type { CampaignTemplate,CampaignScene,PlaceTemplate,RealmTemplate } from '../library/LibrarySchema';
 import { adventureMapPlaces,bindSceneMapPlace,mapPlaceForScene } from '../library/adventureMap';
 import { AdventureRunSchema } from '../game/AdventureSchema';
@@ -16,11 +19,11 @@ export function startPlayableCampaign(campaign:CampaignTemplate,scene:CampaignSc
   if(mapped&&!bound.encounter.definition.description.trim())throw Error(`Add an arrival introduction for “${s.name||'Untitled scene'}” in the scene or its map place.`);
   return {id:s.id,name:s.name,placeId:place.id,location:place.name,...(entry?{mapNodeId:entry.node.id}:{}),game:structuredClone(bound.encounter)};
  });
- const run=unifyAdventureEquipment(AdventureRunSchema.parse({version:1,campaignId:campaign.id,title:campaign.name,currentSceneId:scene.id,scenes,links:campaign.sceneLinks,goal:campaign.goal,exampleId:campaign.exampleId,exampleVersion:campaign.exampleVersion,...(world?.worldMap?{geography:{worldId:world.id,name:world.name,updatedAt:world.updatedAt,map:structuredClone(world.worldMap)}}:{})})),current=run.scenes.find(s=>s.id===scene.id);
+ const run=unifyAdventureEquipment(AdventureRunSchema.parse({version:1,campaignId:campaign.id,title:campaign.name,currentSceneId:scene.id,scenes,links:campaign.sceneLinks,goal:campaign.goal,exampleId:campaign.exampleId,exampleVersion:campaign.exampleVersion,...(world?.worldMap?{geography:{worldId:world.id,name:world.name,updatedAt:world.updatedAt,map:{...structuredClone(world.worldMap),nodes:world.worldMap.nodes.map(node=>{const image=mapped?.find(e=>e.node.id===node.id)?.place.imageDataUrl;return {...structuredClone(node),...(image?{imageDataUrl:image}:{})};})}}}:{})})),current=run.scenes.find(s=>s.id===scene.id);
  if(!current)throw Error('The starting scene is missing.');
  const game=structuredClone(current.game);game.state.flags=[...new Set([...game.state.flags,...campaign.storyFlags])];
- const session=createSessionFromSetup({location:current.location,placeId:current.placeId,placeNote:game.definition.description,lighting:'',noise:'',music:false,characters:[],campaignId:campaign.id,sceneId:scene.id,ruleset:{name:'Adventure · d100',attributes:[]},...(campaign.model?{model:campaign.model}:{}),playerIdentity:{name:campaign.player?.name||'Traveller',...(campaign.player?.portraitDataUrl?{portraitDataUrl:campaign.player.portraitDataUrl}:{}),stats:Object.fromEntries(Object.entries(game.state.actors[game.definition.playerId]!.stats).map(([k,v])=>[k,String(v)]))}},id);
- session.adventure=run;session.encounter=game;session.storyFlags=[...game.state.flags];session.conversation=[{turn:0,role:'character',toldBy:'narrator',content:game.definition.description,adventureSceneId:scene.id}];
- if(world){session.scene!.realm=world.name;session.spatialPlaces=(mapped??[]).map(entry=>({id:entry.place.id,name:entry.place.name,kind:entry.node.kind}));if(session.player)session.player.locationRef={placeId:current.placeId,side:'at'};}
- return parseSession(session);
+ const session=createSessionFromSetup({location:current.location,placeId:current.placeId,placeNote:encounterDescription(game.definition,game.state),lighting:'',noise:'',music:false,characters:[],campaignId:campaign.id,sceneId:scene.id,ruleset:{name:'Adventure · d100',attributes:[]},...(campaign.model?{model:campaign.model}:{}),playerIdentity:{name:campaign.player?.name||'Traveller',...(campaign.player?.portraitDataUrl?{portraitDataUrl:campaign.player.portraitDataUrl}:{}),stats:Object.fromEntries(Object.entries(game.state.actors[game.definition.playerId]!.stats).map(([k,v])=>[k,String(v)]))}},id);
+ session.adventure=run;session.encounter=game;session.storyFlags=[...game.state.flags];session.conversation=[{turn:0,role:'character',toldBy:'narrator',content:encounterDescription(game.definition,game.state),adventureSceneId:scene.id}];
+ if(world){session.scene!.realm=world.name;session.scene!.realmVisual=copyPictureFields(world);session.spatialPlaces=(mapped??[]).map(entry=>({id:entry.place.id,name:entry.place.name,kind:entry.node.kind}));if(session.player)session.player.locationRef={placeId:current.placeId,side:'at'};}
+ applyAdventurePresentation(session);return parseSession(session);
 }

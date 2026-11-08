@@ -1,3 +1,6 @@
+import { PlayerInventory } from '../components/PlayerInventory';
+import { ChatBackdrop } from '../components/ChatBackdrop';
+import { sceneBackdrop } from '../../state/sceneBackdrop';
 import { EncounterPanel } from '../components/EncounterPanel';
 import { GateScenePanel } from '../components/GateScenePanel';
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
@@ -20,6 +23,8 @@ import { playerCheckStats } from "../../checks/playerCheck";
 import gateBackground from "../assets/gate-play-background.jpg";
 import { BackgroundDialog } from "../themes/BackgroundSettings";
 import { MessageMenu } from "../components/MessageMenu";
+import { PlayMapCard } from '../components/PlayMapCard';
+import { usePlayMap } from '../components/usePlayMap';
 
 export function PlayWorkspace({
   onHome,
@@ -49,6 +54,10 @@ export function PlayWorkspace({
   const [backgroundOpen, setBackgroundOpen] = useState(false);
   const [backgroundMenu, setBackgroundMenu] = useState<{x:number;y:number}|null>(null);
   const withRules = !!session.ruleset;
+  const mapModel=usePlayMap(repo,session),mapView=mapModel?<PlayMapCard key={mapModel.key} model={mapModel}/>:null;
+  const scenePictures=sceneBackdrop(session);
+  const encounterBackdrop=library.active.backgroundMode==='scene'&&scenePictures.pictures.length?<ChatBackdrop pictures={scenePictures.pictures} play={scenePictures.picturePlay} locationKey={session.scene?.placeId??session.sceneId??''}/>:undefined;
+  const withSidebar=withRules||Boolean(mapModel);
   const gatePreview = session.ruleset?.name === 'Gate test · d100' && library.active.backgroundMode === 'scene';
   const checkStats = playerCheckStats(session);
   const streaming = phase === "streaming";
@@ -139,8 +148,8 @@ export function PlayWorkspace({
         className={`sb-play-layout${castOpen ? " sb-play-layout--cast" : ""}${inspectorOpen ? " sb-play-layout--inspector" : ""}`}
       >
         {castOpen && <CastPanel />}
-        <div onContextMenu={event=>{const target=event.target as HTMLElement;if(!target.closest(".chat-stage")||target.closest(".message,button,input,textarea,select,a,[role=dialog]"))return;event.preventDefault();setBackgroundMenu({x:event.clientX,y:event.clientY});}} className={`sb-themed-play${withRules ? " sb-themed-play--rules" : ""}${gatePreview ? " sb-themed-play--gate-preview" : ""}`} style={{...playThemeStyle(library.active), ...(gatePreview ? {backgroundImage:`url(${gateBackground})`} : {})}}>
-          {session.encounter ? <EncounterPanel onHome={onHome}/> : session.gateEncounter ? <GateScenePanel onHome={onHome} repo={repo}/> : <>
+        <div onContextMenu={event=>{const target=event.target as HTMLElement;if(!target.closest(".chat-stage")||target.closest(".message,button,input,textarea,select,a,[role=dialog]"))return;event.preventDefault();setBackgroundMenu({x:event.clientX,y:event.clientY});}} className={`sb-themed-play${withSidebar ? " sb-themed-play--rules" : ""}${gatePreview ? " sb-themed-play--gate-preview" : ""}`} style={{...playThemeStyle(library.active), ...(gatePreview ? {backgroundImage:`url(${gateBackground})`} : {})}}>
+          {session.encounter ? <EncounterPanel onHome={onHome} mapView={mapView} backdrop={encounterBackdrop}/> : session.gateEncounter ? <GateScenePanel onHome={onHome} repo={repo} mapView={mapView}/> : <>
           <ChatPanel
             gameTools={withRules}
             partyTarget={partyTarget}
@@ -151,16 +160,20 @@ export function PlayWorkspace({
             canSend={canSend}
             onCheckConnection={() => setConnectionOpen(true)}
           />
-          {withRules && <aside className="sb-game-toolbox" aria-label="Game tools">
+          {withSidebar && <aside className={'sb-game-toolbox'+(!withRules?' sb-game-toolbox--map-only':'')} aria-label="Game tools">
+            {mapView&&<section className="sb-game-toolbox__map">{mapView}</section>}
+            {withRules&&<>
             <header><span className="sb-game-toolbox__eyebrow">YOUR ADVENTURE</span><h2>At your fingertips</h2><p>{session.ruleset?.name}</p></header>
-            <section><h3>Take a chance</h3><p>Describe what you want to try, choose a stat, and let the dice decide.</p>
+            <section className="sb-game-toolbox__checks"><h3>Take a chance</h3><p>Describe what you want to try, choose a stat, and let the dice decide.</p>
               <button type="button" className="sb-game-toolbox__roll" disabled={streaming || !canSend || !!session.journey || checkStats.length === 0} onClick={() => setCheckRequest(value => value + 1)}><span aria-hidden="true">◇</span> Roll the dice</button>
               {checkStats.length === 0 && <small>Add numeric stats to your player sheet to make a check.</small>}
               {!!session.journey && <small>Finish or pause your journey before making a check.</small>}
             </section>
             <section><h3>{session.player?.name || "Your character"}</h3><dl>{checkStats.map(stat => <div key={stat.id}><dt>{stat.name}</dt><dd>{stat.value}</dd></div>)}</dl></section>
+            <PlayerInventory session={session} busy={streaming}/>
             <section className="sb-game-toolbox__party" aria-label="Party and prospects" ref={setPartyTarget} />
             <section className="sb-game-toolbox__session"><h3>Your story stays with you</h3><p>Your conversation and resolved rolls are saved as you play.</p><button type="button" className="sb-link" disabled={streaming} onClick={() => onHome(session)}>Save & return home ↗</button></section>
+            </>}
           </aside>}
           </>}
         </div>
