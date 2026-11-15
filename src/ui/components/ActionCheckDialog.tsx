@@ -14,6 +14,7 @@ import { playerCheckStats, rollPlayerCheck } from "../../checks/playerCheck";
 import { portraitSrc } from "../studio/portrait";
 import { DiceTray } from "./DiceTray";
 import { DiceSound } from "../diceSound";
+import { isGateTestSession } from "../../session/gateTest";
 
 export function ActionCheckDialog({
   session,
@@ -30,7 +31,7 @@ export function ActionCheckDialog({
   const [targetId, setTargetId] = useState(ids[0] ?? "");
   const [attributeId, setAttributeId] = useState(stats[0]?.id ?? "");
   const [action, setAction] = useState(
-    session.ruleset?.name === "Gate test · d100"
+    isGateTestSession(session)
       ? "I explain why I need entry and ask the guard to let me through."
       : "I try to persuade them.",
   );

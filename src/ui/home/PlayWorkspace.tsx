@@ -25,6 +25,7 @@ import { BackgroundDialog } from "../themes/BackgroundSettings";
 import { MessageMenu } from "../components/MessageMenu";
 import { PlayMapCard } from "../components/PlayMapCard";
 import { usePlayMap } from "../components/usePlayMap";
+import { isGateTestSession } from "../../session/gateTest";
 
 export function PlayWorkspace({
   onHome,
@@ -66,8 +67,7 @@ export function PlayWorkspace({
       />
     ) : undefined;
   const withSidebar = withRules || Boolean(mapModel);
-  const gatePreview =
-    session.ruleset?.name === "Gate test · d100" && library.active.backgroundMode === "scene";
+  const gatePreview = isGateTestSession(session) && library.active.backgroundMode === "scene";
   const checkStats = playerCheckStats(session);
   const streaming = phase === "streaming";
   const readiness = modelReadiness(discovery, session.runtime.model);

@@ -680,6 +680,8 @@ export const SessionSchema = z.object({
   story: StoryStateSchema.optional(),
   voice: VoiceStateSchema.optional(),
   ruleset: RulesetStateSchema.optional(),
+  /** Names a self-contained built-in scenario. Missing on ordinary sessions and on older saves. */
+  scenario: z.enum(["gate-test"]).optional(),
   /** Player-facing campaign pitch. UI only — never sent to the model. */
   campaignIntro: z.string().optional(),
   /**

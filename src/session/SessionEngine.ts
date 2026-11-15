@@ -55,6 +55,7 @@ import { othersInScene } from "@state/sceneFocus";
 import { holdingPartyIds, isLeftBehind, travelingPartyIds } from "@state/party";
 import { movableStatsForCharacter, type MovableStat } from "@state/statShift";
 import { chatBeatFor, parseLiveTurns, undoIdsAfterReply, undoIdsForBeatReplay } from "./chatBeat";
+import { isGateTestSession } from "./gateTest";
 
 /**
  * Session Engine — Master Spec §2.1, §48.
@@ -581,7 +582,7 @@ export class SessionEngine {
     if (options.check) {
       const outcome = checkOutcomeInstruction(
         options.check,
-        session.ruleset?.name === "Gate test · d100" && options.check.attributeId === "persuasion"
+        isGateTestSession(session) && options.check.attributeId === "persuasion"
           ? options.check.success
             ? "The guard accepts the traveller’s request, explicitly permits entry, and opens the city gate. Her decision is YES. The traveller remains outside until they choose to enter."
             : "The guard refuses this request and keeps the city gate closed. Her decision is NO for this attempt. The traveller remains outside."
@@ -605,9 +606,7 @@ export class SessionEngine {
 
     let fullText = "";
     const gateDecision =
-      options.check &&
-      session.ruleset?.name === "Gate test · d100" &&
-      options.check.attributeId === "persuasion"
+      options.check && isGateTestSession(session) && options.check.attributeId === "persuasion"
         ? options.check.success
           ? `${session.characters[characterId]?.name ?? "The guard"} nods and draws back the bolt. "All right. You may enter." She opens the city gate and steps aside. You are still outside; the way into the city is now open.`
           : `${session.characters[characterId]?.name ?? "The guard"} shakes her head and keeps her hand on the bolt. "No. You must wait until morning." The city gate remains closed, and you remain outside.`

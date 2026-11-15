@@ -3,6 +3,7 @@ import playerPortrait from "../../library/examples/gate-player-portrait.json";
 import { newCharacterTemplate, newPlaceTemplate, newRulesetTemplate } from "@library/LibrarySchema";
 import { quickCharacterSession } from "./quickStart";
 import { newGateEncounter } from "../../checks/gateEncounter";
+import { LEGACY_GATE_TEST_RULESET_NAME } from "../../session/gateTest";
 export function gateEncounterScenario(sessionId: string, model?: string) {
   const session = gateScenario(sessionId, model);
   session.gateEncounter = newGateEncounter();
@@ -65,7 +66,7 @@ export function gateScenario(sessionId: string, model?: string) {
     brief: "Outside the closed city gate at dusk; Mona guards entry.",
   });
   const ruleset = newRulesetTemplate({
-    name: "Gate test · d100",
+    name: LEGACY_GATE_TEST_RULESET_NAME,
     source: "example",
     attributes: [
       {
@@ -88,6 +89,7 @@ export function gateScenario(sessionId: string, model?: string) {
     ruleset,
     ...(model ? { model } : {}),
   });
+  session.scenario = "gate-test";
   if (session.player) {
     session.player.name = "Traveller";
     session.player.portraitDataUrl = playerPortrait;
