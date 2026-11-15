@@ -35,6 +35,15 @@ import {
   type SceneField,
   type StoryboardIssue,
 } from "./storyboardReadiness";
+import {
+  INSPECTOR_MAX,
+  INSPECTOR_MIN,
+  clampInspectorWidth,
+  loadInspectorWidth,
+  saveInspectorWidth,
+  widthForKey,
+  INSPECTOR_DEFAULT,
+} from "./inspectorWidth";
 import "./playable-storyboard.css";
 export function PlayableStoryboard({
   campaign,
@@ -81,6 +90,8 @@ export function PlayableStoryboard({
   const [testSceneId, setTestSceneId] = useState(campaign.scenes[0]?.id ?? "");
   const [focus, setFocus] = useState<SceneField | "objective" | null>(null);
   const inspector = useRef<HTMLElement>(null);
+  const layout = useRef<HTMLDivElement>(null);
+  const [inspectorWidth, setInspectorWidth] = useState(loadInspectorWidth);
   const root = useRef<HTMLElement>(null),
     [context, setContext] = useState<StoryboardContextTarget | null>(null);
   const sections = campaign.storyboardSections ?? [];
@@ -168,6 +179,23 @@ export function PlayableStoryboard({
     } finally {
       setCreatingPlace(false);
     }
+  }
+  function resizeInspector(next: number) {
+    const width = clampInspectorWidth(next, layout.current?.clientWidth);
+    setInspectorWidth(width);
+    saveInspectorWidth(width);
+  }
+  function startResize(event: React.PointerEvent<HTMLDivElement>) {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = inspectorWidth;
+    const move = (moved: PointerEvent) => resizeInspector(startWidth + (startX - moved.clientX));
+    const stop = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", stop);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", stop);
   }
   function selectScene(id: string, additive = false) {
     setConnectionFromId(null);
@@ -1063,7 +1091,15 @@ export function PlayableStoryboard({
           </button>
         )}
       </div>
-      <div className="playable-storyboard__layout">
+      <div
+        ref={layout}
+        className="playable-storyboard__layout"
+        style={
+          expanded
+            ? ({ "--storyboard-inspector-width": `${inspectorWidth}px` } as React.CSSProperties)
+            : undefined
+        }
+      >
         <aside className="playable-storyboard__list">
           <h3>Story outline</h3>
           <div className="storyboard-outline__tools">
@@ -1131,6 +1167,27 @@ export function PlayableStoryboard({
             }}
           />
         </div>
+        {expanded && (
+          <div
+            className="storyboard-resize-handle"
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize details panel"
+            aria-valuemin={INSPECTOR_MIN}
+            aria-valuemax={INSPECTOR_MAX}
+            aria-valuenow={inspectorWidth}
+            tabIndex={0}
+            title="Drag, or use the arrow keys, to make the details panel wider or narrower. Double-click to reset."
+            onPointerDown={startResize}
+            onDoubleClick={() => resizeInspector(INSPECTOR_DEFAULT)}
+            onKeyDown={(event) => {
+              const next = widthForKey(event.key, inspectorWidth, layout.current?.clientWidth);
+              if (next === undefined) return;
+              event.preventDefault();
+              resizeInspector(next);
+            }}
+          />
+        )}
         <aside
           ref={inspector}
           className="playable-storyboard__inspector"

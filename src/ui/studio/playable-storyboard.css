@@ -176,6 +176,9 @@
   }
 }
 @container (max-width:520px) {
+  .storyboard-resize-handle {
+    display: none;
+  }
   .playable-storyboard__layout {
     grid-template-columns: 1fr;
   }
@@ -322,7 +325,7 @@
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 200px minmax(230px, 1fr) 330px;
+  grid-template-columns: 200px minmax(230px, 1fr) 8px var(--storyboard-inspector-width, 330px);
   align-items: stretch;
   gap: 12px;
 }
@@ -755,4 +758,21 @@
     width: 18px;
     height: 18px;
   }
+}
+
+.storyboard-resize-handle {
+  align-self: stretch;
+  width: 8px;
+  margin: 0 -2px;
+  border-radius: 4px;
+  cursor: col-resize;
+  touch-action: none;
+  background: var(--border);
+  opacity: 0.55;
+}
+.storyboard-resize-handle:hover,
+.storyboard-resize-handle:focus-visible {
+  opacity: 1;
+  background: var(--adventure-accent, var(--accent-active));
+  outline: none;
 }
