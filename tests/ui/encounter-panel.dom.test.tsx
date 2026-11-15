@@ -13,6 +13,15 @@ import { EventLog } from "../../src/events/EventLog";
 import { ActionSaveError } from "../../src/persistence/ActionSaveError";
 import type { EncounterRequest } from "../../src/game/EncounterSchema";
 import type { Session } from "../../src/state/StateSchema";
+import type { EngineContextValue } from "../../src/ui/EngineStore";
+import {
+  lastSpeakerId,
+  narrateRecordedTurn,
+  planDo,
+  planSay,
+  replyToRecordedLine,
+  type Provider,
+} from "../../src/session/encounterAI";
 beforeEach(() => {
   vi.useFakeTimers();
   localStorage.clear();
@@ -45,6 +54,7 @@ function mount(
   seed = loadingBayScenario("depot-ui", "mock"),
   failSave = false,
   rng: () => number = () => 0.34,
+  provider?: Provider,
 ) {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   const host = document.createElement("div");
@@ -72,6 +82,29 @@ function mount(
         setSnapshot(engine.getSession());
         if (failures-- > 0) throw new ActionSaveError("Storage unavailable");
         saved.push(structuredClone(engine.getSession()));
+      },
+      planEncounterSay: (text: string, signal?: AbortSignal) =>
+        planSay(engine.getSession() as Session, text, provider, {
+          signal,
+          lastSpeakerId: lastSpeakerId(engine.getSession() as Session),
+        }),
+      planEncounterDo: (text: string, signal?: AbortSignal) =>
+        planDo(engine.getSession() as Session, text, provider, signal),
+      wordEncounterTurn: async (
+        job: Parameters<EngineContextValue["wordEncounterTurn"]>[0],
+        options: Parameters<EngineContextValue["wordEncounterTurn"]>[1] = {},
+      ) => {
+        if (!provider) return "failed" as const;
+        const common = { engine, provider, model: "mock", ...options };
+        const result =
+          job.kind === "free-reply"
+            ? await replyToRecordedLine({ ...common, ...job })
+            : await narrateRecordedTurn({ ...common, ...job });
+        if (result === "attached") {
+          setSnapshot(engine.getSession());
+          saved.push(structuredClone(engine.getSession()));
+        }
+        return result;
       },
     };
     return <EncounterPanel onHome={() => {}} />;

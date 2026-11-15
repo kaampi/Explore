@@ -4,6 +4,16 @@ import { ActionSaveError } from "../persistence/ActionSaveError";
 import type { CheckResult } from "../checks/CheckEngine";
 import type { GateRequest } from "../checks/gateEncounter";
 import { interpretGateIntent, type GateIntent } from "../checks/gateIntent";
+import {
+  lastSpeakerId,
+  narrateRecordedTurn,
+  planDo,
+  planSay,
+  replyToRecordedLine,
+  type AttachResult,
+  type DoPlan,
+  type SayPlan,
+} from "../session/encounterAI";
 import { EngineContext } from "./EngineContext";
 import {
   resolveMapMovement,
@@ -76,6 +86,17 @@ export interface EngineContextValue {
   executeGateAction: (request: GateRequest) => Promise<void>;
   saveGateScene: () => Promise<void>;
   interpretGateText: (text: string, signal?: AbortSignal) => Promise<GateIntent>;
+  /** How to treat a spoken line in an engine scene. Never changes the scene by itself. */
+  planEncounterSay: (text: string, signal?: AbortSignal) => Promise<SayPlan>;
+  /** What a described action may mean. Only ever a proposal for the player to review. */
+  planEncounterDo: (text: string, signal?: AbortSignal) => Promise<DoPlan>;
+  /** Add AI wording to a turn the engine has already settled and saved. */
+  wordEncounterTurn: (
+    job:
+      | { kind: "free-reply"; actionId: string; sceneId: string; addresseeId: string; text: string }
+      | { kind: "narrated-outcome"; actionId: string; sceneId: string },
+    options?: { signal?: AbortSignal; onDelta?: (text: string) => void },
+  ) => Promise<AttachResult>;
   useSession: () => Session;
   useEventLog: () => readonly StateEvent[];
   phase: ChatPhase;
@@ -890,6 +911,34 @@ export function EngineProvider({
         discovery?.state === "available" ? pass1Adapter : undefined,
         signal,
       );
+    },
+    planEncounterSay: (text, signal) =>
+      planSay(
+        stateEngine.getSession() as Session,
+        text,
+        discovery?.state === "available" ? pass1Adapter : undefined,
+        { signal, lastSpeakerId: lastSpeakerId(stateEngine.getSession() as Session) },
+      ),
+    planEncounterDo: (text, signal) =>
+      planDo(
+        stateEngine.getSession() as Session,
+        text,
+        discovery?.state === "available" ? pass1Adapter : undefined,
+        signal,
+      ),
+    wordEncounterTurn: async (job, options = {}) => {
+      if (discovery?.state !== "available") return "failed";
+      const model = stateEngine.getSession().runtime.model;
+      const common = { engine: stateEngine, provider: pass1Adapter, model, ...options };
+      const result =
+        job.kind === "free-reply"
+          ? await replyToRecordedLine({ ...common, ...job })
+          : await narrateRecordedTurn({ ...common, ...job });
+      if (result === "attached") {
+        notifySession();
+        await repo.saveSession(stateEngine.getSession());
+      }
+      return result;
     },
     removeJourneyStop: (index) => {
       if (phase === "streaming") return;

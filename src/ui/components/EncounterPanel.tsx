@@ -17,12 +17,15 @@ import { useEngine } from "../EngineStore";
 import { MessageMenu } from "./MessageMenu";
 import type { EncounterAction, EncounterRequest } from "../../game/EncounterSchema";
 import { actionBlock, attackTarget, combatOver, hostile } from "../../game/EncounterEngine";
-import { proposeEncounterText } from "../../game/intention";
 import { publicCommands } from "../../game/catalog";
+import type { DoPlan, SayPlan } from "../../session/encounterAI";
 import { actionLabel } from "../../game/narration";
 import { greetingTarget, spokenInteraction } from "../../game/dialogue";
 import { encounterRules } from "../../game/rules";
 import { ActionSaveError } from "../../persistence/ActionSaveError";
+
+const REPLY_FAILED =
+  "The reply could not be written, so the scene shows the plain result. Nothing else changed.";
 
 export function EncounterPanel({
   onHome,
@@ -36,6 +39,9 @@ export function EncounterPanel({
   const {
       useSession,
       executeEncounterAction,
+      planEncounterSay,
+      planEncounterDo,
+      wordEncounterTurn,
       saveEncounter: saveSession,
       setCombatArtwork,
       transitionAdventure,
@@ -48,10 +54,13 @@ export function EncounterPanel({
   const [say, setSay] = useState(""),
     [text, setText] = useState(""),
     [pending, setPending] = useState<EncounterRequest | null>(null);
+  const [waiting, setWaiting] = useState<"interpreting" | "writing" | null>(null),
+    [draftReply, setDraftReply] = useState("");
   const [notice, setNotice] = useState(""),
     [saving, setSaving] = useState(false),
     [saveFailed, setSaveFailed] = useState(false);
   const [menu, setMenu] = useState<{ x: number; y: number; text: string } | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const lock = useRef(false),
     log = useRef<HTMLDivElement>(null),
     current = useRef(s);
@@ -70,7 +79,7 @@ export function EncounterPanel({
     playback.actorId === d.playerId
       ? "Your turn"
       : `${s.actors[playback.actorId]?.name ?? playback.actorId}’s turn`;
-  const busy = saving || playback.active || saveFailed,
+  const busy = saving || waiting !== null || playback.active || saveFailed,
     commands = publicCommands(game).map((command) => command.action);
   const visibleTurns = session.conversation.filter(
     (_turn, index) =>
@@ -98,7 +107,45 @@ export function EncounterPanel({
         },
       );
   }, [busy, s.revision, s.phase, player.actionsLeft]);
-  async function run(action: EncounterAction, request?: EncounterRequest) {
+  async function addAiWording(
+    action: EncounterAction,
+    actionId: string,
+    reply?: { addresseeId: string; text: string },
+  ) {
+    const job = reply
+      ? ({
+          kind: "free-reply",
+          actionId,
+          sceneId: d.id,
+          addresseeId: reply.addresseeId,
+          text: reply.text,
+        } as const)
+      : action.kind === "move" || action.kind === "interact"
+        ? ({ kind: "narrated-outcome", actionId, sceneId: d.id } as const)
+        : undefined;
+    if (!job) return;
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setWaiting("writing");
+    try {
+      const result = await wordEncounterTurn(job, {
+        signal: controller.signal,
+        onDelta: setDraftReply,
+      });
+      if (result === "failed" && job.kind === "free-reply") setNotice(REPLY_FAILED);
+    } catch {
+      if (job.kind === "free-reply") setNotice(REPLY_FAILED);
+    } finally {
+      abortRef.current = null;
+      setDraftReply("");
+      setWaiting(null);
+    }
+  }
+  async function run(
+    action: EncounterAction,
+    request?: EncounterRequest,
+    reply?: { addresseeId: string; text: string },
+  ) {
     if (lock.current || busy || ended) return;
     const reason = actionBlock(d, s, action);
     if (reason) {
@@ -111,25 +158,27 @@ export function EncounterPanel({
     setNotice("");
     setPending(null);
     const revision = s.revision;
+    const settled = request ?? {
+      id: crypto.randomUUID(),
+      expectedRevision: revision,
+      action,
+      expectedSceneId: d.id,
+    };
     try {
-      await executeEncounterAction(
-        request ?? {
-          id: crypto.randomUUID(),
-          expectedRevision: revision,
-          action,
-          expectedSceneId: d.id,
-        },
-      );
+      await executeEncounterAction(settled);
       setSay("");
       setText("");
       if (
         action.kind === "say" &&
+        !action.interactionId &&
+        !reply &&
         !spokenInteraction(d, s, action.text) &&
         !greetingTarget(d, s, action.text)
       )
         setNotice(
           "This scene has no prepared reply for that topic yet. Try one of the conversation choices in the panel.",
         );
+      await addAiWording(action, settled.id, reply);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Could not complete the action.");
       if (error instanceof ActionSaveError || current.current.revision > revision)
@@ -138,6 +187,70 @@ export function EncounterPanel({
       lock.current = false;
       setSaving(false);
     }
+  }
+  /** Decide what a spoken line means. The engine, not the AI, then settles it. */
+  async function submitSay() {
+    const line = say.trim();
+    if (!line || busy || ended || lock.current) return;
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setNotice("");
+    setWaiting("interpreting");
+    const plan = await planEncounterSay(line, controller.signal)
+      .catch((): SayPlan => ({ kind: "plain" }))
+      .finally(() => {
+        abortRef.current = null;
+        setWaiting(null);
+      });
+    if (plan.kind === "cancelled") return;
+    if (plan.kind === "review") {
+      setPending({
+        id: crypto.randomUUID(),
+        expectedRevision: s.revision,
+        expectedSceneId: d.id,
+        action: plan.action,
+      });
+      return;
+    }
+    if (plan.kind === "matched")
+      return void run({ kind: "say", text: line, interactionId: plan.interactionId });
+    if (plan.kind === "free")
+      return void run({ kind: "say", text: line }, undefined, {
+        addresseeId: plan.addresseeId,
+        text: line,
+      });
+    void run({ kind: "say", text: line });
+  }
+  /** Turn a described action into a proposal the player reviews. */
+  async function submitDo() {
+    if (!text.trim() || busy || ended || lock.current) return;
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setNotice("");
+    setWaiting("interpreting");
+    const plan = await planEncounterDo(text, controller.signal)
+      .catch((): DoPlan => ({ kind: "none" }))
+      .finally(() => {
+        abortRef.current = null;
+        setWaiting(null);
+      });
+    if (plan.kind === "cancelled") return;
+    if (plan.kind === "review") {
+      setPending({
+        id: crypto.randomUUID(),
+        expectedRevision: s.revision,
+        expectedSceneId: d.id,
+        action: plan.action,
+      });
+      return;
+    }
+    setNotice(
+      "Please make the target and action clearer, or choose an action from the panel. The scene is unchanged.",
+    );
+  }
+  function speakerNameFor(actorId: string | undefined) {
+    if (!actorId) return undefined;
+    return s.actors[actorId]?.name ?? session.adventure?.actors[actorId]?.name;
   }
   function chance(action: EncounterAction) {
     if (action.kind === "attack")
@@ -280,6 +393,8 @@ export function EncounterPanel({
                 content: string;
                 actionId?: string;
                 actionSceneId?: string;
+                speakerId?: string;
+                speakerName?: string;
               }[]
             ).map((turn, index) => {
               const mine = turn.role === "player",
@@ -297,11 +412,9 @@ export function EncounterPanel({
                   <span className="message__attribution">
                     {mine
                       ? player.name
-                      : entry?.speakerId
-                        ? (s.actors[entry.speakerId]?.name ??
-                          session.adventure?.actors[entry.speakerId]?.name ??
-                          "Narrator")
-                        : "Narrator"}
+                      : (speakerNameFor(turn.speakerId ?? entry?.speakerId) ??
+                        turn.speakerName ??
+                        "Narrator")}
                   </span>
                   <div className="message__bubble">
                     <div className="message__content">
@@ -321,6 +434,15 @@ export function EncounterPanel({
                 </div>
               );
             })}
+            {draftReply && (
+              <div className="message message--character message--narrator">
+                <div className="message__bubble">
+                  <div className="message__content">
+                    <span className="message__body">{draftReply}</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
         <div className="gate-scene-composer">
@@ -375,6 +497,14 @@ export function EncounterPanel({
           )}
           {!ended || playback.active ? (
             <div className="gate-composer-fields">
+              {waiting && (
+                <p role="status">
+                  {waiting === "interpreting" ? "Working out what you mean…" : "Writing the reply…"}{" "}
+                  <button type="button" onClick={() => abortRef.current?.abort()}>
+                    Cancel
+                  </button>
+                </p>
+              )}
               <label>
                 Say something
                 <textarea
@@ -388,7 +518,7 @@ export function EncounterPanel({
                 <button
                   type="button"
                   disabled={busy || !say.trim()}
-                  onClick={() => void run({ kind: "say", text: say })}
+                  onClick={() => void submitSay()}
                 >
                   Say
                 </button>
@@ -409,21 +539,7 @@ export function EncounterPanel({
                 <button
                   type="button"
                   disabled={busy || !text.trim()}
-                  onClick={() => {
-                    const action = proposeEncounterText(game, text);
-                    if (action) {
-                      setNotice("");
-                      setPending({
-                        id: crypto.randomUUID(),
-                        expectedRevision: s.revision,
-                        expectedSceneId: d.id,
-                        action,
-                      });
-                    } else
-                      setNotice(
-                        "Please make the target and action clearer, or choose an action from the panel. The scene is unchanged.",
-                      );
-                  }}
+                  onClick={() => void submitDo()}
                 >
                   Review action
                 </button>

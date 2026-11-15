@@ -53,7 +53,8 @@ export function captureIdea(session: Session, turns: Iterable<number>, title: st
         ? "You"
         : message.role === "system"
           ? "System"
-          : narratorLabel(session) ||
+          : (typeof message.speakerName === "string" && message.speakerName) ||
+            narratorLabel(session) ||
             (character
               ? displayCharacterName(id, character.name, character.familyName, character.middleName)
               : id || "Character");

@@ -6,6 +6,7 @@ import { publicCommands, type PublicCommand } from "../game/catalog";
 import { greetingTarget, spokenInteraction, speechAddressee } from "../game/dialogue";
 import { proposeEncounterText } from "../game/intention";
 import { canNarrateOutcome } from "../game/narration";
+import { adventureHistoryEntry } from "../game/AdventureEngine";
 import { pass1PredictTokens } from "../state/StateSchema";
 import {
   buildFreeReplyMessages,
@@ -416,4 +417,16 @@ export async function narrateRecordedTurn(args: {
   } catch {
     return "failed";
   }
+}
+
+/** The person who spoke last in this scene, if any. Used when a line names nobody. */
+export function lastSpeakerId(session: Session): string | undefined {
+  const turns = session.conversation;
+  for (let index = turns.length - 1; index >= 0; index--) {
+    const turn = turns[index] as { speakerId?: unknown; actionId?: string; actionSceneId?: string };
+    if (typeof turn?.speakerId === "string") return turn.speakerId;
+    const entry = turn?.actionId ? adventureHistoryEntry(session, turn, index) : undefined;
+    if (entry?.speakerId) return entry.speakerId;
+  }
+  return undefined;
 }
