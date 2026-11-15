@@ -1,3 +1,4 @@
+import { sceneFormat } from "../../library/sceneFormat";
 import { planNewPlace } from "../../library/campaignPlace";
 import { installInnExample } from "../../scenarios/innVisit";
 import { EmmaInnExampleDialog } from "./EmmaInnExampleDialog";
@@ -323,7 +324,7 @@ export function CampaignStudio({
     });
     setTab("general");
     setError(null);
-    setNotice("Name it, pick who belongs, then build a scene.");
+    setNotice("Name it, pick who belongs, then build scenes in Storyboard.");
     setFreshNight(false);
     setHandoffDraft("");
   }
@@ -1364,58 +1365,46 @@ export function CampaignStudio({
 
         {tab === "scenes" && (
           <section className="setup-section">
-            {draft.scenes.some((scene) => scene.encounter) ? (
-              <>
-                <p className="panel-heading">Playable scenes</p>
-                <p className="form-section__lede">
-                  Edit scenes, actions and their connections in Storyboard. Test creates a new
-                  playthrough; continue an existing one from My conversations.
-                </p>
-                <button
-                  type="button"
-                  className="setup-text-btn"
-                  onClick={() => {
-                    setTab("storyboard");
-                    setStoryboardOpen(true);
-                  }}
-                >
-                  Open Storyboard Editor →
-                </button>
-                {draft.scenes.map((scene) => (
-                  <div key={scene.id} className="setup-section">
-                    <h3>{scene.name || "New scene"}</h3>
-                    <p>{scene.encounter?.definition.description || "Not yet playable."}</p>
-                    <button
-                      type="button"
-                      disabled={busy || !scene.encounter || !scene.placeId}
-                      onClick={() => void startScene(scene)}
-                    >
-                      Test this scene →
-                    </button>
-                  </div>
-                ))}
-              </>
-            ) : (
-              <>
-                <div className="setup-section__head">
-                  <p className="panel-heading">Scenes in this adventure</p>
+            <p className="panel-heading">Scenes in this adventure</p>
+            <p className="form-section__lede">
+              Build scenes, actions and their connections in Storyboard. Test creates a new
+              playthrough; continue an existing one from My conversations.
+            </p>
+            <button
+              type="button"
+              className="setup-text-btn"
+              onClick={() => {
+                setTab("storyboard");
+                setStoryboardOpen(true);
+              }}
+            >
+              Open Storyboard Editor →
+            </button>
+            {draft.scenes
+              .filter((scene) => sceneFormat(scene) !== "earlier")
+              .map((scene) => (
+                <div key={scene.id} className="setup-section">
+                  <h3>{scene.name || "New scene"}</h3>
+                  <p>
+                    {scene.encounter?.definition.description ||
+                      "Not yet playable. Make it playable in Storyboard."}
+                  </p>
                   <button
                     type="button"
-                    className="setup-text-btn"
-                    onClick={() =>
-                      setDraft({ ...draft, scenes: [...draft.scenes, emptyCampaignScene()] })
-                    }
+                    disabled={busy || !scene.encounter || !scene.placeId}
+                    onClick={() => void startScene(scene)}
                   >
-                    + Scene
+                    Test this scene →
                   </button>
                 </div>
+              ))}
+            {draft.scenes.some((scene) => sceneFormat(scene) === "earlier") && (
+              <>
+                <h3 className="panel-heading">Earlier scene format</h3>
                 <p className="form-section__lede">
-                  A scene is a place the player can enter: the landmark, where they start, who is
-                  here, what is in the room. Optional Pre-defined Replies are ready-made buttons — a
-                  tap is the player's turn, not a line the cast has to speak. Several triggers, each
-                  with its own buttons. They stay hidden until that trigger's words show up in chat,
-                  or — if Triggered by is empty — someone invites them along or they try to leave
-                  the map. Optional: a one-time event if they come back.
+                  These scenes were made before Storyboard. The AI tells them freely and no engine
+                  rules decide what happens. You can still edit and start them. New scenes are built
+                  in Storyboard.
                 </p>
                 {freshNight ? (
                   <p className="form-section__lede">
@@ -1425,7 +1414,7 @@ export function CampaignStudio({
                 ) : null}
                 <FormSection
                   title="From last scene"
-                  lede="Why they arrived: the agreement, not the bar chat. Empty = a new meeting. Pass 1 honors this."
+                  lede="Why they arrived: the agreement, not the bar chat. Empty = a new meeting."
                 >
                   <textarea
                     className="setup-field__story"
@@ -1443,28 +1432,30 @@ export function CampaignStudio({
                     placeholder="He asked to sleep. Nothing else happened."
                   />
                 </FormSection>
-                {draft.scenes.map((scene) => (
-                  <SceneCard
-                    key={scene.id}
-                    scene={scene}
-                    lastPlayed={scene.id === resume?.sceneId}
-                    campaignPlaces={campaignPlaces}
-                    campaignRealms={visibleRealms}
-                    campaignPeople={campaignPeople}
-                    campaignObjects={campaignObjects}
-                    busy={busy}
-                    onPatch={(patch) => patchScene(scene.id, patch)}
-                    onRemove={() =>
-                      setDraft({
-                        ...draft,
-                        scenes: draft.scenes.filter((item) => item.id !== scene.id),
-                        sceneLinks: removeLinksForScene(draft.sceneLinks, scene.id),
-                      })
-                    }
-                    onStart={() => void startScene(scene)}
-                    canRemove={draft.scenes.length > 1}
-                  />
-                ))}
+                {draft.scenes
+                  .filter((scene) => sceneFormat(scene) === "earlier")
+                  .map((scene) => (
+                    <SceneCard
+                      key={scene.id}
+                      scene={scene}
+                      lastPlayed={scene.id === resume?.sceneId}
+                      campaignPlaces={campaignPlaces}
+                      campaignRealms={visibleRealms}
+                      campaignPeople={campaignPeople}
+                      campaignObjects={campaignObjects}
+                      busy={busy}
+                      onPatch={(patch) => patchScene(scene.id, patch)}
+                      onRemove={() =>
+                        setDraft({
+                          ...draft,
+                          scenes: draft.scenes.filter((item) => item.id !== scene.id),
+                          sceneLinks: removeLinksForScene(draft.sceneLinks, scene.id),
+                        })
+                      }
+                      onStart={() => void startScene(scene)}
+                      canRemove={draft.scenes.length > 1}
+                    />
+                  ))}
               </>
             )}
           </section>
