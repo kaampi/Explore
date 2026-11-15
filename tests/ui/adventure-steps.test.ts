@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { adventureSteps } from "../../src/ui/studio/adventureSteps";
-import { storyboardIssues } from "../../src/ui/studio/storyboardReadiness";
+import { storyboardIssues, storyboardWarnings } from "../../src/ui/studio/storyboardReadiness";
 import { adventureFacts, connectedAdventureExample } from "../../src/library/playableCampaign";
 import { emptyCampaignScene, newCampaignTemplate } from "../../src/library/LibrarySchema";
 
@@ -125,5 +125,53 @@ describe("adventureSteps", () => {
     expect(
       stepsFor(unlinked, built.places as never[]).find((s) => s.id === "connections")?.done,
     ).toBe(false);
+  });
+
+  it("lists a warning on Test without stopping it from being ready", () => {
+    const built = connectedAdventureExample();
+    const facts = new Set(adventureFacts(built.campaign).map((fact) => fact.id));
+    const warnings = storyboardWarnings({ ...built.campaign, sceneLinks: [] }, facts);
+
+    const steps = adventureSteps({ ...built.campaign, goal: undefined as never }, [], warnings);
+
+    expect(warnings.length).toBeGreaterThan(0);
+    expect(steps.find((s) => s.id === "test")).toMatchObject({
+      done: true,
+      note: `Ready to play · ${warnings.length} to check`,
+    });
+  });
+
+  it("does not call Connections done while scenes cannot be reached", () => {
+    const built = connectedAdventureExample();
+    const facts = new Set(adventureFacts(built.campaign).map((fact) => fact.id));
+    const warnings = storyboardWarnings({ ...built.campaign, sceneLinks: [] }, facts);
+
+    const steps = adventureSteps(built.campaign, [], warnings);
+
+    expect(steps.find((s) => s.id === "connections")?.done).toBe(false);
+  });
+
+  it("leaves scenes in the earlier format out of the scene count", () => {
+    const built = connectedAdventureExample();
+    const older = {
+      ...emptyCampaignScene(),
+      people: [
+        {
+          characterId: "x",
+          position: "",
+          mood: "",
+          clothing: "",
+          holding: "",
+          trust: "20",
+          familiarity: "10",
+          tension: "5",
+        },
+      ],
+    };
+    const campaign = { ...built.campaign, scenes: [...built.campaign.scenes, older] };
+
+    const steps = adventureSteps(campaign, []);
+
+    expect(steps.find((s) => s.id === "scenes")?.note).toBe("2 of 2 ready");
   });
 });

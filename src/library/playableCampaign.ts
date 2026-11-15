@@ -145,6 +145,9 @@ export function adventureFacts(campaign: CampaignTemplate) {
         if (outcome === "succeeded" || action.check)
           for (const effect of value.effects)
             if (effect.kind === "flag") facts.set(effect.flag, `${action.label} · ${outcome}`);
+  for (const link of campaign.sceneLinks)
+    for (const flag of link.setsFlags)
+      if (!facts.has(flag)) facts.set(flag, `${link.label.trim() || "Continue"} · arrived`);
   for (const flag of campaign.storyFlags) if (!facts.has(flag)) facts.set(flag, flag);
   return [...facts].map(([id, label]) => ({ id, label }));
 }

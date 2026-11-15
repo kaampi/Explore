@@ -1,6 +1,7 @@
 import type { CampaignTemplate, PlaceTemplate } from "../../library/LibrarySchema";
 import { mapPlaceForScene, type AdventureMapPlace } from "../../library/adventureMap";
 import { adventureFacts } from "../../library/playableCampaign";
+import { sceneFormat } from "../../library/sceneFormat";
 
 export type SceneField = "name" | "place" | "playable" | "arrival" | "action" | "reach";
 export type ActionField = "label" | "success" | "failure";
@@ -20,6 +21,8 @@ export function storyboardIssues(
   const placeIds = new Set(places.map((place) => place.id));
   const sceneIds = new Set(campaign.scenes.map((scene) => scene.id));
   for (const scene of campaign.scenes) {
+    // Scenes in the earlier format are built and started elsewhere. Storyboard does not judge them.
+    if (sceneFormat(scene) === "earlier") continue;
     const name = scene.name.trim() || "Untitled scene";
     const mapPlace = mapPlaces ? mapPlaceForScene(scene, mapPlaces) : undefined;
     const hasPlace = mapPlaces ? !!mapPlace : placeIds.has(scene.placeId);
@@ -84,7 +87,6 @@ export function storyboardIssues(
       });
     }
   }
-  issues.push(...reachabilityIssues(campaign, facts));
   if (campaign.goal && !campaign.goal.title.trim())
     issues.push({ kind: "objective", message: "Name the adventure objective." });
   if (campaign.goal?.requiresFlags.some((flag) => !facts.has(flag))) {
@@ -105,7 +107,7 @@ type Reach = { scenes: Set<string>; flags: Set<string> };
  * action that rolls. This follows the same rules as play, but does not run the engine.
  */
 export function reachableFromStart(campaign: CampaignTemplate): Reach {
-  const first = campaign.scenes[0];
+  const first = campaign.scenes.find((scene) => sceneFormat(scene) !== "earlier");
   const scenes = new Set<string>();
   const flags = new Set<string>(campaign.storyFlags);
   if (!first) return { scenes, flags };
@@ -152,11 +154,15 @@ export function reachableFromStart(campaign: CampaignTemplate): Reach {
   return { scenes, flags };
 }
 
-function reachabilityIssues(
+/**
+ * Things worth checking that do not stop the player testing: scenes nothing leads to, and
+ * conditions nothing can meet. Each scene can still be tested on its own from "Start from".
+ */
+export function storyboardWarnings(
   campaign: CampaignTemplate,
   facts: ReadonlySet<string>,
 ): StoryboardIssue[] {
-  const first = campaign.scenes[0];
+  const first = campaign.scenes.find((scene) => sceneFormat(scene) !== "earlier");
   if (!first) return [];
   const issues: StoryboardIssue[] = [];
   const reach = reachableFromStart(campaign);
@@ -164,6 +170,7 @@ function reachabilityIssues(
   const discovery = (flag: string) => (labels.has(flag) ? `“${labels.get(flag)}”` : `“${flag}”`);
   const openingName = first.name.trim() || "Untitled scene";
   for (const scene of campaign.scenes) {
+    if (sceneFormat(scene) === "earlier") continue;
     const name = scene.name.trim() || "Untitled scene";
     if (!reach.scenes.has(scene.id)) {
       issues.push({

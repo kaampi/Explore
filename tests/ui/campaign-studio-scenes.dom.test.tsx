@@ -58,6 +58,7 @@ async function open(
   });
   return {
     host,
+    repo,
     close: async () => {
       await act(async () => root.unmount());
       host.remove();
@@ -183,6 +184,73 @@ it("switches between people and things inside the Cast step", async () => {
     await act(async () => things.click());
     expect(pressed()).toEqual(["Things"]);
     expect(ui.host.querySelector('[data-step="cast"]')!.getAttribute("aria-current")).toBe("step");
+  } finally {
+    await ui.close();
+  }
+});
+
+async function settle() {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 60));
+  });
+}
+
+async function typeInto(input: HTMLInputElement, value: string) {
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, value);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+
+async function createPlaceInStoryboard(ui: Awaited<ReturnType<typeof open>>, name: string) {
+  const openEditor = Array.from(ui.host.querySelectorAll("button")).find(
+    (b) => b.textContent === "Open Storyboard Editor →",
+  )!;
+  await act(async () => openEditor.click());
+  const field = document.querySelector<HTMLInputElement>('input[aria-label="New place name"]')!;
+  await typeInto(field, name);
+  const create = Array.from(document.querySelectorAll("button")).find(
+    (b) => b.textContent === "Create a place",
+  )!;
+  await act(async () => create.click());
+  await settle();
+}
+
+it("keeps a new place out of the library until the adventure is saved", async () => {
+  const campaign = newCampaignTemplate({ name: "Fresh", scenes: [emptyCampaignScene()] });
+  const ui = await open(campaign);
+  try {
+    await createPlaceInStoryboard(ui, "The old mill");
+    expect(await ui.repo.listPlaces()).toEqual([]);
+    expect(await ui.repo.listRealms()).toEqual([]);
+    const save = Array.from(document.querySelectorAll("button")).find(
+      (b) => b.textContent === "Save adventure",
+    )!;
+    await act(async () => save.click());
+    await settle();
+    const places = await ui.repo.listPlaces();
+    const realms = await ui.repo.listRealms();
+    expect(places.map((p) => p.name)).toContain("The old mill");
+    expect(realms.map((r) => r.id)).toContain(
+      places.find((p) => p.name === "The old mill")!.realmId,
+    );
+  } finally {
+    await ui.close();
+  }
+});
+
+it("leaves no place or world behind when the adventure is closed without saving", async () => {
+  const campaign = newCampaignTemplate({ name: "Fresh", scenes: [emptyCampaignScene()] });
+  const ui = await open(campaign);
+  try {
+    await createPlaceInStoryboard(ui, "The old mill");
+    const close = Array.from(document.querySelectorAll("button")).find(
+      (b) => b.textContent === "All adventures",
+    )!;
+    await act(async () => close.click());
+    await settle();
+    expect(await ui.repo.listPlaces()).toEqual([]);
+    expect(await ui.repo.listRealms()).toEqual([]);
   } finally {
     await ui.close();
   }

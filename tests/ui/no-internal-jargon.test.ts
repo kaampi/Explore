@@ -3,7 +3,12 @@ import { join } from "node:path";
 import { expect, it } from "vitest";
 
 /** Words for how the AI turn is built inside. Players should never read them in the interface. */
-const INTERNAL_WORDS = [/\bPass ?[12]\b/, /\bhonou?rs this\b/, /\bmutation chain\b/i];
+const INTERNAL_WORDS = [
+  /\bPass ?[12]\b/,
+  /\bhonou?rs this\b/,
+  /\bmutation chain\b/i,
+  /\bA scene is tonight\b/,
+];
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {

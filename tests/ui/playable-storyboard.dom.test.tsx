@@ -341,13 +341,147 @@ it("lists a scene the player cannot reach and opens Connections when it is chose
   try {
     await act(async () => root.render(<Harness />));
     await workflow(host, "Test");
-    expect(host.querySelector(".storyboard-review")!.textContent).toContain("cannot reach");
+    const warning = host.querySelector(".storyboard-review--warnings")!;
+    expect(warning.textContent).toContain("cannot reach");
+    expect(warning.textContent).toContain("do not stop you testing");
+    expect(host.querySelector(".storyboard-review:not(.storyboard-review--warnings)")).toBeNull();
+    expect(host.querySelector<HTMLButtonElement>(".storyboard-primary")!.disabled).toBe(false);
     await click(host, "cannot reach");
     expect(
       host
         .querySelector('.storyboard-workflow [aria-label="Connections"]')!
         .getAttribute("aria-current"),
     ).toBe("step");
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});
+
+it("can still test a scene on its own when another scene is not connected", async () => {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  const built = connectedAdventureExample(),
+    host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host),
+    play = vi.fn();
+  const unlinked = { ...built.campaign, sceneLinks: [], goal: undefined };
+  function Harness() {
+    const [campaign, setCampaign] = useState(unlinked as typeof built.campaign);
+    return (
+      <PlayableStoryboard
+        campaign={campaign}
+        places={built.places}
+        characters={built.characters}
+        objects={built.objects}
+        busy={false}
+        onChange={setCampaign}
+        onPlay={play}
+      />
+    );
+  }
+  try {
+    await act(async () => root.render(<Harness />));
+    await workflow(host, "Test");
+    const select = host.querySelector<HTMLSelectElement>('select[aria-label="Start from"]')!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")!.set!.call(
+        select,
+        built.campaign.scenes[1]!.id,
+      );
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await act(async () => host.querySelector<HTMLButtonElement>(".storyboard-primary")!.click());
+    expect(play).toHaveBeenCalledWith(
+      expect.objectContaining({ id: built.campaign.scenes[1]!.id }),
+    );
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});
+
+it("does not count scenes in the earlier format as unfinished, and does not offer them to test", async () => {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  const built = connectedAdventureExample(),
+    host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  const older = {
+    ...emptyCampaignScene(),
+    name: "An old scene",
+    placeId: built.places[0]!.id,
+    people: [
+      {
+        characterId: "someone",
+        position: "",
+        mood: "calm",
+        clothing: "",
+        holding: "",
+        trust: "20",
+        familiarity: "10",
+        tension: "5",
+      },
+    ],
+  };
+  const mixed = { ...built.campaign, scenes: [...built.campaign.scenes, older] };
+  function Harness() {
+    const [campaign, setCampaign] = useState(mixed);
+    return (
+      <PlayableStoryboard
+        campaign={campaign}
+        places={built.places}
+        characters={built.characters}
+        objects={built.objects}
+        busy={false}
+        onChange={setCampaign}
+        onPlay={() => {}}
+      />
+    );
+  }
+  try {
+    await act(async () => root.render(<Harness />));
+    expect(host.querySelector('[aria-label="Scenes"]')!.textContent).toContain("2 of 2 ready");
+    await workflow(host, "Test");
+    expect(host.querySelector(".storyboard-review:not(.storyboard-review--warnings)")).toBeNull();
+    expect(host.querySelector<HTMLButtonElement>(".storyboard-primary")!.disabled).toBe(false);
+    const options = Array.from(
+      host.querySelectorAll<HTMLOptionElement>('select[aria-label="Start from"] option'),
+    ).map((option) => option.textContent);
+    expect(options).not.toContain("An old scene");
+    expect(host.textContent).not.toContain("cannot reach “An old scene”");
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});
+
+it("labels the place field and its button differently", async () => {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  const built = connectedAdventureExample(),
+    host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  try {
+    await act(async () =>
+      root.render(
+        <PlayableStoryboard
+          campaign={built.campaign}
+          places={built.places}
+          characters={built.characters}
+          objects={built.objects}
+          busy={false}
+          onChange={() => {}}
+          onPlay={() => {}}
+          onCreatePlace={async () => undefined}
+        />,
+      ),
+    );
+    const field = host.querySelector(".storyboard-create-place label")!.textContent;
+    const button = host.querySelector(".storyboard-create-place button")!.textContent;
+    expect(field).toContain("Name a new place");
+    expect(button).toBe("Create a place");
+    expect(field).not.toContain("Create a place");
   } finally {
     await act(async () => root.unmount());
     host.remove();

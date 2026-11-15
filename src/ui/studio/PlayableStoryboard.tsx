@@ -31,10 +31,12 @@ import { MessageMenu } from "../components/MessageMenu";
 import type { Interaction } from "../../game/EncounterSchema";
 import {
   storyboardIssues,
+  storyboardWarnings,
   type ActionField,
   type SceneField,
   type StoryboardIssue,
 } from "./storyboardReadiness";
+import { sceneFormat } from "../../library/sceneFormat";
 import {
   INSPECTOR_MAX,
   INSPECTOR_MIN,
@@ -114,10 +116,13 @@ export function PlayableStoryboard({
     new Set(facts.map((fact) => fact.id)),
     mapPlaces,
   );
+  const warnings = storyboardWarnings(campaign, new Set(facts.map((fact) => fact.id)));
   const unfinishedScenes = new Set(
     issues.flatMap((issue) => (issue.kind === "scene" ? [issue.id] : [])),
   );
-  const testScene = campaign.scenes.find((item) => item.id === testSceneId) ?? campaign.scenes[0];
+  /** Scenes built here. Scenes in the earlier format are built and started in Scenes. */
+  const buildable = campaign.scenes.filter((item) => sceneFormat(item) !== "earlier");
+  const testScene = buildable.find((item) => item.id === testSceneId) ?? buildable[0];
   const connectionSource =
     campaign.scenes.find((item) => item.id === connectionSourceId) ?? scene ?? testScene;
   const linkedScenes = new Set(
@@ -703,7 +708,7 @@ export function PlayableStoryboard({
           {!mapPlaces && onCreatePlace && (
             <div className="storyboard-create-place">
               <label>
-                {places.length === 0 ? "Name your first place" : "Create a place"}
+                {places.length === 0 ? "Name your first place" : "Name a new place"}
                 <input
                   aria-label="New place name"
                   value={newPlaceName}
@@ -979,6 +984,25 @@ export function PlayableStoryboard({
       ) : (
         <p>Add a scene to start building the adventure.</p>
       )}
+      {warnings.length > 0 && (
+        <div className="storyboard-review storyboard-review--warnings">
+          <strong>
+            {warnings.length} {warnings.length === 1 ? "thing" : "things"} worth checking
+          </strong>
+          <p className="playable-hint">
+            These do not stop you testing. You can start from any scene.
+          </p>
+          <ul>
+            {warnings.map((issue, index) => (
+              <li key={index}>
+                <button type="button" onClick={() => openIssue(issue)}>
+                  {issue.message} <span aria-hidden="true">→</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {testScene && (
         <label>
           Start from
@@ -987,7 +1011,7 @@ export function PlayableStoryboard({
             value={testScene.id}
             onChange={(event) => setTestSceneId(event.target.value)}
           >
-            {campaign.scenes.map((item) => (
+            {buildable.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.name || "Untitled scene"}
               </option>
@@ -1053,7 +1077,7 @@ export function PlayableStoryboard({
             <span>
               <strong>Scenes</strong>
               <small>
-                {campaign.scenes.length - unfinishedScenes.size} of {campaign.scenes.length} ready
+                {buildable.length - unfinishedScenes.size} of {buildable.length} ready
               </small>
             </span>
           </button>
@@ -1082,7 +1106,9 @@ export function PlayableStoryboard({
                 {issues.length
                   ? issues.length + " to finish"
                   : testScene
-                    ? "Ready to play"
+                    ? warnings.length
+                      ? `Ready to play · ${warnings.length} to check`
+                      : "Ready to play"
                     : "Add a scene"}
               </small>
             </span>

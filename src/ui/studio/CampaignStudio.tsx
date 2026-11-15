@@ -6,7 +6,7 @@ import { adventureMapPlaces, chooseAdventureMap } from "../../library/adventureM
 import { StoryboardEditor } from "./StoryboardEditor";
 import { adventureFacts, connectedAdventureExample } from "../../library/playableCampaign";
 import { adventureSteps, type AdventureStepId } from "./adventureSteps";
-import { storyboardIssues } from "./storyboardReadiness";
+import { storyboardIssues, storyboardWarnings } from "./storyboardReadiness";
 import { pinSessionAnatomy } from "@state/anatomy";
 import { useEffect, useRef, useState } from "react";
 import type { IndexedDBRepository, StudioResume } from "@persistence/IndexedDBRepository";
@@ -218,6 +218,9 @@ export function CampaignStudio({
   const [draft, setDraft] = useState<CampaignTemplate | null>(null);
   const [tab, setTab] = useState<Tab>("general");
   const [storyboardOpen, setStoryboardOpen] = useState(false);
+  /** Places and worlds made while building. They reach the library only when the adventure is saved. */
+  const [pendingPlaces, setPendingPlaces] = useState<PlaceTemplate[]>([]);
+  const [pendingRealms, setPendingRealms] = useState<RealmTemplate[]>([]);
   const [storyboardStep, setStoryboardStep] = useState<"scenes" | "connections" | "test">("scenes");
   const [emmaExampleOpen, setEmmaExampleOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -292,9 +295,20 @@ export function CampaignStudio({
   const visibleRulesets = mergeWithExamples(rulesets, exampleRulesetTemplates());
   const visibleObjects = mergeWithExamples(objects, exampleObjectTemplates());
   const visibleCharacters = mergeWithExamples(characters, [exampleCharacterTemplate()]);
-  const visiblePlaces = mergeWithExamples(places, [examplePlaceTemplate()]);
-  const visibleRealms = mergeWithExamples(realms, exampleRealmTemplates());
+  const visiblePlaces = mergeWithExamples(
+    [...places, ...pendingPlaces.filter((item) => !places.some((saved) => saved.id === item.id))],
+    [examplePlaceTemplate()],
+  );
+  const visibleRealms = mergeWithExamples(
+    [...realms, ...pendingRealms.filter((item) => !realms.some((saved) => saved.id === item.id))],
+    exampleRealmTemplates(),
+  );
   const savedIds = new Set(campaigns.map((item) => item.id));
+  const openId = draft?.id;
+  useEffect(() => {
+    setPendingPlaces([]);
+    setPendingRealms([]);
+  }, [openId]);
 
   function open(id: string) {
     const found = campaigns.find((item) => item.id === id);
@@ -428,8 +442,11 @@ export function CampaignStudio({
       );
       const previous = campaigns.find((item) => item.id === built.id);
       const saved = withOriginalTimestamps(built, previous);
+      await persistExamplesUsed(saved);
       await repo.saveCampaign(saved);
       await refresh();
+      setPendingPlaces([]);
+      setPendingRealms([]);
       setDraft(saved);
       setNotice("Saved.");
     } catch (err) {
@@ -451,14 +468,17 @@ export function CampaignStudio({
     setFreshNight(false);
   }
 
-  /** Make a place in the adventure's world, and a world first if there is none. */
+  /**
+   * Make a place in the adventure's world, and a world first if there is none. Nothing is
+   * written to the library until the adventure is saved or tested, so closing without
+   * saving leaves no place or world behind.
+   */
   async function createPlace(name: string) {
     if (!draft) return undefined;
     try {
       const plan = planNewPlace(draft, visiblePlaces, name);
-      if (plan.realm) await repo.saveRealm(plan.realm);
-      await repo.savePlace(plan.place);
-      await refresh();
+      if (plan.realm) setPendingRealms((items) => [...items, plan.realm!]);
+      setPendingPlaces((items) => [...items, plan.place]);
       return { place: plan.place, campaign: plan.campaign };
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not create the place.");
@@ -506,6 +526,8 @@ export function CampaignStudio({
     setError(null);
     try {
       await persistExamplesUsed(draft);
+      setPendingPlaces([]);
+      setPendingRealms([]);
       const realmId = inferCampaignRealmId(draft, visiblePlaces);
       const named = sanitizeCampaign({
         ...draft,
@@ -635,8 +657,8 @@ export function CampaignStudio({
         <div className="setup-card campaign-builder">
           <BrandHeader />
           <p className="setup-lede">
-            An adventure is who and where belong together. A scene is tonight — then you press
-            Start.
+            An adventure is who and where belong together. Build its scenes in Storyboard, then test
+            it.
           </p>
           {campaigns.length > 0 ? (
             <>
@@ -726,14 +748,11 @@ export function CampaignStudio({
   const stepPlaces = draft.mapWorldId ? visiblePlaces : campaignPlaces;
   const stepWorld = visibleRealms.find((item) => item.id === draft.mapWorldId);
   const stepMapPlaces = draft.mapWorldId ? adventureMapPlaces(stepWorld, stepPlaces) : undefined;
+  const stepFacts = new Set(adventureFacts(draft).map((fact) => fact.id));
   const steps = adventureSteps(
     draft,
-    storyboardIssues(
-      draft,
-      stepPlaces,
-      new Set(adventureFacts(draft).map((fact) => fact.id)),
-      stepMapPlaces,
-    ),
+    storyboardIssues(draft, stepPlaces, stepFacts, stepMapPlaces),
+    storyboardWarnings(draft, stepFacts),
   );
   const activeStep: AdventureStepId =
     tab === "general"

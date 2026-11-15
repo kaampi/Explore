@@ -1,4 +1,5 @@
 import type { CampaignTemplate } from "../../library/LibrarySchema";
+import { sceneFormat } from "../../library/sceneFormat";
 import type { StoryboardIssue } from "./storyboardReadiness";
 
 export type AdventureStepId = "world" | "you" | "cast" | "scenes" | "connections" | "test";
@@ -20,8 +21,10 @@ const plural = (count: number, one: string, many: string) => `${count} ${count =
 export function adventureSteps(
   campaign: CampaignTemplate,
   issues: readonly StoryboardIssue[],
+  warnings: readonly StoryboardIssue[] = [],
 ): AdventureStep[] {
-  const sceneCount = campaign.scenes.length;
+  // Scenes in the earlier format are built and started in Scenes, not in Storyboard.
+  const sceneCount = campaign.scenes.filter((scene) => sceneFormat(scene) !== "earlier").length;
   const unfinished = new Set(issues.flatMap((issue) => (issue.kind === "scene" ? [issue.id] : [])));
   const ready = sceneCount - unfinished.size;
   const linkCount = campaign.sceneLinks.length;
@@ -30,8 +33,13 @@ export function adventureSteps(
   const youNamed = Boolean(campaign.player?.name.trim());
   const brokenLinks = issues.some((issue) => issue.kind === "link");
   // One scene needs no routes, but it must be built. Two or more need a working route.
+  const unreachable = warnings.some(
+    (issue) => issue.kind === "link" || (issue.kind === "scene" && issue.field === "reach"),
+  );
   const connected =
-    sceneCount >= 2 ? linkCount > 0 && !brokenLinks : sceneCount === 1 && unfinished.size === 0;
+    sceneCount >= 2
+      ? linkCount > 0 && !brokenLinks && !unreachable
+      : sceneCount === 1 && unfinished.size === 0;
   const testable = sceneCount > 0 && issues.length === 0;
   return [
     {
@@ -74,7 +82,9 @@ export function adventureSteps(
       note: issues.length
         ? `${issues.length} to finish`
         : sceneCount > 0
-          ? "Ready to play"
+          ? warnings.length
+            ? `Ready to play · ${warnings.length} to check`
+            : "Ready to play"
           : "Add a scene",
     },
   ];
