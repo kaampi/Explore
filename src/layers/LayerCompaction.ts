@@ -13,7 +13,7 @@ import { displayLayerType } from "./layerPlacement";
  */
 
 const CompactedContentsSchema = z.object({
-  contents: z.array(z.string().min(1)).min(1).max(3)
+  contents: z.array(z.string().min(1)).min(1).max(3),
 });
 const CompactedArraySchema = z.array(z.string().min(1)).min(1).max(3);
 
@@ -32,17 +32,23 @@ export interface LayerCompactGroup {
   layers: Layer[];
 }
 
-export type LayerCompactor = (type: CompactableType, contents: string[]) => Promise<string[] | null>;
+export type LayerCompactor = (
+  type: CompactableType,
+  contents: string[],
+) => Promise<string[] | null>;
 
 export function isPendingAiLayer(layer: Layer): boolean {
   return layer.aiGenerated && !layer.active;
 }
 
-export function groupLayersForCompaction(layers: Layer[], characterIds: string[]): LayerCompactGroup[] {
+export function groupLayersForCompaction(
+  layers: Layer[],
+  characterIds: string[],
+): LayerCompactGroup[] {
   const buckets: Record<CompactableType, Layer[]> = {
     core: [],
     relationship: [],
-    environment: []
+    environment: [],
   };
 
   for (const layer of layers) {
@@ -112,7 +118,11 @@ export function keywordsForCompactedGroup(layers: Layer[]): string[] {
 
 export function createLLMLayerCompactor(
   llmAdapter: LLMAdapter,
-  options: { maxAttempts?: number; baseDelayMs?: number; sleepImpl?: RetryOptions["sleepImpl"] } = {}
+  options: {
+    maxAttempts?: number;
+    baseDelayMs?: number;
+    sleepImpl?: RetryOptions["sleepImpl"];
+  } = {},
 ): LayerCompactor {
   const maxAttempts = options.maxAttempts ?? 2;
   const baseDelayMs = options.baseDelayMs ?? 200;
@@ -135,21 +145,21 @@ export function createLLMLayerCompactor(
                   "Do not write first-person narration. Write as a behavioral instruction about the character or place.",
                   "Respond with ONLY JSON, no markdown:",
                   '{"contents": ["<compact note>", "...optional second note"]}',
-                  `Return at most ${Math.min(3, contents.length)} notes, and fewer than the input when they overlap.`
-                ].join("\n")
+                  `Return at most ${Math.min(3, contents.length)} notes, and fewer than the input when they overlap.`,
+                ].join("\n"),
               },
               {
                 role: "user",
-                content: contents.map((text, index) => `${index + 1}. ${text}`).join("\n")
-              }
-            ]
+                content: contents.map((text, index) => `${index + 1}. ${text}`).join("\n"),
+              },
+            ],
           })) {
             if (chunk.type === "text_delta") collected += chunk.text;
             else if (chunk.type === "error") throw new Error(chunk.message);
           }
           return parseCompactedContents(collected, contents.length);
         },
-        { maxAttempts, baseDelayMs, sleepImpl: options.sleepImpl }
+        { maxAttempts, baseDelayMs, sleepImpl: options.sleepImpl },
       );
     } catch {
       return null;
@@ -157,16 +167,18 @@ export function createLLMLayerCompactor(
   };
 }
 
-export function selectPendingForCompaction(layers: Layer[], characterIds: string[]): LayerCompactGroup[] {
+export function selectPendingForCompaction(
+  layers: Layer[],
+  characterIds: string[],
+): LayerCompactGroup[] {
   return groupLayersForCompaction(layers.filter(isPendingAiLayer), characterIds);
 }
 
 export function selectEstablishedForCompaction(
   layers: Layer[],
   characterIds: string[],
-  type: CompactableType
+  type: CompactableType,
 ): LayerCompactGroup[] {
   const established = layers.filter((layer) => !isPendingAiLayer(layer));
   return groupLayersForCompaction(established, characterIds).filter((group) => group.type === type);
 }
-

@@ -17,8 +17,8 @@ function makeSession(): Session {
     characters: {
       emma: {
         position: { value: "bar", lock: "unlocked" },
-        mood: { value: "neutral", lock: "unlocked" }
-      }
+        mood: { value: "neutral", lock: "unlocked" },
+      },
     },
     relationships: {},
     layers: [],
@@ -26,7 +26,7 @@ function makeSession(): Session {
     conversation: [],
     events: [],
     snapshots: [],
-    diagnostics: []
+    diagnostics: [],
   };
 }
 
@@ -37,7 +37,7 @@ describe("StateEngine.undoLastMutation — policy", () => {
       path: "characters.emma.mood",
       value: "happy",
       source: "player_manual_state",
-      expectedStateVersion: 0
+      expectedStateVersion: 0,
     });
     const result = engine.undoLastMutation("ai_approved_state_mutation", 1);
     expect(result.committed).toBe(false);
@@ -70,7 +70,7 @@ describe("StateEngine.undoLastMutation — reversing each event type", () => {
       path: "characters.emma.mood",
       value: "happy",
       source: "player_manual_state",
-      expectedStateVersion: 0
+      expectedStateVersion: 0,
     });
     const result = engine.undoLastMutation("player_manual_state", 1);
     expect(result.committed).toBe(true);
@@ -82,7 +82,7 @@ describe("StateEngine.undoLastMutation — reversing each event type", () => {
       path: "characters.emma.mood",
       requestedLock: "player_locked",
       source: "player_manual_state",
-      expectedStateVersion: 0
+      expectedStateVersion: 0,
     });
     const result = engine.undoLastMutation("player_manual_state", 1);
     expect(result.committed).toBe(true);
@@ -106,7 +106,11 @@ describe("StateEngine.undoLastMutation — reversing each event type", () => {
   });
 
   it("reverses a layer activation change (layer_activation_changed)", () => {
-    engine.addLayer({ type: "core", priority: 0, content: "x", active: false }, "player_manual_state", 0);
+    engine.addLayer(
+      { type: "core", priority: 0, content: "x", active: false },
+      "player_manual_state",
+      0,
+    );
     const layerId = engine.getSession().layers[0]!.id;
     engine.setLayerActive(layerId, true, "player_manual_state", 1);
     expect(engine.getSession().layers[0]?.active).toBe(true);
@@ -120,7 +124,7 @@ describe("StateEngine.undoLastMutation — reversing each event type", () => {
     engine.addLayer(
       { type: "environment", priority: 0, content: "Cellar lore.", active: true },
       "player_manual_state",
-      0
+      0,
     );
     const layerId = engine.getSession().layers[0]!.id;
     engine.setLayerKeywords(layerId, ["cellar"], "player_manual_state", 1);
@@ -147,7 +151,7 @@ describe("StateEngine.undoLastMutation — chaining and log integrity", () => {
       path: "characters.emma.mood",
       value: "happy",
       source: "player_manual_state",
-      expectedStateVersion: 0
+      expectedStateVersion: 0,
     });
     const before = engine.getSession().stateVersion;
     const result = engine.undoLastMutation("player_manual_state", before);
@@ -162,7 +166,7 @@ describe("StateEngine.undoLastMutation — chaining and log integrity", () => {
       path: "characters.emma.mood",
       value: "happy",
       source: "player_manual_state",
-      expectedStateVersion: 0
+      expectedStateVersion: 0,
     });
     const originalEvent = eventLog.last()!;
     engine.undoLastMutation("player_manual_state", 1);
@@ -177,13 +181,13 @@ describe("StateEngine.undoLastMutation — chaining and log integrity", () => {
       path: "characters.emma.mood",
       value: "happy",
       source: "player_manual_state",
-      expectedStateVersion: 0
+      expectedStateVersion: 0,
     });
     engine.proposeMutation({
       path: "characters.emma.position",
       value: "table",
       source: "player_manual_state",
-      expectedStateVersion: 1
+      expectedStateVersion: 1,
     });
 
     let v = engine.getSession().stateVersion;
@@ -202,13 +206,13 @@ describe("StateEngine.undoLastMutation — chaining and log integrity", () => {
       path: "characters.emma.mood",
       value: "happy",
       source: "player_manual_state",
-      expectedStateVersion: 0
+      expectedStateVersion: 0,
     });
     eventLog.append({
       turn: engine.getSession().stateVersion,
       timestamp: new Date().toISOString(),
       type: "turn_committed",
-      payload: { turnId: "t1", mutationsApplied: 1, mutationsRejected: 0 }
+      payload: { turnId: "t1", mutationsApplied: 1, mutationsRejected: 0 },
     });
 
     const result = engine.undoLastMutation("player_manual_state", engine.getSession().stateVersion);
@@ -228,18 +232,27 @@ describe("StateEngine.undoEvents — batch undo for Regenerate", () => {
       path: "characters.emma.mood",
       value: "happy",
       source: "ai_approved_state_mutation",
-      expectedStateVersion: 1
+      expectedStateVersion: 1,
     });
     const moodEventId = eventLog.last()!.id;
-    engine.appendConversationTurn({ role: "character", speaker: "emma", content: "Hej där!" }, moodResult.committed ? moodResult.newStateVersion : 2);
+    engine.appendConversationTurn(
+      { role: "character", speaker: "emma", content: "Hej där!" },
+      moodResult.committed ? moodResult.newStateVersion : 2,
+    );
     const replyEventId = eventLog.last()!.id;
 
     const currentVersion = engine.getSession().stateVersion;
-    const result = engine.undoEvents([moodEventId, replyEventId], "player_manual_state", currentVersion);
+    const result = engine.undoEvents(
+      [moodEventId, replyEventId],
+      "player_manual_state",
+      currentVersion,
+    );
 
     expect(result.committed).toBe(true);
     expect(engine.getSession().conversation).toHaveLength(1); // player message survives
-    expect((engine.getSession().conversation[0] as { role: string } | undefined)?.role).toBe("player");
+    expect((engine.getSession().conversation[0] as { role: string } | undefined)?.role).toBe(
+      "player",
+    );
     expect(engine.getSession().characters.emma?.mood.value).toBe("neutral"); // mood reverted
   });
 
@@ -251,14 +264,14 @@ describe("StateEngine.undoEvents — batch undo for Regenerate", () => {
       path: "characters.emma.mood",
       value: "happy",
       source: "player_manual_state",
-      expectedStateVersion: 0
+      expectedStateVersion: 0,
     });
     const firstId = eventLog.last()!.id;
     engine.proposeMutation({
       path: "characters.emma.position",
       value: "table",
       source: "player_manual_state",
-      expectedStateVersion: 1
+      expectedStateVersion: 1,
     });
     const secondId = eventLog.last()!.id;
 
@@ -277,7 +290,7 @@ describe("StateEngine.undoEvents — batch undo for Regenerate", () => {
       path: "characters.emma.mood",
       value: "happy",
       source: "player_manual_state",
-      expectedStateVersion: 0
+      expectedStateVersion: 0,
     });
     const id = eventLog.last()!.id;
     const result = engine.undoEvents([id], "ai_approved_state_mutation", 1);
@@ -298,14 +311,13 @@ describe("StateEngine.undoEvents — batch undo for Regenerate", () => {
       path: "characters.emma.mood",
       value: "happy",
       source: "player_manual_state",
-      expectedStateVersion: 0
+      expectedStateVersion: 0,
     });
     const id = eventLog.last()!.id;
     const result = engine.undoEvents([id], "player_manual_state", 999);
     expect(result.committed).toBe(false);
   });
 });
-
 
 function conv(engine: StateEngine, index: number): { turn: number; content: string } {
   return engine.getSession().conversation[index] as { turn: number; content: string };
@@ -317,7 +329,12 @@ describe("StateEngine.editConversationTurn", () => {
     engine.appendConversationTurn({ role: "player", content: "Hej Emma" }, 0);
     const turnNumber = conv(engine, 0).turn;
 
-    const result = engine.editConversationTurn(turnNumber, "Hej Emma, hur mår du?", "player_manual_state", 1);
+    const result = engine.editConversationTurn(
+      turnNumber,
+      "Hej Emma, hur mår du?",
+      "player_manual_state",
+      1,
+    );
     expect(result.committed).toBe(true);
     expect(conv(engine, 0).content).toBe("Hej Emma, hur mår du?");
   });
@@ -327,7 +344,12 @@ describe("StateEngine.editConversationTurn", () => {
     engine.appendConversationTurn({ role: "character", speaker: "emma", content: "Hej!" }, 0);
     const turnNumber = conv(engine, 0).turn;
 
-    const result = engine.editConversationTurn(turnNumber, "Something else entirely", "ai_approved_state_mutation", 1);
+    const result = engine.editConversationTurn(
+      turnNumber,
+      "Something else entirely",
+      "ai_approved_state_mutation",
+      1,
+    );
     expect(result.committed).toBe(false);
     expect(conv(engine, 0).content).toBe("Hej!");
   });
@@ -365,9 +387,11 @@ describe("StateEngine.editConversationTurn", () => {
     engine.editConversationTurn(turnNumber, "Edited text", "player_manual_state", 1);
     expect(conv(engine, 0).content).toBe("Edited text");
 
-    const undoResult = engine.undoLastMutation("player_manual_state", engine.getSession().stateVersion);
+    const undoResult = engine.undoLastMutation(
+      "player_manual_state",
+      engine.getSession().stateVersion,
+    );
     expect(undoResult.committed).toBe(true);
     expect(conv(engine, 0).content).toBe("Original text");
   });
 });
-

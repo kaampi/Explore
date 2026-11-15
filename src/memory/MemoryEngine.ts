@@ -40,9 +40,70 @@ function scoreMemory(entry: MemoryEntry, currentTurn: number): number {
  * topic loss at scene boundaries without pinning stale history forever.
  * It is a deterministic relevance hint, never an instruction source.
  */
-const COMMON_WORDS = new Set(["the", "and", "was", "were", "with", "for", "from", "that", "this", "are", "you", "your", "have", "has", "had", "they", "them", "their", "there", "where", "what", "when", "who", "why", "how", "let", "lets", "our", "all", "not", "but", "och", "att", "det", "den", "som", "med", "för", "har", "var", "jag", "mig", "du", "han", "hon", "vid", "här", "där", "till", "från", "inte", "ska", "kan", "ett", "en", "på"]);
+const COMMON_WORDS = new Set([
+  "the",
+  "and",
+  "was",
+  "were",
+  "with",
+  "for",
+  "from",
+  "that",
+  "this",
+  "are",
+  "you",
+  "your",
+  "have",
+  "has",
+  "had",
+  "they",
+  "them",
+  "their",
+  "there",
+  "where",
+  "what",
+  "when",
+  "who",
+  "why",
+  "how",
+  "let",
+  "lets",
+  "our",
+  "all",
+  "not",
+  "but",
+  "och",
+  "att",
+  "det",
+  "den",
+  "som",
+  "med",
+  "för",
+  "har",
+  "var",
+  "jag",
+  "mig",
+  "du",
+  "han",
+  "hon",
+  "vid",
+  "här",
+  "där",
+  "till",
+  "från",
+  "inte",
+  "ska",
+  "kan",
+  "ett",
+  "en",
+  "på",
+]);
 function terms(text: string): Set<string> {
-  return new Set((text.toLocaleLowerCase().match(/[\\p{L}\\p{N}]{3,}/gu) ?? []).filter(word => !COMMON_WORDS.has(word)).slice(0, 100));
+  return new Set(
+    (text.toLocaleLowerCase().match(/[\\p{L}\\p{N}]{3,}/gu) ?? [])
+      .filter((word) => !COMMON_WORDS.has(word))
+      .slice(0, 100),
+  );
 }
 
 function sceneQuery(session: Session): Map<string, number> {
@@ -60,7 +121,9 @@ function sceneQuery(session: Session): Map<string, number> {
     add(row.content.slice(0, 1200), [1, 0.6, 0.3][seen] ?? 0);
     seen++;
   }
-  const known = new Map(Object.entries(session.characters).map(([id, character]) => [id, character.name ?? ""]));
+  const known = new Map(
+    Object.entries(session.characters).map(([id, character]) => [id, character.name ?? ""]),
+  );
   let distance = 0;
   for (let i = session.conversation.length - 1; i >= 0 && distance < 8; i--) {
     const value = session.conversation[i];
@@ -84,8 +147,13 @@ function relevanceBonus(entry: MemoryEntry, query: Map<string, number>): number 
 
 export function rankMemories(session: Session, currentTurn: number, limit: number): RankedMemory[] {
   const query = sceneQuery(session);
-  const all: RankedMemory[] = (["episodic", "semantic", "relational"] as MemoryType[]).flatMap((type) =>
-    session.memory[type].map((entry) => ({ type, entry, score: scoreMemory(entry, currentTurn) + relevanceBonus(entry, query) }))
+  const all: RankedMemory[] = (["episodic", "semantic", "relational"] as MemoryType[]).flatMap(
+    (type) =>
+      session.memory[type].map((entry) => ({
+        type,
+        entry,
+        score: scoreMemory(entry, currentTurn) + relevanceBonus(entry, query),
+      })),
   );
 
   return all.sort((a, b) => b.score - a.score).slice(0, limit);
@@ -95,26 +163,28 @@ export function buildCondensedHistoryBlock(session: Session): ContextBlock | nul
   const recaps = listCondensationRecaps(session);
   if (recaps.length === 0) return null;
 
-  const body = recaps
-    .map((row) => `Turns ${row.start}–${row.end}: ${row.summary}`)
-    .join("\n");
+  const body = recaps.map((row) => `Turns ${row.start}–${row.end}: ${row.summary}`).join("\n");
 
   return {
     id: "condensed-history",
     source: "memory",
     content: [
       "Earlier in this scene (condensed; these beats are no longer in the live chat). State and standing notes win if this disagrees. Do not upgrade affection into a vow or a life-long commitment.",
-      body
+      body,
     ].join("\n"),
     priority: PRIORITY.CONDENSED_HISTORY,
-    required: false
+    required: false,
   };
 }
 
-export function buildMemoryBlocks(session: Session, currentTurn: number, limit: number): ContextBlock[] {
+export function buildMemoryBlocks(
+  session: Session,
+  currentTurn: number,
+  limit: number,
+): ContextBlock[] {
   const recap = buildCondensedHistoryBlock(session);
   const ranked = rankMemories(session, currentTurn, limit).filter(
-    (row) => !isCondensationContent(row.entry.content)
+    (row) => !isCondensationContent(row.entry.content),
   );
   const rankedBlocks = ranked.map((rankedMemory, index) => ({
     id: `memory-${rankedMemory.entry.id}`,
@@ -123,7 +193,7 @@ export function buildMemoryBlocks(session: Session, currentTurn: number, limit: 
     // Highest-ranked memory gets the lowest (best) priority number, so
     // it's the last one dropped if the budget gets tight.
     priority: PRIORITY.MEMORY + index,
-    required: false
+    required: false,
   }));
   return recap ? [recap, ...rankedBlocks] : rankedBlocks;
 }

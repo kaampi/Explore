@@ -23,6 +23,8 @@ describe("matchesCharacterShelf", () => {
     const both = { male: false, female: true, imported: true };
     expect(matchesCharacterShelf(emma, both)).toBe(false);
     expect(matchesCharacterShelf(importedShe, both)).toBe(true);
-    expect(matchesCharacterShelf({ pronoun: "he", source: "sillytavern" as const }, both)).toBe(false);
+    expect(matchesCharacterShelf({ pronoun: "he", source: "sillytavern" as const }, both)).toBe(
+      false,
+    );
   });
 });

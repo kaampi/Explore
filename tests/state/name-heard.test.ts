@@ -4,7 +4,7 @@ import {
   nameHeardInConversation,
   narrationCallName,
   pass1NameOptions,
-  publicCallName
+  publicCallName,
 } from "@state/nameHeard";
 import type { Session } from "@state/StateSchema";
 
@@ -24,8 +24,8 @@ function makeSession(overrides: Partial<Session> = {}): Session {
         name: "Emma",
         pronoun: "she",
         position: { value: "behind the bar", lock: "unlocked" },
-        mood: { value: "reserved", lock: "unlocked" }
-      }
+        mood: { value: "reserved", lock: "unlocked" },
+      },
     },
     scene: { location: "The Aurora Room", environment: {} },
     relationships: {},
@@ -35,7 +35,7 @@ function makeSession(overrides: Partial<Session> = {}): Session {
     events: [],
     snapshots: [],
     diagnostics: [],
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -46,14 +46,14 @@ describe("nameHeardInConversation", () => {
 
   it("hears the given name as a whole word, in any language case", () => {
     const session = makeSession({
-      conversation: [{ turn: 1, role: "player", content: "Hej Emma" }]
+      conversation: [{ turn: 1, role: "player", content: "Hej Emma" }],
     });
     expect(nameHeardInConversation(session, "Emma")).toBe(true);
   });
 
   it("does not treat Emmanuel as Emma", () => {
     const session = makeSession({
-      conversation: [{ turn: 1, role: "player", content: "Hi Emmanuel" }]
+      conversation: [{ turn: 1, role: "player", content: "Hi Emmanuel" }],
     });
     expect(nameHeardInConversation(session, "Emma")).toBe(false);
   });
@@ -65,9 +65,9 @@ describe("nameHeardInConversation", () => {
           turn: 1,
           role: "character",
           speaker: "emma",
-          content: "Emma looks up from wiping down the bar. 'Evening.'"
-        }
-      ]
+          content: "Emma looks up from wiping down the bar. 'Evening.'",
+        },
+      ],
     });
     expect(nameHeardInConversation(leaked, "Emma")).toBe(false);
 
@@ -77,9 +77,9 @@ describe("nameHeardInConversation", () => {
           turn: 1,
           role: "character",
           speaker: "emma",
-          content: "The bartender looks up. \"I'm Emma. What can I get you?\""
-        }
-      ]
+          content: 'The bartender looks up. "I\'m Emma. What can I get you?"',
+        },
+      ],
     });
     expect(nameHeardInConversation(spoken, "Emma")).toBe(true);
   });
@@ -96,8 +96,8 @@ describe("publicCallName", () => {
         name: "Emma",
         pronoun: "she",
         position: { value: "behind the bar", lock: "unlocked" },
-        mood: { value: "reserved", lock: "unlocked" }
-      })
+        mood: { value: "reserved", lock: "unlocked" },
+      }),
     ).toBe("she");
   });
 
@@ -106,8 +106,8 @@ describe("publicCallName", () => {
       publicCallName({
         name: "Emma",
         position: { value: "in the cabin", lock: "unlocked" },
-        mood: { value: "reserved", lock: "unlocked" }
-      })
+        mood: { value: "reserved", lock: "unlocked" },
+      }),
     ).toBe("they");
   });
 });
@@ -117,14 +117,14 @@ describe("pass1NameOptions", () => {
     const session = makeSession();
     expect(pass1NameOptions(session, "emma")).toEqual({
       characterName: "she",
-      unheardGiven: "Emma"
+      unheardGiven: "Emma",
     });
     expect(narrationCallName(session, "emma")).toBe("she");
   });
 
   it("switches to the given name once the player uses it", () => {
     const session = makeSession({
-      conversation: [{ turn: 1, role: "player", content: "Hej Emma" }]
+      conversation: [{ turn: 1, role: "player", content: "Hej Emma" }],
     });
     expect(pass1NameOptions(session, "emma")).toEqual({ characterName: "Emma" });
     expect(narrationCallName(session, "emma")).toBe("Emma");
@@ -134,15 +134,14 @@ describe("pass1NameOptions", () => {
 describe("maskUnheardGivenNames", () => {
   it("turns Emma's room into her room until the name is heard", () => {
     expect(maskUnheardGivenNames(makeSession(), "Rooms here (real): Emma's room.")).toBe(
-      "Rooms here (real): her room."
+      "Rooms here (real): her room.",
     );
   });
 
   it("leaves the given name in place once it has been spoken", () => {
     const session = makeSession({
-      conversation: [{ turn: 1, role: "player", content: "Emma?" }]
+      conversation: [{ turn: 1, role: "player", content: "Emma?" }],
     });
     expect(maskUnheardGivenNames(session, "Emma's room")).toBe("Emma's room");
   });
 });
-

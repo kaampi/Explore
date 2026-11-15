@@ -1,5 +1,10 @@
 import type { CharacterPronoun } from "@state/StateSchema";
-import { BUILTIN_PRONOUNS, isBuiltinPronoun, normalizePronoun, pronounLabel } from "@state/pronouns";
+import {
+  BUILTIN_PRONOUNS,
+  isBuiltinPronoun,
+  normalizePronoun,
+  pronounLabel,
+} from "@state/pronouns";
 import { formatPersonName, splitPersonName } from "@library/personName";
 import { PickChips } from "./ChoiceChips";
 import { SheetNameField } from "./SheetNameField";
@@ -33,7 +38,7 @@ export function SillyTavernImportReview({
   compacting,
   canUndoCompact,
   onCompact,
-  onUndoCompact
+  onUndoCompact,
 }: {
   rawText: string;
   fileLabel: string;
@@ -55,7 +60,9 @@ export function SillyTavernImportReview({
     <div className="st-import">
       <div className="st-import__raw">
         <p className="st-import__kicker">SillyTavern card{fileLabel ? ` — ${fileLabel}` : ""}</p>
-        <pre className="st-import__text">{rawText || "(No description or personality on this card.)"}</pre>
+        <pre className="st-import__text">
+          {rawText || "(No description or personality on this card.)"}
+        </pre>
       </div>
       <div className="st-import__card">
         <p className="st-import__kicker">Our guess — edit, then import</p>
@@ -69,14 +76,18 @@ export function SillyTavernImportReview({
               ...draft,
               name: parsed.given,
               middleName: parsed.middle,
-              familyName: parsed.family
+              familyName: parsed.family,
             });
           }}
         />
         <div className="studio-portrait studio-portrait--character">
           <div className="studio-portrait__frame">
             {portraitSrc(draft.portraitDataUrl) ? (
-              <img className="studio-portrait__img" src={portraitSrc(draft.portraitDataUrl)} alt="" />
+              <img
+                className="studio-portrait__img"
+                src={portraitSrc(draft.portraitDataUrl)}
+                alt=""
+              />
             ) : (
               <div className="studio-portrait__empty" aria-hidden="true" />
             )}
@@ -101,7 +112,12 @@ export function SillyTavernImportReview({
               </button>
             ) : null}
           </div>
-          <button type="button" className="studio-portrait__btn" disabled={busy} onClick={onPickPortrait}>
+          <button
+            type="button"
+            className="studio-portrait__btn"
+            disabled={busy}
+            onClick={onPickPortrait}
+          >
             {draft.portraitDataUrl ? "Change portrait" : "Add portrait"}
           </button>
         </div>
@@ -111,12 +127,14 @@ export function SillyTavernImportReview({
             ariaLabel="Pronoun"
             choices={[
               ...BUILTIN_PRONOUNS,
-              ...(draft.pronoun && !isBuiltinPronoun(draft.pronoun) ? [draft.pronoun] : [])
+              ...(draft.pronoun && !isBuiltinPronoun(draft.pronoun) ? [draft.pronoun] : []),
             ]}
             value={draft.pronoun ?? undefined}
             labelFor={pronounLabel}
             addPlaceholder="they…"
-            onPick={(choice) => onChange({ ...draft, pronoun: draft.pronoun === choice ? null : choice })}
+            onPick={(choice) =>
+              onChange({ ...draft, pronoun: draft.pronoun === choice ? null : choice })
+            }
             onAdd={(label) => onChange({ ...draft, pronoun: normalizePronoun(label) })}
           />
         </div>

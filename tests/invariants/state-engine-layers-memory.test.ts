@@ -21,7 +21,7 @@ function makeSession(): Session {
     conversation: [],
     events: [],
     snapshots: [],
-    diagnostics: []
+    diagnostics: [],
   };
 }
 
@@ -38,7 +38,7 @@ describe("StateEngine.addLayer", () => {
     const result = engine.addLayer(
       { type: "core", priority: 0, content: "Be warm and playful.", active: true },
       "player_manual_state",
-      0
+      0,
     );
     expect(result.committed).toBe(true);
     const added = engine.getSession().layers[0];
@@ -50,7 +50,7 @@ describe("StateEngine.addLayer", () => {
     const result = engine.addLayer(
       { type: "core", priority: 0, content: "AI-proposed behavior", active: true },
       "ai_approved_state_mutation",
-      0
+      0,
     );
     expect(result.committed).toBe(true);
     const added = engine.getSession().layers[0];
@@ -60,9 +60,14 @@ describe("StateEngine.addLayer", () => {
 
   it("discards an AI environment layer that invents a spare room", () => {
     const result = engine.addLayer(
-      { type: "environment", priority: 0, content: "There is a spare room down the hall.", active: true },
+      {
+        type: "environment",
+        priority: 0,
+        content: "There is a spare room down the hall.",
+        active: true,
+      },
       "ai_approved_state_mutation",
-      0
+      0,
     );
     expect(result.committed).toBe(false);
     expect(engine.getSession().layers).toHaveLength(0);
@@ -73,7 +78,7 @@ describe("StateEngine.addLayer", () => {
     const result = engine.addLayer(
       { type: "environment", priority: 0, content: "A stray dog sleeps by the door." },
       "ai_inference",
-      0
+      0,
     );
     expect(result.committed).toBe(false);
     expect(engine.getSession().layers).toHaveLength(0);
@@ -83,7 +88,7 @@ describe("StateEngine.addLayer", () => {
     const result = engine.addLayer(
       { type: "environment", priority: 0, content: "It's raining on the windows.", active: true },
       "ai_approved_state_mutation",
-      0
+      0,
     );
     expect(result.committed).toBe(true);
     expect(engine.getSession().layers[0]?.active).toBe(false);
@@ -94,14 +99,18 @@ describe("StateEngine.addLayer", () => {
     const result = engine.addLayer(
       { type: "environment", priority: 0, content: "Guest rooms upstairs.", active: true },
       "player_manual_state",
-      0
+      0,
     );
     expect(result.committed).toBe(true);
     expect(engine.getSession().layers[0]?.active).toBe(true);
   });
 
   it("logs a layer_added event on success", () => {
-    engine.addLayer({ type: "environment", priority: 0, content: "It's raining." }, "player_manual_state", 0);
+    engine.addLayer(
+      { type: "environment", priority: 0, content: "It's raining." },
+      "player_manual_state",
+      0,
+    );
     expect(eventLog.last()?.type).toBe("layer_added");
   });
 
@@ -112,16 +121,20 @@ describe("StateEngine.addLayer", () => {
         priority: 0,
         content: "A locked cellar.",
         keywords: ["cellar"],
-        active: true
+        active: true,
       },
       "player_manual_state",
-      0
+      0,
     );
     expect(engine.getSession().layers[0]?.keywords).toEqual(["cellar"]);
   });
 
   it("rejects a stale proposal", () => {
-    const result = engine.addLayer({ type: "core", priority: 0, content: "x" }, "player_manual_state", 999);
+    const result = engine.addLayer(
+      { type: "core", priority: 0, content: "x" },
+      "player_manual_state",
+      999,
+    );
     expect(result.committed).toBe(false);
   });
 });
@@ -131,7 +144,11 @@ describe("StateEngine.setLayerActive", () => {
 
   beforeEach(() => {
     engine = new StateEngine(makeSession(), new EventLog());
-    engine.addLayer({ type: "core", priority: 0, content: "x", active: false }, "player_manual_state", 0);
+    engine.addLayer(
+      { type: "core", priority: 0, content: "x", active: false },
+      "player_manual_state",
+      0,
+    );
   });
 
   it("lets the player activate a layer", () => {
@@ -164,11 +181,11 @@ describe("StateEngine.setLayerActive", () => {
             priority: 5,
             content: "There is a spare room down the hall.",
             active: false,
-            aiGenerated: true
-          }
-        ]
+            aiGenerated: true,
+          },
+        ],
       },
-      new EventLog()
+      new EventLog(),
     );
     const result = leftover.setLayerActive("ai-spare", true, "player_manual_state", 0);
     expect(result.committed).toBe(false);
@@ -181,7 +198,11 @@ describe("StateEngine.setLayerKeywords", () => {
 
   beforeEach(() => {
     engine = new StateEngine(makeSession(), new EventLog());
-    engine.addLayer({ type: "environment", priority: 0, content: "A locked cellar.", active: true }, "player_manual_state", 0);
+    engine.addLayer(
+      { type: "environment", priority: 0, content: "A locked cellar.", active: true },
+      "player_manual_state",
+      0,
+    );
   });
 
   it("lets the player set keywords", () => {
@@ -214,10 +235,10 @@ describe("StateEngine.markLayerSpent", () => {
         once: true,
         trigger: "return_to_bar",
         keywords: ["brooch"],
-        active: true
+        active: true,
       },
       "player_manual_state",
-      0
+      0,
     );
   });
 
@@ -268,7 +289,10 @@ describe("StateEngine.removeLayer", () => {
   it("is undoable — the removed layer's full record is restored", () => {
     const layerId = engine.getSession().layers[0]!.id;
     engine.removeLayer(layerId, "player_manual_state", 1);
-    const undoResult = engine.undoLastMutation("player_manual_state", engine.getSession().stateVersion);
+    const undoResult = engine.undoLastMutation(
+      "player_manual_state",
+      engine.getSession().stateVersion,
+    );
     expect(undoResult.committed).toBe(true);
     expect(engine.getSession().layers).toHaveLength(1);
     expect(engine.getSession().layers[0]?.id).toBe(layerId);
@@ -288,7 +312,7 @@ describe("StateEngine.addMemoryEntry", () => {
     const result = engine.addMemoryEntry(
       "episodic",
       { content: "Emma mentioned her sister.", importance: 0.7 },
-      0
+      0,
     );
     expect(result.committed).toBe(true);
     expect(engine.getSession().memory.episodic).toHaveLength(1);
@@ -320,12 +344,12 @@ describe("StateEngine.compactReplaceLayers", () => {
     engine.addLayer(
       { type: "core", priority: 5, content: "Emma is reserved.", active: false },
       "ai_approved_state_mutation",
-      0
+      0,
     );
     engine.addLayer(
       { type: "core", priority: 5, content: "Emma stays composed.", active: false },
       "ai_approved_state_mutation",
-      1
+      1,
     );
     const ids = engine.getSession().layers.map((layer) => layer.id);
     const result = engine.compactReplaceLayers(
@@ -336,11 +360,11 @@ describe("StateEngine.compactReplaceLayers", () => {
           content: "Emma is a reserved, composed bartender.",
           active: false,
           aiGenerated: true,
-          priority: 5
-        }
+          priority: 5,
+        },
       ],
       "player_manual_state",
-      2
+      2,
     );
     expect(result.committed).toBe(true);
     expect(engine.getSession().layers).toHaveLength(1);
@@ -350,25 +374,34 @@ describe("StateEngine.compactReplaceLayers", () => {
 
     const undo = engine.undoLastMutation("player_manual_state", 3);
     expect(undo.committed).toBe(true);
-    expect(engine.getSession().layers.map((layer) => layer.content).sort()).toEqual([
-      "Emma is reserved.",
-      "Emma stays composed."
-    ]);
+    expect(
+      engine
+        .getSession()
+        .layers.map((layer) => layer.content)
+        .sort(),
+    ).toEqual(["Emma is reserved.", "Emma stays composed."]);
   });
 
   it("rejects AI-sourced compaction", () => {
     const engine = new StateEngine(makeSession(), new EventLog());
-    engine.addLayer({ type: "core", priority: 5, content: "A", active: true }, "player_manual_state", 0);
-    engine.addLayer({ type: "core", priority: 5, content: "B", active: true }, "player_manual_state", 1);
+    engine.addLayer(
+      { type: "core", priority: 5, content: "A", active: true },
+      "player_manual_state",
+      0,
+    );
+    engine.addLayer(
+      { type: "core", priority: 5, content: "B", active: true },
+      "player_manual_state",
+      1,
+    );
     const ids = engine.getSession().layers.map((layer) => layer.id);
     const result = engine.compactReplaceLayers(
       ids,
       [{ type: "core", content: "AB", active: true, aiGenerated: false, priority: 5 }],
       "ai_approved_state_mutation",
-      2
+      2,
     );
     expect(result.committed).toBe(false);
     expect(engine.getSession().layers).toHaveLength(2);
   });
 });
-

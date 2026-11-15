@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { formatTagList, newObjectTemplate, parseTagList, parseObjectTemplate } from "@library/LibrarySchema";
+import {
+  formatTagList,
+  newObjectTemplate,
+  parseTagList,
+  parseObjectTemplate,
+} from "@library/LibrarySchema";
 import { exampleLightsaberObject, exampleRingObject } from "@library/exampleTemplates";
 import {
   OBJECT_FILTER_ALL,
@@ -9,15 +14,24 @@ import {
   matchesTagFilter,
   objectMatchesFilter,
   uniqueObjectTags,
-  uniqueTags
+  uniqueTags,
 } from "@library/objectFilter";
 
 describe("object templates", () => {
   it("preserves authored object details through a saved JSON round trip", () => {
-    const object = newObjectTemplate({ name: "Cellar key", note: "A rusty key.", tags: [], source: "player",
-      storyRole: "critical", storyImportance: "Opens the cellar.",
+    const object = newObjectTemplate({
+      name: "Cellar key",
+      note: "A rusty key.",
+      tags: [],
+      source: "player",
+      storyRole: "critical",
+      storyImportance: "Opens the cellar.",
       startingLocation: { kind: "character", characterId: "witch" },
-      portable: true, openable: false, lockable: false, imageDataUrl: "data:image/png;base64,AA==" });
+      portable: true,
+      openable: false,
+      lockable: false,
+      imageDataUrl: "data:image/png;base64,AA==",
+    });
     expect(parseObjectTemplate(JSON.parse(JSON.stringify(object)))).toEqual(object);
     expect(parseObjectTemplate(exampleRingObject()).startingLocation).toBeUndefined();
   });
@@ -27,7 +41,7 @@ describe("object templates", () => {
       note: "Unlocks the guest room upstairs.",
       tags: parseTagList("Fantasy, key, Fantasy"),
       weight: 0,
-      source: "player"
+      source: "player",
     });
     expect(template.tags).toEqual(["Fantasy", "key"]);
     expect(formatTagList(template.tags)).toBe("Fantasy, key");
@@ -63,7 +77,12 @@ describe("objectMatchesFilter", () => {
   });
 
   it("collects unique tags with first casing", () => {
-    expect(uniqueObjectTags([ring, saber, { tags: ["fantasy"] }])).toEqual(["Fantasy", "relic", "scifi", "weapon"]);
+    expect(uniqueObjectTags([ring, saber, { tags: ["fantasy"] }])).toEqual([
+      "Fantasy",
+      "relic",
+      "scifi",
+      "weapon",
+    ]);
   });
 });
 

@@ -3,7 +3,7 @@ import {
   generateCharacter,
   readCastingCues,
   type CastingCues,
-  type GeneratedCharacter
+  type GeneratedCharacter,
 } from "@library/characterGenerator";
 
 /**
@@ -12,11 +12,14 @@ import {
  * Setting and plot stay off the card.
  */
 
-export const INTERVIEW_OPENING = "What kind of character do you want? Describe them in a few words.";
+export const INTERVIEW_OPENING =
+  "What kind of character do you want? Describe them in a few words.";
 
-export const OLLAMA_UNREACHABLE_NOTE = "Could not reach Ollama. This draft used the local generator.";
+export const OLLAMA_UNREACHABLE_NOTE =
+  "Could not reach Ollama. This draft used the local generator.";
 
-export const OLLAMA_UNREADABLE_NOTE = "Ollama's reply could not be read. This draft used the local generator.";
+export const OLLAMA_UNREADABLE_NOTE =
+  "Ollama's reply could not be read. This draft used the local generator.";
 
 export type InterviewReply = {
   card: GeneratedCharacter | null;
@@ -46,7 +49,7 @@ const REROLL = new Set([
   "inte den",
   "not this one",
   "try again",
-  "another"
+  "another",
 ]);
 
 const YES = new Set([
@@ -65,7 +68,7 @@ const YES = new Set([
   "den här",
   "den har",
   "ok",
-  "okay"
+  "okay",
 ]);
 
 const BANNED =
@@ -74,7 +77,13 @@ const BANNED =
 const APPEARANCE_PATTERN = /^(.+?) build, (.+?), ([^.]+)\. (.+)$/;
 
 function bare(text: string): string {
-  return text.normalize("NFC").toLowerCase().replace(/\s+/g, " ").trim().replace(/[.!?]+$/g, "").trim();
+  return text
+    .normalize("NFC")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/[.!?]+$/g, "")
+    .trim();
 }
 
 function classify(text: string): "reroll" | "yes" | "note" {
@@ -114,7 +123,10 @@ function reviseCard(card: GeneratedCharacter, cues: CastingCues): GeneratedChara
     personality = `${first} ${OBSERVANT_LINE}`;
   }
 
-  const tags = cues.mood && cues.mood !== card.mood ? card.tags.filter((tag) => tag !== card.mood) : [...card.tags];
+  const tags =
+    cues.mood && cues.mood !== card.mood
+      ? card.tags.filter((tag) => tag !== card.mood)
+      : [...card.tags];
   if (cues.mood && !tags.includes(cues.mood)) tags.push(cues.mood);
   for (const tag of cues.tags) {
     if (!tags.includes(tag)) tags.push(tag);
@@ -128,13 +140,14 @@ function reviseCard(card: GeneratedCharacter, cues: CastingCues): GeneratedChara
     appearance: mergeAppearance(card.appearance, cues),
     mood,
     personality,
-    tags: tags.slice(0, 3)
+    tags: tags.slice(0, 3),
   };
 }
 
 function nextQuestion(cues: CastingCues): string {
   if (!cues.speechLine) return "How do they speak?";
-  if (!cues.build && !cues.hair && !cues.eyes && !cues.mark) return "How do you picture them? Body and face.";
+  if (!cues.build && !cues.hair && !cues.eyes && !cues.mark)
+    return "How do you picture them? Body and face.";
   if (!cues.mood && !cues.observant) return "How do they treat people?";
   return "Is this the person you had in mind?";
 }
@@ -187,7 +200,7 @@ export function localInterview(messages: readonly string[], seed: number): Inter
   return {
     card,
     imagePrompt: card ? imagePromptFor(card) : "",
-    question: confirmed || !card ? "" : nextQuestion(covered)
+    question: confirmed || !card ? "" : nextQuestion(covered),
   };
 }
 
@@ -221,7 +234,7 @@ export function interviewUserPrompt(messages: readonly string[], local: Intervie
         mood: local.card.mood,
         speech: local.card.speech,
         personality: local.card.personality,
-        tags: local.card.tags
+        tags: local.card.tags,
       })
     : "{}";
   return `Player messages:\n${lines}\n\nLocal draft, if the wish is too thin to cast from:\n${draft}`;
@@ -273,7 +286,11 @@ function extractJson(text: string): unknown {
 }
 
 /** Model JSON, field by field. A banned or empty field keeps the local draft. Null if there is no person to keep. */
-export function interviewFromModelText(text: string, local: InterviewReply, latestUser: string): InterviewReply | null {
+export function interviewFromModelText(
+  text: string,
+  local: InterviewReply,
+  latestUser: string,
+): InterviewReply | null {
   const card = local.card;
   if (!card) return null;
   const parsed = extractJson(text);
@@ -282,7 +299,10 @@ export function interviewFromModelText(text: string, local: InterviewReply, late
   const name = keepClean(record.name, "", 40);
   if (!name) return null;
   const pronoun = tidy(record.pronoun, 12).toLowerCase();
-  const age = typeof record.approximateAge === "number" ? Math.round(record.approximateAge) : card.approximateAge;
+  const age =
+    typeof record.approximateAge === "number"
+      ? Math.round(record.approximateAge)
+      : card.approximateAge;
   const latest = latestUser.trim();
   const confirmed = !cuesMentionCasting(readCastingCues(latest)) && classify(latest) === "yes";
   const tags = readTags(record.tags);
@@ -291,18 +311,21 @@ export function interviewFromModelText(text: string, local: InterviewReply, late
     middleName: keepClean(record.middleName, "", 40),
     familyName: keepClean(record.familyName, "", 40),
     approximateAge: age >= 1 && age <= 130 ? age : card.approximateAge,
-    pronoun: pronoun === "she" || pronoun === "he" || pronoun === "it" || pronoun === "they" ? pronoun : card.pronoun,
+    pronoun:
+      pronoun === "she" || pronoun === "he" || pronoun === "it" || pronoun === "they"
+        ? pronoun
+        : card.pronoun,
     appearance: keepClean(record.appearance, card.appearance, 400),
     mood: keepClean(record.mood, card.mood, 40),
     speech: keepClean(record.speech, card.speech, 280),
     personality: keepClean(record.personality, card.personality, 500),
-    tags: tags.length > 0 ? tags : card.tags
+    tags: tags.length > 0 ? tags : card.tags,
   };
   const imagePrompt = keepClean(record.imagePrompt, imagePromptFor(next), 400);
   return {
     card: next,
     imagePrompt,
-    question: confirmed ? "" : oneQuestion(record.question, local.question)
+    question: confirmed ? "" : oneQuestion(record.question, local.question),
   };
 }
 
@@ -312,15 +335,19 @@ function isAbort(err: unknown): boolean {
 
 export async function conductCharacterInterview(
   input: { messages: readonly string[]; seed: number },
-  complete?: (messages: Array<{ role: "system" | "user"; content: string }>) => Promise<string>
+  complete?: (messages: Array<{ role: "system" | "user"; content: string }>) => Promise<string>,
 ): Promise<ConductedInterview> {
   const reply = localInterview(input.messages, input.seed);
   if (!complete || !reply.card) return { reply, source: "local", note: "" };
-  const latest = input.messages.map((message) => message.trim()).filter(Boolean).at(-1) ?? "";
+  const latest =
+    input.messages
+      .map((message) => message.trim())
+      .filter(Boolean)
+      .at(-1) ?? "";
   try {
     const text = await complete([
       { role: "system", content: INTERVIEW_SYSTEM },
-      { role: "user", content: interviewUserPrompt(input.messages, reply) }
+      { role: "user", content: interviewUserPrompt(input.messages, reply) },
     ]);
     const shaped = interviewFromModelText(text, reply, latest);
     if (!shaped) return { reply, source: "local", note: OLLAMA_UNREADABLE_NOTE };

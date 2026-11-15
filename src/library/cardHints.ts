@@ -42,9 +42,7 @@ export function ageFromText(text: string): number | undefined {
   const labeled = pickSoleYear(text.matchAll(/\b(?:age|ålder)\s*[=:\-]\s*(\d{1,3})\b/gi));
   if (labeled != null) return labeled;
 
-  const yearOld = pickSoleYear(
-    text.matchAll(/\b(\d{1,3})(?:-|\s+)(?:year|yr)s?(?:-|\s+)old\b/gi)
-  );
+  const yearOld = pickSoleYear(text.matchAll(/\b(\d{1,3})(?:-|\s+)(?:year|yr)s?(?:-|\s+)old\b/gi));
   if (yearOld != null) return yearOld;
 
   const swedish = pickSoleYear(text.matchAll(/\b(\d{1,3})\s*år(?:\s*gammal)?\b/gi));
@@ -70,10 +68,18 @@ export function pronounFromGenderLabel(gender: string): CharacterPronoun | undef
     .map((part) => part.trim().toLowerCase())
     .filter(Boolean);
   for (const part of parts) {
-    if (part === "she" || part === "female" || part === "f" || part === "woman" || part === "girl") return "she";
-    if (part === "he" || part === "male" || part === "m" || part === "man" || part === "boy") return "he";
+    if (part === "she" || part === "female" || part === "f" || part === "woman" || part === "girl")
+      return "she";
+    if (part === "he" || part === "male" || part === "m" || part === "man" || part === "boy")
+      return "he";
     if (part === "it") return "it";
-    if (part === "they" || part === "them" || part === "nonbinary" || part === "non-binary" || part === "enby") {
+    if (
+      part === "they" ||
+      part === "them" ||
+      part === "nonbinary" ||
+      part === "non-binary" ||
+      part === "enby"
+    ) {
       return "they";
     }
     const fromPronoun = pronounToken(part);
@@ -97,7 +103,7 @@ export function pronounFromText(text: string): CharacterPronoun | undefined {
   if (fromGender) return fromGender;
 
   const labeled = text.match(
-    /\bpronouns?\s*[:\-]\s*(she\/her|he\/him|they\/them|she|he|they|her|him|them|hon|han)\b/i
+    /\bpronouns?\s*[:\-]\s*(she\/her|he\/him|they\/them|she|he|they|her|him|them|hon|han)\b/i,
   );
   const fromLabel = labeled ? pronounToken(labeled[1] ?? "") : undefined;
   if (fromLabel) return fromLabel;
@@ -114,7 +120,7 @@ export function pronounFromText(text: string): CharacterPronoun | undefined {
   const ranked = [
     { pronoun: "she" as const, n: she },
     { pronoun: "he" as const, n: he },
-    { pronoun: "they" as const, n: they }
+    { pronoun: "they" as const, n: they },
   ].sort((a, b) => b.n - a.n);
   const [winner, runner] = ranked;
   if (!winner || winner.n < 2) return undefined;
@@ -122,7 +128,8 @@ export function pronounFromText(text: string): CharacterPronoun | undefined {
   return winner.pronoun;
 }
 
-const HONORIFIC = /^(princess|prince|king|queen|lady|lord|sir|dame|miss|mister|master|doctor|dr)\s+/i;
+const HONORIFIC =
+  /^(princess|prince|king|queen|lady|lord|sir|dame|miss|mister|master|doctor|dr)\s+/i;
 
 export function stripHonorific(name: string): string {
   return name.trim().replace(HONORIFIC, "").trim();
@@ -156,15 +163,22 @@ export function wPlusPlusFields(text: string): Record<string, string> {
     let quoted = false;
     let end = opening + 1;
     for (; end < normalized.length; end++) {
-      if (normalized[end] === "\\") { end++; continue; }
-      if (normalized[end] === '"') { quoted = !quoted; continue; }
+      if (normalized[end] === "\\") {
+        end++;
+        continue;
+      }
+      if (normalized[end] === '"') {
+        quoted = !quoted;
+        continue;
+      }
       if (quoted) continue;
       if (normalized[end] === "(") depth++;
       if (normalized[end] === ")" && --depth === 0) break;
     }
     if (depth !== 0) continue; // Unbalanced source remains available in review.
     let value = normalized.slice(opening + 1, end).trim();
-    if (value.startsWith('"') && value.endsWith('"') && !value.slice(1, -1).includes('"')) value = value.slice(1, -1);
+    if (value.startsWith('"') && value.endsWith('"') && !value.slice(1, -1).includes('"'))
+      value = value.slice(1, -1);
     parenthesized[normalizeWppKey(header[1] ?? "")] = value;
     consumed = end + 1;
     spans.push({ start: header.index, end: consumed });
@@ -172,7 +186,9 @@ export function wPlusPlusFields(text: string): Record<string, string> {
   let masked = "";
   let offset = 0;
   for (const span of spans) {
-    masked += normalized.slice(offset, span.start) + normalized.slice(span.start, span.end).replace(/[^\n]/g, " ");
+    masked +=
+      normalized.slice(offset, span.start) +
+      normalized.slice(span.start, span.end).replace(/[^\n]/g, " ");
     offset = span.end;
   }
   masked += normalized.slice(offset);
@@ -204,5 +220,3 @@ export function wPlusPlusFields(text: string): Record<string, string> {
 export function wppLooks(fields: Record<string, string>): string {
   return fields["body/appearance"] || fields.body || fields.looks || fields.appearance || "";
 }
-
-

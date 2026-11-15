@@ -1,15 +1,9 @@
 import { CodexConnection } from "./connection/CodexConnection";
-import { UpdateProvider } from './home/UpdateProvider';
+import { UpdateProvider } from "./home/UpdateProvider";
 import { attachLorebooks } from "../lore/attachLorebooks";
 import { IdeaLibrary } from "./ideas/IdeaLibrary";
 import { GuidePanel, GuideHost, openGuide } from "./guide/GuidePanel";
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { EngineProvider, useEngine, type ChatPhase } from "./EngineStore";
 import { StudioShell } from "./studio/StudioShell";
 import { ConnectionProvider } from "./connection/ConnectionProvider";
@@ -20,12 +14,13 @@ import { ConversationLibrary } from "./conversations/ConversationLibrary";
 import { ThemeProvider, useAppearance } from "./themes/ThemeProvider";
 import { deleteAudioPreferences } from "./audio/audioStorage";
 import { SettingsDialog } from "./settings/SettingsDialog";
-import { LanguageProvider, languageOptions, useLanguage, type InterfaceLanguage } from "./i18n/LanguageProvider";
 import {
-  getRepository,
-  loadExistingSession,
-  UI_SESSION_ID,
-} from "./persistence";
+  LanguageProvider,
+  languageOptions,
+  useLanguage,
+  type InterfaceLanguage,
+} from "./i18n/LanguageProvider";
+import { getRepository, loadExistingSession, UI_SESSION_ID } from "./persistence";
 import type { ConversationCatalog } from "@persistence/ConversationSchema";
 import type { StudioResume } from "@persistence/IndexedDBRepository";
 import type { Session } from "@state/StateSchema";
@@ -53,7 +48,20 @@ function LiveSessionBridge({
 }
 function HeaderLanguagePicker() {
   const { language, setLanguage } = useLanguage();
-  return <select className="sb-header-language" aria-label="Interface language" value={language} onChange={(event) => setLanguage(event.target.value as InterfaceLanguage)}>{languageOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>;
+  return (
+    <select
+      className="sb-header-language"
+      aria-label="Interface language"
+      value={language}
+      onChange={(event) => setLanguage(event.target.value as InterfaceLanguage)}
+    >
+      {languageOptions.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+  );
 }
 function HeaderAppearanceToggle() {
   const { library, setShell, ready } = useAppearance();
@@ -94,7 +102,15 @@ function SandboxApp() {
   const { t } = useLanguage();
   const { forgetConversation } = useAppearance();
   const [repo] = useState(() => getRepository());
-  const resumePlay=useRef((()=>{try{return sessionStorage.getItem('explore-last-view')==='play';}catch{return false;}})());
+  const resumePlay = useRef(
+    (() => {
+      try {
+        return sessionStorage.getItem("explore-last-view") === "play";
+      } catch {
+        return false;
+      }
+    })(),
+  );
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const live = useRef<Session | null>(null);
   const [resume, setResume] = useState<StudioResume | null>(null);
@@ -134,7 +150,7 @@ function SandboxApp() {
       ]);
       if (cancelled) return;
       setLive(loaded);
-      if(loaded&&resumePlay.current)setView("play");
+      if (loaded && resumePlay.current) setView("play");
       setCatalog(conversations);
       setResume(
         loaded
@@ -145,33 +161,32 @@ function SandboxApp() {
           : studioResume,
       );
     })().catch((err: unknown) => {
-      if (!cancelled)
-        setLoadError(err instanceof Error ? err.message : String(err));
+      if (!cancelled) setLoadError(err instanceof Error ? err.message : String(err));
     });
     return () => {
       cancelled = true;
     };
   }, [repo, setLive]);
 
-  useEffect(()=>{if(session===undefined)return;try{sessionStorage.setItem('explore-last-view',view==='play'?'play':'home');}catch{}},[view,session]);
+  useEffect(() => {
+    if (session === undefined) return;
+    try {
+      sessionStorage.setItem("explore-last-view", view === "play" ? "play" : "home");
+    } catch {}
+  }, [view, session]);
   async function refreshCatalog() {
     try {
       setCatalog(await repo.listConversations());
     } catch (err) {
       setOperationError(
-        err instanceof Error
-          ? err.message
-          : "Could not refresh your conversations.",
+        err instanceof Error ? err.message : "Could not refresh your conversations.",
       );
     }
   }
   async function action(work: () => Promise<void>) {
-    if (actionPending.current)
-      throw new Error("Please wait while the conversation opens.");
+    if (actionPending.current) throw new Error("Please wait while the conversation opens.");
     if (currentPhase.current === "streaming")
-      throw new Error(
-        "Wait for the current reply to finish before changing conversations.",
-      );
+      throw new Error("Wait for the current reply to finish before changing conversations.");
     actionPending.current = true;
     setWorking(true);
     setOperationError(null);
@@ -185,9 +200,7 @@ function SandboxApp() {
   function report(work: Promise<void>) {
     void work.catch((err: unknown) =>
       setOperationError(
-        err instanceof Error
-          ? err.message
-          : "Could not update your conversations.",
+        err instanceof Error ? err.message : "Could not update your conversations.",
       ),
     );
   }
@@ -198,11 +211,28 @@ function SandboxApp() {
     await action(async () => {
       await persistCurrent();
       const books = await repo.listLorebooks();
-      if (books.unreadable) setOperationError("Some lorebooks could not be read and were skipped. Their original stored records have been kept; review Lorebooks when convenient.");
-      const place = next.scene?.placeId && books.entries.some(book => book.binding.kind === "realm")
-        ? (await repo.listPlaces()).find(item => item.id === next.scene?.placeId) : undefined;
-      const realmId = place?.realmId ?? (!next.scene?.placeId ? books.entries.find(book => book.materializedRealmId && book.materializedCharacterIds?.some(id => Object.values(next.characters).some(c => c.sourceLibraryId === id)))?.materializedRealmId : undefined);
-      const fresh = attachLorebooks({ ...next, id: crypto.randomUUID() }, books.entries, { realmId });
+      if (books.unreadable)
+        setOperationError(
+          "Some lorebooks could not be read and were skipped. Their original stored records have been kept; review Lorebooks when convenient.",
+        );
+      const place =
+        next.scene?.placeId && books.entries.some((book) => book.binding.kind === "realm")
+          ? (await repo.listPlaces()).find((item) => item.id === next.scene?.placeId)
+          : undefined;
+      const realmId =
+        place?.realmId ??
+        (!next.scene?.placeId
+          ? books.entries.find(
+              (book) =>
+                book.materializedRealmId &&
+                book.materializedCharacterIds?.some((id) =>
+                  Object.values(next.characters).some((c) => c.sourceLibraryId === id),
+                ),
+            )?.materializedRealmId
+          : undefined);
+      const fresh = attachLorebooks({ ...next, id: crypto.randomUUID() }, books.entries, {
+        realmId,
+      });
       await repo.createConversation(fresh);
       const nextResume = sceneResume(fresh);
       try {
@@ -221,8 +251,7 @@ function SandboxApp() {
   async function openConversation(id: string) {
     await action(async () => {
       await persistCurrent();
-      const next =
-        live.current?.id === id ? live.current : await repo.loadSession(id);
+      const next = live.current?.id === id ? live.current : await repo.loadSession(id);
       await repo.activateConversation(id);
       if (live.current?.id !== id) {
         setResume(sceneResume(next));
@@ -259,15 +288,34 @@ function SandboxApp() {
       // autosave the deleted conversation back into storage.
       if (live.current?.id === id) {
         setLive(null);
-        setGeneration(value => value + 1);
+        setGeneration((value) => value + 1);
       }
-      setResume(current => current?.conversationId === id || (id === UI_SESSION_ID && current && !current.conversationId) ? null : current);
-      setCatalog(current => ({ ...current, entries: current.entries.filter(entry => entry.id !== id) }));
+      setResume((current) =>
+        current?.conversationId === id ||
+        (id === UI_SESSION_ID && current && !current.conversationId)
+          ? null
+          : current,
+      );
+      setCatalog((current) => ({
+        ...current,
+        entries: current.entries.filter((entry) => entry.id !== id),
+      }));
       forgetConversation(id);
       let cleanupFailed = false;
-      try { sessionStorage.removeItem(`sandboxai-draft:${id}`); } catch { cleanupFailed = true; }
-      try { await deleteAudioPreferences(id); } catch { cleanupFailed = true; }
-      if (cleanupFailed) setOperationError("Conversation deleted. Some local playback preferences or draft data could not be cleared.");
+      try {
+        sessionStorage.removeItem(`sandboxai-draft:${id}`);
+      } catch {
+        cleanupFailed = true;
+      }
+      try {
+        await deleteAudioPreferences(id);
+      } catch {
+        cleanupFailed = true;
+      }
+      if (cleanupFailed)
+        setOperationError(
+          "Conversation deleted. Some local playback preferences or draft data could not be cleared.",
+        );
       await refreshCatalog();
     });
   }
@@ -282,9 +330,7 @@ function SandboxApp() {
   }
   function openStudio(next: StudioView) {
     if (actionPending.current || currentPhase.current === "streaming") {
-      setOperationError(
-        "Wait for the current reply to finish before opening the studio.",
-      );
+      setOperationError("Wait for the current reply to finish before opening the studio.");
       return;
     }
     if (!["campaigns", "adventure"].includes(next)) setLastLibraryView(next);
@@ -292,10 +338,7 @@ function SandboxApp() {
     setView("studio");
     setOperationError(null);
   }
-  async function newConversation(
-    current: Session,
-    nextResume: StudioResume | null,
-  ) {
+  async function newConversation(current: Session, nextResume: StudioResume | null) {
     await action(async () => {
       await repo.saveSession(current);
       if (nextResume) await repo.saveStudioResume(nextResume);
@@ -312,11 +355,7 @@ function SandboxApp() {
       <div className="sb-loading">
         <h1>We couldn't open your space.</h1>
         <p role="alert">{loadError}</p>
-        <button
-          type="button"
-          className="sb-button"
-          onClick={() => window.location.reload()}
-        >
+        <button type="button" className="sb-button" onClick={() => window.location.reload()}>
           Try again
         </button>
       </div>
@@ -329,22 +368,43 @@ function SandboxApp() {
     );
   const workspace = (
     <>
-      <ConversationAppearance
-        id={view === "play" ? (session?.id ?? null) : null}
-      />
-      <header className="sb-header"><div className="sb-header-start">
-        <button
-          type="button"
-          className="sb-brand"
-          onClick={() => navigate("home")}
-          aria-label="kaampi Explore home"
-        >
-          <img className="sb-brand__logo sb-brand__logo--light" src="/brand/kaampi-explore.svg" alt="kaampi Explore" />
-          <img className="sb-brand__logo sb-brand__logo--dark" src="/brand/kaampi-explore-dark.svg" alt="kaampi Explore" />
-        </button>
-        {view!=="play"&&<nav className="sb-header-utilities" aria-label="Help and settings"><button type="button" onClick={()=>openGuide()}>{t('guide')}</button><button type="button" onClick={()=>setAppearanceOpen(true)}>{t('settings')}</button></nav>}</div>
+      <ConversationAppearance id={view === "play" ? (session?.id ?? null) : null} />
+      <header className="sb-header">
+        <div className="sb-header-start">
+          <button
+            type="button"
+            className="sb-brand"
+            onClick={() => navigate("home")}
+            aria-label="kaampi Explore home"
+          >
+            <img
+              className="sb-brand__logo sb-brand__logo--light"
+              src="/brand/kaampi-explore.svg"
+              alt="kaampi Explore"
+            />
+            <img
+              className="sb-brand__logo sb-brand__logo--dark"
+              src="/brand/kaampi-explore-dark.svg"
+              alt="kaampi Explore"
+            />
+          </button>
+          {view !== "play" && (
+            <nav className="sb-header-utilities" aria-label="Help and settings">
+              <button type="button" onClick={() => openGuide()}>
+                {t("guide")}
+              </button>
+              <button type="button" onClick={() => setAppearanceOpen(true)}>
+                {t("settings")}
+              </button>
+            </nav>
+          )}
+        </div>
         <AppSwitcher onHome={() => navigate("home")} />
-        <div className="sb-header-preferences"><CodexConnection /><HeaderLanguagePicker /><HeaderAppearanceToggle /></div>
+        <div className="sb-header-preferences">
+          <CodexConnection />
+          <HeaderLanguagePicker />
+          <HeaderAppearanceToggle />
+        </div>
       </header>
       {operationError && (
         <div className="sb-operation-error" role="alert">
@@ -363,9 +423,7 @@ function SandboxApp() {
         <PlayWorkspace
           repo={repo}
           onIdeas={() => navigate("ideas")}
-          title={
-            catalog.entries.find((entry) => entry.id === session.id)?.title
-          }
+          title={catalog.entries.find((entry) => entry.id === session.id)?.title}
           onHome={(current) => {
             setLive(current);
             navigate("home");
@@ -373,9 +431,7 @@ function SandboxApp() {
           onAppearance={() => setAppearanceOpen(true)}
         />
       ) : (
-        <div
-          className={`sb-workspace${view === "studio" ? " sb-workspace--studio" : ""}`}
-        >
+        <div className={`sb-workspace${view === "studio" ? " sb-workspace--studio" : ""}`}>
           <aside className="sb-sidebar">
             <span className="sb-eyebrow">{t("eyebrow")}</span>
             <nav aria-label="kaampi Explore navigation">
@@ -393,10 +449,22 @@ function SandboxApp() {
               >
                 ◷ <span>{t("conversations")}</span>
               </button>
-              <button type="button" className={view === "ideas" ? "is-active" : ""} onClick={() => navigate("ideas")}>
+              <button
+                type="button"
+                className={view === "ideas" ? "is-active" : ""}
+                onClick={() => navigate("ideas")}
+              >
                 ✧ <span>{t("ideas")}</span>
               </button>
-              <button type="button" className={view === "studio" && !["campaigns", "adventure"].includes(studioView) ? "is-active" : ""} onClick={() => openStudio(lastLibraryView)}>
+              <button
+                type="button"
+                className={
+                  view === "studio" && !["campaigns", "adventure"].includes(studioView)
+                    ? "is-active"
+                    : ""
+                }
+                onClick={() => openStudio(lastLibraryView)}
+              >
                 ▤ <span>{t("library")}</span>
               </button>
               <button
@@ -421,16 +489,19 @@ function SandboxApp() {
               )}
             </nav>
             <div className="sb-sidebar__quote">
-              <span aria-hidden="true">❧</span>{t("tagline")}
+              <span aria-hidden="true">❧</span>
+              {t("tagline")}
             </div>
-
           </aside>
           {view === "studio" ? (
             <div className="sb-studio-wrap">
               <StudioShell
                 key={studioView}
                 initialView={studioView}
-                onViewChange={next => { setStudioView(next); if (!["campaigns", "adventure"].includes(next)) setLastLibraryView(next); }}
+                onViewChange={(next) => {
+                  setStudioView(next);
+                  if (!["campaigns", "adventure"].includes(next)) setLastLibraryView(next);
+                }}
                 sessionId={UI_SESSION_ID}
                 repo={repo}
                 resume={resume}
@@ -440,7 +511,11 @@ function SandboxApp() {
           ) : view === "guide" ? (
             <GuidePanel />
           ) : view === "ideas" ? (
-            <IdeaLibrary repo={repo} conversations={catalog.entries} onOpen={id => report(openConversation(id))} />
+            <IdeaLibrary
+              repo={repo}
+              conversations={catalog.entries}
+              onOpen={(id) => report(openConversation(id))}
+            />
           ) : view === "conversations" ? (
             <ConversationLibrary
               entries={catalog.entries}
@@ -449,9 +524,7 @@ function SandboxApp() {
               onOpen={(id) => report(openConversation(id))}
               onRename={renameConversation}
               onDelete={deleteConversation}
-              onArchive={(id, archived) =>
-                report(archiveConversation(id, archived))
-              }
+              onArchive={(id, archived) => report(archiveConversation(id, archived))}
               onNew={() => navigate("home")}
             />
           ) : (
@@ -494,7 +567,9 @@ export default function App() {
     <LanguageProvider>
       <ThemeProvider>
         <ConnectionProvider>
-          <UpdateProvider><SandboxApp /></UpdateProvider>
+          <UpdateProvider>
+            <SandboxApp />
+          </UpdateProvider>
         </ConnectionProvider>
       </ThemeProvider>
     </LanguageProvider>

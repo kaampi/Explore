@@ -29,9 +29,7 @@ export function activatePlayTheme(
   conversationId: string | null,
 ): ThemeLibrary {
   const fallback = library.defaultPlay ?? library.active;
-  const theme = conversationId
-    ? (library.conversations[conversationId] ?? fallback)
-    : fallback;
+  const theme = conversationId ? (library.conversations[conversationId] ?? fallback) : fallback;
   return {
     ...library,
     defaultPlay: { ...fallback },

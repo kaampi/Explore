@@ -17,8 +17,8 @@ function makeSession(overrides: Partial<Session> = {}): Session {
     characters: {
       emma: {
         position: { value: "behind the bar", lock: "unlocked" },
-        mood: { value: "reserved", lock: "unlocked" }
-      }
+        mood: { value: "reserved", lock: "unlocked" },
+      },
     },
     scene: {
       location: "The Aurora Room — a quiet late-night bar",
@@ -32,13 +32,13 @@ function makeSession(overrides: Partial<Session> = {}): Session {
           id: "room-emmas",
           label: "Emma's room",
           keywords: ["staff room", "emmas room"],
-          audioDataUrl: "data:audio/mpeg;base64,emma"
-        }
-      ]
+          audioDataUrl: "data:audio/mpeg;base64,emma",
+        },
+      ],
     },
     player: {
       position: { value: "at the bar", lock: "unlocked" },
-      status: { value: "awake", lock: "unlocked" }
+      status: { value: "awake", lock: "unlocked" },
     },
     relationships: {},
     layers: [],
@@ -47,7 +47,7 @@ function makeSession(overrides: Partial<Session> = {}): Session {
     events: [],
     snapshots: [],
     diagnostics: [],
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -55,7 +55,7 @@ describe("sceneAudio", () => {
   it("uses the venue loop at the bar", () => {
     expect(sceneAudio(makeSession())).toEqual({
       clips: ["data:audio/mpeg;base64,venue"],
-      audioPlay: "fade"
+      audioPlay: "fade",
     });
   });
 
@@ -63,18 +63,18 @@ describe("sceneAudio", () => {
     const session = makeSession({
       player: {
         position: { value: "The Aurora Room — a quiet late-night bar", lock: "unlocked" },
-        status: { value: "awake", lock: "unlocked" }
+        status: { value: "awake", lock: "unlocked" },
       },
       scene: {
         location: "The Aurora Room — a quiet late-night bar",
         environment: { lighting: "low" },
         audioDataUrl: "data:audio/mpeg;base64,venue",
-        rooms: EXAMPLE_AURORA_ROOMS
-      }
+        rooms: EXAMPLE_AURORA_ROOMS,
+      },
     });
     expect(sceneAudio(session)).toEqual({
       clips: ["data:audio/mpeg;base64,venue"],
-      audioPlay: "fade"
+      audioPlay: "fade",
     });
   });
 
@@ -82,12 +82,12 @@ describe("sceneAudio", () => {
     const session = makeSession({
       player: {
         position: { value: "Emma's room", lock: "unlocked" },
-        status: { value: "awake", lock: "unlocked" }
-      }
+        status: { value: "awake", lock: "unlocked" },
+      },
     });
     expect(sceneAudio(session)).toEqual({
       clips: ["data:audio/mpeg;base64,emma"],
-      audioPlay: "fade"
+      audioPlay: "fade",
     });
   });
 
@@ -95,18 +95,23 @@ describe("sceneAudio", () => {
     const session = makeSession({
       player: {
         position: { value: "Emma's room", lock: "unlocked" },
-        status: { value: "awake", lock: "unlocked" }
+        status: { value: "awake", lock: "unlocked" },
       },
       scene: {
         location: "The Aurora Room — a quiet late-night bar",
         environment: { lighting: "low" },
         audioDataUrl: "data:audio/mpeg;base64,venue",
-        rooms: [{
-          description: "",
-          fromRoomIds: [],
-          gate: "open" as const,
-          id: "room-emmas", label: "Emma's room", keywords: ["staff room"] }]
-      }
+        rooms: [
+          {
+            description: "",
+            fromRoomIds: [],
+            gate: "open" as const,
+            id: "room-emmas",
+            label: "Emma's room",
+            keywords: ["staff room"],
+          },
+        ],
+      },
     });
     expect(sceneAudio(session)).toEqual({ clips: [], audioPlay: "fade" });
   });
@@ -115,7 +120,7 @@ describe("sceneAudio", () => {
     const session = makeSession({
       player: {
         position: { value: "Emma's room", lock: "unlocked" },
-        status: { value: "awake", lock: "unlocked" }
+        status: { value: "awake", lock: "unlocked" },
       },
       scene: {
         location: "The Aurora Room — a quiet late-night bar",
@@ -131,15 +136,14 @@ describe("sceneAudio", () => {
             keywords: ["staff room"],
             audioDataUrl: "data:audio/mpeg;base64,emma",
             audioGallery: ["data:audio/mpeg;base64,emma-2"],
-            audioPlay: "random"
-          }
-        ]
-      }
+            audioPlay: "random",
+          },
+        ],
+      },
     });
     expect(sceneAudio(session)).toEqual({
       clips: ["data:audio/mpeg;base64,emma", "data:audio/mpeg;base64,emma-2"],
-      audioPlay: "random"
+      audioPlay: "random",
     });
   });
 });
-

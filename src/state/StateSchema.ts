@@ -1,9 +1,9 @@
-import { AdventureRunSchema } from '../game/AdventureSchema';
+import { AdventureRunSchema } from "../game/AdventureSchema";
 import { CheckResultSchema } from "../checks/CheckEngine";
 import { ObjectLocationSchema } from "@library/objectLocation";
 import { GateEncounterSchema } from "../checks/gateEncounter";
 import { EncounterGameSchema } from "../game/EncounterSchema";
-import { CombatArtworkSchema } from './combatArtwork';
+import { CombatArtworkSchema } from "./combatArtwork";
 import { RoutePlanSchema } from "@library/routePlan";
 import { z } from "zod";
 
@@ -31,7 +31,7 @@ export type LockState = z.infer<typeof LockStateSchema>;
 export function lockable<T extends z.ZodTypeAny>(valueSchema: T) {
   return z.object({
     value: valueSchema,
-    lock: LockStateSchema.default("unlocked")
+    lock: LockStateSchema.default("unlocked"),
   });
 }
 
@@ -45,12 +45,12 @@ export type ProximityZone = z.infer<typeof ProximityZoneSchema>;
 export const PositionSchema = z.object({
   location: z.string(),
   zone: ProximityZoneSchema.optional(),
-  relativeTo: z.string().optional() // character id this position is relative to, if any
+  relativeTo: z.string().optional(), // character id this position is relative to, if any
 });
 
 export const ScenePictureSchema = z.object({
   thumbDataUrl: z.string().min(1),
-  imageDataUrl: z.string().min(1)
+  imageDataUrl: z.string().min(1),
 });
 export type ScenePicture = z.infer<typeof ScenePictureSchema>;
 
@@ -89,7 +89,7 @@ export const SceneRoomSchema = z.object({
   /** Extra loops after the first. UI only. */
   audioGallery: z.array(z.string().min(1)).optional(),
   /** Several loops: slow crossfade, or one at random when you enter. */
-  audioPlay: PicturePlaySchema.optional()
+  audioPlay: PicturePlaySchema.optional(),
 });
 export type SceneRoom = z.infer<typeof SceneRoomSchema>;
 
@@ -100,7 +100,7 @@ export const WorldStateSchema = z.object({
   environment: z.object({
     lighting: z.string().optional(),
     noise: z.string().optional(),
-    music: z.boolean().optional()
+    music: z.boolean().optional(),
   }),
   /** Venue intro — typed over the picture. Player-facing. */
   note: z.string().optional(),
@@ -135,9 +135,9 @@ export const WorldStateSchema = z.object({
       picturePlay: PicturePlaySchema.optional(),
       audioDataUrl: z.string().optional(),
       audioGallery: z.array(z.string().min(1)).optional(),
-      audioPlay: PicturePlaySchema.optional()
+      audioPlay: PicturePlaySchema.optional(),
     })
-    .optional()
+    .optional(),
 });
 
 /**
@@ -146,7 +146,7 @@ export const WorldStateSchema = z.object({
  */
 export const StoryStateSchema = z.object({
   title: z.string().default(""),
-  premise: z.string().min(1)
+  premise: z.string().min(1),
 });
 export type StoryState = z.infer<typeof StoryStateSchema>;
 
@@ -156,7 +156,7 @@ export type StoryState = z.infer<typeof StoryStateSchema>;
  */
 export const VoiceStateSchema = z.object({
   title: z.string().default(""),
-  instruction: z.string().min(1)
+  instruction: z.string().min(1),
 });
 export type VoiceState = z.infer<typeof VoiceStateSchema>;
 
@@ -194,13 +194,13 @@ export const AttributeDefSchema = z.object({
    * At most one number field per rule-set. Its live band feeds the warm beat
    * (kiss/hug when asked). Unset = gate on trust alone.
    */
-  role: z.enum(["desire"]).optional()
+  role: z.enum(["desire"]).optional(),
 });
 export type AttributeDef = z.infer<typeof AttributeDefSchema>;
 
 export const RulesetStateSchema = z.object({
   name: z.string().min(1),
-  attributes: z.array(AttributeDefSchema).default(() => [])
+  attributes: z.array(AttributeDefSchema).default(() => []),
 });
 export type RulesetState = z.infer<typeof RulesetStateSchema>;
 
@@ -221,15 +221,23 @@ export const ApproximateAgeSchema = z.preprocess((val) => {
 // Character State — §5.1
 // ---------------------------------------------------------------------------
 
-export const SpatialLocationSchema=z.object({placeId:z.string().min(1),side:z.enum(["at","inside","outside"])});
+export const SpatialLocationSchema = z.object({
+  placeId: z.string().min(1),
+  side: z.enum(["at", "inside", "outside"]),
+});
 export const CharacterStateSchema = z.object({
   locationRef: SpatialLocationSchema.optional(),
-  positionDetail:z.string().optional(),
+  positionDetail: z.string().optional(),
   sourceLibraryId: z.string().min(1).optional(),
   /** Optional reference to a reusable anatomical template. */
   anatomyTemplateId: z.string().min(1).max(100).optional(),
   /** Per-character parts added to or removed from the selected template. */
-  anatomyOverrides: z.object({ addedParts: z.array(z.string().min(1).max(80)).max(64).default([]), removedParts: z.array(z.string().min(1).max(80)).max(64).default([]) }).optional(),
+  anatomyOverrides: z
+    .object({
+      addedParts: z.array(z.string().min(1).max(80)).max(64).default([]),
+      removedParts: z.array(z.string().min(1).max(80)).max(64).default([]),
+    })
+    .optional(),
   /** Given name; the record key is a slug. Falls back to a title-cased id in the UI. */
   name: z.string().min(1).optional(),
   /**
@@ -262,7 +270,7 @@ export const CharacterStateSchema = z.object({
   /** Values for the campaign rule-set; keys match AttributeDef.id. */
   stats: z.record(z.string(), lockable(StatValueSchema)).optional(),
   /** UI portrait; never sent to the model. */
-  portraitDataUrl: z.string().optional()
+  portraitDataUrl: z.string().optional(),
 });
 export type CharacterState = z.infer<typeof CharacterStateSchema>;
 
@@ -280,7 +288,7 @@ function asLockableMeter(val: unknown): unknown {
 export const RelationshipStateSchema = z.object({
   trust: z.preprocess(asLockableMeter, MeterSchema),
   familiarity: z.preprocess(asLockableMeter, MeterSchema),
-  tension: z.preprocess(asLockableMeter, MeterSchema)
+  tension: z.preprocess(asLockableMeter, MeterSchema),
 });
 export type RelationshipState = z.infer<typeof RelationshipStateSchema>;
 
@@ -293,7 +301,9 @@ export const LayerTypeSchema = z.enum(["core", "relationship", "environment", "s
 export type LayerType = z.infer<typeof LayerTypeSchema>;
 
 export const LayerSchema = z.object({
-  loreSource: z.object({ bookId: z.string(), entryId: z.string(), bookName: z.string() }).optional(),
+  loreSource: z
+    .object({ bookId: z.string(), entryId: z.string(), bookName: z.string() })
+    .optional(),
   id: z.string(),
   type: LayerTypeSchema,
   priority: z.number().int(),
@@ -332,7 +342,7 @@ export const LayerSchema = z.object({
   /** Story flags this layer sets the turn it fires (paired with `once`). */
   setsFlags: z.array(z.string().min(1)).optional(),
   active: z.boolean().default(false),
-  aiGenerated: z.boolean().default(false)
+  aiGenerated: z.boolean().default(false),
 });
 export type Layer = z.infer<typeof LayerSchema>;
 
@@ -349,10 +359,16 @@ export const JourneySchema = z.object({
   completedStages: z.number().int().nonnegative(),
   restMinutes: z.number().int().nonnegative(),
   phase: z.enum(["overnight", "ready", "pause"]),
-  encounter: z.object({frequency:z.enum(["never","rarely","sometimes","often"]),participants:z.string(),tone:z.string()}).optional(),
-  opportunity: z.object({kind:z.enum(["travel","camp"]),triggered:z.boolean()}).optional(),
+  encounter: z
+    .object({
+      frequency: z.enum(["never", "rarely", "sometimes", "often"]),
+      participants: z.string(),
+      tone: z.string(),
+    })
+    .optional(),
+  opportunity: z.object({ kind: z.enum(["travel", "camp"]), triggered: z.boolean() }).optional(),
   campChecked: z.boolean(),
-  pushedOn: z.boolean()
+  pushedOn: z.boolean(),
 });
 export type Journey = z.infer<typeof JourneySchema>;
 
@@ -364,7 +380,7 @@ export const MemoryEntrySchema = z.object({
   id: z.string(),
   createdAtTurn: z.number().int().nonnegative(),
   importance: z.number().min(0).max(1),
-  content: z.string()
+  content: z.string(),
 });
 export type MemoryEntry = z.infer<typeof MemoryEntrySchema>;
 
@@ -374,7 +390,7 @@ export type MemoryType = z.infer<typeof MemoryTypeSchema>;
 export const MemorySchema = z.object({
   episodic: z.array(MemoryEntrySchema).default([]),
   semantic: z.array(MemoryEntrySchema).default([]),
-  relational: z.array(MemoryEntrySchema).default([])
+  relational: z.array(MemoryEntrySchema).default([]),
 });
 
 // ---------------------------------------------------------------------------
@@ -392,7 +408,7 @@ export const ConversationTurnSchema = z.object({
   /** Leftover NPC: the card is Narrator, not their portrait. */
   toldBy: z.enum(["narrator"]).optional(),
   check: CheckResultSchema.optional(),
-  content: z.string()
+  content: z.string(),
 });
 export type ConversationTurn = z.infer<typeof ConversationTurnSchema>;
 
@@ -405,7 +421,7 @@ export const StateEventSchema = z.object({
   turn: z.number().int().nonnegative(),
   timestamp: z.string(), // ISO 8601
   type: z.string(),
-  payload: z.unknown()
+  payload: z.unknown(),
 });
 
 // ---------------------------------------------------------------------------
@@ -418,13 +434,13 @@ export const DEFAULT_MAX_REPLY_TOKENS = 128;
 export const REPLY_LENGTH_PRESETS = [
   { id: "short", tokens: 96, label: "short" },
   { id: "beat", tokens: 128, label: "beat" },
-  { id: "long", tokens: 160, label: "long" }
+  { id: "long", tokens: 160, label: "long" },
 ] as const;
 
 /** Old status-bar caps (when beat was ~900 characters). 160 was old short — it is now long. */
 const LEGACY_REPLY_TOKEN_CAPS: Record<number, number> = {
   240: 128,
-  400: 160
+  400: 160,
 };
 
 export function effectiveMaxReplyTokens(stored?: number): number {
@@ -446,12 +462,12 @@ export const RuntimeConfigSchema = z.object({
   seed: z.number().int().nullable().default(null),
   provider: z.string(),
   /** Pass 1 only — Ollama `num_predict`. Pass 2 is uncapped. */
-  maxReplyTokens: z.number().int().min(64).max(1024).optional()
+  maxReplyTokens: z.number().int().min(64).max(1024).optional(),
 });
 
 export const PlayerStateSchema = z.object({
-  locationRef:SpatialLocationSchema.optional(),
-  positionDetail:z.string().optional(),
+  locationRef: SpatialLocationSchema.optional(),
+  positionDetail: z.string().optional(),
   position: lockable(z.string()),
   status: lockable(z.string()),
   name: z.string().optional(),
@@ -459,7 +475,7 @@ export const PlayerStateSchema = z.object({
   personality: z.string().optional(),
   pronoun: CharacterPronounSchema.optional(),
   portraitDataUrl: z.string().optional(),
-  stats: z.record(z.string(), z.string()).optional()
+  stats: z.record(z.string(), z.string()).optional(),
 });
 export type PlayerState = z.infer<typeof PlayerStateSchema>;
 
@@ -479,7 +495,7 @@ export const SceneObjectSchema = z.object({
   storyImportance: z.string().optional(),
   weight: z.number().nonnegative().optional(),
   difficulty: z.number().nonnegative().optional(),
-  checkAttribute: z.string().min(1).optional()
+  checkAttribute: z.string().min(1).optional(),
 });
 export type SceneObject = z.infer<typeof SceneObjectSchema>;
 
@@ -495,50 +511,88 @@ export type SceneObject = z.infer<typeof SceneObjectSchema>;
 export const PhysicalRelationSchema = z.object({
   id: z.string().min(1).max(100),
   subject: z.string().min(1).max(100),
-  relation: z.enum(["behind", "in_front_of", "beside", "facing", "holding", "touching", "blocking", "restraining", "on", "inside"]),
+  relation: z.enum([
+    "behind",
+    "in_front_of",
+    "beside",
+    "facing",
+    "holding",
+    "touching",
+    "blocking",
+    "restraining",
+    "on",
+    "inside",
+  ]),
   target: z.string().min(1).max(100),
   subjectPart: z.string().max(80).optional(),
   targetPart: z.string().max(80).optional(),
   /** Only explicit exclusive grips reserve a body part; legacy relations remain nonexclusive. */
   exclusive: z.boolean().optional(),
-  note: z.string().max(300).optional()
+  note: z.string().max(300).optional(),
 });
 export type PhysicalRelation = z.infer<typeof PhysicalRelationSchema>;
 
 export const PhysicalStateSchema = z.object({
-  stances: z.record(z.string(), z.enum(["standing", "sitting", "lying", "kneeling", "crouching", "all_fours", "moving"])).default({}),
-  relations: z.array(PhysicalRelationSchema).max(100).default([])
+  stances: z
+    .record(
+      z.string(),
+      z.enum(["standing", "sitting", "lying", "kneeling", "crouching", "all_fours", "moving"]),
+    )
+    .default({}),
+  relations: z.array(PhysicalRelationSchema).max(100).default([]),
 });
 export type PhysicalState = z.infer<typeof PhysicalStateSchema>;
 
 /** Reusable, versioned body plans. Part IDs are arbitrary, not human-specific. */
-export const AnatomyTemplateSchema = z.object({
-  id: z.string().min(1).max(100),
-  name: z.string().min(1).max(120),
-  imageDataUrl: z.string().max(6_000_000).regex(/^data:image\/png;base64,[A-Za-z0-9+/=]+$/).optional(),
-  version: z.number().int().positive(),
-  parts: z.array(z.object({
-    id: z.string().min(1).max(80),
-    label: z.string().min(1).max(120),
-    group: z.string().max(80).optional(),
-    parentId: z.string().min(1).max(80).optional(),
-    description: z.string().max(1000).optional(),
-    capabilities: z.array(z.enum(["grasp", "support", "locomote", "sense", "manipulate"])).max(5).default([])
-  })).min(1).max(128)
-}).refine((template) => new Set(template.parts.map((part) => part.id)).size === template.parts.length, {
-  message: "Anatomy part IDs must be unique."
-}).refine(template => template.parts.every(part => {
-  const seen = new Set([part.id]);
-  let id = part.parentId;
-  while (id) {
-    if (seen.has(id)) return false;
-    seen.add(id);
-    const parent = template.parts.find(p => p.id === id);
-    if (!parent) return false;
-    id = parent.parentId;
-  }
-  return true;
-}), { message: "Attachments must reference existing parts and cannot form cycles." });
+export const AnatomyTemplateSchema = z
+  .object({
+    id: z.string().min(1).max(100),
+    name: z.string().min(1).max(120),
+    imageDataUrl: z
+      .string()
+      .max(6_000_000)
+      .regex(/^data:image\/png;base64,[A-Za-z0-9+/=]+$/)
+      .optional(),
+    version: z.number().int().positive(),
+    parts: z
+      .array(
+        z.object({
+          id: z.string().min(1).max(80),
+          label: z.string().min(1).max(120),
+          group: z.string().max(80).optional(),
+          parentId: z.string().min(1).max(80).optional(),
+          description: z.string().max(1000).optional(),
+          capabilities: z
+            .array(z.enum(["grasp", "support", "locomote", "sense", "manipulate"]))
+            .max(5)
+            .default([]),
+        }),
+      )
+      .min(1)
+      .max(128),
+  })
+  .refine(
+    (template) => new Set(template.parts.map((part) => part.id)).size === template.parts.length,
+    {
+      message: "Anatomy part IDs must be unique.",
+    },
+  )
+  .refine(
+    (template) =>
+      template.parts.every((part) => {
+        const seen = new Set([part.id]);
+        let id = part.parentId;
+        while (id) {
+          if (seen.has(id)) return false;
+          seen.add(id);
+          const parent = template.parts.find((p) => p.id === id);
+          if (!parent) return false;
+          id = parent.parentId;
+        }
+        return true;
+      }),
+    { message: "Attachments must reference existing parts and cannot form cycles." },
+  );
 export type AnatomyTemplate = z.infer<typeof AnatomyTemplateSchema>;
 
 export const SessionSchema = z.object({
@@ -546,7 +600,14 @@ export const SessionSchema = z.object({
   encounter: EncounterGameSchema.optional(),
   gateEncounter: GateEncounterSchema.optional(),
   journey: JourneySchema.optional(),
-  gameClock: z.object({ totalMinutes: z.number().int().nonnegative(), lastAdvance: z.object({minutes: z.number().int().nonnegative(), reason: z.string()}).optional() }).optional(),
+  gameClock: z
+    .object({
+      totalMinutes: z.number().int().nonnegative(),
+      lastAdvance: z
+        .object({ minutes: z.number().int().nonnegative(), reason: z.string() })
+        .optional(),
+    })
+    .optional(),
   schemaVersion: z.number().int().positive(),
   id: z.string(),
   runtime: RuntimeConfigSchema,
@@ -554,7 +615,11 @@ export const SessionSchema = z.object({
 
   characters: z.record(z.string(), CharacterStateSchema).default({}),
   /** Session-pinned template snapshots: updates to a library template cannot alter active play. */
-  spatialPlaces:z.array(z.object({id:z.string().min(1),name:z.string().min(1),kind:z.string().optional()})).optional(),
+  spatialPlaces: z
+    .array(
+      z.object({ id: z.string().min(1), name: z.string().min(1), kind: z.string().optional() }),
+    )
+    .optional(),
   anatomyTemplates: z.record(z.string(), AnatomyTemplateSchema).optional(),
   /** Canonical physical continuity, independent of chat history. */
   physical: PhysicalStateSchema.optional(),
@@ -568,8 +633,8 @@ export const SessionSchema = z.object({
       z.object({
         id: z.string().min(1),
         label: z.string().min(1),
-        room: z.string().min(1)
-      })
+        room: z.string().min(1),
+      }),
     )
     .max(3)
     .optional(),
@@ -584,11 +649,11 @@ export const SessionSchema = z.object({
             z.object({
               id: z.string().min(1),
               label: z.string().min(1),
-              room: z.string().min(1)
-            })
+              room: z.string().min(1),
+            }),
           )
-          .max(3)
-      })
+          .max(3),
+      }),
     )
     .optional(),
   /** Look-for tokens for the open group. Leftover on old sessions. */
@@ -626,7 +691,7 @@ export const SessionSchema = z.object({
   outgoingHandoff: z.string().optional(),
   /** Library campaign this play came from. Missing = a one-off scene. */
   campaignId: z.string().min(1).optional(),
-  adventure:AdventureRunSchema.optional(),
+  adventure: AdventureRunSchema.optional(),
   /** Authored scene that was Started. Studio uses this to land after new scene. */
   sceneId: z.string().min(1).optional(),
   player: PlayerStateSchema.optional(),
@@ -636,10 +701,10 @@ export const SessionSchema = z.object({
 
   memory: MemorySchema.default({ episodic: [], semantic: [], relational: [] }),
   conversation: z.array(z.unknown()).default([]),
-  visitedMapPlaceIds:z.array(z.string()).optional(),
+  visitedMapPlaceIds: z.array(z.string()).optional(),
   events: z.array(StateEventSchema).default([]),
   snapshots: z.array(z.unknown()).default([]),
-  diagnostics: z.array(z.unknown()).default([])
+  diagnostics: z.array(z.unknown()).default([]),
 });
 
 export type Session = z.infer<typeof SessionSchema>;
@@ -657,7 +722,18 @@ export function safeParseSession(input: unknown) {
 }
 
 function withDefaultPlayer(session: Session): Session {
- const player=session.player??{position:{value:session.scene?.location??'here',lock:'unlocked' as const},status:{value:'awake',lock:'unlocked' as const}};
- const here=player.position.value.trim();const characters=Object.fromEntries(Object.entries(session.characters).map(([id,c])=>[id,here&&c.position.value.trim().toLowerCase()==='here'?{...c,position:{...c.position,value:here}}:c]));
- return {...session,player,characters};
+  const player = session.player ?? {
+    position: { value: session.scene?.location ?? "here", lock: "unlocked" as const },
+    status: { value: "awake", lock: "unlocked" as const },
+  };
+  const here = player.position.value.trim();
+  const characters = Object.fromEntries(
+    Object.entries(session.characters).map(([id, c]) => [
+      id,
+      here && c.position.value.trim().toLowerCase() === "here"
+        ? { ...c, position: { ...c.position, value: here } }
+        : c,
+    ]),
+  );
+  return { ...session, player, characters };
 }

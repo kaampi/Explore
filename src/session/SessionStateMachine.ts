@@ -9,12 +9,7 @@
  */
 
 export type SessionState =
-  | "idle"
-  | "awaiting_response"
-  | "streaming"
-  | "extracting"
-  | "committing"
-  | "error";
+  "idle" | "awaiting_response" | "streaming" | "extracting" | "committing" | "error";
 
 export type SessionEvent =
   | "start_turn"
@@ -31,13 +26,13 @@ const TRANSITIONS: Record<SessionState, Partial<Record<SessionEvent, SessionStat
   streaming: { stream_complete: "extracting", failure: "error" },
   extracting: { proposals_ready: "committing", failure: "error" },
   committing: { committed: "idle", failure: "error" },
-  error: { reset: "idle" }
+  error: { reset: "idle" },
 };
 
 export class InvalidTransitionError extends Error {
   constructor(
     public readonly from: SessionState,
-    public readonly event: SessionEvent
+    public readonly event: SessionEvent,
   ) {
     super(`Invalid session state transition: cannot apply event "${event}" from state "${from}".`);
     this.name = "InvalidTransitionError";

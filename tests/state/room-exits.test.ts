@@ -11,7 +11,7 @@ const rooms = [
     keywords: ["staff room", "her room"],
     description: "",
     fromRoomIds: [ROOM_FROM_LANDMARK],
-    gate: "locked" as const
+    gate: "locked" as const,
   },
   {
     id: "room-toilets",
@@ -19,7 +19,7 @@ const rooms = [
     keywords: ["gents"],
     description: "",
     fromRoomIds: [ROOM_FROM_LANDMARK],
-    gate: "open" as const
+    gate: "open" as const,
   },
   {
     id: "room-secret",
@@ -27,8 +27,8 @@ const rooms = [
     keywords: ["hidden door"],
     description: "",
     fromRoomIds: [ROOM_FROM_LANDMARK],
-    gate: "hidden" as const
-  }
+    gate: "hidden" as const,
+  },
 ];
 
 function makeSession(overrides: Partial<Session> = {}): Session {
@@ -44,13 +44,13 @@ function makeSession(overrides: Partial<Session> = {}): Session {
     characters: {
       emma: {
         position: { value: "behind the bar", lock: "unlocked" },
-        mood: { value: "reserved", lock: "unlocked" }
-      }
+        mood: { value: "reserved", lock: "unlocked" },
+      },
     },
     scene: { location: "The Aurora Room — a quiet late-night bar", environment: {}, rooms },
     player: {
       position: { value: "at the bar", lock: "unlocked" },
-      status: { value: "awake", lock: "unlocked" }
+      status: { value: "awake", lock: "unlocked" },
     },
     openedRoomIds: [],
     relationships: {},
@@ -60,7 +60,7 @@ function makeSession(overrides: Partial<Session> = {}): Session {
     events: [],
     snapshots: [],
     diagnostics: [],
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -78,9 +78,9 @@ describe("mapExits", () => {
       makeSession({
         player: {
           position: { value: "toilets", lock: "unlocked" },
-          status: { value: "awake", lock: "unlocked" }
-        }
-      })
+          status: { value: "awake", lock: "unlocked" },
+        },
+      }),
     );
     expect(exits).toEqual([
       {
@@ -88,8 +88,8 @@ describe("mapExits", () => {
         label: "The Aurora Room",
         dest: "at the bar",
         enabled: true,
-        kind: "landmark"
-      }
+        kind: "landmark",
+      },
     ]);
   });
 
@@ -105,8 +105,8 @@ describe("locked and hidden walks", () => {
     expect(
       destinationRoomFromPlayerText(
         "I walk into Emma's room",
-        makeSession({ openedRoomIds: ["room-emmas"] })
-      )
+        makeSession({ openedRoomIds: ["room-emmas"] }),
+      ),
     ).toBe("Emma's room");
   });
 
@@ -131,15 +131,15 @@ describe("locked and hidden walks", () => {
             keywords: [],
             description: "",
             fromRoomIds: [],
-            gate: "open"
-          }
-        ]
+            gate: "open",
+          },
+        ],
       },
       openedRoomIds: ["room-emmas"],
       player: {
         position: { value: "Emma's room", lock: "unlocked" },
-        status: { value: "awake", lock: "unlocked" }
-      }
+        status: { value: "awake", lock: "unlocked" },
+      },
     });
     expect(mapExits(session).map((item) => item.label)).toEqual(["The Aurora Room"]);
     expect(destinationRoomFromPlayerText("I walk to the Entrance", session)).toBeUndefined();
@@ -151,24 +151,32 @@ describe("locked and hidden walks", () => {
         location: "Old womans cabin",
         environment: {},
         rooms: [
-          { id: "main", label: "Main room", keywords: [], description: "", fromRoomIds: [ROOM_FROM_LANDMARK], gate: "open" },
+          {
+            id: "main",
+            label: "Main room",
+            keywords: [],
+            description: "",
+            fromRoomIds: [ROOM_FROM_LANDMARK],
+            gate: "open",
+          },
           {
             id: "cellar",
             label: "Cellar",
             keywords: ["secret hatch"],
             description: "",
             fromRoomIds: ["main"],
-            gate: "open"
-          }
-        ]
+            gate: "open",
+          },
+        ],
       },
       player: {
         position: { value: "Cellar", lock: "unlocked" },
-        status: { value: "awake", lock: "unlocked" }
-      }
+        status: { value: "awake", lock: "unlocked" },
+      },
     });
     expect(mapExits(session).map((item) => item.label)).toEqual(["Main room"]);
-    expect(destinationRoomFromPlayerText("I walk back to the Main room", session)).toBe("Main room");
+    expect(destinationRoomFromPlayerText("I walk back to the Main room", session)).toBe(
+      "Main room",
+    );
   });
 });
-

@@ -6,7 +6,13 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../../src/ui/App";
 import { IndexedDBRepository } from "@persistence/IndexedDBRepository";
-import { newCharacterTemplate, newPlaceTemplate, newRealmTemplate, newRulesetTemplate, newVoiceTemplate } from "@library/LibrarySchema";
+import {
+  newCharacterTemplate,
+  newPlaceTemplate,
+  newRealmTemplate,
+  newRulesetTemplate,
+  newVoiceTemplate,
+} from "@library/LibrarySchema";
 
 let root: Root;
 let container: HTMLDivElement;
@@ -27,10 +33,10 @@ async function click(element: HTMLElement) {
 }
 async function input(element: HTMLInputElement, value: string) {
   await act(async () => {
-    Object.getOwnPropertyDescriptor(
-      window.HTMLInputElement.prototype,
-      "value",
-    )!.set!.call(element, value);
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(
+      element,
+      value,
+    );
     element.dispatchEvent(new Event("input", { bubbles: true }));
   });
 }
@@ -38,9 +44,7 @@ async function waitFor(check: () => boolean) {
   const deadline = Date.now() + 3000;
   while (!check()) {
     if (Date.now() > deadline)
-      throw new Error(
-        `UI did not settle: ${container.textContent?.slice(-1000)}`,
-      );
+      throw new Error(`UI did not settle: ${container.textContent?.slice(-1000)}`);
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 5));
     });
@@ -98,14 +102,11 @@ beforeEach(async () => {
       });
     }
     if (!online) throw new Error("Connection refused");
-    if (address.endsWith("/api/tags"))
-      return Response.json({ models: [{ name: "chat-a" }] });
-    if (address.endsWith("/api/show"))
-      return Response.json({ capabilities: ["completion"] });
+    if (address.endsWith("/api/tags")) return Response.json({ models: [{ name: "chat-a" }] });
+    if (address.endsWith("/api/show")) return Response.json({ capabilities: ["completion"] });
     if (address.endsWith("/api/chat")) {
       completionCalls += 1;
-      const text =
-        completionCalls === 1 ? 'Ari smiles. "Welcome to the map room."' : "[]";
+      const text = completionCalls === 1 ? 'Ari smiles. "Welcome to the map room."' : "[]";
       return new Response(
         JSON.stringify({ message: { content: text }, done: false }) +
           "\n" +
@@ -133,14 +134,20 @@ describe("first-run conversation flow", () => {
   it("shows Mona and her morph portrait on a fresh installation", async () => {
     vi.stubGlobal("indexedDB", new IDBFactory());
     await mount();
-    await waitFor(() => Array.from(container.querySelectorAll('.sb-character-card')).some(card => card.textContent?.includes("Mona")));
-    const card = Array.from(container.querySelectorAll('.sb-character-card')).find(card => card.textContent?.includes("Mona"))!;
+    await waitFor(() =>
+      Array.from(container.querySelectorAll(".sb-character-card")).some((card) =>
+        card.textContent?.includes("Mona"),
+      ),
+    );
+    const card = Array.from(container.querySelectorAll(".sb-character-card")).find((card) =>
+      card.textContent?.includes("Mona"),
+    )!;
     expect(card.textContent).toContain("Built-in demo");
-    expect(card.querySelector('.morph-portrait canvas')).not.toBeNull();
+    expect(card.querySelector(".morph-portrait canvas")).not.toBeNull();
     await click(card as HTMLElement);
     await click(button("Start conversation →"));
-    await waitFor(() => !!container.querySelector('.sb-play-portrait'));
-    const portrait = container.querySelector<HTMLImageElement>('.sb-play-portrait')!;
+    await waitFor(() => !!container.querySelector(".sb-play-portrait"));
+    const portrait = container.querySelector<HTMLImageElement>(".sb-play-portrait")!;
     expect(portrait.alt).toContain("Mona");
     expect(portrait.src).toMatch(/^data:image\//);
   });
@@ -149,29 +156,78 @@ describe("first-run conversation flow", () => {
     const repo = new IndexedDBRepository();
     const person = newCharacterTemplate({ name: "Ari" });
     const realm = newRealmTemplate({ name: "Map world", note: "", source: "player" });
-    const place = newPlaceTemplate({ name: "Map room", realmId: realm.id, note: "A room of maps." });
-    const voice = newVoiceTemplate({ name: "Quiet narrator", instruction: "Narrate quietly.", source: "player" });
-    const ruleset = newRulesetTemplate({ name: "Curiosity", source: "player", attributes: [{ id: "focus", name: "Focus", kind: "number", min: 0, max: 10, description: "Attention", highMeaning: "Attentive", lowMeaning: "Distracted", midMeaning: "", options: [], maxShift: 1 }] });
-    await repo.saveCharacter(person); await repo.saveRealm(realm); await repo.savePlace(place); await repo.saveVoice(voice); await repo.saveRuleset(ruleset);
+    const place = newPlaceTemplate({
+      name: "Map room",
+      realmId: realm.id,
+      note: "A room of maps.",
+    });
+    const voice = newVoiceTemplate({
+      name: "Quiet narrator",
+      instruction: "Narrate quietly.",
+      source: "player",
+    });
+    const ruleset = newRulesetTemplate({
+      name: "Curiosity",
+      source: "player",
+      attributes: [
+        {
+          id: "focus",
+          name: "Focus",
+          kind: "number",
+          min: 0,
+          max: 10,
+          description: "Attention",
+          highMeaning: "Attentive",
+          lowMeaning: "Distracted",
+          midMeaning: "",
+          options: [],
+          maxShift: 1,
+        },
+      ],
+    });
+    await repo.saveCharacter(person);
+    await repo.saveRealm(realm);
+    await repo.savePlace(place);
+    await repo.saveVoice(voice);
+    await repo.saveRuleset(ruleset);
     await mount();
     const open = async () => {
-      const card = Array.from(container.querySelectorAll<HTMLButtonElement>('.sb-character-card')).find(item => item.textContent?.includes("Ari"))!;
+      const card = Array.from(
+        container.querySelectorAll<HTMLButtonElement>(".sb-character-card"),
+      ).find((item) => item.textContent?.includes("Ari"))!;
       await click(card);
       await waitFor(() => !!container.querySelector('[aria-label="Conversation rule-set"]'));
     };
     const select = async (label: string, value: string) => {
-      await act(async () => { const element = container.querySelector<HTMLSelectElement>(`[aria-label="${label}"]`)!; element.value = value; element.dispatchEvent(new Event("change", { bubbles: true })); });
+      await act(async () => {
+        const element = container.querySelector<HTMLSelectElement>(`[aria-label="${label}"]`)!;
+        element.value = value;
+        element.dispatchEvent(new Event("change", { bubbles: true }));
+      });
     };
     await open();
-    expect(Array.from(container.querySelectorAll<HTMLSelectElement>('dialog select')).map(item => item.value)).toEqual(["", "", ""]);
+    expect(
+      Array.from(container.querySelectorAll<HTMLSelectElement>("dialog select")).map(
+        (item) => item.value,
+      ),
+    ).toEqual(["", "", ""]);
     await click(button("Cancel"));
     expect(await repo.listSessionIds()).toHaveLength(0);
     await open();
-    await select("Conversation rule-set", ruleset.id); await select("Conversation voice", voice.id); await select("Conversation place", place.id);
-    const failed = vi.spyOn(IndexedDBRepository.prototype, "createConversation").mockRejectedValueOnce(new Error("Storage unavailable"));
+    await select("Conversation rule-set", ruleset.id);
+    await select("Conversation voice", voice.id);
+    await select("Conversation place", place.id);
+    const failed = vi
+      .spyOn(IndexedDBRepository.prototype, "createConversation")
+      .mockRejectedValueOnce(new Error("Storage unavailable"));
     await click(button("Start conversation →"));
-    await waitFor(() => container.querySelector("dialog")?.textContent?.includes("Storage unavailable") === true);
-    expect(container.querySelector<HTMLSelectElement>('[aria-label="Conversation place"]')?.value).toBe(place.id);
+    await waitFor(
+      () =>
+        container.querySelector("dialog")?.textContent?.includes("Storage unavailable") === true,
+    );
+    expect(
+      container.querySelector<HTMLSelectElement>('[aria-label="Conversation place"]')?.value,
+    ).toBe(place.id);
     expect(await repo.listSessionIds()).toHaveLength(0);
     await click(button("Start conversation →"));
     await waitFor(() => !!container.querySelector('[aria-label="Your message"]'));
@@ -181,14 +237,22 @@ describe("first-run conversation flow", () => {
     expect(first.ruleset?.name).toBe(ruleset.name);
     expect(first.scene).toMatchObject({ placeId: place.id, realm: realm.name });
     expect(first.characters.ari?.stats?.focus?.value).toBe(5);
-    await click(button("Exit conversation")); await waitFor(() => !!container.querySelector('.sb-home-connection'));
+    await click(button("Exit conversation"));
+    await waitFor(() => !!container.querySelector(".sb-home-connection"));
     await open();
-    expect(Array.from(container.querySelectorAll<HTMLSelectElement>('dialog select')).map(item => item.value)).toEqual(["", "", ""]);
+    expect(
+      Array.from(container.querySelectorAll<HTMLSelectElement>("dialog select")).map(
+        (item) => item.value,
+      ),
+    ).toEqual(["", "", ""]);
     await click(button("Start conversation →"));
     await waitFor(() => !!container.querySelector('[aria-label="Your message"]'));
-    const ids = await repo.listSessionIds(); expect(ids).toHaveLength(2);
-    const second = await repo.loadSession(ids.find(id => id !== first.id)!);
-    expect(second.voice).toBeUndefined(); expect(second.ruleset).toBeUndefined(); expect(second.scene?.placeId).toBeUndefined();
+    const ids = await repo.listSessionIds();
+    expect(ids).toHaveLength(2);
+    const second = await repo.loadSession(ids.find((id) => id !== first.id)!);
+    expect(second.voice).toBeUndefined();
+    expect(second.ruleset).toBeUndefined();
+    expect(second.scene?.placeId).toBeUndefined();
     expect((await repo.loadSession(first.id)).ruleset?.name).toBe(ruleset.name);
     await repo.close();
   }, 20000);
@@ -199,15 +263,11 @@ describe("first-run conversation flow", () => {
     await click(button("Free play"));
     await click(button("Create a new character"));
     await input(
-      container.querySelector<HTMLInputElement>(
-        'input[placeholder="What are they called?"]',
-      )!,
+      container.querySelector<HTMLInputElement>('input[placeholder="What are they called?"]')!,
       "Ari",
     );
     await click(button("Create & chat →"));
-    await waitFor(
-      () => !!container.querySelector('[aria-label="Your message"]'),
-    );
+    await waitFor(() => !!container.querySelector('[aria-label="Your message"]'));
     expect(container.querySelector(".sb-play-connection")).toBeNull();
     await input(
       container.querySelector<HTMLInputElement>('[aria-label="Your message"]')!,
@@ -224,15 +284,9 @@ describe("first-run conversation flow", () => {
     expect(container.querySelectorAll(".message--player")).toHaveLength(1);
     expect(container.querySelectorAll(".message--character")).toHaveLength(1);
     expect(container.querySelector("dialog")).toBeNull();
-    const chats = fetcher.mock.calls.filter(([url]) =>
-      String(url).endsWith("/api/chat"),
-    );
+    const chats = fetcher.mock.calls.filter(([url]) => String(url).endsWith("/api/chat"));
     expect(chats.length).toBeGreaterThan(0);
-    expect(
-      chats.every(
-        ([, init]) => JSON.parse(String(init?.body)).model === "chat-a",
-      ),
-    ).toBe(true);
+    expect(chats.every(([, init]) => JSON.parse(String(init?.body)).model === "chat-a")).toBe(true);
   });
 
   it("keeps an offline draft and never sends it while reconnecting or choosing a model", async () => {
@@ -244,35 +298,21 @@ describe("first-run conversation flow", () => {
     )!;
     await input(name, "Ari");
     await click(button("Create & chat →"));
-    await waitFor(
-      () => !!container.querySelector('[aria-label="Your message"]'),
-    );
-    const composer = container.querySelector<HTMLInputElement>(
-      '[aria-label="Your message"]',
-    )!;
+    await waitFor(() => !!container.querySelector('[aria-label="Your message"]'));
+    const composer = container.querySelector<HTMLInputElement>('[aria-label="Your message"]')!;
     await input(composer, "Tell me about your maps.");
     expect(button("Send").disabled).toBe(true);
     await act(async () => {
-      composer.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
-      );
+      composer.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
     });
     expect(composer.value).toBe("Tell me about your maps.");
-    expect(
-      fetcher.mock.calls.some(([url]) => String(url).endsWith("/api/chat")),
-    ).toBe(false);
+    expect(fetcher.mock.calls.some(([url]) => String(url).endsWith("/api/chat"))).toBe(false);
     online = true;
-    await click(
-      container.querySelector<HTMLButtonElement>(".sb-play-connection button")!,
-    );
+    await click(container.querySelector<HTMLButtonElement>(".sb-play-connection button")!);
     await click(button("Try again"));
-    await waitFor(
-      () => !!container.querySelector('select[aria-label="Chat model"]'),
-    );
+    await waitFor(() => !!container.querySelector('select[aria-label="Chat model"]'));
     await act(async () => {
-      const select = container.querySelector<HTMLSelectElement>(
-        'select[aria-label="Chat model"]',
-      )!;
+      const select = container.querySelector<HTMLSelectElement>('select[aria-label="Chat model"]')!;
       select.value = "chat-a";
       select.dispatchEvent(new Event("change", { bubbles: true }));
     });
@@ -280,9 +320,7 @@ describe("first-run conversation flow", () => {
     await click(button("Back to the conversation"));
     expect(composer.value).toBe("Tell me about your maps.");
     expect(localStorage.getItem("sandboxai-preferred-model")).toBe("chat-a");
-    expect(
-      fetcher.mock.calls.some(([url]) => String(url).endsWith("/api/chat")),
-    ).toBe(false);
+    expect(fetcher.mock.calls.some(([url]) => String(url).endsWith("/api/chat"))).toBe(false);
   });
   it("preserves a missing saved model until the user explicitly chooses another", async () => {
     online = true;
@@ -290,12 +328,8 @@ describe("first-run conversation flow", () => {
     await mount();
     await click(button("Settings"));
     expect(container.textContent).toContain("my-custom-model");
-    expect(localStorage.getItem("sandboxai-preferred-model")).toBe(
-      "my-custom-model",
-    );
-    const select = container.querySelector<HTMLSelectElement>(
-      'select[aria-label="Chat model"]',
-    )!;
+    expect(localStorage.getItem("sandboxai-preferred-model")).toBe("my-custom-model");
+    const select = container.querySelector<HTMLSelectElement>('select[aria-label="Chat model"]')!;
     expect(select.value).toBe("");
     await act(async () => {
       select.value = "chat-a";
@@ -306,15 +340,11 @@ describe("first-run conversation flow", () => {
     await click(button("Free play"));
     await click(button("Create a new character"));
     await input(
-      container.querySelector<HTMLInputElement>(
-        'input[placeholder="What are they called?"]',
-      )!,
+      container.querySelector<HTMLInputElement>('input[placeholder="What are they called?"]')!,
       "Elara",
     );
     await click(button("Create & chat →"));
-    await waitFor(
-      () => !!container.querySelector('[aria-label="Your message"]'),
-    );
+    await waitFor(() => !!container.querySelector('[aria-label="Your message"]'));
     expect(container.querySelector(".sb-play-connection")).toBeNull();
     expect(button("Send").disabled).toBe(true); // Empty draft, rather than a hidden connection requirement.
   });

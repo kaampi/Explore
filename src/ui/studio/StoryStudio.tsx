@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
-import { deriveStoryTitle, newStoryTemplate, type LibrarySource, type StoryTemplate } from "@library/LibrarySchema";
+import {
+  deriveStoryTitle,
+  newStoryTemplate,
+  type LibrarySource,
+  type StoryTemplate,
+} from "@library/LibrarySchema";
 import { withOriginalTimestamps } from "@library/fromForm";
 import { StudioList } from "./StudioList";
 import { FormSection } from "./FormSection";
@@ -25,7 +30,7 @@ function draftFrom(template: StoryTemplate): Draft {
     name: template.name,
     premise: template.premise,
     source: template.source,
-    createdAt: template.createdAt
+    createdAt: template.createdAt,
   };
 }
 
@@ -81,10 +86,13 @@ export function StoryStudio({ repo }: { repo: IndexedDBRepository }) {
         ...(draft.id ? { id: draft.id } : {}),
         name: deriveStoryTitle(draft.name, premise),
         premise,
-        source: draft.source
+        source: draft.source,
       });
       const previous = library.find((item) => item.id === built.id);
-      const saved = withOriginalTimestamps(built, previous ?? (draft.createdAt ? { createdAt: draft.createdAt } : undefined));
+      const saved = withOriginalTimestamps(
+        built,
+        previous ?? (draft.createdAt ? { createdAt: draft.createdAt } : undefined),
+      );
       await repo.saveStory(saved);
       await refresh();
       setSelectedId(saved.id);
@@ -115,7 +123,7 @@ export function StoryStudio({ repo }: { repo: IndexedDBRepository }) {
         items={library.map((item) => ({
           id: item.id,
           name: item.name,
-          caption: sourceCaption(item.source, true)
+          caption: sourceCaption(item.source, true),
         }))}
         selectedId={selectedId}
         onSelect={open}
@@ -132,7 +140,9 @@ export function StoryStudio({ repo }: { repo: IndexedDBRepository }) {
       />
       <section className="studio-sheet studio-sheet--form">
         {!draft && (
-          <p className="inspector-empty">The world so far — Bag End and Mount Doom can share the same story.</p>
+          <p className="inspector-empty">
+            The world so far — Bag End and Mount Doom can share the same story.
+          </p>
         )}
         {draft && (
           <>
@@ -143,7 +153,10 @@ export function StoryStudio({ repo }: { repo: IndexedDBRepository }) {
               placeholder="New story"
               onChange={(name) => setDraft({ ...draft, name })}
             />
-            <FormSection title="The world, so far" lede="Bag End and Mount Doom can share the same story.">
+            <FormSection
+              title="The world, so far"
+              lede="Bag End and Mount Doom can share the same story."
+            >
               <textarea
                 className="setup-field__story"
                 value={draft.premise}
@@ -154,7 +167,12 @@ export function StoryStudio({ repo }: { repo: IndexedDBRepository }) {
             {notice && <p className="setup-notice">{notice}</p>}
             {error && <p className="setup-error">{error}</p>}
             <div className="studio-sheet__actions">
-              <button type="button" className="setup-start" disabled={busy} onClick={() => void save()}>
+              <button
+                type="button"
+                className="setup-start"
+                disabled={busy}
+                onClick={() => void save()}
+              >
                 Save
               </button>
               {saved && (

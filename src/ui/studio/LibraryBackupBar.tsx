@@ -5,13 +5,13 @@ import {
   collectLibraryBackup,
   LibraryBackupError,
   parseLibraryBackup,
-  restoreLibraryBackup
+  restoreLibraryBackup,
 } from "@library/libraryBackup";
 import { downloadJson } from "./studioShared";
 
 export function LibraryBackupBar({
   repo,
-  onRestored
+  onRestored,
 }: {
   repo: IndexedDBRepository;
   onRestored: () => void;
@@ -51,7 +51,7 @@ export function LibraryBackupBar({
     if (!file) return;
     if (
       !confirm(
-        "Restore this backup? Cards with the same id are replaced. Cards only on this machine are kept."
+        "Restore this backup? Cards with the same id are replaced. Cards only on this machine are kept.",
       )
     ) {
       return;
@@ -85,14 +85,23 @@ export function LibraryBackupBar({
         tabIndex={-1}
         onChange={(e) => void importLibrary(e.target.files)}
       />
-      <button type="button" className="studio-nav__tab" disabled={busy} onClick={() => void exportLibrary()}>
+      <button
+        type="button"
+        className="studio-nav__tab"
+        disabled={busy}
+        onClick={() => void exportLibrary()}
+      >
         Export library
       </button>
-      <button type="button" className="studio-nav__tab" disabled={busy} onClick={() => fileRef.current?.click()}>
+      <button
+        type="button"
+        className="studio-nav__tab"
+        disabled={busy}
+        onClick={() => fileRef.current?.click()}
+      >
         Import backup
       </button>
       {notice ? <span className="studio-nav__backup-note">{notice}</span> : null}
     </div>
   );
 }
-

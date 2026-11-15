@@ -18,7 +18,10 @@ import { displayLayerType } from "./layerPlacement";
  *    also cannot approve a leftover ungrounded AI environment layer.
  */
 
-const AI_SOURCES: ReadonlySet<AuthoritySource> = new Set(["ai_approved_state_mutation", "ai_inference"]);
+const AI_SOURCES: ReadonlySet<AuthoritySource> = new Set([
+  "ai_approved_state_mutation",
+  "ai_inference",
+]);
 
 function isAiSource(source: AuthoritySource): boolean {
   return AI_SOURCES.has(source);
@@ -38,7 +41,8 @@ export function resolveLayerActivationChange(source: AuthoritySource): LayerActi
   if (isAiSource(source)) {
     return {
       allowed: false,
-      reason: "AI-sourced requests can never activate or deactivate a layer, even one the AI itself proposed."
+      reason:
+        "AI-sourced requests can never activate or deactivate a layer, even one the AI itself proposed.",
     };
   }
   return { allowed: true, reason: "Player/system-initiated layer activation change." };
@@ -58,7 +62,7 @@ function ungroundedEnvironmentReason(content: string): string {
 export function shouldDiscardAiLayerProposal(
   source: AuthoritySource,
   layer: { type: LayerType; content: string },
-  session: Session
+  session: Session,
 ): LayerDiscardDecision {
   if (!isAiSource(source)) return { discard: false };
   if (layer.type !== "environment") return { discard: false };
@@ -69,7 +73,7 @@ export function shouldDiscardAiLayerProposal(
 /** Leftover pending AI place-notes: Approve must not make them canon. */
 export function shouldBlockLayerActivation(
   layer: Pick<Layer, "type" | "content" | "aiGenerated">,
-  session: Session
+  session: Session,
 ): LayerDiscardDecision {
   if (!layer.aiGenerated) return { discard: false };
   const characterIds = Object.keys(session.characters);

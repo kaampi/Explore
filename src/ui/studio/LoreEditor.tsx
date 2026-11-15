@@ -8,7 +8,7 @@ export function emptyLoreEntry(): CharacterLoreEntry {
 
 export function LoreEditor({
   entries,
-  onChange
+  onChange,
 }: {
   entries: CharacterLoreEntry[];
   onChange: (next: CharacterLoreEntry[]) => void;
@@ -17,7 +17,11 @@ export function LoreEditor({
     <FormSection
       title="Lore"
       action={
-        <button type="button" className="setup-text-btn" onClick={() => onChange([...entries, emptyLoreEntry()])}>
+        <button
+          type="button"
+          className="setup-text-btn"
+          onClick={() => onChange([...entries, emptyLoreEntry()])}
+        >
           + Add
         </button>
       }
@@ -32,7 +36,11 @@ export function LoreEditor({
               value={entry.title}
               placeholder="Title"
               onChange={(e) =>
-                onChange(entries.map((item) => (item.id === entry.id ? { ...item, title: e.target.value } : item)))
+                onChange(
+                  entries.map((item) =>
+                    item.id === entry.id ? { ...item, title: e.target.value } : item,
+                  ),
+                )
               }
             />
           </label>
@@ -43,7 +51,11 @@ export function LoreEditor({
               placeholder="What the model may know when this wakes…"
               value={entry.content}
               onChange={(e) =>
-                onChange(entries.map((item) => (item.id === entry.id ? { ...item, content: e.target.value } : item)))
+                onChange(
+                  entries.map((item) =>
+                    item.id === entry.id ? { ...item, content: e.target.value } : item,
+                  ),
+                )
               }
             />
           </label>
@@ -55,8 +67,10 @@ export function LoreEditor({
               onChange={(e) =>
                 onChange(
                   entries.map((item) =>
-                    item.id === entry.id ? { ...item, keywords: parseKeywordList(e.target.value) } : item
-                  )
+                    item.id === entry.id
+                      ? { ...item, keywords: parseKeywordList(e.target.value) }
+                      : item,
+                  ),
                 )
               }
             />

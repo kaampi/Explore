@@ -1,8 +1,8 @@
-import { installInnExample } from '../../scenarios/innVisit';
-import { EmmaInnExampleDialog } from './EmmaInnExampleDialog';
-import { chooseAdventureMap } from '../../library/adventureMap';
-import { StoryboardEditor } from './StoryboardEditor';
-import { connectedAdventureExample } from '../../library/playableCampaign';
+import { installInnExample } from "../../scenarios/innVisit";
+import { EmmaInnExampleDialog } from "./EmmaInnExampleDialog";
+import { chooseAdventureMap } from "../../library/adventureMap";
+import { StoryboardEditor } from "./StoryboardEditor";
+import { connectedAdventureExample } from "../../library/playableCampaign";
 import { pinSessionAnatomy } from "@state/anatomy";
 import { useEffect, useRef, useState } from "react";
 import type { IndexedDBRepository, StudioResume } from "@persistence/IndexedDBRepository";
@@ -17,12 +17,23 @@ import { HintSelect } from "./HintSelect";
 import { ShuttleList } from "./ShuttleList";
 import { LensBar } from "./LensBar";
 import { AGE_BANDS, matchesAgeBand, type AgeBand } from "@library/ageBand";
-import { filterFromLens, lensFromFilter, matchesTagFilter, uniqueTags, type TagFilter } from "@library/objectFilter";
+import {
+  filterFromLens,
+  lensFromFilter,
+  matchesTagFilter,
+  uniqueTags,
+  type TagFilter,
+} from "@library/objectFilter";
 import { SheetNameField } from "./SheetNameField";
 import { LoreEditor } from "./LoreEditor";
 import { FormSection } from "./FormSection";
 import { confirmRemove } from "./studioShared";
-import { WHAT_NOW_FLOOR, WHAT_NOW_STAY, isWhatNowStay, venueBuildingName } from "@state/playerDestination";
+import {
+  WHAT_NOW_FLOOR,
+  WHAT_NOW_STAY,
+  isWhatNowStay,
+  venueBuildingName,
+} from "@state/playerDestination";
 import type { StudioView } from "./types";
 import quill from "../assets/icon_campaign_builder.png";
 import {
@@ -46,12 +57,17 @@ import {
   type RealmTemplate,
   type RulesetTemplate,
   type SceneCast,
-  type VoiceTemplate
+  type VoiceTemplate,
 } from "@library/LibrarySchema";
 import { withOriginalTimestamps } from "@library/fromForm";
 import { removeLinksForScene } from "@library/storyboardLinks";
 import { dropOversizedPortrait } from "@library/slimPortrait";
-import { BUILTIN_PRONOUNS, isBuiltinPronoun, normalizePronoun, pronounLabel } from "@state/pronouns";
+import {
+  BUILTIN_PRONOUNS,
+  isBuiltinPronoun,
+  normalizePronoun,
+  pronounLabel,
+} from "@state/pronouns";
 import { portraitDataUrlFromFile, PortraitError, portraitSrc } from "./portrait";
 import { formatPersonName } from "@library/personName";
 import { parseKeywordList } from "@layers/keywords";
@@ -66,7 +82,7 @@ import {
   exampleRealmTemplates,
   exampleRulesetTemplates,
   exampleVoiceTemplates,
-  mergeWithExamples
+  mergeWithExamples,
 } from "@library/exampleTemplates";
 
 type Tab = "general" | "you" | "characters" | "objects" | "scenes" | "storyboard";
@@ -77,14 +93,14 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "characters", label: "Characters" },
   { id: "objects", label: "Objects" },
   { id: "scenes", label: "Scenes" },
-  { id: "storyboard", label: "Storyboard" }
+  { id: "storyboard", label: "Storyboard" },
 ];
 
 function Chip({
   active,
   label,
   thumb,
-  onPick
+  onPick,
 }: {
   active: boolean;
   label: string;
@@ -113,7 +129,9 @@ function BrandHeader() {
 function personLabel(template: CharacterTemplate | undefined, id: string): string {
   if (!template) return id;
   const name = formatPersonName(template.name, template.familyName, template.middleName);
-  return typeof template.approximateAge === "number" ? `${name} · ${template.approximateAge}` : name;
+  return typeof template.approximateAge === "number"
+    ? `${name} · ${template.approximateAge}`
+    : name;
 }
 
 // Spreads `draft` first, so every field — including ones this function
@@ -135,9 +153,9 @@ function sanitizeCampaign(draft: CampaignTemplate) {
         .map((trigger) => ({ ...trigger, content: trigger.content.trim() })),
       whatNowSets: whatNowSetsFromScene(scene).map((set) => ({
         ...set,
-        choices: set.choices.slice(0, 3)
+        choices: set.choices.slice(0, 3),
       })),
-      startRoomId: scene.startRoomId?.trim() ?? ""
+      startRoomId: scene.startRoomId?.trim() ?? "",
     })),
     ...(model ? { model } : { model: undefined }),
     ...(rulesetId ? { rulesetId } : { rulesetId: undefined }),
@@ -145,7 +163,7 @@ function sanitizeCampaign(draft: CampaignTemplate) {
     ...(draft.realmId?.trim() ? { realmId: draft.realmId.trim() } : { realmId: undefined }),
     ...(draft.lens ? { lens: draft.lens } : { lens: undefined }),
     ...(draft.objectLens ? { objectLens: draft.objectLens } : { objectLens: undefined }),
-    player: sanitizeYou(draft.player)
+    player: sanitizeYou(draft.player),
   };
 }
 
@@ -157,7 +175,7 @@ function sanitizeYou(player: CampaignPlayer | undefined): CampaignPlayer | undef
     personality: player.personality.trim(),
     stats: player.stats,
     ...(player.pronoun ? { pronoun: player.pronoun } : {}),
-    ...(player.portraitDataUrl?.trim() ? { portraitDataUrl: player.portraitDataUrl.trim() } : {})
+    ...(player.portraitDataUrl?.trim() ? { portraitDataUrl: player.portraitDataUrl.trim() } : {}),
   });
 }
 
@@ -176,7 +194,7 @@ function emptyCast(characterId: string, mood: string): SceneCast {
     holding: "",
     trust: "20",
     familiarity: "10",
-    tension: "5"
+    tension: "5",
   };
 }
 
@@ -186,7 +204,7 @@ export function CampaignStudio({
   resume,
   onStart,
   onOpenShelf,
-  onOneOff
+  onOneOff,
 }: {
   sessionId: string;
   repo: IndexedDBRepository;
@@ -204,7 +222,7 @@ export function CampaignStudio({
   const [objects, setObjects] = useState<ObjectTemplate[]>([]);
   const [draft, setDraft] = useState<CampaignTemplate | null>(null);
   const [tab, setTab] = useState<Tab>("general");
-  const [storyboardOpen,setStoryboardOpen]=useState(false);
+  const [storyboardOpen, setStoryboardOpen] = useState(false);
   const [emmaExampleOpen, setEmmaExampleOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -223,9 +241,17 @@ export function CampaignStudio({
       repo.listRealms(),
       repo.listVoices(),
       repo.listRulesets(),
-      repo.listObjects()
+      repo.listObjects(),
     ]);
-    const [nextCampaigns, nextCharacters, nextPlaces, nextRealms, nextVoices, nextRulesets, nextObjects] = results;
+    const [
+      nextCampaigns,
+      nextCharacters,
+      nextPlaces,
+      nextRealms,
+      nextVoices,
+      nextRulesets,
+      nextObjects,
+    ] = results;
     const listed = nextCampaigns.status === "fulfilled" ? nextCampaigns.value : [];
     if (nextCampaigns.status === "fulfilled") setCampaigns(nextCampaigns.value);
     if (nextCharacters.status === "fulfilled") setCharacters(nextCharacters.value);
@@ -254,7 +280,7 @@ export function CampaignStudio({
         }
         resumeApplied.current = true;
         setDraft(found);
-        setTab(found.scenes.some(scene=>scene.encounter)?"storyboard":"scenes");
+        setTab(found.scenes.some((scene) => scene.encounter) ? "storyboard" : "scenes");
         setFreshNight(true);
         setHandoffDraft(resume.handoff ?? "");
       })
@@ -278,20 +304,21 @@ export function CampaignStudio({
     const found = campaigns.find((item) => item.id === id);
     if (!found) return;
     setDraft(withCampaignRealm(found, visiblePlaces));
-    setTab(found.scenes.some(scene=>scene.encounter)?"storyboard":"general");setStoryboardOpen(found.scenes.some(scene=>scene.encounter));
+    setTab(found.scenes.some((scene) => scene.encounter) ? "storyboard" : "general");
+    setStoryboardOpen(found.scenes.some((scene) => scene.encounter));
     setError(null);
     setNotice(null);
     setFreshNight(false);
-    setHandoffDraft(resume?.campaignId === found.id ? resume.handoff ?? "" : "");
+    setHandoffDraft(resume?.campaignId === found.id ? (resume.handoff ?? "") : "");
   }
 
   function createNew() {
     setDraft({
       ...newCampaignTemplate({
         name: "New adventure",
-        scenes: [emptyCampaignScene()]
+        scenes: [emptyCampaignScene()],
       }),
-      name: ""
+      name: "",
     });
     setTab("general");
     setError(null);
@@ -300,31 +327,67 @@ export function CampaignStudio({
     setHandoffDraft("");
   }
 
-  async function loadInnExample(){
-    setBusy(true);setError(null);try{const built=await installInnExample(repo);await refresh();setDraft(built.campaign);setTab('storyboard');setStoryboardOpen(true);setNotice('An editable inn, its rooms and adventure are saved. Choose Test this scene, or open the inn in World maps.');}catch(error){setError(error instanceof Error?error.message:'Could not load the inn.');}finally{setBusy(false);}
+  async function loadInnExample() {
+    setBusy(true);
+    setError(null);
+    try {
+      const built = await installInnExample(repo);
+      await refresh();
+      setDraft(built.campaign);
+      setTab("storyboard");
+      setStoryboardOpen(true);
+      setNotice(
+        "An editable inn, its rooms and adventure are saved. Choose Test this scene, or open the inn in World maps.",
+      );
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Could not load the inn.");
+    } finally {
+      setBusy(false);
+    }
   }
   async function loadEmmaExample(campaign: CampaignTemplate) {
     setBusy(true);
     setError(null);
     try {
       await repo.saveCampaign(campaign);
-      setCampaigns(items => [campaign, ...items]);
+      setCampaigns((items) => [campaign, ...items]);
       setEmmaExampleOpen(false);
       setDraft(campaign);
-      setTab('storyboard');
+      setTab("storyboard");
       setStoryboardOpen(true);
-      setNotice('Start with “Vid bardisken”. Select an action or connection to see what makes it available.');
+      setNotice(
+        "Start with “Vid bardisken”. Select an action or connection to see what makes it available.",
+      );
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Could not save the adventure.');
+      setError(reason instanceof Error ? reason.message : "Could not save the adventure.");
     } finally {
       setBusy(false);
     }
   }
-  async function loadConnectedExample(){
-    setBusy(true);setError(null);try{const built=connectedAdventureExample();await repo.saveRealm(built.realm);for(const p of built.places)await repo.savePlace(p);for(const c of built.characters)await repo.saveCharacter(c);for(const o of built.objects)await repo.saveObject(o);await refresh();setDraft(built.campaign);setTab('storyboard');setStoryboardOpen(true);setNotice('Explore the two scenes and their conditions, then choose Test this scene.');}catch(error){setError(error instanceof Error?error.message:'Could not load the example.');}finally{setBusy(false);}
+  async function loadConnectedExample() {
+    setBusy(true);
+    setError(null);
+    try {
+      const built = connectedAdventureExample();
+      await repo.saveRealm(built.realm);
+      for (const p of built.places) await repo.savePlace(p);
+      for (const c of built.characters) await repo.saveCharacter(c);
+      for (const o of built.objects) await repo.saveObject(o);
+      await refresh();
+      setDraft(built.campaign);
+      setTab("storyboard");
+      setStoryboardOpen(true);
+      setNotice("Explore the two scenes and their conditions, then choose Test this scene.");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Could not load the example.");
+    } finally {
+      setBusy(false);
+    }
   }
   async function loadExampleCampaign() {
-    const emma = visibleCharacters.find((item) => item.id === EXAMPLE_CHARACTER_ID) ?? exampleCharacterTemplate();
+    const emma =
+      visibleCharacters.find((item) => item.id === EXAMPLE_CHARACTER_ID) ??
+      exampleCharacterTemplate();
     const built = newCampaignTemplate({
       name: "The Aurora Room",
       playerIntro: "A quiet harbor archive, kept long after hours. Stay as long as you like.",
@@ -340,11 +403,11 @@ export function CampaignStudio({
             {
               ...emptyCast(emma.id, emma.mood || "reserved"),
               position: "behind the counter",
-              clothing: "a keeper's coat over indoor clothes"
-            }
-          ]
-        }
-      ]
+              clothing: "a keeper's coat over indoor clothes",
+            },
+          ],
+        },
+      ],
     });
     setDraft(built);
     setTab("scenes");
@@ -365,7 +428,7 @@ export function CampaignStudio({
     try {
       const realmId = inferCampaignRealmId(draft, visiblePlaces);
       const built = newCampaignTemplate(
-        sanitizeCampaign({ ...draft, name, ...(realmId ? { realmId } : {}) })
+        sanitizeCampaign({ ...draft, name, ...(realmId ? { realmId } : {}) }),
       );
       const previous = campaigns.find((item) => item.id === built.id);
       const saved = withOriginalTimestamps(built, previous);
@@ -401,23 +464,28 @@ export function CampaignStudio({
         if (!places.some((item) => item.id === landmark.id)) await repo.savePlace(landmark);
       }
     }
-    const place = visiblePlaces.find((item) => next.scenes.some((scene) => scene.placeId === item.id));
+    const place = visiblePlaces.find((item) =>
+      next.scenes.some((scene) => scene.placeId === item.id),
+    );
     if (place) {
       const realm = visibleRealms.find((item) => item.id === place.realmId);
       if (realm && !realms.some((item) => item.id === realm.id)) await repo.saveRealm(realm);
       if (!places.some((item) => item.id === place.id)) await repo.savePlace(place);
     }
     const ruleset = visibleRulesets.find((item) => item.id === next.rulesetId);
-    if (ruleset && !rulesets.some((item) => item.id === ruleset.id)) await repo.saveRuleset(ruleset);
+    if (ruleset && !rulesets.some((item) => item.id === ruleset.id))
+      await repo.saveRuleset(ruleset);
     const voice = visibleVoices.find((item) => item.id === next.voiceId);
     if (voice && !voices.some((item) => item.id === voice.id)) await repo.saveVoice(voice);
     for (const member of next.people) {
       const template = visibleCharacters.find((item) => item.id === member.characterId);
-      if (template && !characters.some((item) => item.id === template.id)) await repo.saveCharacter(template);
+      if (template && !characters.some((item) => item.id === template.id))
+        await repo.saveCharacter(template);
     }
     for (const id of next.objectIds) {
       const template = visibleObjects.find((item) => item.id === id);
-      if (template && !objects.some((item) => item.id === template.id)) await repo.saveObject(template);
+      if (template && !objects.some((item) => item.id === template.id))
+        await repo.saveObject(template);
     }
   }
 
@@ -431,14 +499,14 @@ export function CampaignStudio({
       const named = sanitizeCampaign({
         ...draft,
         name: draft.name.trim() || "New adventure",
-        ...(realmId ? { realmId } : {})
+        ...(realmId ? { realmId } : {}),
       });
       const saved = withOriginalTimestamps(
         newCampaignTemplate(named),
-        campaigns.find((item) => item.id === draft.id)
+        campaigns.find((item) => item.id === draft.id),
       );
       await repo.saveCampaign(saved);
-      const [startPlaces,startRealms]=await Promise.all([repo.listPlaces(),repo.listRealms()]);
+      const [startPlaces, startRealms] = await Promise.all([repo.listPlaces(), repo.listRealms()]);
       const result = sessionFromCampaignScene(
         {
           campaign: saved,
@@ -449,9 +517,9 @@ export function CampaignStudio({
           objects: visibleObjects,
           voices: visibleVoices,
           rulesets: visibleRulesets,
-          ...(handoffDraft.trim() ? { handoff: handoffDraft.trim() } : {})
+          ...(handoffDraft.trim() ? { handoff: handoffDraft.trim() } : {}),
         },
-        sessionId
+        sessionId,
       );
       if (!result.ok) {
         setError(result.reason);
@@ -465,14 +533,17 @@ export function CampaignStudio({
     }
   }
 
-  function patchScene(sceneId: string, patch: Partial<CampaignScene> | ((scene: CampaignScene) => CampaignScene)) {
+  function patchScene(
+    sceneId: string,
+    patch: Partial<CampaignScene> | ((scene: CampaignScene) => CampaignScene),
+  ) {
     if (!draft) return;
     setDraft({
       ...draft,
       scenes: draft.scenes.map((scene) => {
         if (scene.id !== sceneId) return scene;
         return typeof patch === "function" ? patch(scene) : { ...scene, ...patch };
-      })
+      }),
     });
   }
 
@@ -481,7 +552,7 @@ export function CampaignStudio({
     const template = visibleCharacters.find((item) => item.id === id);
     setDraft({
       ...draft,
-      people: [...draft.people, { characterId: id, stats: {}, lore: template?.lore ?? [] }]
+      people: [...draft.people, { characterId: id, stats: {}, lore: template?.lore ?? [] }],
     });
   }
 
@@ -492,8 +563,8 @@ export function CampaignStudio({
       people: draft.people.filter((item) => item.characterId !== id),
       scenes: draft.scenes.map((scene) => ({
         ...scene,
-        people: scene.people.filter((item) => item.characterId !== id)
-      }))
+        people: scene.people.filter((item) => item.characterId !== id),
+      })),
     });
   }
 
@@ -509,8 +580,8 @@ export function CampaignStudio({
       objectIds: draft.objectIds.filter((item) => item !== id),
       scenes: draft.scenes.map((scene) => ({
         ...scene,
-        objectIds: scene.objectIds.filter((item) => item !== id)
-      }))
+        objectIds: scene.objectIds.filter((item) => item !== id),
+      })),
     });
   }
 
@@ -518,7 +589,9 @@ export function CampaignStudio({
     if (!draft) return;
     setDraft({
       ...draft,
-      people: draft.people.map((item) => (item.characterId === characterId ? { ...item, ...patch } : item))
+      people: draft.people.map((item) =>
+        item.characterId === characterId ? { ...item, ...patch } : item,
+      ),
     });
   }
 
@@ -527,8 +600,10 @@ export function CampaignStudio({
     setDraft({
       ...draft,
       people: draft.people.map((item) =>
-        item.characterId === characterId ? { ...item, stats: { ...item.stats, [statId]: value } } : item
-      )
+        item.characterId === characterId
+          ? { ...item, stats: { ...item.stats, [statId]: value } }
+          : item,
+      ),
     });
   }
 
@@ -549,14 +624,20 @@ export function CampaignStudio({
         <div className="setup-card campaign-builder">
           <BrandHeader />
           <p className="setup-lede">
-            An adventure is who and where belong together. A scene is tonight — then you press Start.
+            An adventure is who and where belong together. A scene is tonight — then you press
+            Start.
           </p>
           {campaigns.length > 0 ? (
             <>
               <p className="panel-heading">Your adventures</p>
               <div className="setup-chips" role="list" style={{ marginBottom: 22 }}>
                 {campaigns.map((item) => (
-                  <Chip key={item.id} active={false} label={item.name} onPick={() => open(item.id)} />
+                  <Chip
+                    key={item.id}
+                    active={false}
+                    label={item.name}
+                    onPick={() => open(item.id)}
+                  />
                 ))}
               </div>
             </>
@@ -570,17 +651,55 @@ export function CampaignStudio({
             <button type="button" className="setup-start" onClick={createNew}>
               New adventure
             </button>
-            <button type="button" className="setup-text-btn" disabled={busy} onClick={()=>void loadConnectedExample()}>Connected adventure example</button><button type="button" className="setup-text-btn" disabled={busy} onClick={()=>void loadInnExample()}>Inn & rooms example</button>
-            <button type="button" className="setup-text-btn" disabled={busy} onClick={() => { setError(null); setEmmaExampleOpen(true); }}>Emma och Einar</button>
-            <button type="button" className="setup-text-btn" onClick={() => void loadExampleCampaign()}>
+            <button
+              type="button"
+              className="setup-text-btn"
+              disabled={busy}
+              onClick={() => void loadConnectedExample()}
+            >
+              Connected adventure example
+            </button>
+            <button
+              type="button"
+              className="setup-text-btn"
+              disabled={busy}
+              onClick={() => void loadInnExample()}
+            >
+              Inn & rooms example
+            </button>
+            <button
+              type="button"
+              className="setup-text-btn"
+              disabled={busy}
+              onClick={() => {
+                setError(null);
+                setEmmaExampleOpen(true);
+              }}
+            >
+              Emma och Einar
+            </button>
+            <button
+              type="button"
+              className="setup-text-btn"
+              onClick={() => void loadExampleCampaign()}
+            >
               Load the example adventure
             </button>
             <button type="button" className="setup-text-btn" onClick={onOneOff}>
               Quick scene
             </button>
           </div>
-          {emmaExampleOpen && <EmmaInnExampleDialog characters={characters} worlds={realms} places={places}
-            busy={busy} error={error} onCreate={loadEmmaExample} onClose={() => setEmmaExampleOpen(false)} />}
+          {emmaExampleOpen && (
+            <EmmaInnExampleDialog
+              characters={characters}
+              worlds={realms}
+              places={places}
+              busy={busy}
+              error={error}
+              onCreate={loadEmmaExample}
+              onClose={() => setEmmaExampleOpen(false)}
+            />
+          )}
         </div>
       </div>
     );
@@ -590,11 +709,14 @@ export function CampaignStudio({
   const liveRealmId = inferCampaignRealmId(draft, visiblePlaces);
   const campaignPlaces = campaignLandmarks(
     { realmId: liveRealmId || undefined, placeIds: draft.placeIds },
-    visiblePlaces
+    visiblePlaces,
   );
-  const campaignPeople = visibleCharacters.filter((item) => draft.people.some((member) => member.characterId === item.id));
+  const campaignPeople = visibleCharacters.filter((item) =>
+    draft.people.some((member) => member.characterId === item.id),
+  );
   const campaignObjects = visibleObjects.filter((item) => draft.objectIds.includes(item.id));
-  const pickFilter = tab === "objects" ? filterFromLens(draft.objectLens) : filterFromLens(draft.lens);
+  const pickFilter =
+    tab === "objects" ? filterFromLens(draft.objectLens) : filterFromLens(draft.lens);
   const shelfTags = tab === "objects" ? uniqueTags(visibleObjects) : uniqueTags(visibleCharacters);
 
   function setPickFilter(next: TagFilter) {
@@ -623,7 +745,9 @@ export function CampaignStudio({
   }
 
   return (
-    <div className={`studio-split campaign-workspace${tab==='storyboard'?' campaign-workspace--flow':''}`}>
+    <div
+      className={`studio-split campaign-workspace${tab === "storyboard" ? " campaign-workspace--flow" : ""}`}
+    >
       <nav className="campaign-nav" aria-label="Adventure parts">
         <p className="campaign-nav__kicker">Adventure</p>
         <p className="campaign-nav__name">{draft.name.trim() || "New adventure"}</p>
@@ -633,7 +757,10 @@ export function CampaignStudio({
             type="button"
             className={tab === item.id ? "campaign-nav__btn is-on" : "campaign-nav__btn"}
             aria-current={tab === item.id ? "page" : undefined}
-            onClick={() => {setTab(item.id);if(item.id==="storyboard")setStoryboardOpen(true);}}
+            onClick={() => {
+              setTab(item.id);
+              if (item.id === "storyboard") setStoryboardOpen(true);
+            }}
           >
             {item.label}
           </button>
@@ -686,7 +813,11 @@ export function CampaignStudio({
             <FormSection
               title="Realm"
               action={
-                <button type="button" className="setup-text-btn" onClick={() => onOpenShelf("places")}>
+                <button
+                  type="button"
+                  className="setup-text-btn"
+                  onClick={() => onOpenShelf("places")}
+                >
                   Edit locations
                 </button>
               }
@@ -702,27 +833,45 @@ export function CampaignStudio({
                 onChange={(e) => {
                   const value = e.target.value;
                   if (!value) {
-                    const { realmId: _drop,mapWorldId:_map, ...rest } = draft;
+                    const { realmId: _drop, mapWorldId: _map, ...rest } = draft;
                     setDraft({
                       ...rest,
-                      scenes: draft.scenes.map(({mapNodeId:_node,usePlaceIntro:_intro,...scene}) => ({ ...scene, placeId: "", startRoomId: "" }))
+                      scenes: draft.scenes.map(
+                        ({ mapNodeId: _node, usePlaceIntro: _intro, ...scene }) => ({
+                          ...scene,
+                          placeId: "",
+                          startRoomId: "",
+                        }),
+                      ),
                     });
                     return;
                   }
-                  if(draft.mapWorldId){const selected=visibleRealms.find(w=>w.id===value);if(selected){setDraft(chooseAdventureMap(draft,selected,visiblePlaces));return;}}
+                  if (draft.mapWorldId) {
+                    const selected = visibleRealms.find((w) => w.id === value);
+                    if (selected) {
+                      setDraft(chooseAdventureMap(draft, selected, visiblePlaces));
+                      return;
+                    }
+                  }
                   const allowed = new Set(
-                    visiblePlaces.filter((item) => item.realmId === value).map((item) => item.id)
+                    visiblePlaces.filter((item) => item.realmId === value).map((item) => item.id),
                   );
                   setDraft({
                     ...draft,
                     realmId: value,
                     scenes: draft.scenes.map((scene) =>
-                      allowed.has(scene.placeId) ? scene : { ...scene, placeId: "", startRoomId: "" }
-                    )
+                      allowed.has(scene.placeId)
+                        ? scene
+                        : { ...scene, placeId: "", startRoomId: "" },
+                    ),
                   });
                 }}
               >
-                <option value="">{visibleRealms.length === 0 ? "Create a world in World Maps first" : "Choose a realm"}</option>
+                <option value="">
+                  {visibleRealms.length === 0
+                    ? "Create a world in World Maps first"
+                    : "Choose a realm"}
+                </option>
                 {visibleRealms.map((item) => (
                   <option key={item.id} value={item.id}>
                     {item.name}
@@ -731,62 +880,70 @@ export function CampaignStudio({
               </select>
             </FormSection>
             <div className="campaign-general__pair">
-            <FormSection
-              title="Rule-set"
-              action={
-                <button type="button" className="setup-text-btn" onClick={() => onOpenShelf("rulesets")}>
-                  Edit rule-sets
-                </button>
-              }
-            >
-              <select
-                aria-label="Rule-set"
-                value={draft.rulesetId ?? ""}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (!value) {
-                    const { rulesetId: _drop, ...rest } = draft;
-                    setDraft(rest);
-                    return;
-                  }
-                  setDraft({ ...draft, rulesetId: value });
-                }}
+              <FormSection
+                title="Rule-set"
+                action={
+                  <button
+                    type="button"
+                    className="setup-text-btn"
+                    onClick={() => onOpenShelf("rulesets")}
+                  >
+                    Edit rule-sets
+                  </button>
+                }
               >
-                <option value="">None</option>
-                {visibleRulesets.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            </FormSection>
-            <FormSection
-              title="Narrator"
-              action={
-                <button type="button" className="setup-text-btn" onClick={() => onOpenShelf("voices")}>
-                  Edit voices
-                </button>
-              }
-            >
-              <HintSelect
-                ariaLabel="Narrator"
-                value={draft.voiceId ?? ""}
-                noneLabel="None"
-                choices={visibleVoices.map((item) => ({
-                  id: item.id,
-                  label: item.name,
-                  hint: item.instruction
-                }))}
-                onChange={(id) => {
-                  if (!id) {
-                    const { voiceId: _drop, ...rest } = draft;
-                    setDraft(rest);
-                    return;
-                  }
-                  setDraft({ ...draft, voiceId: id });
-                }}
-              />
-            </FormSection>
+                <select
+                  aria-label="Rule-set"
+                  value={draft.rulesetId ?? ""}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (!value) {
+                      const { rulesetId: _drop, ...rest } = draft;
+                      setDraft(rest);
+                      return;
+                    }
+                    setDraft({ ...draft, rulesetId: value });
+                  }}
+                >
+                  <option value="">None</option>
+                  {visibleRulesets.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </FormSection>
+              <FormSection
+                title="Narrator"
+                action={
+                  <button
+                    type="button"
+                    className="setup-text-btn"
+                    onClick={() => onOpenShelf("voices")}
+                  >
+                    Edit voices
+                  </button>
+                }
+              >
+                <HintSelect
+                  ariaLabel="Narrator"
+                  value={draft.voiceId ?? ""}
+                  noneLabel="None"
+                  choices={visibleVoices.map((item) => ({
+                    id: item.id,
+                    label: item.name,
+                    hint: item.instruction,
+                  }))}
+                  onChange={(id) => {
+                    if (!id) {
+                      const { voiceId: _drop, ...rest } = draft;
+                      setDraft(rest);
+                      return;
+                    }
+                    setDraft({ ...draft, voiceId: id });
+                  }}
+                />
+              </FormSection>
             </div>
             <FormSection title="Intro for the player">
               <textarea
@@ -821,12 +978,15 @@ export function CampaignStudio({
                 void portraitDataUrlFromFile(file)
                   .then((portraitDataUrl) => patchYou({ portraitDataUrl }))
                   .catch((err) =>
-                    setError(err instanceof PortraitError ? err.message : "Could not read that image.")
+                    setError(
+                      err instanceof PortraitError ? err.message : "Could not read that image.",
+                    ),
                   );
               }}
             />
             <p className="form-section__lede">
-              Who you play tonight. Not a person on the Characters shelf. Emma sees this; the portrait is UI only.
+              Who you play tonight. Not a person on the Characters shelf. Emma sees this; the
+              portrait is UI only.
             </p>
             <label className="setup-field setup-field--row">
               <span className="setup-field__label">Given name</span>
@@ -874,7 +1034,9 @@ export function CampaignStudio({
                 disabled={busy}
                 onClick={() => youPortraitRef.current?.click()}
               >
-                {(draft.player ?? emptyCampaignPlayer()).portraitDataUrl ? "Change portrait" : "Add portrait"}
+                {(draft.player ?? emptyCampaignPlayer()).portraitDataUrl
+                  ? "Change portrait"
+                  : "Add portrait"}
               </button>
             </div>
             <div className="setup-field">
@@ -885,7 +1047,7 @@ export function CampaignStudio({
                   ...BUILTIN_PRONOUNS,
                   ...((draft.player?.pronoun && !isBuiltinPronoun(draft.player.pronoun)
                     ? [draft.player.pronoun]
-                    : []) as string[])
+                    : []) as string[]),
                 ]}
                 {...(draft.player?.pronoun ? { value: draft.player.pronoun } : {})}
                 labelFor={pronounLabel}
@@ -915,7 +1077,11 @@ export function CampaignStudio({
             <FormSection
               title="Stats"
               action={
-                <button type="button" className="setup-text-btn" onClick={() => onOpenShelf("rulesets")}>
+                <button
+                  type="button"
+                  className="setup-text-btn"
+                  onClick={() => onOpenShelf("rulesets")}
+                >
                   Edit rule-sets
                 </button>
               }
@@ -937,7 +1103,7 @@ export function CampaignStudio({
                         : [];
                     const voice = traitVoice({
                       char: you.name.trim() || "the player",
-                      pronoun: you.pronoun
+                      pronoun: you.pronoun,
                     });
                     return (
                       <div className="setup-field" key={def.id}>
@@ -947,25 +1113,33 @@ export function CampaignStudio({
                             ariaLabel={def.name}
                             choices={picks}
                             {...(current ? { value: current } : {})}
-                            onPick={(choice) => patchYouStat(def.id, current === choice ? "" : choice)}
+                            onPick={(choice) =>
+                              patchYouStat(def.id, current === choice ? "" : choice)
+                            }
                             onAdd={(label) => patchYouStat(def.id, label)}
                           />
                         ) : (
                           <input
                             value={current}
                             onChange={(e) => patchYouStat(def.id, e.target.value)}
-                            placeholder={def.kind === "number" ? `${def.min ?? 0}–${def.max ?? 100}` : ""}
+                            placeholder={
+                              def.kind === "number" ? `${def.min ?? 0}–${def.max ?? 100}` : ""
+                            }
                           />
                         )}
-                        {def.kind !== "text" && (def.highMeaning?.trim() || def.lowMeaning?.trim()) ? (
-                          <span className="setup-optional" style={{ display: "block", marginTop: 4, fontWeight: 400 }}>
+                        {def.kind !== "text" &&
+                        (def.highMeaning?.trim() || def.lowMeaning?.trim()) ? (
+                          <span
+                            className="setup-optional"
+                            style={{ display: "block", marginTop: 4, fontWeight: 400 }}
+                          >
                             {[
                               def.highMeaning?.trim()
                                 ? `High: ${applyTraitTokens(def.highMeaning.trim(), voice)}`
                                 : null,
                               def.lowMeaning?.trim()
                                 ? `Low: ${applyTraitTokens(def.lowMeaning.trim(), voice)}`
-                                : null
+                                : null,
                             ]
                               .filter(Boolean)
                               .join(" ")}
@@ -987,129 +1161,153 @@ export function CampaignStudio({
             <FormSection
               title="People in this adventure"
               action={
-                <button type="button" className="setup-text-btn" onClick={() => onOpenShelf("characters")}>
+                <button
+                  type="button"
+                  className="setup-text-btn"
+                  onClick={() => onOpenShelf("characters")}
+                >
                   Edit characters
                 </button>
               }
               lede="The left list is the shelf. Move someone across to include them. Starting numbers live here; where they stand is on the scene."
             >
-            <div className="setup-chips" role="list" style={{ marginBottom: 12 }}>
-              <button
-                type="button"
-                className={ageBand === null ? "setup-chip setup-chip--active" : "setup-chip"}
-                onClick={() => setAgeBand(null)}
-              >
-                <span className="setup-chip__pick">Any age</span>
-              </button>
-              {AGE_BANDS.map((band) => (
+              <div className="setup-chips" role="list" style={{ marginBottom: 12 }}>
                 <button
-                  key={band.id}
                   type="button"
-                  className={ageBand === band.id ? "setup-chip setup-chip--active" : "setup-chip"}
-                  onClick={() => setAgeBand(ageBand === band.id ? null : band.id)}
+                  className={ageBand === null ? "setup-chip setup-chip--active" : "setup-chip"}
+                  onClick={() => setAgeBand(null)}
                 >
-                  <span className="setup-chip__pick">{band.label}</span>
+                  <span className="setup-chip__pick">Any age</span>
                 </button>
-              ))}
-            </div>
-            <p className="inspector-empty" style={{ marginTop: -4, marginBottom: 12 }}>
-              Young is 25 and under. Elder is 55 and up. Combines with Look for.
-            </p>
-            <ShuttleList
-              leftHeading="All characters"
-              rightHeading="In this adventure"
-              leftEmpty={shelfEmpty("Everyone is already in the adventure.")}
-              rightEmpty="None yet. Pick someone on the left, then Add."
-              left={visibleCharacters
-                .filter(
-                  (item) =>
-                    !draft.people.some((member) => member.characterId === item.id) &&
-                    matchesTagFilter(item, pickFilter) &&
-                    matchesAgeBand(item, ageBand)
-                )
-                .map((item) => ({
-                  id: item.id,
-                  label: personLabel(item, item.id),
-                  ...(item.portraitDataUrl ? { thumb: item.portraitDataUrl } : {})
-                }))}
-              right={draft.people.flatMap((member) => {
-                const template = visibleCharacters.find((item) => item.id === member.characterId);
-                if (!template) return [];
-                return [
-                  {
-                    id: template.id,
-                    label: personLabel(template, template.id),
-                    ...(template.portraitDataUrl ? { thumb: template.portraitDataUrl } : {})
-                  }
-                ];
-              })}
-              onAdd={addPerson}
-              onRemove={removePerson}
-            />
-            {draft.people.map((member) => {
-              const template = visibleCharacters.find((item) => item.id === member.characterId);
-              const voice = traitVoice({ char: template?.name, pronoun: template?.pronoun });
-              return (
-                <div key={member.characterId} className="layer-card" style={{ marginTop: 14 }}>
-                  <p className="place-card__name">{personLabel(template, member.characterId)}</p>
-                  {ruleset && ruleset.attributes.length > 0 ? (
-                    <div className="setup-row" style={{ gridTemplateColumns: "1fr 1fr", marginTop: 8 }}>
-                      {ruleset.attributes.map((def: AttributeDef) => {
-                        const current = member.stats[def.id] ?? "";
-                        const listed = def.options ?? [];
-                        const picks =
-                          def.kind === "text" && listed.length > 0
-                            ? [...listed, ...(current && !listed.includes(current) ? [current] : [])]
-                            : [];
-                        return (
-                          <div className="setup-field" key={def.id}>
-                            {def.name}
-                            {picks.length > 0 || (def.kind === "text" && listed.length > 0) ? (
-                              <PickChips
-                                ariaLabel={def.name}
-                                choices={picks}
-                                {...(current ? { value: current } : {})}
-                                onPick={(choice) =>
-                                  patchStat(member.characterId, def.id, current === choice ? "" : choice)
-                                }
-                                onAdd={(label) => patchStat(member.characterId, def.id, label)}
-                              />
-                            ) : (
-                              <input
-                                value={current}
-                                onChange={(e) => patchStat(member.characterId, def.id, e.target.value)}
-                                placeholder={def.kind === "number" ? `${def.min ?? 0}–${def.max ?? 100}` : ""}
-                              />
-                            )}
-                            {def.kind !== "text" && (def.highMeaning?.trim() || def.lowMeaning?.trim()) ? (
-                              <span className="setup-optional" style={{ display: "block", marginTop: 4, fontWeight: 400 }}>
-                                {[
-                                  def.highMeaning?.trim()
-                                    ? `High: ${applyTraitTokens(def.highMeaning.trim(), voice)}`
-                                    : null,
-                                  def.lowMeaning?.trim() ? `Low: ${applyTraitTokens(def.lowMeaning.trim(), voice)}` : null
-                                ]
-                                  .filter(Boolean)
-                                  .join(" ")}
-                              </span>
-                            ) : null}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : null}
-                  <LoreEditor
-                    entries={member.lore ?? []}
-                    onChange={(lore) => patchMember(member.characterId, { lore })}
-                  />
-                </div>
-              );
-            })}
-            {draft.people.length > 0 && !ruleset ? (
-              <p className="inspector-empty" style={{ marginTop: 12 }}>
-                Pick a rule-set above if you want starting numbers.
+                {AGE_BANDS.map((band) => (
+                  <button
+                    key={band.id}
+                    type="button"
+                    className={ageBand === band.id ? "setup-chip setup-chip--active" : "setup-chip"}
+                    onClick={() => setAgeBand(ageBand === band.id ? null : band.id)}
+                  >
+                    <span className="setup-chip__pick">{band.label}</span>
+                  </button>
+                ))}
+              </div>
+              <p className="inspector-empty" style={{ marginTop: -4, marginBottom: 12 }}>
+                Young is 25 and under. Elder is 55 and up. Combines with Look for.
               </p>
-            ) : null}
+              <ShuttleList
+                leftHeading="All characters"
+                rightHeading="In this adventure"
+                leftEmpty={shelfEmpty("Everyone is already in the adventure.")}
+                rightEmpty="None yet. Pick someone on the left, then Add."
+                left={visibleCharacters
+                  .filter(
+                    (item) =>
+                      !draft.people.some((member) => member.characterId === item.id) &&
+                      matchesTagFilter(item, pickFilter) &&
+                      matchesAgeBand(item, ageBand),
+                  )
+                  .map((item) => ({
+                    id: item.id,
+                    label: personLabel(item, item.id),
+                    ...(item.portraitDataUrl ? { thumb: item.portraitDataUrl } : {}),
+                  }))}
+                right={draft.people.flatMap((member) => {
+                  const template = visibleCharacters.find((item) => item.id === member.characterId);
+                  if (!template) return [];
+                  return [
+                    {
+                      id: template.id,
+                      label: personLabel(template, template.id),
+                      ...(template.portraitDataUrl ? { thumb: template.portraitDataUrl } : {}),
+                    },
+                  ];
+                })}
+                onAdd={addPerson}
+                onRemove={removePerson}
+              />
+              {draft.people.map((member) => {
+                const template = visibleCharacters.find((item) => item.id === member.characterId);
+                const voice = traitVoice({ char: template?.name, pronoun: template?.pronoun });
+                return (
+                  <div key={member.characterId} className="layer-card" style={{ marginTop: 14 }}>
+                    <p className="place-card__name">{personLabel(template, member.characterId)}</p>
+                    {ruleset && ruleset.attributes.length > 0 ? (
+                      <div
+                        className="setup-row"
+                        style={{ gridTemplateColumns: "1fr 1fr", marginTop: 8 }}
+                      >
+                        {ruleset.attributes.map((def: AttributeDef) => {
+                          const current = member.stats[def.id] ?? "";
+                          const listed = def.options ?? [];
+                          const picks =
+                            def.kind === "text" && listed.length > 0
+                              ? [
+                                  ...listed,
+                                  ...(current && !listed.includes(current) ? [current] : []),
+                                ]
+                              : [];
+                          return (
+                            <div className="setup-field" key={def.id}>
+                              {def.name}
+                              {picks.length > 0 || (def.kind === "text" && listed.length > 0) ? (
+                                <PickChips
+                                  ariaLabel={def.name}
+                                  choices={picks}
+                                  {...(current ? { value: current } : {})}
+                                  onPick={(choice) =>
+                                    patchStat(
+                                      member.characterId,
+                                      def.id,
+                                      current === choice ? "" : choice,
+                                    )
+                                  }
+                                  onAdd={(label) => patchStat(member.characterId, def.id, label)}
+                                />
+                              ) : (
+                                <input
+                                  value={current}
+                                  onChange={(e) =>
+                                    patchStat(member.characterId, def.id, e.target.value)
+                                  }
+                                  placeholder={
+                                    def.kind === "number" ? `${def.min ?? 0}–${def.max ?? 100}` : ""
+                                  }
+                                />
+                              )}
+                              {def.kind !== "text" &&
+                              (def.highMeaning?.trim() || def.lowMeaning?.trim()) ? (
+                                <span
+                                  className="setup-optional"
+                                  style={{ display: "block", marginTop: 4, fontWeight: 400 }}
+                                >
+                                  {[
+                                    def.highMeaning?.trim()
+                                      ? `High: ${applyTraitTokens(def.highMeaning.trim(), voice)}`
+                                      : null,
+                                    def.lowMeaning?.trim()
+                                      ? `Low: ${applyTraitTokens(def.lowMeaning.trim(), voice)}`
+                                      : null,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" ")}
+                                </span>
+                              ) : null}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : null}
+                    <LoreEditor
+                      entries={member.lore ?? []}
+                      onChange={(lore) => patchMember(member.characterId, { lore })}
+                    />
+                  </div>
+                );
+              })}
+              {draft.people.length > 0 && !ruleset ? (
+                <p className="inspector-empty" style={{ marginTop: 12 }}>
+                  Pick a rule-set above if you want starting numbers.
+                </p>
+              ) : null}
             </FormSection>
           </section>
         )}
@@ -1119,103 +1317,175 @@ export function CampaignStudio({
             <FormSection
               title="Things in this adventure"
               action={
-                <button type="button" className="setup-text-btn" onClick={() => onOpenShelf("objects")}>
+                <button
+                  type="button"
+                  className="setup-text-btn"
+                  onClick={() => onOpenShelf("objects")}
+                >
                   Edit objects
                 </button>
               }
               lede="The left list is the shelf. Move something across if it may turn up. A scene decides if it is in the room tonight."
             >
-            <ShuttleList
-              leftHeading="All objects"
-              rightHeading="In this adventure"
-              leftEmpty={shelfEmpty("Everything is already in the adventure.")}
-              rightEmpty="None yet. Pick something on the left, then Add."
-              left={visibleObjects
-                .filter((item) => !draft.objectIds.includes(item.id) && matchesTagFilter(item, pickFilter))
-                .map((item) => ({ id: item.id, label: item.name }))}
-              right={campaignObjects.map((item) => ({ id: item.id, label: item.name }))}
-              onAdd={addObject}
-              onRemove={removeObject}
-            />
+              <ShuttleList
+                leftHeading="All objects"
+                rightHeading="In this adventure"
+                leftEmpty={shelfEmpty("Everything is already in the adventure.")}
+                rightEmpty="None yet. Pick something on the left, then Add."
+                left={visibleObjects
+                  .filter(
+                    (item) =>
+                      !draft.objectIds.includes(item.id) && matchesTagFilter(item, pickFilter),
+                  )
+                  .map((item) => ({ id: item.id, label: item.name }))}
+                right={campaignObjects.map((item) => ({ id: item.id, label: item.name }))}
+                onAdd={addObject}
+                onRemove={removeObject}
+              />
             </FormSection>
           </section>
         )}
 
         {tab === "scenes" && (
           <section className="setup-section">
-            {draft.scenes.some(scene=>scene.encounter)?<>
-              <p className="panel-heading">Playable scenes</p>
-              <p className="form-section__lede">Edit scenes, actions and their connections in Storyboard. Test creates a new playthrough; continue an existing one from My conversations.</p>
-              <button type="button" className="setup-text-btn" onClick={()=>{setTab('storyboard');setStoryboardOpen(true);}}>Open Storyboard Editor →</button>
-              {draft.scenes.map(scene=><div key={scene.id} className="setup-section"><h3>{scene.name||'New scene'}</h3><p>{scene.encounter?.definition.description||'Not yet playable.'}</p><button type="button" disabled={busy||!scene.encounter||!scene.placeId} onClick={()=>void startScene(scene)}>Test this scene →</button></div>)}
-            </>:<>
-            <div className="setup-section__head">
-              <p className="panel-heading">Scenes in this adventure</p>
-              <button
-                type="button"
-                className="setup-text-btn"
-                onClick={() => setDraft({ ...draft, scenes: [...draft.scenes, emptyCampaignScene()] })}
-              >
-                + Scene
-              </button>
-            </div>
-            <p className="form-section__lede">
-              A scene is a place the player can enter: the landmark, where they start, who is here, what is in the room. Optional Pre-defined Replies are ready-made buttons — a tap is the player's turn, not a line the cast has to speak. Several triggers, each with its own buttons. They stay hidden until that trigger's words show up in chat, or — if Triggered by is empty — someone invites them along or they try to leave the map. Optional: a one-time event if they come back.
-            </p>
-            {freshNight ? (
-              <p className="form-section__lede">
-                You left play. Chat is gone. The agreement below is what the next scene knows — edit it, then Start.
-              </p>
-            ) : null}
-            <FormSection
-              title="From last scene"
-              lede="Why they arrived: the agreement, not the bar chat. Empty = a new meeting. Pass 1 honors this."
-            >
-              <textarea
-                className="setup-field__story"
-                value={handoffDraft}
-                onChange={(e) => {
-                  const text = e.target.value;
-                  setHandoffDraft(text);
-                  if (!draft) return;
-                  void repo.saveStudioResume({
-                    campaignId: draft.id,
-                    ...(resume?.sceneId ? { sceneId: resume.sceneId } : {}),
-                    ...(text.trim() ? { handoff: text.trim() } : {})
-                  });
-                }}
-                placeholder="He asked to sleep. Nothing else happened."
-              />
-            </FormSection>
-            {draft.scenes.map((scene) => (
-              <SceneCard
-                key={scene.id}
-                scene={scene}
-                lastPlayed={scene.id === resume?.sceneId}
-                campaignPlaces={campaignPlaces}
-                campaignRealms={visibleRealms}
-                campaignPeople={campaignPeople}
-                campaignObjects={campaignObjects}
-                busy={busy}
-                onPatch={(patch) => patchScene(scene.id, patch)}
-                onRemove={() =>
-                  setDraft({
-                    ...draft,
-                    scenes: draft.scenes.filter((item) => item.id !== scene.id),
-                    sceneLinks: removeLinksForScene(draft.sceneLinks, scene.id)
-                  })
-                }
-                onStart={() => void startScene(scene)}
-                canRemove={draft.scenes.length > 1}
-              />
-            ))}
-            </>}
+            {draft.scenes.some((scene) => scene.encounter) ? (
+              <>
+                <p className="panel-heading">Playable scenes</p>
+                <p className="form-section__lede">
+                  Edit scenes, actions and their connections in Storyboard. Test creates a new
+                  playthrough; continue an existing one from My conversations.
+                </p>
+                <button
+                  type="button"
+                  className="setup-text-btn"
+                  onClick={() => {
+                    setTab("storyboard");
+                    setStoryboardOpen(true);
+                  }}
+                >
+                  Open Storyboard Editor →
+                </button>
+                {draft.scenes.map((scene) => (
+                  <div key={scene.id} className="setup-section">
+                    <h3>{scene.name || "New scene"}</h3>
+                    <p>{scene.encounter?.definition.description || "Not yet playable."}</p>
+                    <button
+                      type="button"
+                      disabled={busy || !scene.encounter || !scene.placeId}
+                      onClick={() => void startScene(scene)}
+                    >
+                      Test this scene →
+                    </button>
+                  </div>
+                ))}
+              </>
+            ) : (
+              <>
+                <div className="setup-section__head">
+                  <p className="panel-heading">Scenes in this adventure</p>
+                  <button
+                    type="button"
+                    className="setup-text-btn"
+                    onClick={() =>
+                      setDraft({ ...draft, scenes: [...draft.scenes, emptyCampaignScene()] })
+                    }
+                  >
+                    + Scene
+                  </button>
+                </div>
+                <p className="form-section__lede">
+                  A scene is a place the player can enter: the landmark, where they start, who is
+                  here, what is in the room. Optional Pre-defined Replies are ready-made buttons — a
+                  tap is the player's turn, not a line the cast has to speak. Several triggers, each
+                  with its own buttons. They stay hidden until that trigger's words show up in chat,
+                  or — if Triggered by is empty — someone invites them along or they try to leave
+                  the map. Optional: a one-time event if they come back.
+                </p>
+                {freshNight ? (
+                  <p className="form-section__lede">
+                    You left play. Chat is gone. The agreement below is what the next scene knows —
+                    edit it, then Start.
+                  </p>
+                ) : null}
+                <FormSection
+                  title="From last scene"
+                  lede="Why they arrived: the agreement, not the bar chat. Empty = a new meeting. Pass 1 honors this."
+                >
+                  <textarea
+                    className="setup-field__story"
+                    value={handoffDraft}
+                    onChange={(e) => {
+                      const text = e.target.value;
+                      setHandoffDraft(text);
+                      if (!draft) return;
+                      void repo.saveStudioResume({
+                        campaignId: draft.id,
+                        ...(resume?.sceneId ? { sceneId: resume.sceneId } : {}),
+                        ...(text.trim() ? { handoff: text.trim() } : {}),
+                      });
+                    }}
+                    placeholder="He asked to sleep. Nothing else happened."
+                  />
+                </FormSection>
+                {draft.scenes.map((scene) => (
+                  <SceneCard
+                    key={scene.id}
+                    scene={scene}
+                    lastPlayed={scene.id === resume?.sceneId}
+                    campaignPlaces={campaignPlaces}
+                    campaignRealms={visibleRealms}
+                    campaignPeople={campaignPeople}
+                    campaignObjects={campaignObjects}
+                    busy={busy}
+                    onPatch={(patch) => patchScene(scene.id, patch)}
+                    onRemove={() =>
+                      setDraft({
+                        ...draft,
+                        scenes: draft.scenes.filter((item) => item.id !== scene.id),
+                        sceneLinks: removeLinksForScene(draft.sceneLinks, scene.id),
+                      })
+                    }
+                    onStart={() => void startScene(scene)}
+                    canRemove={draft.scenes.length > 1}
+                  />
+                ))}
+              </>
+            )}
           </section>
         )}
 
         {tab === "storyboard" && (
           <section className="setup-section">
-            <h2>Your adventure, connected</h2><p className="form-section__lede">Build scenes and choices in a spacious editor. Your adventure details and draft stay here when you close it.</p><button type="button" className="setup-start" onClick={()=>setStoryboardOpen(true)}>Open Storyboard Editor →</button>{storyboardOpen&&<StoryboardEditor campaign={draft} places={draft.mapWorldId?visiblePlaces:campaignPlaces} worlds={visibleRealms} repo={repo} onRefresh={refresh} characters={campaignPeople} objects={campaignObjects} busy={busy} onChange={next=>{setDraft(next);setNotice(null);setError(null);}} onPlay={scene=>void startScene(scene)} onSave={()=>void save()} onClose={()=>setStoryboardOpen(false)} error={error} notice={notice}/>}
+            <h2>Your adventure, connected</h2>
+            <p className="form-section__lede">
+              Build scenes and choices in a spacious editor. Your adventure details and draft stay
+              here when you close it.
+            </p>
+            <button type="button" className="setup-start" onClick={() => setStoryboardOpen(true)}>
+              Open Storyboard Editor →
+            </button>
+            {storyboardOpen && (
+              <StoryboardEditor
+                campaign={draft}
+                places={draft.mapWorldId ? visiblePlaces : campaignPlaces}
+                worlds={visibleRealms}
+                repo={repo}
+                onRefresh={refresh}
+                characters={campaignPeople}
+                objects={campaignObjects}
+                busy={busy}
+                onChange={(next) => {
+                  setDraft(next);
+                  setNotice(null);
+                  setError(null);
+                }}
+                onPlay={(scene) => void startScene(scene)}
+                onSave={() => void save()}
+                onClose={() => setStoryboardOpen(false)}
+                error={error}
+                notice={notice}
+              />
+            )}
           </section>
         )}
 
@@ -1226,7 +1496,12 @@ export function CampaignStudio({
             Save adventure
           </button>
           {savedIds.has(draft.id) ? (
-            <button type="button" className="setup-example" disabled={busy} onClick={() => void remove()}>
+            <button
+              type="button"
+              className="setup-example"
+              disabled={busy}
+              onClick={() => void remove()}
+            >
               Delete
             </button>
           ) : null}
@@ -1247,7 +1522,7 @@ function SceneCard({
   onPatch,
   onRemove,
   onStart,
-  canRemove
+  canRemove,
 }: {
   scene: CampaignScene;
   lastPlayed: boolean;
@@ -1261,7 +1536,7 @@ function SceneCard({
   onStart: () => void;
   canRemove: boolean;
 }) {
-  const canStart = Boolean(scene.placeId) && (!!scene.encounter||scene.people.length > 0);
+  const canStart = Boolean(scene.placeId) && (!!scene.encounter || scene.people.length > 0);
 
   function togglePerson(id: string) {
     onPatch((current) => {
@@ -1276,7 +1551,9 @@ function SceneCard({
   function patchPerson(id: string, patch: Partial<SceneCast>) {
     onPatch((current) => ({
       ...current,
-      people: current.people.map((item) => (item.characterId === id ? { ...item, ...patch } : item))
+      people: current.people.map((item) =>
+        item.characterId === id ? { ...item, ...patch } : item,
+      ),
     }));
   }
 
@@ -1292,34 +1569,45 @@ function SceneCard({
           when: "return_to_bar" as const,
           requiresFlags: [],
           requiresAbsentFlags: [],
-          setsFlags: []
-        }
-      ]
+          setsFlags: [],
+        },
+      ],
     }));
   }
 
   function patchWhatNowSet(setId: string, patch: (set: WhatNowSet) => WhatNowSet) {
     onPatch((current) => ({
       ...current,
-      whatNowSets: whatNowSetsFromScene(current).map((item) => (item.id === setId ? patch(item) : item))
+      whatNowSets: whatNowSetsFromScene(current).map((item) =>
+        item.id === setId ? patch(item) : item,
+      ),
     }));
   }
 
   function addWhatNowSet() {
     onPatch((current) => ({
       ...current,
-      whatNowSets: [...whatNowSetsFromScene(current), emptyWhatNowSet()]
+      whatNowSets: [...whatNowSetsFromScene(current), emptyWhatNowSet()],
     }));
   }
 
   const whatNowPlace = campaignPlaces.find((item) => item.id === scene.placeId);
-  const floorGoesTo = venueBuildingName(whatNowPlace?.name) || whatNowPlace?.name.trim() || "the landmark";
+  const floorGoesTo =
+    venueBuildingName(whatNowPlace?.name) || whatNowPlace?.name.trim() || "the landmark";
   const whatNowRooms = whatNowPlace?.rooms ?? [];
   const whatNowSets = whatNowSetsFromScene(scene);
 
   return (
-    <div className={lastPlayed ? "layer-card campaign-scene campaign-scene--last" : "layer-card campaign-scene"}>
-      {lastPlayed ? <p className="setup-optional" style={{ margin: "0 0 6px" }}>last played</p> : null}
+    <div
+      className={
+        lastPlayed ? "layer-card campaign-scene campaign-scene--last" : "layer-card campaign-scene"
+      }
+    >
+      {lastPlayed ? (
+        <p className="setup-optional" style={{ margin: "0 0 6px" }}>
+          last played
+        </p>
+      ) : null}
       <SheetNameField
         ariaLabel="Scene name"
         value={scene.name}
@@ -1430,7 +1718,10 @@ function SceneCard({
                   Trust
                   <span className="setup-optional">with you</span>
                 </span>
-                <input value={pick.trust} onChange={(e) => patchPerson(pick.characterId, { trust: e.target.value })} />
+                <input
+                  value={pick.trust}
+                  onChange={(e) => patchPerson(pick.characterId, { trust: e.target.value })}
+                />
               </label>
               <label className="setup-field setup-field--row">
                 <span className="setup-field__label">
@@ -1447,7 +1738,10 @@ function SceneCard({
                   Tension
                   <span className="setup-optional">tonight</span>
                 </span>
-                <input value={pick.tension} onChange={(e) => patchPerson(pick.characterId, { tension: e.target.value })} />
+                <input
+                  value={pick.tension}
+                  onChange={(e) => patchPerson(pick.characterId, { tension: e.target.value })}
+                />
               </label>
             </div>
           );
@@ -1466,7 +1760,7 @@ function SceneCard({
                   onPatch({
                     objectIds: scene.objectIds.includes(item.id)
                       ? scene.objectIds.filter((id) => id !== item.id)
-                      : [...scene.objectIds, item.id]
+                      : [...scene.objectIds, item.id],
                   })
                 }
               />
@@ -1493,14 +1787,15 @@ function SceneCard({
                 onChange={(e) =>
                   patchWhatNowSet(set.id, (current) => ({
                     ...current,
-                    keywords: parseKeywordList(e.target.value)
+                    keywords: parseKeywordList(e.target.value),
                   }))
                 }
                 placeholder="last call, follow me"
               />
             </label>
             <p className="form-section__lede">
-              Words in chat that show these buttons. Empty = someone invites them along, or they try to leave the map.
+              Words in chat that show these buttons. Empty = someone invites them along, or they try
+              to leave the map.
             </p>
             {set.choices.map((choice) => (
               <div key={choice.id}>
@@ -1512,8 +1807,8 @@ function SceneCard({
                       patchWhatNowSet(set.id, (current) => ({
                         ...current,
                         choices: current.choices.map((item) =>
-                          item.id === choice.id ? { ...item, label: e.target.value } : item
-                        )
+                          item.id === choice.id ? { ...item, label: e.target.value } : item,
+                        ),
                       }))
                     }
                     placeholder="I tell her the truth"
@@ -1522,13 +1817,17 @@ function SceneCard({
                 <label className="setup-field setup-field--row">
                   <span className="setup-field__label">Goes to</span>
                   <select
-                    value={!choice.room.trim() || isWhatNowStay(choice.room) ? WHAT_NOW_STAY : choice.room}
+                    value={
+                      !choice.room.trim() || isWhatNowStay(choice.room)
+                        ? WHAT_NOW_STAY
+                        : choice.room
+                    }
                     onChange={(e) =>
                       patchWhatNowSet(set.id, (current) => ({
                         ...current,
                         choices: current.choices.map((item) =>
-                          item.id === choice.id ? { ...item, room: e.target.value } : item
-                        )
+                          item.id === choice.id ? { ...item, room: e.target.value } : item,
+                        ),
                       }))
                     }
                   >
@@ -1547,7 +1846,7 @@ function SceneCard({
                   onClick={() =>
                     patchWhatNowSet(set.id, (current) => ({
                       ...current,
-                      choices: current.choices.filter((item) => item.id !== choice.id)
+                      choices: current.choices.filter((item) => item.id !== choice.id),
                     }))
                   }
                 >
@@ -1564,8 +1863,8 @@ function SceneCard({
                     ...current,
                     choices: [
                       ...current.choices,
-                      { id: crypto.randomUUID(), label: "", room: WHAT_NOW_STAY }
-                    ]
+                      { id: crypto.randomUUID(), label: "", room: WHAT_NOW_STAY },
+                    ],
                   }))
                 }
               >
@@ -1578,7 +1877,7 @@ function SceneCard({
               onClick={() =>
                 onPatch((current) => ({
                   ...current,
-                  whatNowSets: whatNowSetsFromScene(current).filter((item) => item.id !== set.id)
+                  whatNowSets: whatNowSetsFromScene(current).filter((item) => item.id !== set.id),
                 }))
               }
             >
@@ -1609,8 +1908,8 @@ function SceneCard({
                   onPatch((current) => ({
                     ...current,
                     triggers: current.triggers.map((item) =>
-                      item.id === trigger.id ? { ...item, content: e.target.value } : item
-                    )
+                      item.id === trigger.id ? { ...item, content: e.target.value } : item,
+                    ),
                   }))
                 }
                 placeholder="Two strangers come in and ask about a brooch…"
@@ -1624,15 +1923,18 @@ function SceneCard({
                   onPatch((current) => ({
                     ...current,
                     triggers: current.triggers.map((item) =>
-                      item.id === trigger.id ? { ...item, keywords: parseKeywordList(e.target.value) } : item
-                    )
+                      item.id === trigger.id
+                        ? { ...item, keywords: parseKeywordList(e.target.value) }
+                        : item,
+                    ),
                   }))
                 }
                 placeholder="brooch, broschen"
               />
             </label>
             <p className="form-section__lede">
-              A word said in chat, or something in someone's hands. {triggerWhenLabel("return_to_bar")} — a night away counts too.
+              A word said in chat, or something in someone's hands.{" "}
+              {triggerWhenLabel("return_to_bar")} — a night away counts too.
             </p>
             <button
               type="button"
@@ -1640,7 +1942,7 @@ function SceneCard({
               onClick={() =>
                 onPatch((current) => ({
                   ...current,
-                  triggers: current.triggers.filter((item) => item.id !== trigger.id)
+                  triggers: current.triggers.filter((item) => item.id !== trigger.id),
                 }))
               }
             >
@@ -1651,7 +1953,12 @@ function SceneCard({
       </FormSection>
 
       <div className="studio-sheet__actions">
-        <button type="button" className="setup-start" disabled={!canStart || busy} onClick={onStart}>
+        <button
+          type="button"
+          className="setup-start"
+          disabled={!canStart || busy}
+          onClick={onStart}
+        >
           Start this scene
         </button>
         {canRemove ? (

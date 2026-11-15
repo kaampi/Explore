@@ -1,20 +1,13 @@
 import "fake-indexeddb/auto";
 import { IDBFactory } from "fake-indexeddb";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  defaultThemeLibrary,
-  PRESET_THEMES,
-  ThemeLibrarySchema,
-} from "../../src/ui/themes/theme";
+import { defaultThemeLibrary, PRESET_THEMES, ThemeLibrarySchema } from "../../src/ui/themes/theme";
 import {
   activatePlayTheme,
   applyPlayTheme,
   removeConversationTheme,
 } from "../../src/ui/themes/conversationTheme";
-import {
-  loadThemeLibrary,
-  saveThemeLibrary,
-} from "../../src/ui/themes/themeStorage";
+import { loadThemeLibrary, saveThemeLibrary } from "../../src/ui/themes/themeStorage";
 beforeEach(() => vi.stubGlobal("indexedDB", new IDBFactory()));
 afterEach(() => vi.unstubAllGlobals());
 describe("per-conversation appearance", () => {
@@ -55,11 +48,7 @@ describe("per-conversation appearance", () => {
     let library = ThemeLibrarySchema.parse(old);
     expect(library.conversations).toEqual({});
     library = activatePlayTheme(library, "first");
-    library = applyPlayTheme(
-      activatePlayTheme(library, null),
-      PRESET_THEMES[3]!,
-      null,
-    );
+    library = applyPlayTheme(activatePlayTheme(library, null), PRESET_THEMES[3]!, null);
     expect(activatePlayTheme(library, "first").active.id).toBe("parchment");
     expect(activatePlayTheme(library, "new").active.id).toBe("quiet");
   });

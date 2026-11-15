@@ -7,28 +7,64 @@ import { buildLayerBlocks } from "../../src/layers/LayerEngine";
 import { groupLayersForCompaction } from "../../src/layers/LayerCompaction";
 import { createSessionFromSetup } from "@session/createSession";
 import { IndexedDBRepository } from "@persistence/IndexedDBRepository";
-import { collectLibraryBackup, parseLibraryBackup, restoreLibraryBackup } from "@library/libraryBackup";
+import {
+  collectLibraryBackup,
+  parseLibraryBackup,
+  restoreLibraryBackup,
+} from "@library/libraryBackup";
 import { newCharacterTemplate } from "@library/LibrarySchema";
 import { parseSession } from "@state/StateSchema";
 import { extractSillyTavernJsonFromPng } from "@library/sillyTavernImport";
 
 function entry(extra: Record<string, unknown> = {}) {
-  return { keys: ["gate"], content: "The gate opens at dawn.", enabled: true, insertion_order: 100, extensions: {}, ...extra };
+  return {
+    keys: ["gate"],
+    content: "The gate opens at dawn.",
+    enabled: true,
+    insertion_order: 100,
+    extensions: {},
+    ...extra,
+  };
 }
 function scene() {
-  return createSessionFromSetup({ location: "Garden", lighting: "soft", noise: "quiet", music: false, placeNote: "", characters: [{ name: "Ari", libraryId: "ari", personality: "Curious", mood: "neutral", position: "here", lore: [{ content: "Native lore", keywords: ["old"] }] }] }, "test");
+  return createSessionFromSetup(
+    {
+      location: "Garden",
+      lighting: "soft",
+      noise: "quiet",
+      music: false,
+      placeNote: "",
+      characters: [
+        {
+          name: "Ari",
+          libraryId: "ari",
+          personality: "Curious",
+          mood: "neutral",
+          position: "here",
+          lore: [{ content: "Native lore", keywords: ["old"] }],
+        },
+      ],
+    },
+    "test",
+  );
 }
 function approved(raw: unknown) {
   const book = importLorebook(raw, "Garden.json");
   book.binding = { kind: "all", targetId: "" };
-  book.entries.forEach(e => { e.approved = true; });
+  book.entries.forEach((e) => {
+    e.approved = true;
+  });
   return book;
 }
 
 describe("SillyTavern lore adapter", () => {
   it("reads native World Info, embedded V2/V3 and standalone V3 without changing text or original metadata", () => {
     const sources = [
-      { entries: { 4: { uid: 4, key: ["gate"], content: "Åäö. Gate.", comment: "A note", disable: false } } },
+      {
+        entries: {
+          4: { uid: 4, key: ["gate"], content: "Åäö. Gate.", comment: "A note", disable: false },
+        },
+      },
       { spec: "chara_card_v2", data: { character_book: { entries: [entry()] } } },
       { spec: "chara_card_v3", data: { character_book: { entries: [entry()] } } },
       { spec: "lorebook_v3", data: { name: "Garden", entries: [entry()] } },
@@ -45,14 +81,27 @@ describe("SillyTavern lore adapter", () => {
   });
 
   it.each([
-    { enabled: false }, { selective: true, secondary_keys: ["night"] }, { keys: [] },
-    { keys: ["/gate/i"] }, { use_regex: true }, { case_sensitive: true }, { extensions: { probability: 40 } },
-    { extensions: { sticky: 2 } }, { extensions: { cooldown: 2 } }, { extensions: { delay: 2 } },
-    { extensions: { vectorized: true } }, { extensions: { group: "secrets" } },
-    { extensions: { delay_until_recursion: true } }, { position: 4 }, { content: "{{char}} knows this." },
-    { content: "@@activate\nHidden rule" }, { extensions: { automation_id: "run" } },
-    { extensions: { future_activation: true } }, { future_rule: "x" }, { constant: "true" },
-  ])("retains unsupported entry as dormant even if marked approved: %j", extra => {
+    { enabled: false },
+    { selective: true, secondary_keys: ["night"] },
+    { keys: [] },
+    { keys: ["/gate/i"] },
+    { use_regex: true },
+    { case_sensitive: true },
+    { extensions: { probability: 40 } },
+    { extensions: { sticky: 2 } },
+    { extensions: { cooldown: 2 } },
+    { extensions: { delay: 2 } },
+    { extensions: { vectorized: true } },
+    { extensions: { group: "secrets" } },
+    { extensions: { delay_until_recursion: true } },
+    { position: 4 },
+    { content: "{{char}} knows this." },
+    { content: "@@activate\nHidden rule" },
+    { extensions: { automation_id: "run" } },
+    { extensions: { future_activation: true } },
+    { future_rule: "x" },
+    { constant: "true" },
+  ])("retains unsupported entry as dormant even if marked approved: %j", (extra) => {
     const book = approved({ entries: [entry(extra)] });
     expect(book.entries[0]?.mode).toBe("dormant");
     expect(book.entries[0]?.reasons.length).toBeGreaterThan(0);
@@ -61,7 +110,22 @@ describe("SillyTavern lore adapter", () => {
   });
 
   it("accepts native default selective=true with empty secondary keys, because no secondary condition applies", () => {
-    const book = importLorebook({ entries: { 1: { uid: 1, key: ["gate"], keysecondary: [], selective: true, content: "Dawn", disable: false, characterFilter: { isExclude: false, names: [], tags: [] } } } }, "Default.json");
+    const book = importLorebook(
+      {
+        entries: {
+          1: {
+            uid: 1,
+            key: ["gate"],
+            keysecondary: [],
+            selective: true,
+            content: "Dawn",
+            disable: false,
+            characterFilter: { isExclude: false, names: [], tags: [] },
+          },
+        },
+      },
+      "Default.json",
+    );
     expect(book.entries[0]?.mode).toBe("keywords");
     expect(book.entries[0]?.approved).toBe(false);
   });
@@ -79,12 +143,12 @@ describe("SillyTavern lore adapter", () => {
     const book = approved({ entries: [entry({ comment: "PRIVATE MEMO" })] });
     const fresh = attachLorebooks(original, [book]);
     expect(original).toEqual(before);
-    expect(buildLayerBlocks(fresh).some(b => b.content.includes("gate opens"))).toBe(false);
+    expect(buildLayerBlocks(fresh).some((b) => b.content.includes("gate opens"))).toBe(false);
     fresh.conversation = [{ turn: 0, role: "player", content: "GATE?" }];
-    expect(buildLayerBlocks(fresh).some(b => b.content === "The gate opens at dawn.")).toBe(true);
+    expect(buildLayerBlocks(fresh).some((b) => b.content === "The gate opens at dawn.")).toBe(true);
     expect(JSON.stringify(buildLayerBlocks(fresh))).not.toContain("PRIVATE MEMO");
     fresh.conversation = [{ turn: 0, role: "player", content: "gatehouse" }];
-    expect(buildLayerBlocks(fresh).some(b => b.content.includes("gate opens"))).toBe(false);
+    expect(buildLayerBlocks(fresh).some((b) => b.content.includes("gate opens"))).toBe(false);
     book.entries[0]!.approved = false;
     expect(attachLorebooks(original, [book])).toEqual(original);
     expect(buildLayerBlocks(before)).toEqual(buildLayerBlocks(original));
@@ -104,17 +168,30 @@ describe("SillyTavern lore adapter", () => {
     expect(fresh.layers.at(-1)?.content).toBe("The gate opens at dawn.");
     book.binding = { kind: "campaign", targetId: "campaign" };
     expect(attachLorebooks(original, [book])).toEqual(original);
-    expect(attachLorebooks({ ...original, campaignId: "campaign" }, [book]).layers).toHaveLength(original.layers.length + 1);
+    expect(attachLorebooks({ ...original, campaignId: "campaign" }, [book]).layers).toHaveLength(
+      original.layers.length + 1,
+    );
   });
 
   it("caps imported context, keeps constant lore optional, and excludes it from AI compaction", () => {
-    const book = approved({ entries: [entry({ constant: true, content: "x".repeat(4000) }), entry({ constant: true, content: "y".repeat(2000) })] });
+    const book = approved({
+      entries: [
+        entry({ constant: true, content: "x".repeat(4000) }),
+        entry({ constant: true, content: "y".repeat(2000) }),
+      ],
+    });
     const fresh = attachLorebooks(scene(), [book]);
-    const blocks = buildLayerBlocks(fresh).filter(b => b.content.startsWith("x") || b.content.startsWith("y"));
+    const blocks = buildLayerBlocks(fresh).filter(
+      (b) => b.content.startsWith("x") || b.content.startsWith("y"),
+    );
     expect(blocks).toHaveLength(1);
     expect(blocks[0]?.required).toBe(false);
     expect(canonSettingText(fresh)).not.toContain("x".repeat(100));
-    expect(groupLayersForCompaction(fresh.layers, Object.keys(fresh.characters)).flatMap(g => g.layers).some(l => l.loreSource)).toBe(false);
+    expect(
+      groupLayersForCompaction(fresh.layers, Object.keys(fresh.characters))
+        .flatMap((g) => g.layers)
+        .some((l) => l.loreSource),
+    ).toBe(false);
   });
 
   it("persists raw sources, approval and links, includes lorebooks in backup and keeps existing conversations untouched", async () => {
@@ -136,21 +213,29 @@ describe("SillyTavern lore adapter", () => {
     expect((await restoreLibraryBackup(target, parsed.backup)).skipped).toBe(0);
     expect((await target.listLorebooks()).entries).toEqual([book]);
     await expect(target.saveLorebook({ ...book, name: "" })).rejects.toThrow();
-    await expect(target.saveCharacterWithLorebook({ ...character, name: "Changed" }, { ...book, name: "" })).rejects.toThrow();
+    await expect(
+      target.saveCharacterWithLorebook({ ...character, name: "Changed" }, { ...book, name: "" }),
+    ).rejects.toThrow();
     expect((await target.listCharacters())[0]?.name).toBe("Ari");
     expect((await target.listLorebooks()).entries).toEqual([book]);
-    await reopened.close(); await target.close();
+    await reopened.close();
+    await target.close();
   });
 
   it("decodes Unicode lore from base64 PNG character chunks", async () => {
-    const raw = { spec: "chara_card_v3", data: { name: "Åsa", character_book: { entries: [entry({ content: "Öppna grinden." })] } } };
+    const raw = {
+      spec: "chara_card_v3",
+      data: { name: "Åsa", character_book: { entries: [entry({ content: "Öppna grinden." })] } },
+    };
     const base64 = Buffer.from(JSON.stringify(raw), "utf8").toString("base64");
     const payload = new TextEncoder().encode(`ccv3\0${base64}`);
     const chunk = new Uint8Array(12 + payload.length);
     new DataView(chunk.buffer).setUint32(0, payload.length);
-    chunk.set(new TextEncoder().encode("tEXt"), 4); chunk.set(payload, 8);
+    chunk.set(new TextEncoder().encode("tEXt"), 4);
+    chunk.set(payload, 8);
     const bytes = new Uint8Array(8 + chunk.length);
-    bytes.set([137,80,78,71,13,10,26,10]); bytes.set(chunk, 8);
+    bytes.set([137, 80, 78, 71, 13, 10, 26, 10]);
+    bytes.set(chunk, 8);
     const decoded = await extractSillyTavernJsonFromPng(bytes);
     expect(decoded).toEqual(raw);
     expect(importLorebook(decoded, "Åsa.png").entries[0]?.content).toBe("Öppna grinden.");
@@ -167,7 +252,8 @@ describe("SillyTavern lore adapter", () => {
     await new Promise<void>((resolve, reject) => {
       const tx = old.transaction("sessions", "readwrite");
       tx.objectStore("sessions").put(original);
-      tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
     });
     old.close();
     const repo = new IndexedDBRepository(factory, "v11-lore");
@@ -178,5 +264,4 @@ describe("SillyTavern lore adapter", () => {
     expect(await repo.loadSession(original.id)).toEqual(original);
     await repo.close();
   });
-
 });

@@ -49,7 +49,7 @@ export function narrationCallName(session: Session, characterId: string): string
  */
 export function pass1NameOptions(
   session: Session,
-  characterId: string
+  characterId: string,
 ): { characterName?: string; fullName?: string; unheardGiven?: string } {
   const character = session.characters[characterId];
   if (!character?.name?.trim()) return {};
@@ -59,12 +59,12 @@ export function pass1NameOptions(
     const full = formatPersonName(character.name, character.familyName, character.middleName);
     return {
       characterName: given,
-      ...(full !== given ? { fullName: full } : {})
+      ...(full !== given ? { fullName: full } : {}),
     };
   }
   return {
     characterName: publicCallName(character),
-    unheardGiven: given
+    unheardGiven: given,
   };
 }
 

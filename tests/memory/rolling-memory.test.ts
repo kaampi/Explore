@@ -9,7 +9,7 @@ import {
   runRollingMemoryCondensation,
   runRollingMemoryUntilQuiet,
   CONVERSATION_SUMMARIZER_SYSTEM,
-  DEFAULT_ROLLING_MEMORY_OPTIONS
+  DEFAULT_ROLLING_MEMORY_OPTIONS,
 } from "@memory/RollingMemory";
 import { StateEngine } from "@state/StateEngine";
 import { EventLog } from "@events/EventLog";
@@ -36,7 +36,7 @@ function makeSession(overrides: Partial<Session> = {}): Session {
     events: [],
     snapshots: [],
     diagnostics: [],
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -44,7 +44,7 @@ function turns(count: number, startAt = 1) {
   return Array.from({ length: count }, (_, i) => ({
     turn: startAt + i,
     role: "player" as const,
-    content: `message ${startAt + i}`
+    content: `message ${startAt + i}`,
   }));
 }
 
@@ -57,12 +57,22 @@ describe("getHighestCondensedTurnEnd", () => {
     const session = makeSession({
       memory: {
         episodic: [
-          { id: "m1", createdAtTurn: 10, importance: 0.6, content: "[condensed turns 1-10] Talked about the weather." },
-          { id: "m2", createdAtTurn: 20, importance: 0.6, content: "[condensed turns 11-20] Discussed the job offer." }
+          {
+            id: "m1",
+            createdAtTurn: 10,
+            importance: 0.6,
+            content: "[condensed turns 1-10] Talked about the weather.",
+          },
+          {
+            id: "m2",
+            createdAtTurn: 20,
+            importance: 0.6,
+            content: "[condensed turns 11-20] Discussed the job offer.",
+          },
         ],
         semantic: [],
-        relational: []
-      }
+        relational: [],
+      },
     });
     expect(getHighestCondensedTurnEnd(session)).toBe(20);
   });
@@ -70,10 +80,12 @@ describe("getHighestCondensedTurnEnd", () => {
   it("ignores unrelated memory entries", () => {
     const session = makeSession({
       memory: {
-        episodic: [{ id: "m1", createdAtTurn: 5, importance: 0.5, content: "Just a regular memory." }],
+        episodic: [
+          { id: "m1", createdAtTurn: 5, importance: 0.5, content: "Just a regular memory." },
+        ],
         semantic: [],
-        relational: []
-      }
+        relational: [],
+      },
     });
     expect(getHighestCondensedTurnEnd(session)).toBe(0);
   });
@@ -103,10 +115,17 @@ describe("selectBatchToCondense", () => {
     const session = makeSession({
       conversation: turns(40),
       memory: {
-        episodic: [{ id: "m1", createdAtTurn: 10, importance: 0.6, content: "[condensed turns 1-10] earlier summary" }],
+        episodic: [
+          {
+            id: "m1",
+            createdAtTurn: 10,
+            importance: 0.6,
+            content: "[condensed turns 1-10] earlier summary",
+          },
+        ],
         semantic: [],
-        relational: []
-      }
+        relational: [],
+      },
     });
     const batch = selectBatchToCondense(session);
     expect(batch!.every((t) => t.turn > 10)).toBe(true);
@@ -123,7 +142,7 @@ describe("selectBatchToCondense", () => {
     const conversation = Array.from({ length: 20 }, (_, i) => ({
       turn: i + 1,
       role: "player" as const,
-      content: "lorem ".repeat(400)
+      content: "lorem ".repeat(400),
     }));
     const session = makeSession({ conversation });
     const dropped = selectTurnsDroppedByBudget(session);
@@ -142,7 +161,7 @@ describe("selectBatchToCondense", () => {
     const batch = selectPlaceChangeBatch(session, {
       ...DEFAULT_ROLLING_MEMORY_OPTIONS,
       previousStage: "the aurora room",
-      currentStage: "emma's room"
+      currentStage: "emma's room",
     });
     expect(batch!.map((t) => t.turn)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
   });
@@ -153,14 +172,18 @@ describe("selectBatchToCondense", () => {
       selectPlaceChangeBatch(session, {
         ...DEFAULT_ROLLING_MEMORY_OPTIONS,
         previousStage: "the aurora room",
-        currentStage: "the aurora room"
-      })
+        currentStage: "the aurora room",
+      }),
     ).toBeNull();
   });
 
   it("lists standing Here and character notes so the recap can skip them", () => {
     const session = makeSession({
-      scene: { location: "The Aurora Room", environment: {}, brief: "A quiet jazz bar after hours." },
+      scene: {
+        location: "The Aurora Room",
+        environment: {},
+        brief: "A quiet jazz bar after hours.",
+      },
       layers: [
         {
           id: "c1",
@@ -168,9 +191,9 @@ describe("selectBatchToCondense", () => {
           priority: 0,
           content: "Emma is a reserved bartender.",
           active: true,
-          aiGenerated: false
-        }
-      ]
+          aiGenerated: false,
+        },
+      ],
     });
     const notes = standingNotesForSummarizer(session);
     expect(notes.join(" ")).toMatch(/quiet jazz bar/i);
@@ -185,13 +208,15 @@ function providerReturning(text: string): LLMProvider {
     async *streamCompletion(_req: CompletionRequest): AsyncGenerator<StreamChunk> {
       yield { type: "text_delta", text };
       yield { type: "done", finishReason: "stop" };
-    }
+    },
   };
 }
 
 describe("createLLMConversationSummarizer", () => {
   it("returns the model's summary on success", async () => {
-    const adapter = new LLMAdapter({ primary: providerReturning("They discussed old times at the bar.") });
+    const adapter = new LLMAdapter({
+      primary: providerReturning("They discussed old times at the bar."),
+    });
     const summarizer = createLLMConversationSummarizer(adapter, { sleepImpl: async () => {} });
     const summary = await summarizer(turns(3));
     expect(summary).toBe("They discussed old times at the bar.");
@@ -206,10 +231,10 @@ describe("createLLMConversationSummarizer", () => {
         lastRequest = request;
         yield { type: "text_delta", text: "They sat at the bar." };
         yield { type: "done", finishReason: "stop" };
-      }
+      },
     };
     const summarizer = createLLMConversationSummarizer(new LLMAdapter({ primary: capturing }), {
-      sleepImpl: async () => {}
+      sleepImpl: async () => {},
     });
     await summarizer(turns(3));
     expect(lastRequest?.messages[0]?.content).toBe(CONVERSATION_SUMMARIZER_SYSTEM);
@@ -228,15 +253,15 @@ describe("createLLMConversationSummarizer", () => {
         lastRequest = request;
         yield { type: "text_delta", text: "They left two glasses on the bar." };
         yield { type: "done", finishReason: "stop" };
-      }
+      },
     };
     const summarizer = createLLMConversationSummarizer(new LLMAdapter({ primary: capturing }), {
-      sleepImpl: async () => {}
+      sleepImpl: async () => {},
     });
     await summarizer(turns(3), {
       notes: ["core: Emma is a reserved bartender."],
       previousPlace: "The Aurora Room",
-      currentPlace: "Emma's room"
+      currentPlace: "Emma's room",
     });
     const user = lastRequest?.messages[1]?.content ?? "";
     expect(user).toContain("Already in standing notes");
@@ -251,14 +276,14 @@ describe("createLLMConversationSummarizer", () => {
       capabilities: { streaming: true, structuredOutput: false, cancellation: true },
       async *streamCompletion(): AsyncGenerator<StreamChunk> {
         throw new Error("connection refused");
-      }
+      },
     };
     const adapter = new LLMAdapter({ primary: failing });
     const onFailure = vi.fn();
     const summarizer = createLLMConversationSummarizer(adapter, {
       maxAttempts: 2,
       sleepImpl: async () => {},
-      onFailure
+      onFailure,
     });
 
     const summary = await summarizer(turns(2));
@@ -269,7 +294,10 @@ describe("createLLMConversationSummarizer", () => {
 
   it("treats an empty response as a failure and falls back", async () => {
     const adapter = new LLMAdapter({ primary: providerReturning("") });
-    const summarizer = createLLMConversationSummarizer(adapter, { maxAttempts: 1, sleepImpl: async () => {} });
+    const summarizer = createLLMConversationSummarizer(adapter, {
+      maxAttempts: 1,
+      sleepImpl: async () => {},
+    });
     const summary = await summarizer(turns(1));
     expect(summary).toContain("message 1");
   });
@@ -285,7 +313,10 @@ describe("runRollingMemoryCondensation", () => {
 
   it("writes a condensation-tagged episodic memory entry when a batch is due", async () => {
     const stateEngine = new StateEngine(makeSession({ conversation: turns(30) }), new EventLog());
-    const result = await runRollingMemoryCondensation(stateEngine, async () => "They caught up on old times.");
+    const result = await runRollingMemoryCondensation(
+      stateEngine,
+      async () => "They caught up on old times.",
+    );
 
     expect(result).toEqual({ condensed: true, turnRange: [1, 10] });
     const entry = stateEngine.getSession().memory.episodic[0]!;
@@ -295,8 +326,14 @@ describe("runRollingMemoryCondensation", () => {
 
   it("running it twice in a row condenses the next batch, not the same one again", async () => {
     const stateEngine = new StateEngine(makeSession({ conversation: turns(40) }), new EventLog());
-    const first = await runRollingMemoryCondensation(stateEngine, async () => "first batch summary");
-    const second = await runRollingMemoryCondensation(stateEngine, async () => "second batch summary");
+    const first = await runRollingMemoryCondensation(
+      stateEngine,
+      async () => "first batch summary",
+    );
+    const second = await runRollingMemoryCondensation(
+      stateEngine,
+      async () => "second batch summary",
+    );
 
     expect(first.turnRange).toEqual([1, 10]);
     expect(second.turnRange).toEqual([11, 20]);
@@ -316,17 +353,21 @@ describe("runRollingMemoryCondensation", () => {
 
   it("labels a place-change recap with the room that was left", async () => {
     const stateEngine = new StateEngine(makeSession({ conversation: turns(12) }), new EventLog());
-    const result = await runRollingMemoryCondensation(stateEngine, async () => "They closed the tab.", {
-      ...DEFAULT_ROLLING_MEMORY_OPTIONS,
-      previousStage: "the aurora room",
-      currentStage: "emma's room",
-      previousPlace: "The Aurora Room",
-      currentPlace: "Emma's room"
-    });
+    const result = await runRollingMemoryCondensation(
+      stateEngine,
+      async () => "They closed the tab.",
+      {
+        ...DEFAULT_ROLLING_MEMORY_OPTIONS,
+        previousStage: "the aurora room",
+        currentStage: "emma's room",
+        previousPlace: "The Aurora Room",
+        currentPlace: "Emma's room",
+      },
+    );
     expect(result.condensed).toBe(true);
     expect(result.turnRange).toEqual([1, 8]);
     expect(stateEngine.getSession().memory.episodic[0]?.content).toContain(
-      "Left The Aurora Room for Emma's room. They closed the tab."
+      "Left The Aurora Room for Emma's room. They closed the tab.",
     );
   });
 
@@ -334,13 +375,15 @@ describe("runRollingMemoryCondensation", () => {
     const conversation = Array.from({ length: 20 }, (_, i) => ({
       turn: i + 1,
       role: "player" as const,
-      content: "lorem ".repeat(400)
+      content: "lorem ".repeat(400),
     }));
     const stateEngine = new StateEngine(makeSession({ conversation }), new EventLog());
-    const results = await runRollingMemoryUntilQuiet(stateEngine, async (batch) => `recap ${batch[0]?.turn}`);
+    const results = await runRollingMemoryUntilQuiet(
+      stateEngine,
+      async (batch) => `recap ${batch[0]?.turn}`,
+    );
     const condensed = results.filter((row) => row.condensed);
     expect(condensed.length).toBeGreaterThanOrEqual(1);
     expect(stateEngine.getSession().memory.episodic.length).toBe(condensed.length);
   });
 });
-

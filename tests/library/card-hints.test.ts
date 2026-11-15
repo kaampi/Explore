@@ -22,13 +22,30 @@ Scenario(A school hallway.)
     expect(fields.personality).toContain("Age(99)");
     expect(fields.personality).not.toContain("Scenario");
     expect(fields.scenario).toBe("A school hallway.");
-    expect(wPlusPlusFields('Personality("Says ) without ending the field")\nAge(18)')).toMatchObject({ personality: "Says ) without ending the field", age: "18" });
+    expect(
+      wPlusPlusFields('Personality("Says ) without ending the field")\nAge(18)'),
+    ).toMatchObject({ personality: "Says ) without ending the field", age: "18" });
   });
 
   it("accepts quoted and mixed equals/parenthesized fields and leaves malformed values unmapped", () => {
-    expect(wPlusPlusFields('[Character("Alice")\nAge("18")\nGender=Female\nAppearance(Black hair)\nPersonality=Quiet\n}]')).toMatchObject({ character: "Alice", age: "18", gender: "Female", appearance: "Black hair", personality: "Quiet" });
-    expect(wPlusPlusFields("Appearance(Unclosed\nAge(18)\nPersonality(Kind)")).toMatchObject({ age: "18", personality: "Kind" });
-    expect(wPlusPlusFields("Appearance(Unclosed\nAge(18)\nPersonality(Kind)")).not.toHaveProperty("appearance");
+    expect(
+      wPlusPlusFields(
+        '[Character("Alice")\nAge("18")\nGender=Female\nAppearance(Black hair)\nPersonality=Quiet\n}]',
+      ),
+    ).toMatchObject({
+      character: "Alice",
+      age: "18",
+      gender: "Female",
+      appearance: "Black hair",
+      personality: "Quiet",
+    });
+    expect(wPlusPlusFields("Appearance(Unclosed\nAge(18)\nPersonality(Kind)")).toMatchObject({
+      age: "18",
+      personality: "Kind",
+    });
+    expect(wPlusPlusFields("Appearance(Unclosed\nAge(18)\nPersonality(Kind)")).not.toHaveProperty(
+      "appearance",
+    );
   });
 
   it("reads Age: labels and year-old phrases", () => {
@@ -56,8 +73,9 @@ Scenario(A school hallway.)
   });
 
   it("needs a clear majority when there is no opening line", () => {
-    expect(pronounFromText("She keeps the ledger. She rarely smiles. She locks the door.")).toBe("she");
+    expect(pronounFromText("She keeps the ledger. She rarely smiles. She locks the door.")).toBe(
+      "she",
+    );
     expect(pronounFromText("She met him at the bar.")).toBeUndefined();
   });
 });
-

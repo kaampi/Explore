@@ -16,12 +16,12 @@ function fromVisual(
         audioGallery?: string[] | undefined;
         audioPlay?: PicturePlay | undefined;
       }
-    | undefined
+    | undefined,
 ): SceneSound {
   const clips = collectPlaceAudio(visual);
   return {
     clips,
-    audioPlay: clips.length > 1 ? audioPlayOf(visual) : "fade"
+    audioPlay: clips.length > 1 ? audioPlayOf(visual) : "fade",
   };
 }
 

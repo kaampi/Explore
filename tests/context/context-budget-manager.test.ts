@@ -2,16 +2,18 @@ import { describe, it, expect } from "vitest";
 import {
   applyBudget,
   RequiredContentExceedsHardCeilingError,
-  type BudgetConfig
+  type BudgetConfig,
 } from "@context/ContextBudgetManager";
 import type { ContextBlock } from "@context/ContextBlock";
 
-function block(overrides: Partial<ContextBlock> & Pick<ContextBlock, "id" | "content">): ContextBlock {
+function block(
+  overrides: Partial<ContextBlock> & Pick<ContextBlock, "id" | "content">,
+): ContextBlock {
   return {
     source: "conversation",
     priority: 100,
     required: false,
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -29,7 +31,7 @@ describe("ContextBudgetManager.applyBudget", () => {
       id: "sys",
       content: "x".repeat(1000), // ~250 tokens, way over hardCeilingTokens: 40
       required: true,
-      priority: 0
+      priority: 0,
     });
     expect(() => applyBudget([huge], tinyBudget)).toThrow(RequiredContentExceedsHardCeilingError);
   });
@@ -49,7 +51,7 @@ describe("ContextBudgetManager.applyBudget", () => {
 
   it("never exceeds the hard ceiling even with many optional blocks", () => {
     const blocks = Array.from({ length: 20 }, (_, i) =>
-      block({ id: `b${i}`, content: "x".repeat(40), priority: i })
+      block({ id: `b${i}`, content: "x".repeat(40), priority: i }),
     );
     const result = applyBudget(blocks, tinyBudget);
     expect(result.totalTokens).toBeLessThanOrEqual(tinyBudget.hardCeilingTokens);
@@ -58,7 +60,7 @@ describe("ContextBudgetManager.applyBudget", () => {
   it("reports overTarget when total exceeds target but stays under hard ceiling", () => {
     const blocks = [
       block({ id: "a", content: "x".repeat(60), priority: 1 }), // ~15 tokens
-      block({ id: "b", content: "x".repeat(60), priority: 2 }) // ~15 tokens
+      block({ id: "b", content: "x".repeat(60), priority: 2 }), // ~15 tokens
     ];
     // target 20, ceiling 40: two blocks (~30 total) exceed target but fit under ceiling
     const result = applyBudget(blocks, tinyBudget);

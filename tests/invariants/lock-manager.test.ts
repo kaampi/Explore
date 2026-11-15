@@ -6,7 +6,7 @@ describe("LockManager", () => {
     const decision = resolveLockChange({
       currentLock: "unlocked",
       requestedLock: "player_locked",
-      requestedBy: "player_manual_state"
+      requestedBy: "player_manual_state",
     });
     expect(decision.allowed).toBe(true);
   });
@@ -15,7 +15,7 @@ describe("LockManager", () => {
     const decision = resolveLockChange({
       currentLock: "player_locked",
       requestedLock: "unlocked",
-      requestedBy: "player_manual_state"
+      requestedBy: "player_manual_state",
     });
     expect(decision.allowed).toBe(true);
   });
@@ -24,7 +24,7 @@ describe("LockManager", () => {
     const decision = resolveLockChange({
       currentLock: "unlocked",
       requestedLock: "player_locked",
-      requestedBy: "ai_approved_state_mutation"
+      requestedBy: "ai_approved_state_mutation",
     });
     expect(decision.allowed).toBe(false);
   });
@@ -33,7 +33,7 @@ describe("LockManager", () => {
     const decision = resolveLockChange({
       currentLock: "system_locked",
       requestedLock: "unlocked",
-      requestedBy: "player_manual_state"
+      requestedBy: "player_manual_state",
     });
     expect(decision.allowed).toBe(false);
   });
@@ -42,7 +42,7 @@ describe("LockManager", () => {
     const decision = resolveLockChange({
       currentLock: "unlocked",
       requestedLock: "system_locked",
-      requestedBy: "player_manual_state"
+      requestedBy: "player_manual_state",
     });
     expect(decision.allowed).toBe(false);
   });
@@ -51,7 +51,7 @@ describe("LockManager", () => {
     const decision = resolveLockChange({
       currentLock: "system_locked",
       requestedLock: "unlocked",
-      requestedBy: "immutable_system_constraint"
+      requestedBy: "immutable_system_constraint",
     });
     expect(decision.allowed).toBe(true);
   });

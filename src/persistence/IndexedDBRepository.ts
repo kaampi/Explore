@@ -1,5 +1,9 @@
 import { FactionSchema, type Faction } from "../library/factions";
-import { PlaceBlueprintSchema,starterBlueprints,type PlaceBlueprint } from "@library/placeBlueprint";
+import {
+  PlaceBlueprintSchema,
+  starterBlueprints,
+  type PlaceBlueprint,
+} from "@library/placeBlueprint";
 import { AnatomyTemplateSchema, type AnatomyTemplate } from "@state/StateSchema";
 import { validateObjectNesting, objectContents } from "@library/objectLocation";
 import { BUILTIN_ANATOMY_TEMPLATES } from "@state/builtinAnatomy";
@@ -8,7 +12,7 @@ import monaMorph from "../library/examples/mona-morph.json";
 import type { materializeWorld } from "../lore/materializeWorld";
 import { LorebookSchema, type Lorebook } from "../lore/LorebookSchema";
 import { IdeaSchema, type Idea } from "../ideas/IdeaSchema";
-import { upgradeMissingMessengerSession } from '../scenarios/missingMessenger';
+import { upgradeMissingMessengerSession } from "../scenarios/missingMessenger";
 import {
   ConversationEntrySchema,
   conversationEntry,
@@ -37,10 +41,7 @@ import {
   type VoiceTemplate,
 } from "@library/LibrarySchema";
 import { migrate, needsMigration } from "./MigrationEngine";
-import {
-  dropOversizedPortrait,
-  dropOversizedPortraitFromRaw,
-} from "@library/slimPortrait";
+import { dropOversizedPortrait, dropOversizedPortraitFromRaw } from "@library/slimPortrait";
 
 /**
  * Persistence Layer — Master Spec §39.
@@ -95,14 +96,7 @@ export type StudioResume = {
 };
 
 type LibraryKind =
-  | "character"
-  | "place"
-  | "story"
-  | "voice"
-  | "ruleset"
-  | "object"
-  | "campaign"
-  | "realm";
+  "character" | "place" | "story" | "voice" | "ruleset" | "object" | "campaign" | "realm";
 
 export class SessionNotFoundError extends Error {
   constructor(id: string) {
@@ -133,9 +127,12 @@ export class TemplateValidationError extends Error {
 }
 
 function ensureStores(db: IDBDatabase): void {
-  if (!db.objectStoreNames.contains(FACTIONS_STORE)) db.createObjectStore(FACTIONS_STORE, { keyPath: "id" });
-  if (!db.objectStoreNames.contains(ANATOMY_STORE)) db.createObjectStore(ANATOMY_STORE, { keyPath: "id" });
-  if (!db.objectStoreNames.contains(LOREBOOKS_STORE)) db.createObjectStore(LOREBOOKS_STORE, { keyPath: "id" });
+  if (!db.objectStoreNames.contains(FACTIONS_STORE))
+    db.createObjectStore(FACTIONS_STORE, { keyPath: "id" });
+  if (!db.objectStoreNames.contains(ANATOMY_STORE))
+    db.createObjectStore(ANATOMY_STORE, { keyPath: "id" });
+  if (!db.objectStoreNames.contains(LOREBOOKS_STORE))
+    db.createObjectStore(LOREBOOKS_STORE, { keyPath: "id" });
   if (!db.objectStoreNames.contains(IDEAS_STORE))
     db.createObjectStore(IDEAS_STORE, { keyPath: "id" });
   if (!db.objectStoreNames.contains(CONVERSATIONS_STORE))
@@ -232,8 +229,7 @@ export class IndexedDBRepository {
         this.db = db;
         resolve(db);
       };
-      request.onerror = () =>
-        reject(request.error ?? new Error("Failed to open IndexedDB."));
+      request.onerror = () => reject(request.error ?? new Error("Failed to open IndexedDB."));
     });
   }
 
@@ -262,15 +258,11 @@ export class IndexedDBRepository {
     archived = false,
   ): Promise<void> {
     const parsed = safeParseSession(session);
-    if (!parsed.success)
-      throw new SchemaValidationError(session.id, parsed.error.message);
+    if (!parsed.success) throw new SchemaValidationError(session.id, parsed.error.message);
     const snapshot = parsed.data;
     const db = await this.open();
     return new Promise((resolve, reject) => {
-      const tx = db.transaction(
-        [STORE_NAME, CONVERSATIONS_STORE, PREFS_STORE],
-        "readwrite",
-      );
+      const tx = db.transaction([STORE_NAME, CONVERSATIONS_STORE, PREFS_STORE], "readwrite");
       const sessions = tx.objectStore(STORE_NAME),
         metadata = tx.objectStore(CONVERSATIONS_STORE);
       if (create) sessions.add(snapshot);
@@ -280,7 +272,12 @@ export class IndexedDBRepository {
         const parsed = ConversationEntrySchema.safeParse(existing.result);
         metadata.put(
           archived
-            ? { ...conversationEntry(snapshot), archived: true, importQuarantined: true, title: `Imported: ${snapshot.scene?.location ?? "Aventuras"}`.slice(0, 120) }
+            ? {
+                ...conversationEntry(snapshot),
+                archived: true,
+                importQuarantined: true,
+                title: `Imported: ${snapshot.scene?.location ?? "Aventuras"}`.slice(0, 120),
+              }
             : conversationEntry(snapshot, parsed.success ? parsed.data : undefined),
         );
       };
@@ -290,10 +287,8 @@ export class IndexedDBRepository {
           conversationId: snapshot.id,
         });
       tx.oncomplete = () => resolve();
-      tx.onerror = () =>
-        reject(tx.error ?? new Error("Could not save this conversation."));
-      tx.onabort = () =>
-        reject(tx.error ?? new Error("Conversation save was cancelled."));
+      tx.onerror = () => reject(tx.error ?? new Error("Could not save this conversation."));
+      tx.onabort = () => reject(tx.error ?? new Error("Conversation save was cancelled."));
     });
   }
 
@@ -301,10 +296,7 @@ export class IndexedDBRepository {
   async listConversations(): Promise<ConversationCatalog> {
     const db = await this.open();
     return new Promise((resolve, reject) => {
-      const tx = db.transaction(
-        [STORE_NAME, CONVERSATIONS_STORE, PREFS_STORE],
-        "readwrite",
-      );
+      const tx = db.transaction([STORE_NAME, CONVERSATIONS_STORE, PREFS_STORE], "readwrite");
       const metadata = tx.objectStore(CONVERSATIONS_STORE),
         sessions = tx.objectStore(STORE_NAME),
         prefs = tx.objectStore(PREFS_STORE);
@@ -339,9 +331,7 @@ export class IndexedDBRepository {
           }
           try {
             const raw = cursor.value as Record<string, unknown>;
-            const parsed = safeParseSession(
-              needsMigration(raw) ? migrate(raw) : raw,
-            );
+            const parsed = safeParseSession(needsMigration(raw) ? migrate(raw) : raw);
             if (!parsed.success) {
               cursor.continue();
               return;
@@ -369,14 +359,8 @@ export class IndexedDBRepository {
           unreadable: sessionIds.filter((id) => !validIds.has(id)).length,
         });
       };
-      tx.onerror = () =>
-        reject(
-          tx.error ?? new Error("Could not open your conversation library."),
-        );
-      tx.onabort = () =>
-        reject(
-          tx.error ?? new Error("Could not open your conversation library."),
-        );
+      tx.onerror = () => reject(tx.error ?? new Error("Could not open your conversation library."));
+      tx.onabort = () => reject(tx.error ?? new Error("Could not open your conversation library."));
     });
   }
 
@@ -392,7 +376,10 @@ export class IndexedDBRepository {
 
   async archiveConversation(id: string, archived: boolean): Promise<void> {
     return this.updateConversation(id, (entry) => {
-      if (!archived && entry.importQuarantined) throw new Error("Imported archives cannot be restored to active play until a safe migration is available.");
+      if (!archived && entry.importQuarantined)
+        throw new Error(
+          "Imported archives cannot be restored to active play until a safe migration is available.",
+        );
       return { ...entry, archived };
     });
   }
@@ -403,10 +390,7 @@ export class IndexedDBRepository {
   ): Promise<void> {
     const db = await this.open();
     return new Promise((resolve, reject) => {
-      const tx = db.transaction(
-        [CONVERSATIONS_STORE, PREFS_STORE],
-        "readwrite",
-      );
+      const tx = db.transaction([CONVERSATIONS_STORE, PREFS_STORE], "readwrite");
       const store = tx.objectStore(CONVERSATIONS_STORE);
       const request = store.get(id);
       request.onsuccess = () => {
@@ -417,13 +401,16 @@ export class IndexedDBRepository {
           return;
         }
         let entry: ConversationEntry;
-        try { entry = update(parsed.data); }
-        catch (error) { reject(error); tx.abort(); return; }
+        try {
+          entry = update(parsed.data);
+        } catch (error) {
+          reject(error);
+          tx.abort();
+          return;
+        }
         store.put(entry);
         if (entry.archived) {
-          const active = tx
-            .objectStore(PREFS_STORE)
-            .get(ACTIVE_CONVERSATION_ID);
+          const active = tx.objectStore(PREFS_STORE).get(ACTIVE_CONVERSATION_ID);
           active.onsuccess = () => {
             if (active.result?.conversationId === id)
               tx.objectStore(PREFS_STORE).delete(ACTIVE_CONVERSATION_ID);
@@ -431,20 +418,15 @@ export class IndexedDBRepository {
         }
       };
       tx.oncomplete = () => resolve();
-      tx.onerror = () =>
-        reject(tx.error ?? new Error("Could not update this conversation."));
-      tx.onabort = () =>
-        reject(tx.error ?? new Error("Could not update this conversation."));
+      tx.onerror = () => reject(tx.error ?? new Error("Could not update this conversation."));
+      tx.onabort = () => reject(tx.error ?? new Error("Could not update this conversation."));
     });
   }
 
   async activateConversation(id: string): Promise<void> {
     const db = await this.open();
     return new Promise((resolve, reject) => {
-      const tx = db.transaction(
-        [CONVERSATIONS_STORE, PREFS_STORE],
-        "readwrite",
-      );
+      const tx = db.transaction([CONVERSATIONS_STORE, PREFS_STORE], "readwrite");
       const request = tx.objectStore(CONVERSATIONS_STORE).get(id);
       request.onsuccess = () => {
         const parsed = ConversationEntrySchema.safeParse(request.result);
@@ -463,10 +445,8 @@ export class IndexedDBRepository {
         });
       };
       tx.oncomplete = () => resolve();
-      tx.onerror = () =>
-        reject(tx.error ?? new Error("Could not open this conversation."));
-      tx.onabort = () =>
-        reject(tx.error ?? new Error("Could not open this conversation."));
+      tx.onerror = () => reject(tx.error ?? new Error("Could not open this conversation."));
+      tx.onabort = () => reject(tx.error ?? new Error("Could not open this conversation."));
     });
   }
 
@@ -497,8 +477,7 @@ export class IndexedDBRepository {
       const store = tx.objectStore(STORE_NAME);
       const request = store.get(id);
       request.onsuccess = () => resolve(request.result);
-      request.onerror = () =>
-        reject(request.error ?? new Error(`Failed to load session ${id}.`));
+      request.onerror = () => reject(request.error ?? new Error(`Failed to load session ${id}.`));
     });
 
     if (raw === undefined) {
@@ -518,10 +497,7 @@ export class IndexedDBRepository {
   async deleteSession(id: string): Promise<void> {
     const db = await this.open();
     return new Promise((resolve, reject) => {
-      const tx = db.transaction(
-        [STORE_NAME, CONVERSATIONS_STORE, PREFS_STORE],
-        "readwrite",
-      );
+      const tx = db.transaction([STORE_NAME, CONVERSATIONS_STORE, PREFS_STORE], "readwrite");
       tx.objectStore(STORE_NAME).delete(id);
       tx.objectStore(CONVERSATIONS_STORE).delete(id);
       const active = tx.objectStore(PREFS_STORE).get(ACTIVE_CONVERSATION_ID);
@@ -531,13 +507,15 @@ export class IndexedDBRepository {
       };
       const resume = tx.objectStore(PREFS_STORE).get(STUDIO_RESUME_ID);
       resume.onsuccess = () => {
-        if (resume.result?.conversationId === id || (id === "demo-session" && resume.result && !resume.result.conversationId))
+        if (
+          resume.result?.conversationId === id ||
+          (id === "demo-session" && resume.result && !resume.result.conversationId)
+        )
           tx.objectStore(PREFS_STORE).delete(STUDIO_RESUME_ID);
       };
       tx.oncomplete = () => resolve();
       tx.onabort = () => reject(tx.error ?? new Error(`Failed to delete session ${id}.`));
-      tx.onerror = () =>
-        reject(tx.error ?? new Error(`Failed to delete session ${id}.`));
+      tx.onerror = () => reject(tx.error ?? new Error(`Failed to delete session ${id}.`));
     });
   }
 
@@ -547,8 +525,7 @@ export class IndexedDBRepository {
       const tx = db.transaction(STORE_NAME, "readonly");
       const request = tx.objectStore(STORE_NAME).getAllKeys();
       request.onsuccess = () => resolve(request.result as string[]);
-      request.onerror = () =>
-        reject(request.error ?? new Error("Failed to list session ids."));
+      request.onerror = () => reject(request.error ?? new Error("Failed to list session ids."));
     });
   }
 
@@ -561,10 +538,10 @@ export class IndexedDBRepository {
   }
 
   async listAnatomyTemplates(): Promise<AnatomyTemplate[]> {
-    const builtInIds = new Set(BUILTIN_ANATOMY_TEMPLATES.map(template => template.id));
+    const builtInIds = new Set(BUILTIN_ANATOMY_TEMPLATES.map((template) => template.id));
     const custom = (await this.getAllRecords(ANATOMY_STORE))
-      .map(row => AnatomyTemplateSchema.parse(row))
-      .filter(template => !builtInIds.has(template.id));
+      .map((row) => AnatomyTemplateSchema.parse(row))
+      .filter((template) => !builtInIds.has(template.id));
     return [...structuredClone(BUILTIN_ANATOMY_TEMPLATES), ...custom];
   }
 
@@ -616,13 +593,27 @@ export class IndexedDBRepository {
           stored.onsuccess = () => {
             const profile = stored.result?.profile;
             if (!profile || !Array.isArray(profile.expressions)) return;
-            const additions = monaMorph.expressions.filter(item =>
-              ["neutral", "stressed"].includes(item.name) && !profile.expressions.some((existing: {name:string}) => existing.name === item.name));
+            const additions = monaMorph.expressions.filter(
+              (item) =>
+                ["neutral", "stressed"].includes(item.name) &&
+                !profile.expressions.some(
+                  (existing: { name: string }) => existing.name === item.name,
+                ),
+            );
             if (!additions.length) return;
-            preferences.put({...stored.result, profile: {...profile,
-              expressions: [...profile.expressions, ...additions],
-              gallery: [...(profile.gallery ?? []), ...monaMorph.gallery.filter(item => additions.some(expression => expression.name === item.name))]
-            }});
+            preferences.put({
+              ...stored.result,
+              profile: {
+                ...profile,
+                expressions: [...profile.expressions, ...additions],
+                gallery: [
+                  ...(profile.gallery ?? []),
+                  ...monaMorph.gallery.filter((item) =>
+                    additions.some((expression) => expression.name === item.name),
+                  ),
+                ],
+              },
+            });
           };
           return;
         }
@@ -648,8 +639,7 @@ export class IndexedDBRepository {
     skipped: number;
   }> {
     return this.withDb(async (db) => {
-      if (!db.objectStoreNames.contains(CHARACTERS_STORE))
-        return { items: [], skipped: 0 };
+      if (!db.objectStoreNames.contains(CHARACTERS_STORE)) return { items: [], skipped: 0 };
       return new Promise((resolve, reject) => {
         const tx = db.transaction(CHARACTERS_STORE, "readwrite");
         const store = tx.objectStore(CHARACTERS_STORE);
@@ -670,14 +660,12 @@ export class IndexedDBRepository {
           }
           cursor.continue();
         };
-        request.onerror = () =>
-          reject(request.error ?? new Error("Failed to list character."));
+        request.onerror = () => reject(request.error ?? new Error("Failed to list character."));
         tx.oncomplete = () => {
           parsed.sort((a, b) => a.name.localeCompare(b.name));
           resolve({ items: parsed, skipped });
         };
-        tx.onerror = () =>
-          reject(tx.error ?? new Error("Failed to list characters."));
+        tx.onerror = () => reject(tx.error ?? new Error("Failed to list characters."));
       });
     });
   }
@@ -708,7 +696,7 @@ export class IndexedDBRepository {
 
   async listFactions(): Promise<Faction[]> {
     const rows = await this.getAllRecords(FACTIONS_STORE);
-    return rows.map(row => FactionSchema.parse(row)).sort((a, b) => a.name.localeCompare(b.name));
+    return rows.map((row) => FactionSchema.parse(row)).sort((a, b) => a.name.localeCompare(b.name));
   }
 
   async saveRealm(template: RealmTemplate): Promise<void> {
@@ -772,11 +760,7 @@ export class IndexedDBRepository {
   }
 
   async saveRuleset(template: RulesetTemplate): Promise<void> {
-    const parsed = parseLibraryTemplate(
-      "ruleset",
-      template,
-      parseRulesetTemplate,
-    );
+    const parsed = parseLibraryTemplate("ruleset", template, parseRulesetTemplate);
     await this.putRecord(RULESETS_STORE, parsed);
   }
 
@@ -796,11 +780,7 @@ export class IndexedDBRepository {
   }
 
   async saveObject(template: ObjectTemplate): Promise<void> {
-    const parsed = parseLibraryTemplate(
-      "object",
-      template,
-      parseObjectTemplate,
-    );
+    const parsed = parseLibraryTemplate("object", template, parseObjectTemplate);
     const nestingError = validateObjectNesting(parsed, await this.listObjects());
     if (nestingError) throw new Error(nestingError);
     await this.putRecord(OBJECTS_STORE, parsed);
@@ -825,11 +805,7 @@ export class IndexedDBRepository {
   }
 
   async saveCampaign(template: CampaignTemplate): Promise<void> {
-    const parsed = parseLibraryTemplate(
-      "campaign",
-      template,
-      parseCampaignTemplate,
-    );
+    const parsed = parseLibraryTemplate("campaign", template, parseCampaignTemplate);
     await this.putRecord(CAMPAIGNS_STORE, parsed);
   }
 
@@ -849,8 +825,18 @@ export class IndexedDBRepository {
   }
 
   /** Character morph profiles are UI-only assets kept in the existing IndexedDB prefs store. */
-  async listPlaceBlueprints():Promise<PlaceBlueprint[]>{const r=await this.getRecord(PREFS_STORE,'place-blueprints');if(!r)return starterBlueprints.map(t=>({...t,tags:[...t.tags]}));if(typeof r!=='object'||!('items' in r))throw Error('Invalid place template library');return PlaceBlueprintSchema.array().parse(r.items);}
-  async savePlaceBlueprints(items:PlaceBlueprint[]):Promise<void>{await this.putRecord(PREFS_STORE,{id:'place-blueprints',items:PlaceBlueprintSchema.array().parse(items)});}
+  async listPlaceBlueprints(): Promise<PlaceBlueprint[]> {
+    const r = await this.getRecord(PREFS_STORE, "place-blueprints");
+    if (!r) return starterBlueprints.map((t) => ({ ...t, tags: [...t.tags] }));
+    if (typeof r !== "object" || !("items" in r)) throw Error("Invalid place template library");
+    return PlaceBlueprintSchema.array().parse(r.items);
+  }
+  async savePlaceBlueprints(items: PlaceBlueprint[]): Promise<void> {
+    await this.putRecord(PREFS_STORE, {
+      id: "place-blueprints",
+      items: PlaceBlueprintSchema.array().parse(items),
+    });
+  }
   async saveCharacterMorph(characterId: string, profile: unknown): Promise<void> {
     if (!characterId.trim()) throw new Error("Character ID is required.");
     await this.putRecord(PREFS_STORE, { id: `character-morph:${characterId}`, profile });
@@ -877,9 +863,7 @@ export class IndexedDBRepository {
     const handoff = resume.handoff?.trim();
     await this.putRecord(PREFS_STORE, {
       id: STUDIO_RESUME_ID,
-      ...(resume.conversationId
-        ? { conversationId: resume.conversationId }
-        : {}),
+      ...(resume.conversationId ? { conversationId: resume.conversationId } : {}),
       campaignId,
       ...(sceneId ? { sceneId } : {}),
       ...(handoff ? { handoff } : {}),
@@ -890,18 +874,10 @@ export class IndexedDBRepository {
     const raw = await this.getRecord(PREFS_STORE, STUDIO_RESUME_ID);
     if (!raw || typeof raw !== "object") return null;
     const campaignId =
-      "campaignId" in raw && typeof raw.campaignId === "string"
-        ? raw.campaignId.trim()
-        : "";
+      "campaignId" in raw && typeof raw.campaignId === "string" ? raw.campaignId.trim() : "";
     if (!campaignId) return null;
-    const sceneId =
-      "sceneId" in raw && typeof raw.sceneId === "string"
-        ? raw.sceneId.trim()
-        : "";
-    const handoff =
-      "handoff" in raw && typeof raw.handoff === "string"
-        ? raw.handoff.trim()
-        : "";
+    const sceneId = "sceneId" in raw && typeof raw.sceneId === "string" ? raw.sceneId.trim() : "";
+    const handoff = "handoff" in raw && typeof raw.handoff === "string" ? raw.handoff.trim() : "";
     return {
       ...("conversationId" in raw && typeof raw.conversationId === "string"
         ? { conversationId: raw.conversationId }
@@ -924,21 +900,33 @@ export class IndexedDBRepository {
   async saveWorldImport(result: ReturnType<typeof materializeWorld>): Promise<void> {
     const book = LorebookSchema.parse(result.book);
     const realm = parseRealmTemplate(result.realm);
-    const characters = result.characters.map(person => parseCharacterTemplate(person));
-    const places = result.places.map(place => parsePlaceTemplate(place));
-    if (book.materializedRealmId !== realm.id || book.binding.kind !== "realm" || book.binding.targetId !== realm.id || places.some(place => place.realmId !== realm.id))
+    const characters = result.characters.map((person) => parseCharacterTemplate(person));
+    const places = result.places.map((place) => parsePlaceTemplate(place));
+    if (
+      book.materializedRealmId !== realm.id ||
+      book.binding.kind !== "realm" ||
+      book.binding.targetId !== realm.id ||
+      places.some((place) => place.realmId !== realm.id)
+    )
       throw new Error("The imported world links are inconsistent.");
     const db = await this.open();
     await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction([LOREBOOKS_STORE, REALMS_STORE, CHARACTERS_STORE, PLACES_STORE], "readwrite");
+      const tx = db.transaction(
+        [LOREBOOKS_STORE, REALMS_STORE, CHARACTERS_STORE, PLACES_STORE],
+        "readwrite",
+      );
       try {
         tx.objectStore(LOREBOOKS_STORE).add(cloneRecord(book));
         tx.objectStore(REALMS_STORE).add(cloneRecord(realm));
-        characters.forEach(person => tx.objectStore(CHARACTERS_STORE).add(cloneRecord(person)));
-        places.forEach(place => tx.objectStore(PLACES_STORE).add(cloneRecord(place)));
-      } catch (err) { tx.abort(); reject(err); }
+        characters.forEach((person) => tx.objectStore(CHARACTERS_STORE).add(cloneRecord(person)));
+        places.forEach((place) => tx.objectStore(PLACES_STORE).add(cloneRecord(place)));
+      } catch (err) {
+        tx.abort();
+        reject(err);
+      }
       tx.oncomplete = () => resolve();
-      tx.onerror = tx.onabort = () => reject(tx.error ?? new Error("Could not save the imported world. Nothing was replaced."));
+      tx.onerror = tx.onabort = () =>
+        reject(tx.error ?? new Error("Could not save the imported world. Nothing was replaced."));
     });
   }
 
@@ -962,7 +950,8 @@ export class IndexedDBRepository {
       tx.objectStore(CHARACTERS_STORE).put(cloneRecord(person));
       tx.objectStore(LOREBOOKS_STORE).put(cloneRecord(lore));
       tx.oncomplete = () => resolve();
-      tx.onerror = tx.onabort = () => reject(tx.error ?? new Error("Could not save character and lorebook."));
+      tx.onerror = tx.onabort = () =>
+        reject(tx.error ?? new Error("Could not save character and lorebook."));
     });
   }
 
@@ -1016,8 +1005,7 @@ export class IndexedDBRepository {
         const tx = db.transaction(storeName, "readonly");
         const request = tx.objectStore(storeName).get(id);
         request.onsuccess = () => resolve(cloneRecord(request.result));
-        request.onerror = () =>
-          reject(request.error ?? new Error(`Failed to read ${storeName}.`));
+        request.onerror = () => reject(request.error ?? new Error(`Failed to read ${storeName}.`));
       });
     });
   }
@@ -1039,8 +1027,7 @@ export class IndexedDBRepository {
           rows.push(cloneRecord(cursor.value));
           cursor.continue();
         };
-        request.onerror = () =>
-          reject(request.error ?? new Error(`Failed to list ${storeName}.`));
+        request.onerror = () => reject(request.error ?? new Error(`Failed to list ${storeName}.`));
       });
     });
   }
@@ -1052,8 +1039,7 @@ export class IndexedDBRepository {
         const tx = db.transaction(storeName, "readwrite");
         tx.objectStore(storeName).delete(id);
         tx.oncomplete = () => resolve();
-        tx.onerror = () =>
-          reject(tx.error ?? new Error(`Failed to delete from ${storeName}.`));
+        tx.onerror = () => reject(tx.error ?? new Error(`Failed to delete from ${storeName}.`));
       });
     });
   }
@@ -1062,9 +1048,9 @@ export class IndexedDBRepository {
 function isStaleConnection(err: unknown): boolean {
   return Boolean(
     err &&
-      typeof err === "object" &&
-      "name" in err &&
-      (err.name === "InvalidStateError" || err.name === "InvalidAccessError"),
+    typeof err === "object" &&
+    "name" in err &&
+    (err.name === "InvalidStateError" || err.name === "InvalidAccessError"),
   );
 }
 
@@ -1087,19 +1073,12 @@ function dropSessionPortraits(session: Session): Session {
 }
 
 function writeError(storeName: string, err: unknown): Error {
-  if (
-    err &&
-    typeof err === "object" &&
-    "name" in err &&
-    err.name === "QuotaExceededError"
-  ) {
+  if (err && typeof err === "object" && "name" in err && err.name === "QuotaExceededError") {
     return new Error(
       "Not enough storage for that picture. Remove a picture or sound from another card and try again.",
     );
   }
-  return err instanceof Error
-    ? err
-    : new Error(`Failed to write to ${storeName}.`);
+  return err instanceof Error ? err : new Error(`Failed to write to ${storeName}.`);
 }
 
 function parseLibraryTemplate<T>(
@@ -1110,10 +1089,7 @@ function parseLibraryTemplate<T>(
   try {
     return parse(input);
   } catch (err) {
-    throw new TemplateValidationError(
-      kind,
-      err instanceof Error ? err.message : String(err),
-    );
+    throw new TemplateValidationError(kind, err instanceof Error ? err.message : String(err));
   }
 }
 

@@ -3,7 +3,7 @@ import {
   extractJsonCandidate,
   parseProposals,
   createLLMProposalExtractor,
-  buildExtractionMessages
+  buildExtractionMessages,
 } from "@session/ProposalExtraction";
 import { LLMAdapter } from "@llm/LLMAdapter";
 import type { CompletionRequest, LLMProvider, StreamChunk } from "@llm/types";
@@ -34,7 +34,7 @@ describe("parseProposals", () => {
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.proposals).toEqual([
-        { path: "characters.emma.mood", value: "happy", source: "ai_approved_state_mutation" }
+        { path: "characters.emma.mood", value: "happy", source: "ai_approved_state_mutation" },
       ]);
     }
   });
@@ -71,7 +71,7 @@ function providerReturning(texts: string[]): LLMProvider {
       call++;
       yield { type: "text_delta", text };
       yield { type: "done", finishReason: "stop" };
-    }
+    },
   };
 }
 
@@ -81,7 +81,7 @@ describe("buildExtractionMessages", () => {
       mood: "reserved",
       trust: 20,
       familiarity: 10,
-      tension: 5
+      tension: 5,
     });
     const system = messages[0]?.content ?? "";
     expect(system).toContain("relationships.emma.trust");
@@ -95,8 +95,8 @@ describe("buildExtractionMessages", () => {
     const messages = buildExtractionMessages("They kiss.", "emma", {
       stats: [
         { id: "arousal", label: "Arousal", value: 40, maxShift: 15, min: 0, max: 100 },
-        { id: "boldness", label: "Boldness", value: 50, maxShift: 3, min: 0, max: 100 }
-      ]
+        { id: "boldness", label: "Boldness", value: 50, maxShift: 3, min: 0, max: 100 },
+      ],
     });
     const system = messages[0]?.content ?? "";
     expect(system).toContain("characters.emma.stats.arousal");
@@ -109,7 +109,7 @@ describe("buildExtractionMessages", () => {
   it("lists clothing and holding as live paths", () => {
     const messages = buildExtractionMessages("She hangs her coat.", "emma", {
       clothing: "a winter coat",
-      holding: "a lantern"
+      holding: "a lantern",
     });
     const system = messages[0]?.content ?? "";
     expect(system).toContain("characters.emma.clothing");
@@ -126,7 +126,7 @@ describe("buildExtractionMessages", () => {
     const messages = buildExtractionMessages(
       'Emma comes out from behind the bar. "Alright. My room."',
       "emma",
-      { mood: "reserved", position: "behind the bar", pose: "polishing a glass" }
+      { mood: "reserved", position: "behind the bar", pose: "polishing a glass" },
     );
     const system = messages[0]?.content ?? "";
     expect(system).toContain("characters.emma.position");
@@ -144,9 +144,9 @@ describe("buildExtractionMessages", () => {
       {
         position: "behind the bar",
         playerPosition: "Emma's room",
-        namedRooms: ["Emma's room", "guest room"]
+        namedRooms: ["Emma's room", "guest room"],
       },
-      "I walk into Emma's room"
+      "I walk into Emma's room",
     );
     const system = messages[0]?.content ?? "";
     expect(system).toContain("Named rooms in canon");
@@ -165,9 +165,9 @@ describe("buildExtractionMessages", () => {
         position: "behind the bar",
         playerPosition: "Emma's room",
         namedRooms: ["Emma's room", "guest room"],
-        inParty: true
+        inParty: true,
       },
-      "I walk into Emma's room"
+      "I walk into Emma's room",
     );
     const system = messages[0]?.content ?? "";
     expect(system).toContain("emma is in the party");
@@ -179,7 +179,7 @@ describe("buildExtractionMessages", () => {
       "Sleep well, she murmurs.",
       "emma",
       { playerPosition: "at the bar", playerStatus: "awake" },
-      "*I fall asleep*"
+      "*I fall asleep*",
     );
     const system = messages[0]?.content ?? "";
     expect(system).toContain("player.status");
@@ -199,13 +199,13 @@ describe("buildExtractionMessages", () => {
 describe("createLLMProposalExtractor — happy path", () => {
   it("returns parsed proposals from a clean JSON response", async () => {
     const adapter = new LLMAdapter({
-      primary: providerReturning(['[{"path":"characters.emma.mood","value":"curious"}]'])
+      primary: providerReturning(['[{"path":"characters.emma.mood","value":"curious"}]']),
     });
     const extractor = createLLMProposalExtractor(adapter, { sleepImpl: async () => {} });
 
     const proposals = await extractor("Emma leans in, intrigued.", "emma");
     expect(proposals).toEqual([
-      { path: "characters.emma.mood", value: "curious", source: "ai_approved_state_mutation" }
+      { path: "characters.emma.mood", value: "curious", source: "ai_approved_state_mutation" },
     ]);
   });
 });
@@ -215,20 +215,20 @@ describe("createLLMProposalExtractor — tolerant retry", () => {
     const adapter = new LLMAdapter({
       primary: providerReturning([
         "Sure! I think the mood changes.", // malformed: no JSON at all -> parse failure
-        '[{"path":"characters.emma.mood","value":"happy"}]' // valid on 2nd attempt
-      ])
+        '[{"path":"characters.emma.mood","value":"happy"}]', // valid on 2nd attempt
+      ]),
     });
     const onFailure = vi.fn();
     const extractor = createLLMProposalExtractor(adapter, {
       maxAttempts: 3,
       sleepImpl: async () => {},
-      onFailure
+      onFailure,
     });
 
     const proposals = await extractor("some dialogue", "emma");
 
     expect(proposals).toEqual([
-      { path: "characters.emma.mood", value: "happy", source: "ai_approved_state_mutation" }
+      { path: "characters.emma.mood", value: "happy", source: "ai_approved_state_mutation" },
     ]);
     expect(onFailure).not.toHaveBeenCalled(); // eventual success, no failure reported
   });
@@ -237,13 +237,13 @@ describe("createLLMProposalExtractor — tolerant retry", () => {
 describe("createLLMProposalExtractor — tolerant degradation (critical guarantee)", () => {
   it("returns an empty array, never throws, when every attempt fails", async () => {
     const adapter = new LLMAdapter({
-      primary: providerReturning(["not json at all", "still not json", "nope"])
+      primary: providerReturning(["not json at all", "still not json", "nope"]),
     });
     const onFailure = vi.fn();
     const extractor = createLLMProposalExtractor(adapter, {
       maxAttempts: 3,
       sleepImpl: async () => {},
-      onFailure
+      onFailure,
     });
 
     const proposals = await extractor("some dialogue", "emma");
@@ -258,10 +258,13 @@ describe("createLLMProposalExtractor — tolerant degradation (critical guarante
       capabilities: { streaming: true, structuredOutput: false, cancellation: true },
       async *streamCompletion(): AsyncGenerator<StreamChunk> {
         throw new Error("connection refused");
-      }
+      },
     };
     const adapter = new LLMAdapter({ primary: failingProvider });
-    const extractor = createLLMProposalExtractor(adapter, { maxAttempts: 2, sleepImpl: async () => {} });
+    const extractor = createLLMProposalExtractor(adapter, {
+      maxAttempts: 2,
+      sleepImpl: async () => {},
+    });
 
     await expect(extractor("some dialogue", "emma")).resolves.toEqual([]);
   });

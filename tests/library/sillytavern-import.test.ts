@@ -3,9 +3,15 @@ import {
   SillyTavernImportError,
   characterFromCardData,
   importSillyTavernCard,
-  reviewFromCardData
+  reviewFromCardData,
 } from "@library/sillyTavernImport";
-import { characterDraftFromTemplate, characterTemplateFromDraft, placeTemplateFromForm, storyTemplateFromForm, voiceTemplateFromForm } from "@library/fromForm";
+import {
+  characterDraftFromTemplate,
+  characterTemplateFromDraft,
+  placeTemplateFromForm,
+  storyTemplateFromForm,
+  voiceTemplateFromForm,
+} from "@library/fromForm";
 import { parseCharacterTemplate } from "@library/LibrarySchema";
 import { extractCompactSource } from "@library/compactCharacterCard";
 
@@ -16,8 +22,8 @@ const v2Card = {
     name: "Ada",
     description: "A cartographer with ink-stained fingers.",
     personality: "Curious, dry, slightly lost.",
-    scenario: "A rain-soaked map shop after closing."
-  }
+    scenario: "A rain-soaked map shop after closing.",
+  },
 };
 
 function u32(n: number): Uint8Array {
@@ -70,26 +76,53 @@ Description(She spends time alone.
 Her parents left her in an orphanage when she was 4 years old.)
 Scenario(She bumps into {{user}} in the school hallways.)
 }]`;
-    const raw = { spec: "chara_card_v2", data: { name: "Alice the bully", description, personality: "" } };
+    const raw = {
+      spec: "chara_card_v2",
+      data: { name: "Alice the bully", description, personality: "" },
+    };
     // Both JSON files and embedded PNG cards use the same deterministic mapper.
-    for (const review of [await importSillyTavernCard({ jsonText: JSON.stringify(raw) }), await importSillyTavernCard({ pngBytes: pngWithText("chara", btoa(JSON.stringify(raw))) })]) {
-      expect(review.character).toMatchObject({ name: "Alice", approximateAge: 18, pronoun: "she", appearance: "Short black hair, red eyes, and fair skin.", personality: "Pretends to be mean.\nWhen alone (or with a trusted friend), she is shy and compassionate.", scenario: "" });
+    for (const review of [
+      await importSillyTavernCard({ jsonText: JSON.stringify(raw) }),
+      await importSillyTavernCard({ pngBytes: pngWithText("chara", btoa(JSON.stringify(raw))) }),
+    ]) {
+      expect(review.character).toMatchObject({
+        name: "Alice",
+        approximateAge: 18,
+        pronoun: "she",
+        appearance: "Short black hair, red eyes, and fair skin.",
+        personality:
+          "Pretends to be mean.\nWhen alone (or with a trusted friend), she is shy and compassionate.",
+        scenario: "",
+      });
       expect(review.rawText).toBe(description);
       expect(review.character.appearance).not.toMatch(/Age|Outfit|Occupation|Scenario|orphanage/);
     }
     const compact = extractCompactSource(description);
     expect(compact).toContain("Short black hair");
     expect(compact).toContain("shy and compassionate");
-    expect(compact).not.toMatch(/Age|Occupation|Outfit|Likes|Dislikes|Relationship|orphanage|hallways/);
+    expect(compact).not.toMatch(
+      /Age|Occupation|Outfit|Likes|Dislikes|Relationship|orphanage|hallways/,
+    );
   });
 
   it("recognizes structured identity without Character(...) and never infers an age from backstory over an unknown age", () => {
-    const character = characterFromCardData({ name: "Rin", description: "Age(unknown)\nSex(Nonbinary)\nAppearance(Green eyes)\nPersonality(Quiet)\nDescription(They moved here at 4 years old.)" });
+    const character = characterFromCardData({
+      name: "Rin",
+      description:
+        "Age(unknown)\nSex(Nonbinary)\nAppearance(Green eyes)\nPersonality(Quiet)\nDescription(They moved here at 4 years old.)",
+    });
     expect(character.approximateAge).toBeUndefined();
     expect(character.pronoun).toBe("they");
     expect(character.appearance).toBe("Green eyes");
     expect(character.personality).toBe("Quiet");
-    expect(characterFromCardData({ name: "Rin", age: 25, description: "Age(18)\nSex(Female)", gender: "they" })).toMatchObject({ approximateAge: 25, pronoun: "they" });
+    expect(
+      characterFromCardData({
+        name: "Rin",
+        age: 25,
+        description: "Age(18)\nSex(Female)",
+        gender: "they",
+      }),
+    ).toMatchObject({ approximateAge: 25, pronoun: "they" });
   });
 
   it("reads a v1 (flat) JSON card", () => {
@@ -99,7 +132,7 @@ Scenario(She bumps into {{user}} in the school hallways.)
       description: "Always carrying a thermos.",
       scenario: "A kitchen at dawn.",
       first_mes: "Hi.",
-      mes_example: "{{user}}: Hi\n{{char}}: Hello."
+      mes_example: "{{user}}: Hi\n{{char}}: Hello.",
     });
     expect(character.name).toBe("Jules");
     expect(character.personality).toBe("Soft-spoken.");
@@ -114,7 +147,7 @@ Scenario(She bumps into {{user}} in the school hallways.)
     const character = characterFromCardData({
       name: "Emma Knucklewood",
       personality: "Dry.",
-      scenario: "A quiet bar."
+      scenario: "A quiet bar.",
     });
     expect(character.name).toBe("Emma");
     expect(character.familyName).toBe("Knucklewood");
@@ -124,7 +157,7 @@ Scenario(She bumps into {{user}} in the school hallways.)
     const character = characterFromCardData({
       name: "Emma Therese Knucklewood",
       personality: "Dry.",
-      scenario: ""
+      scenario: "",
     });
     expect(character.name).toBe("Emma");
     expect(character.middleName).toBe("Therese");
@@ -143,7 +176,7 @@ Scenario(She bumps into {{user}} in the school hallways.)
     const character = characterFromCardData({
       spec: "chara_card_v3",
       spec_version: "3.0",
-      data: { name: "Rin", personality: "Blunt.", description: "" }
+      data: { name: "Rin", personality: "Blunt.", description: "" },
     });
     expect(character.name).toBe("Rin");
   });
@@ -158,21 +191,21 @@ Scenario(She bumps into {{user}} in the school hallways.)
   it("reads age and she/he from description when the card has no gender field", () => {
     const she = characterFromCardData({
       name: "Ada",
-      description: "Age: 30\nShe is a cartographer with ink-stained fingers."
+      description: "Age: 30\nShe is a cartographer with ink-stained fingers.",
     });
     expect(she.approximateAge).toBe(30);
     expect(she.pronoun).toBe("she");
 
     const yearOld = characterFromCardData({
       name: "Lina",
-      description: "She is a 20 year old waitress."
+      description: "She is a 20 year old waitress.",
     });
     expect(yearOld.approximateAge).toBe(20);
     expect(yearOld.pronoun).toBe("she");
 
     const he = characterFromCardData({
       name: "Jules",
-      description: "He is 42. Pronouns: he/him"
+      description: "He is 42. Pronouns: he/him",
     });
     expect(he.approximateAge).toBe(42);
     expect(he.pronoun).toBe("he");
@@ -182,7 +215,7 @@ Scenario(She bumps into {{user}} in the school hallways.)
     const character = characterFromCardData({
       name: "Rin",
       gender: "they",
-      description: "She is mentioned in a rumour."
+      description: "She is mentioned in a rumour.",
     });
     expect(character.pronoun).toBe("they");
   });
@@ -190,7 +223,7 @@ Scenario(She bumps into {{user}} in the school hallways.)
   it("skips age when two different numbers look equally like years", () => {
     const character = characterFromCardData({
       name: "Ada",
-      description: "She is a 20 year old who looks 35 years old."
+      description: "She is a 20 year old who looks 35 years old.",
     });
     expect(character.approximateAge).toBeUndefined();
     expect(character.pronoun).toBe("she");
@@ -206,7 +239,10 @@ Body/Appearance=Long red hair, green eyes, a thin yet curvy build.
 Current Clothing=A simple white linen shirt and a cloak.
 Backstory=Her kingdom fell. She enlisted {{user}}.
 {{char}} should never speak for {{user}}.}]`;
-    const { character, rawText } = reviewFromCardData({ name: "Princess Eryssara", description: blob });
+    const { character, rawText } = reviewFromCardData({
+      name: "Princess Eryssara",
+      description: blob,
+    });
     expect(character.name).toBe("Eryssara");
     expect(character.familyName).toBe("");
     expect(character.approximateAge).toBe(22);
@@ -235,7 +271,9 @@ Backstory=Her kingdom fell. She enlisted {{user}}.
   });
 
   it("rejects invalid JSON text", async () => {
-    await expect(importSillyTavernCard({ jsonText: "{not json" })).rejects.toThrow(SillyTavernImportError);
+    await expect(importSillyTavernCard({ jsonText: "{not json" })).rejects.toThrow(
+      SillyTavernImportError,
+    );
   });
 
   it("reads a PNG tEXt chara chunk with Base64 JSON", async () => {
@@ -250,7 +288,9 @@ Backstory=Her kingdom fell. She enlisted {{user}}.
     const chara = pngWithText("chara", JSON.stringify({ name: "Old" }));
     // Rebuild a PNG that contains both chunks by concatenating after signature+IHDR.
     const kw = new TextEncoder().encode("ccv3");
-    const payload = new TextEncoder().encode(JSON.stringify({ spec: "chara_card_v3", data: { name: "New" } }));
+    const payload = new TextEncoder().encode(
+      JSON.stringify({ spec: "chara_card_v3", data: { name: "New" } }),
+    );
     const data = new Uint8Array(kw.length + 1 + payload.length);
     data.set(kw, 0);
     data[kw.length] = 0;
@@ -261,7 +301,9 @@ Backstory=Her kingdom fell. She enlisted {{user}}.
     const charaBody = chara.subarray(8 + ihdr.length, chara.length - 12); // skip sig+ihdr, drop IEND
     const ccv3 = pngChunk("tEXt", data);
     const iend = pngChunk("IEND", new Uint8Array(0));
-    const out = new Uint8Array(sig.length + ihdr.length + charaBody.length + ccv3.length + iend.length);
+    const out = new Uint8Array(
+      sig.length + ihdr.length + charaBody.length + ccv3.length + iend.length,
+    );
     let o = 0;
     for (const part of [sig, ihdr, charaBody, ccv3, iend]) {
       out.set(part, o);
@@ -286,8 +328,8 @@ describe("library form mapping", () => {
         personality: "Curious",
         mood: "",
         position: "",
-        saveToLibrary: false
-      })
+        saveToLibrary: false,
+      }),
     ).toBeNull();
   });
 
@@ -298,7 +340,7 @@ describe("library form mapping", () => {
       mood: "alert",
       position: "at the desk",
       saveToLibrary: true,
-      source: "player"
+      source: "player",
     });
     expect(built?.name).toBe("Ada");
     const draft = characterDraftFromTemplate(built!);
@@ -316,7 +358,7 @@ describe("library form mapping", () => {
       mood: "",
       position: "",
       pronoun: "she",
-      saveToLibrary: true
+      saveToLibrary: true,
     });
     expect(built?.pronoun).toBe("she");
     expect(characterDraftFromTemplate(built!).pronoun).toBe("she");
@@ -328,7 +370,7 @@ describe("library form mapping", () => {
       personality: "Dry-witted.",
       mood: "reserved",
       position: "behind the bar",
-      saveToLibrary: true
+      saveToLibrary: true,
     });
     expect(built?.position).toBe("");
     expect(characterDraftFromTemplate(built!).position).toBe("");
@@ -347,10 +389,10 @@ describe("library form mapping", () => {
           id: "atlas",
           title: "The atlas",
           content: "She keeps a stolen coastal chart behind the counter.",
-          keywords: ["atlas", "chart"]
-        }
+          keywords: ["atlas", "chart"],
+        },
       ],
-      saveToLibrary: true
+      saveToLibrary: true,
     });
     expect(built?.appearance).toBe("Short ink-stained hair.");
     expect(built?.portraitDataUrl).toBe("data:image/jpeg;base64,AAAA");
@@ -359,8 +401,8 @@ describe("library form mapping", () => {
         id: "atlas",
         title: "The atlas",
         content: "She keeps a stolen coastal chart behind the counter.",
-        keywords: ["atlas", "chart"]
-      }
+        keywords: ["atlas", "chart"],
+      },
     ]);
     const draft = characterDraftFromTemplate(built!);
     expect(draft.appearance).toBe("Short ink-stained hair.");
@@ -377,7 +419,7 @@ describe("library form mapping", () => {
       scenario: "",
       source: "player",
       createdAt: "2026-01-01T00:00:00.000Z",
-      updatedAt: "2026-01-01T00:00:00.000Z"
+      updatedAt: "2026-01-01T00:00:00.000Z",
     });
     expect(parsed.appearance).toBe("");
     expect(parsed.lore).toEqual([]);
@@ -393,7 +435,7 @@ describe("library form mapping", () => {
       personality: "",
       mood: "",
       position: "",
-      saveToLibrary: true
+      saveToLibrary: true,
     });
     expect(built?.name).toBe("Emma");
     expect(built?.familyName).toBe("Knucklewood");
@@ -407,7 +449,7 @@ describe("library form mapping", () => {
       personality: "",
       mood: "",
       position: "",
-      saveToLibrary: true
+      saveToLibrary: true,
     });
     expect(built?.knownAs).toBe("");
     expect(characterDraftFromTemplate(built!)).not.toHaveProperty("knownAs");
@@ -421,7 +463,7 @@ describe("library form mapping", () => {
       personality: "",
       mood: "",
       position: "",
-      saveToLibrary: true
+      saveToLibrary: true,
     });
     expect(built?.middleName).toBe("Therese");
     expect(characterDraftFromTemplate(built!).middleName).toBe("Therese");
@@ -437,7 +479,7 @@ describe("library form mapping", () => {
       scenario: "",
       source: "player",
       createdAt: "2026-01-01T00:00:00.000Z",
-      updatedAt: "2026-01-01T00:00:00.000Z"
+      updatedAt: "2026-01-01T00:00:00.000Z",
     });
     const draft = characterDraftFromTemplate(parsed);
     expect(draft.name).toBe("Emma");
@@ -454,7 +496,7 @@ describe("library form mapping", () => {
       scenario: "",
       source: "player",
       createdAt: "2026-01-01T00:00:00.000Z",
-      updatedAt: "2026-01-01T00:00:00.000Z"
+      updatedAt: "2026-01-01T00:00:00.000Z",
     });
     const draft = characterDraftFromTemplate(parsed);
     expect(draft.name).toBe("Emma");
@@ -469,7 +511,7 @@ describe("library form mapping", () => {
       lighting: "green glass lamps",
       noise: "rain",
       music: false,
-      note: "Smells like paper."
+      note: "Smells like paper.",
     });
     expect(place?.name).toBe("The map shop");
     expect(place?.lighting).toBe("green glass lamps");
@@ -479,7 +521,7 @@ describe("library form mapping", () => {
     const story = storyTemplateFromForm({
       saveToLibrary: true,
       title: "The War of the Ring",
-      premise: "Sauron's life-force is bound to the One Ring."
+      premise: "Sauron's life-force is bound to the One Ring.",
     });
     expect(story?.name).toBe("The War of the Ring");
     expect(story?.premise).toContain("One Ring");
@@ -489,7 +531,7 @@ describe("library form mapping", () => {
     const story = storyTemplateFromForm({
       saveToLibrary: true,
       title: "",
-      premise: "In the Second Age, Sauron forged the One Ring.\nThe Ring was lost."
+      premise: "In the Second Age, Sauron forged the One Ring.\nThe Ring was lost.",
     });
     expect(story?.name).toBe("In the Second Age, Sauron forged the One Ring.");
   });
@@ -498,10 +540,9 @@ describe("library form mapping", () => {
     const voice = voiceTemplateFromForm({
       saveToLibrary: true,
       title: "Tolkien-äventyr",
-      instruction: "Du är Spelledare för ett klassiskt fantasyäventyr."
+      instruction: "Du är Spelledare för ett klassiskt fantasyäventyr.",
     });
     expect(voice?.name).toBe("Tolkien-äventyr");
     expect(voice?.instruction).toContain("Spelledare");
   });
 });
-

@@ -1,17 +1,24 @@
 import { useState } from "react";
-import { generateCharacter, SPEECH_STYLES, type GeneratedCharacter } from "@library/characterGenerator";
+import {
+  generateCharacter,
+  SPEECH_STYLES,
+  type GeneratedCharacter,
+} from "@library/characterGenerator";
 import { BUILTIN_PRONOUNS, pronounLabel } from "@state/pronouns";
 import { CharacterInterviewPanel } from "./CharacterInterviewPanel";
 
 const PRONOUNS = [...BUILTIN_PRONOUNS, "they"] as const;
 
 function formatName(card: GeneratedCharacter): string {
-  return [card.name, card.middleName, card.familyName].map((part) => part.trim()).filter(Boolean).join(" ");
+  return [card.name, card.middleName, card.familyName]
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(" ");
 }
 
 export function CharacterGeneratorPanel({
   busy,
-  onApply
+  onApply,
 }: {
   busy: boolean;
   onApply: (card: GeneratedCharacter) => void;
@@ -36,7 +43,7 @@ export function CharacterGeneratorPanel({
       pronoun,
       speech,
       approximateAge: years(),
-      seed: nextSeed
+      seed: nextSeed,
     });
     setSeed(nextSeed);
     setProposal(card);
@@ -48,7 +55,8 @@ export function CharacterGeneratorPanel({
     <div className="character-generator">
       <p className="setup-kicker">Character generator</p>
       <p className="form-section__lede">
-        Explain who they are, take a person at random, or talk it through. Accept puts the card on the sheet. Save is still yours.
+        Explain who they are, take a person at random, or talk it through. Accept puts the card on
+        the sheet. Save is still yours.
       </p>
       <div className="setup-chips" role="radiogroup" aria-label="How to make them">
         <div className={`setup-chip ${mode === "explain" ? "setup-chip--active" : ""}`}>
@@ -80,90 +88,114 @@ export function CharacterGeneratorPanel({
         </label>
       )}
       {mode !== "talk" && (
-      <>
-      <div className="setup-field">
-        <span className="setup-field__label">Pronoun</span>
-        <div className="setup-chips" role="radiogroup" aria-label="Generator pronoun">
-          <div className={`setup-chip ${pronoun === null ? "setup-chip--active" : ""}`}>
-            <button type="button" className="setup-chip__pick" onClick={() => setPronoun(null)}>
-              Any
-            </button>
-          </div>
-          {PRONOUNS.map((choice) => (
-            <div key={choice} className={`setup-chip ${pronoun === choice ? "setup-chip--active" : ""}`}>
-              <button type="button" className="setup-chip__pick" onClick={() => setPronoun(choice)}>
-                {pronounLabel(choice)}
-              </button>
+        <>
+          <div className="setup-field">
+            <span className="setup-field__label">Pronoun</span>
+            <div className="setup-chips" role="radiogroup" aria-label="Generator pronoun">
+              <div className={`setup-chip ${pronoun === null ? "setup-chip--active" : ""}`}>
+                <button type="button" className="setup-chip__pick" onClick={() => setPronoun(null)}>
+                  Any
+                </button>
+              </div>
+              {PRONOUNS.map((choice) => (
+                <div
+                  key={choice}
+                  className={`setup-chip ${pronoun === choice ? "setup-chip--active" : ""}`}
+                >
+                  <button
+                    type="button"
+                    className="setup-chip__pick"
+                    onClick={() => setPronoun(choice)}
+                  >
+                    {pronounLabel(choice)}
+                  </button>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </div>
-      <div className="setup-field">
-        <span className="setup-field__label">How they speak</span>
-        <div className="setup-chips" role="radiogroup" aria-label="How they speak">
-          <div className={`setup-chip ${speech === null ? "setup-chip--active" : ""}`}>
-            <button type="button" className="setup-chip__pick" onClick={() => setSpeech(null)}>
-              Any
-            </button>
           </div>
-          {SPEECH_STYLES.map((style) => (
-            <div key={style.id} className={`setup-chip ${speech === style.id ? "setup-chip--active" : ""}`}>
-              <button type="button" className="setup-chip__pick" onClick={() => setSpeech(style.id)}>
-                {style.label}
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-      <label className="setup-field setup-field--row">
-        <span className="setup-field__label">
-          Approximate age
-          <span className="setup-optional">optional</span>
-        </span>
-        <input
-          type="number"
-          min={1}
-          max={130}
-          inputMode="numeric"
-          value={age}
-          onChange={(e) => setAge(e.target.value)}
-          placeholder="any"
-        />
-      </label>
-      <div className="studio-sheet__actions">
-        <button
-          type="button"
-          className="setup-start"
-          disabled={busy || !explainReady}
-          onClick={() => propose(proposal ? seed + 1 : seed)}
-        >
-          {mode === "surprise" ? "Surprise me" : "Propose"}
-        </button>
-      </div>
-      {proposal && (
-        <div className="character-generator__proposal">
-          <p className="character-generator__name">{formatName(proposal)}</p>
-          <p>
-            {pronounLabel(proposal.pronoun)} · about {proposal.approximateAge} · {proposal.mood}
-          </p>
-          <p>{proposal.appearance}</p>
-          <p>
+          <div className="setup-field">
             <span className="setup-field__label">How they speak</span>
-            {proposal.speech}
-          </p>
-          <p>{proposal.personality}</p>
-          {proposal.tags.length > 0 && <p>{proposal.tags.join(", ")}</p>}
+            <div className="setup-chips" role="radiogroup" aria-label="How they speak">
+              <div className={`setup-chip ${speech === null ? "setup-chip--active" : ""}`}>
+                <button type="button" className="setup-chip__pick" onClick={() => setSpeech(null)}>
+                  Any
+                </button>
+              </div>
+              {SPEECH_STYLES.map((style) => (
+                <div
+                  key={style.id}
+                  className={`setup-chip ${speech === style.id ? "setup-chip--active" : ""}`}
+                >
+                  <button
+                    type="button"
+                    className="setup-chip__pick"
+                    onClick={() => setSpeech(style.id)}
+                  >
+                    {style.label}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+          <label className="setup-field setup-field--row">
+            <span className="setup-field__label">
+              Approximate age
+              <span className="setup-optional">optional</span>
+            </span>
+            <input
+              type="number"
+              min={1}
+              max={130}
+              inputMode="numeric"
+              value={age}
+              onChange={(e) => setAge(e.target.value)}
+              placeholder="any"
+            />
+          </label>
           <div className="studio-sheet__actions">
-            <button type="button" className="setup-start" disabled={busy} onClick={() => onApply(proposal)}>
-              Accept
-            </button>
-            <button type="button" className="setup-example" disabled={busy} onClick={() => propose(seed + 1)}>
-              Reject
+            <button
+              type="button"
+              className="setup-start"
+              disabled={busy || !explainReady}
+              onClick={() => propose(proposal ? seed + 1 : seed)}
+            >
+              {mode === "surprise" ? "Surprise me" : "Propose"}
             </button>
           </div>
-        </div>
-      )}
-      </>
+          {proposal && (
+            <div className="character-generator__proposal">
+              <p className="character-generator__name">{formatName(proposal)}</p>
+              <p>
+                {pronounLabel(proposal.pronoun)} · about {proposal.approximateAge} · {proposal.mood}
+              </p>
+              <p>{proposal.appearance}</p>
+              <p>
+                <span className="setup-field__label">How they speak</span>
+                {proposal.speech}
+              </p>
+              <p>{proposal.personality}</p>
+              {proposal.tags.length > 0 && <p>{proposal.tags.join(", ")}</p>}
+              <div className="studio-sheet__actions">
+                <button
+                  type="button"
+                  className="setup-start"
+                  disabled={busy}
+                  onClick={() => onApply(proposal)}
+                >
+                  Accept
+                </button>
+                <button
+                  type="button"
+                  className="setup-example"
+                  disabled={busy}
+                  onClick={() => propose(seed + 1)}
+                >
+                  Reject
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

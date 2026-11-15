@@ -29,7 +29,20 @@ const APPS = {
   },
 };
 function AppLogo({ app, name }: { app: "write" | "explore" | "comic"; name: string }) {
-  return <><img className="sb-switch-logo sb-switch-logo--light" src={`/brand/kaampi-${app}.svg`} alt={name} /><img className="sb-switch-logo sb-switch-logo--dark" src={`/brand/kaampi-${app}-dark.svg`} alt={name} /></>;
+  return (
+    <>
+      <img
+        className="sb-switch-logo sb-switch-logo--light"
+        src={`/brand/kaampi-${app}.svg`}
+        alt={name}
+      />
+      <img
+        className="sb-switch-logo sb-switch-logo--dark"
+        src={`/brand/kaampi-${app}-dark.svg`}
+        alt={name}
+      />
+    </>
+  );
 }
 function readAddress(key: CompanionAppId): string {
   try {
@@ -59,9 +72,7 @@ export function AppSwitcher({ onHome }: { onHome: () => void }) {
     storybook: readAddress("storybook"),
     comicbook: readAddress("comicbook"),
   }));
-  const [statuses, setStatuses] = useState<
-    Partial<Record<CompanionAppId, AppStatus>>
-  >({});
+  const [statuses, setStatuses] = useState<Partial<Record<CompanionAppId, AppStatus>>>({});
   const [selected, setSelected] = useState<CompanionAppId | null>(null);
   const [address, setAddress] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -78,9 +89,7 @@ export function AppSwitcher({ onHome }: { onHome: () => void }) {
         ),
       );
       if (!cancelled)
-        setStatuses(
-          Object.fromEntries(results.map((status) => [status.appId, status])),
-        );
+        setStatuses(Object.fromEntries(results.map((status) => [status.appId, status])));
     }
     void refresh();
     const timer = window.setInterval(() => {
@@ -109,7 +118,7 @@ export function AppSwitcher({ onHome }: { onHome: () => void }) {
     try {
       const valid = safeAppAddress(address) || DEFAULT_APP_ADDRESSES[selected];
       const status = await checkCompanionApp(selected, valid);
-      setAddress((current) => current === checkedAddress ? valid : current);
+      setAddress((current) => (current === checkedAddress ? valid : current));
       setStatuses((previous) => ({ ...previous, [selected]: status }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Check the app address.");
@@ -119,10 +128,22 @@ export function AppSwitcher({ onHome }: { onHome: () => void }) {
   }
   async function launch(key: CompanionAppId, appAddress: string) {
     if (opening) return;
-    setOpening(key); setError(null);
-    try { await openCompanionApp(key, appAddress); }
-    catch (reason) { open(key); setError(typeof reason === "string" ? reason : reason instanceof Error ? reason.message : "Could not open the app."); }
-    finally { setOpening(null); }
+    setOpening(key);
+    setError(null);
+    try {
+      await openCompanionApp(key, appAddress);
+    } catch (reason) {
+      open(key);
+      setError(
+        typeof reason === "string"
+          ? reason
+          : reason instanceof Error
+            ? reason.message
+            : "Could not open the app.",
+      );
+    } finally {
+      setOpening(null);
+    }
   }
   function savedStatus(key: CompanionAppId) {
     const status = statuses[key];
@@ -131,21 +152,44 @@ export function AppSwitcher({ onHome }: { onHome: () => void }) {
   function appLink(key: CompanionAppId) {
     const app = APPS[key],
       status = savedStatus(key);
-    if (desktop) return (
-      <span className="sb-companion-link">
-        <button type="button" style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"12px 10px",minHeight:44}} disabled={opening !== null} onClick={()=>void launch(key, addresses[key])} title={opening===key?`Opening ${app.name}…`:`Open installed ${app.name}`}>
-          <AppLogo app={key === "storybook" ? "write" : "comic"} name={app.name} />
-        </button>
-        <button type="button" className="sb-app-config" aria-label={`${app.name} information`} onClick={()=>open(key)}>⌄</button>
-      </span>
-    );
+    if (desktop)
+      return (
+        <span className="sb-companion-link">
+          <button
+            type="button"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "12px 10px",
+              minHeight: 44,
+            }}
+            disabled={opening !== null}
+            onClick={() => void launch(key, addresses[key])}
+            title={opening === key ? `Opening ${app.name}…` : `Open installed ${app.name}`}
+          >
+            <AppLogo app={key === "storybook" ? "write" : "comic"} name={app.name} />
+          </button>
+          <button
+            type="button"
+            className="sb-app-config"
+            aria-label={`${app.name} information`}
+            onClick={() => open(key)}
+          >
+            ⌄
+          </button>
+        </span>
+      );
     return status?.state === "available" ? (
       <span className="sb-companion-link">
         <a
           href={status.address}
           target={`kaampi-${key}`}
           rel="noreferrer"
-          onClick={event => { event.preventDefault(); void launch(key, status.address); }}
+          onClick={(event) => {
+            event.preventDefault();
+            void launch(key, status.address);
+          }}
           title={`Open ${app.name}`}
         >
           <AppLogo app={key === "storybook" ? "write" : "comic"} name={app.name} />
@@ -161,37 +205,24 @@ export function AppSwitcher({ onHome }: { onHome: () => void }) {
         </button>
       </span>
     ) : (
-      <button
-        type="button"
-        onClick={() => open(key)}
-        title={`About ${app.name}`}
-      >
+      <button type="button" onClick={() => open(key)} title={`About ${app.name}`}>
         <AppLogo app={key === "storybook" ? "write" : "comic"} name={app.name} />
       </button>
     );
   }
   let validAddress = "";
   try {
-    validAddress = selected
-      ? safeAppAddress(address) || DEFAULT_APP_ADDRESSES[selected]
-      : "";
+    validAddress = selected ? safeAppAddress(address) || DEFAULT_APP_ADDRESSES[selected] : "";
   } catch {
     /* Validation appears on save/check. */
   }
   const selectedStatus =
-    selected && statuses[selected]?.address === validAddress
-      ? statuses[selected]
-      : undefined;
+    selected && statuses[selected]?.address === validAddress ? statuses[selected] : undefined;
   return (
     <>
       <nav className="sb-apps" aria-label="Your creative apps">
         {appLink("storybook")}
-        <button
-          type="button"
-          className="is-active"
-          aria-current="page"
-          onClick={onHome}
-        >
+        <button type="button" className="is-active" aria-current="page" onClick={onHome}>
           <AppLogo app="explore" name="kaampi Explore" />
         </button>
         {appLink("comicbook")}
@@ -211,85 +242,98 @@ export function AppSwitcher({ onHome }: { onHome: () => void }) {
           >
             Get the app & installation guide ↗
           </a>
-          {desktop ? <>
-            <p className="sb-muted">Open the installed desktop app, or switch to its existing window.</p>
-            {error && <p className="sb-error" role="alert">{error}</p>}
-            <button type="button" className="sb-button" disabled={opening !== null} onClick={()=>void launch(selected, addresses[selected])}>{opening ? "Opening…" : "Open desktop app"}</button>
-          </> : <>
-          <hr className="sb-rule" />
-          <label className="sb-field">
-            App address
-            <input
-              type="url"
-              placeholder={DEFAULT_APP_ADDRESSES[selected]}
-              value={address}
-              onChange={(event) => setAddress(event.target.value)}
-            />
-          </label>
-          <p className="sb-muted" role="status">
-            {checking
-              ? "Checking the app…"
-              : selectedStatus
-                ? STATUS_COPY[selectedStatus.state]
-                : "Use the address shown when you start the app, then check its status."}
-            {selectedStatus?.version
-              ? ` Version ${selectedStatus.version}.`
-              : ""}
-          </p>
-          {error && (
-            <p className="sb-error" role="alert">
-              {error}
-            </p>
-          )}
-          <div className="sb-dialog__actions sb-app-actions">
-            <button
-              type="button"
-              className="sb-link"
-              disabled={checking}
-              onClick={() => {
-                void checkSelected();
-              }}
-            >
-              Try again
-            </button>
-            <button
-              type="button"
-              className="sb-link"
-              onClick={() => {
-                try {
-                  const valid =
-                    safeAppAddress(address) || DEFAULT_APP_ADDRESSES[selected];
-                  localStorage.setItem(`sandboxai-app-${selected}`, valid);
-                  setAddresses((previous) => ({
-                    ...previous,
-                    [selected]: valid,
-                  }));
-                  setAddress(valid);
-                  setError(null);
-                } catch (err) {
-                  setError(
-                    err instanceof Error
-                      ? err.message
-                      : "Could not save the address.",
-                  );
-                }
-              }}
-            >
-              Save address
-            </button>
-            {validAddress && (
-              <a
+          {desktop ? (
+            <>
+              <p className="sb-muted">
+                Open the installed desktop app, or switch to its existing window.
+              </p>
+              {error && (
+                <p className="sb-error" role="alert">
+                  {error}
+                </p>
+              )}
+              <button
+                type="button"
                 className="sb-button"
-                href={validAddress}
-                target={`kaampi-${selected}`}
-                rel="noreferrer"
-                onClick={event => { event.preventDefault(); void launch(selected, validAddress); }}
+                disabled={opening !== null}
+                onClick={() => void launch(selected, addresses[selected])}
               >
-                Open app ↗
-              </a>
-            )}
-          </div>
-          </>}
+                {opening ? "Opening…" : "Open desktop app"}
+              </button>
+            </>
+          ) : (
+            <>
+              <hr className="sb-rule" />
+              <label className="sb-field">
+                App address
+                <input
+                  type="url"
+                  placeholder={DEFAULT_APP_ADDRESSES[selected]}
+                  value={address}
+                  onChange={(event) => setAddress(event.target.value)}
+                />
+              </label>
+              <p className="sb-muted" role="status">
+                {checking
+                  ? "Checking the app…"
+                  : selectedStatus
+                    ? STATUS_COPY[selectedStatus.state]
+                    : "Use the address shown when you start the app, then check its status."}
+                {selectedStatus?.version ? ` Version ${selectedStatus.version}.` : ""}
+              </p>
+              {error && (
+                <p className="sb-error" role="alert">
+                  {error}
+                </p>
+              )}
+              <div className="sb-dialog__actions sb-app-actions">
+                <button
+                  type="button"
+                  className="sb-link"
+                  disabled={checking}
+                  onClick={() => {
+                    void checkSelected();
+                  }}
+                >
+                  Try again
+                </button>
+                <button
+                  type="button"
+                  className="sb-link"
+                  onClick={() => {
+                    try {
+                      const valid = safeAppAddress(address) || DEFAULT_APP_ADDRESSES[selected];
+                      localStorage.setItem(`sandboxai-app-${selected}`, valid);
+                      setAddresses((previous) => ({
+                        ...previous,
+                        [selected]: valid,
+                      }));
+                      setAddress(valid);
+                      setError(null);
+                    } catch (err) {
+                      setError(err instanceof Error ? err.message : "Could not save the address.");
+                    }
+                  }}
+                >
+                  Save address
+                </button>
+                {validAddress && (
+                  <a
+                    className="sb-button"
+                    href={validAddress}
+                    target={`kaampi-${selected}`}
+                    rel="noreferrer"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      void launch(selected, validAddress);
+                    }}
+                  >
+                    Open app ↗
+                  </a>
+                )}
+              </div>
+            </>
+          )}
         </Modal>
       )}
     </>

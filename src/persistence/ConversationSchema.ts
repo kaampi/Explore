@@ -29,22 +29,14 @@ export function conversationEntry(
   const participants = Object.entries(session.characters)
     .map(([id, character]) =>
       character.name
-        ? formatPersonName(
-            character.name,
-            character.familyName,
-            character.middleName,
-          )
+        ? formatPersonName(character.name, character.familyName, character.middleName)
         : id,
     )
     .slice(0, 8);
-  const messages = session.conversation.filter(
-    (entry): entry is { content: string } =>
-      Boolean(
-        entry &&
-          typeof entry === "object" &&
-          "content" in entry &&
-          typeof entry.content === "string",
-      ),
+  const messages = session.conversation.filter((entry): entry is { content: string } =>
+    Boolean(
+      entry && typeof entry === "object" && "content" in entry && typeof entry.content === "string",
+    ),
   );
   return ConversationEntrySchema.parse({
     id: session.id,
@@ -58,29 +50,19 @@ export function conversationEntry(
     updatedAt: now,
     ...(previous?.lastOpenedAt ? { lastOpenedAt: previous.lastOpenedAt } : {}),
     archived: previous?.archived ?? false,
-    preview: (messages.at(-1)?.content ?? "")
-      .replace(/\s+/g, " ")
-      .trim()
-      .slice(0, 220),
+    preview: (messages.at(-1)?.content ?? "").replace(/\s+/g, " ").trim().slice(0, 220),
     participants,
     world: session.scene?.realm || session.scene?.location || "",
     messageCount: messages.length,
   });
 }
-export function recentConversations(
-  entries: ConversationEntry[],
-): ConversationEntry[] {
+export function recentConversations(entries: ConversationEntry[]): ConversationEntry[] {
   return entries
     .filter((entry) => !entry.archived)
     .sort(
       (a, b) =>
-        Math.max(
-          Date.parse(b.updatedAt),
-          Date.parse(b.lastOpenedAt ?? b.updatedAt),
-        ) -
-          Math.max(
-            Date.parse(a.updatedAt),
-            Date.parse(a.lastOpenedAt ?? a.updatedAt),
-          ) || a.id.localeCompare(b.id),
+        Math.max(Date.parse(b.updatedAt), Date.parse(b.lastOpenedAt ?? b.updatedAt)) -
+          Math.max(Date.parse(a.updatedAt), Date.parse(a.lastOpenedAt ?? a.updatedAt)) ||
+        a.id.localeCompare(b.id),
     );
 }

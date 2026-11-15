@@ -42,7 +42,12 @@ export function extractCompactSource(raw: string): string {
   const fields = wPlusPlusFields(text);
   const looks = wppLooks(fields);
   if (looks || fields.personality) {
-    return [looks ? `Appearance: ${looks}` : "", fields.personality ? `Personality: ${fields.personality}` : ""].filter(Boolean).join("\n\n");
+    return [
+      looks ? `Appearance: ${looks}` : "",
+      fields.personality ? `Personality: ${fields.personality}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n\n");
   }
   const chunks: string[] = [];
   let keep = false;
@@ -96,10 +101,10 @@ function splitSentences(text: string): string[] {
 function looksJunkBit(bit: string): boolean {
   return (
     /\b(nipples?|areola|genitals?|penis|vagina|wears?|wearing|worn|outfit|clothing|dressed|jewelry|unadorned|scavenged|wire)\b/i.test(
-      bit
+      bit,
     ) ||
     /\b(pants|jeans|trousers|skirt|jacket|coat|hoodie|boots?|sneakers|necklace|choker|dog tags?|pouches|straps)\b/i.test(
-      bit
+      bit,
     ) ||
     /\bcompression tops?\b/i.test(bit) ||
     /\baround (?:her|his|their) neck\b/i.test(bit) ||
@@ -116,7 +121,7 @@ function dropLooksJunk(text: string): string {
       sentence
         .split(/,\s*/)
         .filter((clause) => clause.trim() && !looksJunkBit(clause))
-        .join(", ")
+        .join(", "),
     );
     if (!clipped || looksJunkBit(clipped)) return [];
     return [clipped];
@@ -140,7 +145,7 @@ function dropMoodJunk(mood: string): string {
 
 function personalityJunkSentence(sentence: string): boolean {
   return /\b(promiscuous|kinks?|fetish(?:es)?|nsfw|intimacy|horny|lust|orgasm|bisexual|heterosexual|homosexual|pansexual|sisters?|brothers?|mother|father|siblings?)\b/i.test(
-    sentence
+    sentence,
   );
 }
 
@@ -169,7 +174,7 @@ export function sanitizeCompactFields(fields: CompactCardFields): CompactCardFie
   return {
     appearance: dropLooksJunk(fields.appearance),
     mood: dropMoodJunk(fields.mood),
-    personality: dropPersonalityJunk(fields.personality)
+    personality: dropPersonalityJunk(fields.personality),
   };
 }
 
@@ -184,15 +189,17 @@ export function compactCharacterMessages(input: {
     `Name: ${input.name.trim() || "(unnamed)"}`,
     `Looks now:\n${input.appearance.trim() || "(empty)"}`,
     `Typical mood now:\n${input.mood.trim() || "(empty)"}`,
-    `Personality now:\n${input.personality.trim() || "(empty)"}`
+    `Personality now:\n${input.personality.trim() || "(empty)"}`,
   ];
   const source = input.rawText ? extractCompactSource(input.rawText) : "";
   if (source) {
-    parts.push(`Source Appearance/Personality only (ignore anything else you remember):\n${source.slice(0, 4000)}`);
+    parts.push(
+      `Source Appearance/Personality only (ignore anything else you remember):\n${source.slice(0, 4000)}`,
+    );
   }
   return [
     { role: "system", content: SYSTEM },
-    { role: "user", content: parts.join("\n\n") }
+    { role: "user", content: parts.join("\n\n") },
   ];
 }
 
@@ -225,4 +232,3 @@ export function parseCompactCardJson(text: string): CompactCardFields {
   }
   return cleaned;
 }
-

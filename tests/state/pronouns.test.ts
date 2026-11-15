@@ -19,7 +19,7 @@ describe("pronouns", () => {
     expect(pronounForms("they")).toMatchObject({
       subject: "they",
       object: "them",
-      possessive: "their"
+      possessive: "their",
     });
     expect(pronounLabel("they")).toBe("They");
   });

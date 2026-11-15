@@ -7,10 +7,7 @@ import {
   contrastRatio,
   defaultThemeLibrary,
 } from "../../src/ui/themes/theme";
-import {
-  loadThemeLibrary,
-  saveThemeLibrary,
-} from "../../src/ui/themes/themeStorage";
+import { loadThemeLibrary, saveThemeLibrary } from "../../src/ui/themes/themeStorage";
 
 describe("local appearance library", () => {
   beforeEach(() => {
@@ -49,24 +46,17 @@ describe("local appearance library", () => {
       "https://example.com/background.png",
       "data:image/svg+xml;base64,PHN2Zz4=",
     ]) {
-      expect(
-        PlayThemeSchema.safeParse({ ...theme, backgroundDataUrl }).success,
-      ).toBe(false);
+      expect(PlayThemeSchema.safeParse({ ...theme, backgroundDataUrl }).success).toBe(false);
     }
-    expect(
-      PlayThemeSchema.safeParse({ ...theme, textSize: 1000 }).success,
-    ).toBe(false);
-    expect(
-      PlayThemeSchema.safeParse({ ...theme, accent: "red; display:none" })
-        .success,
-    ).toBe(false);
+    expect(PlayThemeSchema.safeParse({ ...theme, textSize: 1000 }).success).toBe(false);
+    expect(PlayThemeSchema.safeParse({ ...theme, accent: "red; display:none" }).success).toBe(
+      false,
+    );
   });
   it("ships readable preset color pairs and identifies low contrast", () => {
     for (const theme of PRESET_THEMES) {
       expect(PlayThemeSchema.safeParse(theme).success).toBe(true);
-      expect(contrastRatio(theme.panel, theme.text)).toBeGreaterThanOrEqual(
-        4.5,
-      );
+      expect(contrastRatio(theme.panel, theme.text)).toBeGreaterThanOrEqual(4.5);
     }
     expect(contrastRatio("#ffffff", "#ffffff")).toBe(1);
   });

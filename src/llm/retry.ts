@@ -15,7 +15,7 @@ export interface RetryOptions {
 export class RetryExhaustedError extends Error {
   constructor(
     public readonly attempts: number,
-    public readonly lastError: unknown
+    public readonly lastError: unknown,
   ) {
     super(`Exhausted ${attempts} attempt(s). Last error: ${String(lastError)}`);
     this.name = "RetryExhaustedError";

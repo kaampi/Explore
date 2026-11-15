@@ -6,10 +6,7 @@ import { assembleContext, parseConversationTurns } from "@context/ContextEngine"
 import { DEFAULT_BUDGET } from "@context/ContextBudgetManager";
 import { getEffectiveActiveLayers } from "@layers/LayerEngine";
 import { herePrompt } from "@state/placeIntro";
-import {
-  formatCondensationEntry,
-  getHighestCondensedTurnEnd
-} from "./condensationMarker";
+import { formatCondensationEntry, getHighestCondensedTurnEnd } from "./condensationMarker";
 
 /**
  * Rolling Conversation Memory — Phase 4 (project_spec.md).
@@ -51,7 +48,7 @@ export interface RollingMemoryOptions {
 
 export const DEFAULT_ROLLING_MEMORY_OPTIONS: RollingMemoryOptions = {
   keepRecentTurns: 20,
-  batchSize: 10
+  batchSize: 10,
 };
 
 export const CONVERSATION_SUMMARIZER_SYSTEM = [
@@ -63,7 +60,7 @@ export const CONVERSATION_SUMMARIZER_SYSTEM = [
   "- Do not upgrade or invent. Affection is not lifelong commitment. One night is not marriage. A moan is not a vow. If they did not say it, do not write it.",
   "- Do not write a theme, moral, or relationship thesis. Twenty beats must not become one sentence.",
   "- Length: 8–14 short sentences, or one short bullet per important beat. No chapter.",
-  "Third person, past tense. Output only the recap."
+  "Third person, past tense. Output only the recap.",
 ].join("\n");
 
 const DEFAULT_KEEP_ON_PLACE_CHANGE = 4;
@@ -93,7 +90,7 @@ export function selectTurnsDroppedByBudget(session: Session): ConversationTurn[]
  */
 export function selectPlaceChangeBatch(
   session: Session,
-  options: RollingMemoryOptions
+  options: RollingMemoryOptions,
 ): ConversationTurn[] | null {
   if (!options.previousStage || !options.currentStage) return null;
   if (options.previousStage === options.currentStage) return null;
@@ -137,23 +134,20 @@ export type SummarizerKnown = {
   currentPlace?: string;
 };
 
-export function summarizerUserContent(
-  turns: ConversationTurn[],
-  known?: SummarizerKnown
-): string {
+export function summarizerUserContent(turns: ConversationTurn[], known?: SummarizerKnown): string {
   const transcript = turns.map((t) => `${t.speaker ?? t.role}: ${t.content}`).join("\n");
   const parts: string[] = [];
   if (known?.previousPlace && known.currentPlace && known.previousPlace !== known.currentPlace) {
     parts.push(
-      `Scene moved from ${known.previousPlace} to ${known.currentPlace}. Recap what happened at ${known.previousPlace}. The live chat continues in the new place.`
+      `Scene moved from ${known.previousPlace} to ${known.currentPlace}. Recap what happened at ${known.previousPlace}. The live chat continues in the new place.`,
     );
   }
   if (known?.notes && known.notes.length > 0) {
     parts.push(
       [
         "Already in standing notes / Here (do not repeat, do not rewrite as a personality or relationship thesis):",
-        ...known.notes.map((note) => `- ${note}`)
-      ].join("\n")
+        ...known.notes.map((note) => `- ${note}`),
+      ].join("\n"),
     );
   }
   parts.push(`Beats to condense:\n${transcript}`);
@@ -167,7 +161,7 @@ export function summarizerUserContent(
  */
 export function selectBatchToCondense(
   session: Session,
-  options: RollingMemoryOptions = DEFAULT_ROLLING_MEMORY_OPTIONS
+  options: RollingMemoryOptions = DEFAULT_ROLLING_MEMORY_OPTIONS,
 ): ConversationTurn[] | null {
   const moved = selectPlaceChangeBatch(session, options);
   if (moved && moved.length > 0) return moved;
@@ -189,7 +183,7 @@ export function selectBatchToCondense(
 
 export type ConversationSummarizer = (
   turns: ConversationTurn[],
-  known?: SummarizerKnown
+  known?: SummarizerKnown,
 ) => Promise<string>;
 
 function naiveFallbackSummary(turns: ConversationTurn[]): string {
@@ -219,7 +213,7 @@ export interface LLMSummarizerOptions {
  */
 export function createLLMConversationSummarizer(
   llmAdapter: LLMAdapter,
-  options: LLMSummarizerOptions = {}
+  options: LLMSummarizerOptions = {},
 ): ConversationSummarizer {
   const maxAttempts = options.maxAttempts ?? 3;
   const baseDelayMs = options.baseDelayMs ?? 200;
@@ -232,10 +226,10 @@ export function createLLMConversationSummarizer(
           for await (const chunk of llmAdapter.streamCompletion({
             messages: [
               { role: "system", content: CONVERSATION_SUMMARIZER_SYSTEM },
-              { role: "user", content: summarizerUserContent(turns, known) }
+              { role: "user", content: summarizerUserContent(turns, known) },
             ],
             temperature: 0.3,
-            maxTokens: 512
+            maxTokens: 512,
           })) {
             if (chunk.type === "text_delta") collected += chunk.text;
             else if (chunk.type === "error")
@@ -244,7 +238,7 @@ export function createLLMConversationSummarizer(
           if (!collected.trim()) throw new Error("Summarizer returned an empty response.");
           return collected.trim();
         },
-        { maxAttempts, baseDelayMs, sleepImpl: options.sleepImpl }
+        { maxAttempts, baseDelayMs, sleepImpl: options.sleepImpl },
       );
     } catch (err) {
       options.onFailure?.(err);
@@ -260,7 +254,7 @@ export interface CondensationResult {
 
 function knownFactsFrom(session: Session, options: RollingMemoryOptions): SummarizerKnown {
   const known: SummarizerKnown = {
-    notes: options.standingNotes ?? standingNotesForSummarizer(session)
+    notes: options.standingNotes ?? standingNotesForSummarizer(session),
   };
   if (options.previousPlace) known.previousPlace = options.previousPlace;
   if (options.currentPlace) known.currentPlace = options.currentPlace;
@@ -275,7 +269,7 @@ function knownFactsFrom(session: Session, options: RollingMemoryOptions): Summar
 export async function runRollingMemoryCondensation(
   stateEngine: StateEngine,
   summarizer: ConversationSummarizer,
-  options: RollingMemoryOptions = DEFAULT_ROLLING_MEMORY_OPTIONS
+  options: RollingMemoryOptions = DEFAULT_ROLLING_MEMORY_OPTIONS,
 ): Promise<CondensationResult> {
   const session = stateEngine.getSession();
   const batch = selectBatchToCondense(session, options);
@@ -299,7 +293,7 @@ export async function runRollingMemoryCondensation(
   stateEngine.addMemoryEntry(
     "episodic",
     { content, importance: 0.85, createdAtTurn: endTurn },
-    currentVersion
+    currentVersion,
   );
 
   return { condensed: true, turnRange: [startTurn, endTurn] };
@@ -313,7 +307,7 @@ export async function runRollingMemoryUntilQuiet(
   stateEngine: StateEngine,
   summarizer: ConversationSummarizer,
   options: RollingMemoryOptions = DEFAULT_ROLLING_MEMORY_OPTIONS,
-  maxPasses = 3
+  maxPasses = 3,
 ): Promise<CondensationResult[]> {
   const results: CondensationResult[] = [];
   for (let i = 0; i < maxPasses; i++) {

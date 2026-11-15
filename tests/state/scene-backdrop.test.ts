@@ -16,8 +16,8 @@ function makeSession(overrides: Partial<Session> = {}): Session {
     characters: {
       emma: {
         position: { value: "behind the bar", lock: "unlocked" },
-        mood: { value: "reserved", lock: "unlocked" }
-      }
+        mood: { value: "reserved", lock: "unlocked" },
+      },
     },
     scene: {
       location: "The Aurora Room — a quiet late-night bar",
@@ -33,13 +33,13 @@ function makeSession(overrides: Partial<Session> = {}): Session {
           label: "Emma's room",
           keywords: ["staff room", "emmas room"],
           thumbDataUrl: "data:thumb-emma",
-          imageDataUrl: "data:image-emma"
-        }
-      ]
+          imageDataUrl: "data:image-emma",
+        },
+      ],
     },
     player: {
       position: { value: "at the bar", lock: "unlocked" },
-      status: { value: "awake", lock: "unlocked" }
+      status: { value: "awake", lock: "unlocked" },
     },
     relationships: {},
     layers: [],
@@ -48,7 +48,7 @@ function makeSession(overrides: Partial<Session> = {}): Session {
     events: [],
     snapshots: [],
     diagnostics: [],
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -56,27 +56,29 @@ function expectedBackdrop(
   thumb: string,
   image: string,
   extras: Array<{ thumbDataUrl: string; imageDataUrl: string }> = [],
-  play: "fade" | "random" = "fade"
+  play: "fade" | "random" = "fade",
 ) {
   return {
     thumbDataUrl: thumb,
     imageDataUrl: image,
     pictures: [{ thumbDataUrl: thumb, imageDataUrl: image }, ...extras],
-    picturePlay: extras.length > 0 ? play : "fade"
+    picturePlay: extras.length > 0 ? play : "fade",
   };
 }
 
 describe("sceneBackdrop", () => {
   it("uses the venue picture at the bar", () => {
-    expect(sceneBackdrop(makeSession())).toEqual(expectedBackdrop("data:thumb-venue", "data:image-venue"));
+    expect(sceneBackdrop(makeSession())).toEqual(
+      expectedBackdrop("data:thumb-venue", "data:image-venue"),
+    );
   });
 
   it("uses the room picture when the player is in that room, not the venue", () => {
     const session = makeSession({
       player: {
         position: { value: "Emma's room", lock: "unlocked" },
-        status: { value: "awake", lock: "unlocked" }
-      }
+        status: { value: "awake", lock: "unlocked" },
+      },
     });
     expect(sceneBackdrop(session)).toEqual(expectedBackdrop("data:thumb-emma", "data:image-emma"));
   });
@@ -85,8 +87,8 @@ describe("sceneBackdrop", () => {
     const session = makeSession({
       player: {
         position: { value: "in Emma's room", lock: "unlocked" },
-        status: { value: "awake", lock: "unlocked" }
-      }
+        status: { value: "awake", lock: "unlocked" },
+      },
     });
     expect(sceneBackdrop(session)).toEqual(expectedBackdrop("data:thumb-emma", "data:image-emma"));
   });
@@ -95,8 +97,8 @@ describe("sceneBackdrop", () => {
     const session = makeSession({
       player: {
         position: { value: "Emmas room", lock: "unlocked" },
-        status: { value: "awake", lock: "unlocked" }
-      }
+        status: { value: "awake", lock: "unlocked" },
+      },
     });
     expect(sceneBackdrop(session)).toEqual(expectedBackdrop("data:thumb-emma", "data:image-emma"));
   });
@@ -105,18 +107,23 @@ describe("sceneBackdrop", () => {
     const session = makeSession({
       player: {
         position: { value: "Emma's room", lock: "unlocked" },
-        status: { value: "awake", lock: "unlocked" }
+        status: { value: "awake", lock: "unlocked" },
       },
       scene: {
         location: "The Aurora Room — a quiet late-night bar",
         environment: { lighting: "low" },
         imageDataUrl: "data:image-venue",
-        rooms: [{
-          description: "",
-          fromRoomIds: [],
-          gate: "open" as const,
-          id: "room-emmas", label: "Emma's room", keywords: ["staff room"] }]
-      }
+        rooms: [
+          {
+            description: "",
+            fromRoomIds: [],
+            gate: "open" as const,
+            id: "room-emmas",
+            label: "Emma's room",
+            keywords: ["staff room"],
+          },
+        ],
+      },
     });
     expect(sceneBackdrop(session)).toEqual({ pictures: [], picturePlay: "fade" });
   });
@@ -125,15 +132,15 @@ describe("sceneBackdrop", () => {
     const session = makeSession({
       player: {
         position: { value: "Emma's room", lock: "unlocked" },
-        status: { value: "awake", lock: "unlocked" }
+        status: { value: "awake", lock: "unlocked" },
       },
       scene: {
         location: "The Aurora Room — a quiet late-night bar",
         environment: { lighting: "low" },
         thumbDataUrl: "data:thumb-venue",
         imageDataUrl: "data:image-venue",
-        rooms: []
-      }
+        rooms: [],
+      },
     });
     expect(sceneBackdrop(session)).toEqual({ pictures: [], picturePlay: "fade" });
   });
@@ -142,7 +149,7 @@ describe("sceneBackdrop", () => {
     const session = makeSession({
       player: {
         position: { value: "Emma's room", lock: "unlocked" },
-        status: { value: "awake", lock: "unlocked" }
+        status: { value: "awake", lock: "unlocked" },
       },
       scene: {
         location: "The Aurora Room — a quiet late-night bar",
@@ -160,18 +167,18 @@ describe("sceneBackdrop", () => {
             thumbDataUrl: "data:thumb-emma",
             imageDataUrl: "data:image-emma",
             gallery: [{ thumbDataUrl: "data:thumb-emma-2", imageDataUrl: "data:image-emma-2" }],
-            picturePlay: "random"
-          }
-        ]
-      }
+            picturePlay: "random",
+          },
+        ],
+      },
     });
     expect(sceneBackdrop(session)).toEqual(
       expectedBackdrop(
         "data:thumb-emma",
         "data:image-emma",
         [{ thumbDataUrl: "data:thumb-emma-2", imageDataUrl: "data:image-emma-2" }],
-        "random"
-      )
+        "random",
+      ),
     );
   });
 
@@ -187,11 +194,10 @@ describe("sceneBackdrop", () => {
         environment: {},
         realmVisual: {
           thumbDataUrl: "data:thumb-realm",
-          imageDataUrl: "data:image-realm"
-        }
-      }
+          imageDataUrl: "data:image-realm",
+        },
+      },
     });
     expect(sceneBackdrop(session).imageDataUrl).toBe("data:image-realm");
   });
 });
-

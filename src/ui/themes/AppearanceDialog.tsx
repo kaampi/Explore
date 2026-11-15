@@ -6,20 +6,15 @@ import { backgroundFromFile } from "./themeStorage";
 import { PatternSettings, BACKGROUND_PATTERNS } from "./BackgroundSettings";
 
 export function AppearanceDialog({ onClose }: { onClose: () => void }) {
-  return <Modal title="Make yourself at home" onClose={onClose} wide><AppearanceSettingsContent onClose={onClose} /></Modal>;
+  return (
+    <Modal title="Make yourself at home" onClose={onClose} wide>
+      <AppearanceSettingsContent onClose={onClose} />
+    </Modal>
+  );
 }
 
 export function AppearanceSettingsContent({ onClose }: { onClose: () => void }) {
-  const {
-    library,
-    conversationId,
-    ready,
-    error,
-    update,
-    select,
-    save,
-    remove,
-  } = useAppearance();
+  const { library, conversationId, ready, error, update, select, save, remove } = useAppearance();
   const [name, setName] = useState("");
   const [imageError, setImageError] = useState<string | null>(null);
   const [loadingImage, setLoadingImage] = useState(false);
@@ -109,8 +104,7 @@ export function AppearanceSettingsContent({ onClose }: { onClose: () => void }) 
                 value={theme.backgroundMode}
                 onChange={(event) =>
                   update({
-                    backgroundMode: event.target
-                      .value as PlayTheme["backgroundMode"],
+                    backgroundMode: event.target.value as PlayTheme["backgroundMode"],
                   })
                 }
               >
@@ -138,14 +132,11 @@ export function AppearanceSettingsContent({ onClose }: { onClose: () => void }) 
                       setImageError(null);
                       try {
                         const data = await backgroundFromFile(file);
-                        if (request === upload.current)
-                          update({ backgroundDataUrl: data });
+                        if (request === upload.current) update({ backgroundDataUrl: data });
                       } catch (err) {
                         if (request === upload.current)
                           setImageError(
-                            err instanceof Error
-                              ? err.message
-                              : "Could not read this image.",
+                            err instanceof Error ? err.message : "Could not read this image.",
                           );
                       } finally {
                         if (request === upload.current) setLoadingImage(false);
@@ -168,8 +159,7 @@ export function AppearanceSettingsContent({ onClose }: { onClose: () => void }) 
                 {loadingImage && <p role="status">Preparing image…</p>}
                 {!theme.backgroundDataUrl && !loadingImage && (
                   <p className="sb-muted">
-                    Until you add an image, the background uses your chosen
-                    color.
+                    Until you add an image, the background uses your chosen color.
                   </p>
                 )}
               </div>
@@ -194,42 +184,35 @@ export function AppearanceSettingsContent({ onClose }: { onClose: () => void }) 
               Reading font
               <select
                 value={theme.font}
-                onChange={(event) =>
-                  update({ font: event.target.value as PlayTheme["font"] })
-                }
+                onChange={(event) => update({ font: event.target.value as PlayTheme["font"] })}
               >
                 <option value="serif">Book · serif</option>
                 <option value="sans">Clean · sans serif</option>
               </select>
             </label>
             {range("Text size", "textSize", 15, 26, 1, `${theme.textSize}px`)}
-            {range(
-              "Reading width",
-              "textWidth",
-              480,
-              1000,
-              20,
-              `${theme.textWidth}px`,
-            )}
+            {range("Reading width", "textWidth", 480, 1000, 20, `${theme.textWidth}px`)}
           </div>
           <div className="sb-theme-preview" style={playThemeStyle(theme)}>
-            {theme.backgroundMode === "pattern" && <div className="sb-theme-preview__pattern" style={{backgroundImage:`url(${BACKGROUND_PATTERNS.find(item=>item.id===theme.backgroundPattern)?.url})`,opacity:theme.patternStrength}} />}
-            {theme.backgroundMode === "custom" && theme.backgroundDataUrl && (
-              <img
-                src={theme.backgroundDataUrl}
-                className="sb-theme-preview__image"
-                alt=""
+            {theme.backgroundMode === "pattern" && (
+              <div
+                className="sb-theme-preview__pattern"
+                style={{
+                  backgroundImage: `url(${BACKGROUND_PATTERNS.find((item) => item.id === theme.backgroundPattern)?.url})`,
+                  opacity: theme.patternStrength,
+                }}
               />
             )}
-            {theme.backgroundMode === "scene" && (
-              <div className="sb-theme-preview__landscape" />
+            {theme.backgroundMode === "custom" && theme.backgroundDataUrl && (
+              <img src={theme.backgroundDataUrl} className="sb-theme-preview__image" alt="" />
             )}
+            {theme.backgroundMode === "scene" && <div className="sb-theme-preview__landscape" />}
             <div className="sb-theme-preview__shade" />
             <div className="sb-theme-preview__message">
               <small>ELARA · PREVIEW</small>
               <p>
-                “There is always another path,” she says, looking beyond the
-                trees. “Shall we find it?”
+                “There is always another path,” she says, looking beyond the trees. “Shall we find
+                it?”
               </p>
               <span>Your story continues here.</span>
             </div>
@@ -237,9 +220,8 @@ export function AppearanceSettingsContent({ onClose }: { onClose: () => void }) 
         </div>
         {contrastRatio(theme.panel, theme.text) < 4.5 && (
           <p className="sb-notice" role="status">
-            These text and panel colors have low contrast. Try darker text or a
-            lighter panel. Background images and transparency can also affect
-            readability.
+            These text and panel colors have low contrast. Try darker text or a lighter panel.
+            Background images and transparency can also affect readability.
           </p>
         )}
         <div className="sb-save-theme">
@@ -255,9 +237,7 @@ export function AppearanceSettingsContent({ onClose }: { onClose: () => void }) 
           <button
             type="button"
             className="sb-button"
-            disabled={
-              !name.trim() || library.saved.length >= 50 || loadingImage
-            }
+            disabled={!name.trim() || library.saved.length >= 50 || loadingImage}
             onClick={() => {
               save(name);
               setName("");
@@ -268,20 +248,14 @@ export function AppearanceSettingsContent({ onClose }: { onClose: () => void }) 
           </button>
         </div>
         {library.saved.length >= 50 && (
-          <p className="sb-muted">
-            You have 50 saved themes. Remove one to save another.
-          </p>
+          <p className="sb-muted">You have 50 saved themes. Remove one to save another.</p>
         )}
         {library.saved.length > 0 && (
           <div className="sb-saved-themes">
             <h3 className="sb-section-title">Saved themes</h3>
             {library.saved.map((saved) => (
               <div key={saved.id}>
-                <button
-                  type="button"
-                  className="sb-link"
-                  onClick={() => select(saved)}
-                >
+                <button type="button" className="sb-link" onClick={() => select(saved)}>
                   {saved.name}
                 </button>
                 <button
@@ -289,11 +263,7 @@ export function AppearanceSettingsContent({ onClose }: { onClose: () => void }) 
                   className="sb-icon"
                   aria-label={`Delete ${saved.name}`}
                   onClick={() => {
-                    if (
-                      window.confirm(
-                        `Delete “${saved.name}” from your saved themes?`,
-                      )
-                    )
+                    if (window.confirm(`Delete “${saved.name}” from your saved themes?`))
                       remove(saved.id);
                   }}
                 >
@@ -304,11 +274,7 @@ export function AppearanceSettingsContent({ onClose }: { onClose: () => void }) 
           </div>
         )}
         <div className="sb-dialog__actions">
-          <button
-            type="button"
-            className="sb-link"
-            onClick={() => select(PRESET_THEMES[0]!)}
-          >
+          <button type="button" className="sb-link" onClick={() => select(PRESET_THEMES[0]!)}>
             Reset play appearance
           </button>
           <button type="button" className="sb-button" onClick={onClose}>
@@ -316,10 +282,7 @@ export function AppearanceSettingsContent({ onClose }: { onClose: () => void }) 
           </button>
         </div>
       </fieldset>
-      <p
-        role="status"
-        className={error || imageError ? "sb-error" : "sb-muted"}
-      >
+      <p role="status" className={error || imageError ? "sb-error" : "sb-muted"}>
         {imageError ||
           error ||
           notice ||

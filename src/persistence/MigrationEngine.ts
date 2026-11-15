@@ -34,23 +34,23 @@ const migrateV1ToV2: MigrationStep = (record) => {
 
           return [
             fieldName,
-            alreadyWrapped ? fieldValue : { value: fieldValue, lock: "unlocked" as const }
+            alreadyWrapped ? fieldValue : { value: fieldValue, lock: "unlocked" as const },
           ];
-        })
+        }),
       );
       return [charId, migratedFields];
-    })
+    }),
   );
 
   return {
     ...record,
     schemaVersion: 2,
-    characters: migratedCharacters
+    characters: migratedCharacters,
   };
 };
 
 const MIGRATIONS: Record<number, MigrationStep> = {
-  1: migrateV1ToV2
+  1: migrateV1ToV2,
 };
 
 export class UnmigratableSchemaVersionError extends Error {

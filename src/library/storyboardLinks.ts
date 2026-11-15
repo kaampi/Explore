@@ -1,5 +1,10 @@
 import { storyFlagsSatisfied } from "@state/storyFlags";
-import type { CampaignScene, CampaignTemplate, StoryboardLink, StoryboardPosition } from "./LibrarySchema";
+import type {
+  CampaignScene,
+  CampaignTemplate,
+  StoryboardLink,
+  StoryboardPosition,
+} from "./LibrarySchema";
 
 /**
  * Storyboard — how a campaign's scenes connect. Pure data/graph helpers
@@ -22,16 +27,22 @@ export function linksToScene(links: StoryboardLink[], sceneId: string): Storyboa
  * one of them is currently satisfied — several links into the same
  * scene are alternative paths in, not all required together.
  */
-export function sceneIsAvailable(links: StoryboardLink[], sceneId: string, flags: string[]): boolean {
+export function sceneIsAvailable(
+  links: StoryboardLink[],
+  sceneId: string,
+  flags: string[],
+): boolean {
   const incoming = linksToScene(links, sceneId);
   if (incoming.length === 0) return true;
   return incoming.some((link) =>
-    storyFlagsSatisfied({ storyFlags: flags }, link.requiresFlags, link.requiresAbsentFlags)
+    storyFlagsSatisfied({ storyFlags: flags }, link.requiresFlags, link.requiresAbsentFlags),
   );
 }
 
 /** Ids of links that reference a scene the campaign no longer has. */
-export function danglingLinkIds(campaign: Pick<CampaignTemplate, "scenes" | "sceneLinks">): string[] {
+export function danglingLinkIds(
+  campaign: Pick<CampaignTemplate, "scenes" | "sceneLinks">,
+): string[] {
   const sceneIds = new Set(campaign.scenes.map((scene) => scene.id));
   return campaign.sceneLinks
     .filter((link) => !sceneIds.has(link.fromSceneId) || !sceneIds.has(link.toSceneId))
@@ -56,7 +67,7 @@ export function removeLinksForScene(links: StoryboardLink[], sceneId: string): S
 export function setScenePosition(
   scenes: CampaignScene[],
   sceneId: string,
-  position: StoryboardPosition
+  position: StoryboardPosition,
 ): CampaignScene[] {
   return scenes.map((scene) => (scene.id === sceneId ? { ...scene, position } : scene));
 }

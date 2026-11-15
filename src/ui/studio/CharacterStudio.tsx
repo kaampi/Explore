@@ -1,4 +1,9 @@
-import { collectCharacterBackup, LIBRARY_BACKUP_KIND, parseLibraryBackup, restoreLibraryBackup } from "@library/libraryBackup";
+import {
+  collectCharacterBackup,
+  LIBRARY_BACKUP_KIND,
+  parseLibraryBackup,
+  restoreLibraryBackup,
+} from "@library/libraryBackup";
 import type { AnatomyTemplate } from "@state/StateSchema";
 import { importEmbeddedLore } from "../../lore/sillyTavernLore";
 import type { Lorebook } from "../../lore/LorebookSchema";
@@ -11,10 +16,15 @@ import {
   newCharacterTemplate,
   parseTagList,
   type CharacterTemplate,
-  type LibrarySource
+  type LibrarySource,
 } from "@library/LibrarySchema";
 import type { CharacterPronoun } from "@state/StateSchema";
-import { BUILTIN_PRONOUNS, isBuiltinPronoun, normalizePronoun, pronounLabel } from "@state/pronouns";
+import {
+  BUILTIN_PRONOUNS,
+  isBuiltinPronoun,
+  normalizePronoun,
+  pronounLabel,
+} from "@state/pronouns";
 import { PickChips } from "./ChoiceChips";
 import { FactionField } from "./FactionField";
 import { withOriginalTimestamps } from "@library/fromForm";
@@ -31,19 +41,23 @@ import { StudioErrorBoundary } from "./StudioErrorBoundary";
 import { confirmRemove, downloadJson } from "./studioShared";
 import { CharacterGeneratorPanel } from "./CharacterGeneratorPanel";
 import type { GeneratedCharacter } from "@library/characterGenerator";
-import { compactCharacterCardWithOllama, compactFailureMessage } from "./compactCharacterCardWithOllama";
+import {
+  compactCharacterCardWithOllama,
+  compactFailureMessage,
+} from "./compactCharacterCardWithOllama";
 import type { CompactCardFields } from "@library/compactCharacterCard";
 import {
   EMPTY_CHARACTER_SHELF_FILTERS,
   matchesCharacterShelf,
-  type CharacterShelfFilters
+  type CharacterShelfFilters,
 } from "@library/characterShelfFilter";
 
 async function loadCharacterCatalog(repo: IndexedDBRepository): Promise<{
   items: CharacterTemplate[];
   skipped: number;
 }> {
-  const catalog = (repo as IndexedDBRepository & { listCharacterCatalog?: unknown }).listCharacterCatalog;
+  const catalog = (repo as IndexedDBRepository & { listCharacterCatalog?: unknown })
+    .listCharacterCatalog;
   if (typeof catalog === "function") {
     return catalog.call(repo) as Promise<{ items: CharacterTemplate[]; skipped: number }>;
   }
@@ -84,7 +98,7 @@ function emptyDraft(): Draft {
     pronoun: null,
     portraitDataUrl: "",
     tags: "",
-    source: "player"
+    source: "player",
   };
 }
 
@@ -104,19 +118,23 @@ function draftFrom(template: CharacterTemplate): Draft {
     anatomyTemplateId: template.anatomyTemplateId ?? "",
     mood: template.mood ?? "",
     speech: template.speech ?? "",
-    pronoun:
-      template.pronoun && template.pronoun.length <= 32 ? template.pronoun : null,
+    pronoun: template.pronoun && template.pronoun.length <= 32 ? template.pronoun : null,
     portraitDataUrl: portraitSrc(template.portraitDataUrl) ?? "",
     source: template.source,
     factionIds: template.factionIds,
     tags: formatTagList(ensureImportedTag(template.tags ?? [], template.source)),
-    createdAt: template.createdAt
+    createdAt: template.createdAt,
   };
 }
 
 export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
   const [anatomyOptions, setAnatomyOptions] = useState<AnatomyTemplate[]>([]);
-  useEffect(() => { void repo.listAnatomyTemplates().then(setAnatomyOptions).catch(() => {}); }, [repo]);
+  useEffect(() => {
+    void repo
+      .listAnatomyTemplates()
+      .then(setAnatomyOptions)
+      .catch(() => {});
+  }, [repo]);
   const fileRef = useRef<HTMLInputElement>(null);
   const portraitRef = useRef<HTMLInputElement>(null);
   const draftRef = useRef<Draft | null>(null);
@@ -146,7 +164,9 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
   const [compacting, setCompacting] = useState(false);
   const [compactUndo, setCompactUndo] = useState<CompactCardFields | null>(null);
   const [skippedCards, setSkippedCards] = useState(0);
-  const [shelfFilter, setShelfFilter] = useState<CharacterShelfFilters>(EMPTY_CHARACTER_SHELF_FILTERS);
+  const [shelfFilter, setShelfFilter] = useState<CharacterShelfFilters>(
+    EMPTY_CHARACTER_SHELF_FILTERS,
+  );
   const [generatorOpen, setGeneratorOpen] = useState(false);
   const [generatorKey, setGeneratorKey] = useState(0);
   draftRef.current = draft;
@@ -263,7 +283,7 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
       speech: card.speech,
       pronoun: card.pronoun,
       tags: card.tags.join(", "),
-      source: "player"
+      source: "player",
     }));
     setSelectedId(null);
     setTitleFocused(false);
@@ -272,7 +292,11 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
     setNotice("Draft is on the sheet. Edit it, then Save.");
   }
 
-  async function persistDraft(current: Draft, quiet = false, lorebook?: Lorebook): Promise<boolean> {
+  async function persistDraft(
+    current: Draft,
+    quiet = false,
+    lorebook?: Lorebook,
+  ): Promise<boolean> {
     const name = current.name.trim();
     if (!name) {
       setError("Give them a given name.");
@@ -301,14 +325,20 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
       source: current.source,
       ...(original?.coreOrigin ? { coreOrigin: original.coreOrigin } : {}),
       ...(current.pronoun ? { pronoun: current.pronoun } : {}),
-      ...(portraitSrc(current.portraitDataUrl) ? { portraitDataUrl: portraitSrc(current.portraitDataUrl) } : {}),
-      lore: original?.lore ?? []
+      ...(portraitSrc(current.portraitDataUrl)
+        ? { portraitDataUrl: portraitSrc(current.portraitDataUrl) }
+        : {}),
+      lore: original?.lore ?? [],
     });
     const saved = withOriginalTimestamps(
       built,
-      original ?? (current.createdAt ? { createdAt: current.createdAt } : undefined)
+      original ?? (current.createdAt ? { createdAt: current.createdAt } : undefined),
     );
-    if (lorebook) await repo.saveCharacterWithLorebook(saved, { ...lorebook, binding: { kind: "character", targetId: saved.id } });
+    if (lorebook)
+      await repo.saveCharacterWithLorebook(saved, {
+        ...lorebook,
+        binding: { kind: "character", targetId: saved.id },
+      });
     else await repo.saveCharacter(saved);
     await refresh();
     setSelectedId(saved.id);
@@ -352,7 +382,7 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
       if (importSession) {
         setImportSession({
           ...importSession,
-          draft: { ...importSession.draft, portraitDataUrl }
+          draft: { ...importSession.draft, portraitDataUrl },
         });
       } else {
         await applyPortrait(portraitDataUrl);
@@ -367,7 +397,12 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
 
   async function remove() {
     if (!draft?.id || !savedIds.has(draft.id)) return;
-    if (!confirmRemove(formatPersonName(draft.name, draft.familyName, draft.middleName) || "this character")) return;
+    if (
+      !confirmRemove(
+        formatPersonName(draft.name, draft.familyName, draft.middleName) || "this character",
+      )
+    )
+      return;
     await repo.deleteCharacter(draft.id);
     await refresh();
     setSelectedId(null);
@@ -400,11 +435,13 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
     }
     setCompactUndo(null);
     setImportSession({
-      ...(review.embeddedLore ? { lorebook: importEmbeddedLore(review.embeddedLore, `${first.name} lore`) } : {}),
+      ...(review.embeddedLore
+        ? { lorebook: importEmbeddedLore(review.embeddedLore, `${first.name} lore`) }
+        : {}),
       rawText: review.rawText,
       fileLabel: first.name,
       remaining,
-      draft: { ...draftFrom(review.character), portraitDataUrl }
+      draft: { ...draftFrom(review.character), portraitDataUrl },
     });
     setError(null);
   }
@@ -430,7 +467,11 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
     setBusy(true);
     setError(null);
     try {
-      const ok = await persistDraft({ ...importSession.draft, source: "sillytavern" }, true, importSession.lorebook);
+      const ok = await persistDraft(
+        { ...importSession.draft, source: "sillytavern" },
+        true,
+        importSession.lorebook,
+      );
       if (!ok) return;
       const remaining = importSession.remaining;
       if (remaining.length > 0) {
@@ -467,7 +508,7 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
     const before: CompactCardFields = {
       appearance: current.appearance,
       mood: current.mood,
-      personality: current.personality
+      personality: current.personality,
     };
     try {
       const next = await compactCharacterCardWithOllama(
@@ -476,14 +517,16 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
           appearance: current.appearance,
           mood: current.mood,
           personality: current.personality,
-          ...(importSession?.rawText ? { rawText: importSession.rawText } : {})
+          ...(importSession?.rawText ? { rawText: importSession.rawText } : {}),
         },
-        ac.signal
+        ac.signal,
       );
       if (ac.signal.aborted) return;
       setCompactUndo(before);
       applyCompactFields(next);
-      setNotice("Compacted. Check Looks, mood, and personality — Undo compact puts the previous text back.");
+      setNotice(
+        "Compacted. Check Looks, mood, and personality — Undo compact puts the previous text back.",
+      );
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
       if (err instanceof Error && err.name === "AbortError") return;
@@ -506,14 +549,16 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
           return {
             id: item.id,
             name: formatPersonName(item.name, item.familyName, item.middleName),
-            ...(thumb ? { thumb } : {})
+            ...(thumb ? { thumb } : {}),
           };
         })}
         selectedId={selectedId}
         onSelect={open}
         onNew={startNew}
         layout="portraits"
-        renderPortrait={item => <MorphPortrait characterId={item.id} repo={repo} fallback={item.thumb} />}
+        renderPortrait={(item) => (
+          <MorphPortrait characterId={item.id} repo={repo} fallback={item.thumb} />
+        )}
         columns={2}
         newLabel="Create new"
         empty={library.length === 0 ? "No one in the archive yet." : "No one matches."}
@@ -527,7 +572,12 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
             >
               Import SillyTavern
             </button>
-            <button type="button" className="studio-list__btn" onClick={openGenerator} disabled={busy}>
+            <button
+              type="button"
+              className="studio-list__btn"
+              onClick={openGenerator}
+              disabled={busy}
+            >
               Generate
             </button>
           </>
@@ -561,7 +611,13 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
           </div>
         }
       />
-      <section className={importSession ? "studio-sheet studio-sheet--character studio-sheet--import" : "studio-sheet studio-sheet--character"}>
+      <section
+        className={
+          importSession
+            ? "studio-sheet studio-sheet--character studio-sheet--import"
+            : "studio-sheet studio-sheet--character"
+        }
+      >
         <input
           ref={fileRef}
           className="setup-file"
@@ -595,7 +651,11 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
         )}
         {error && !draft && !importSession && <p className="setup-error">{error}</p>}
         <StudioErrorBoundary
-          key={importSession ? `import-${importSession.fileLabel}` : selectedId ?? draft?.id ?? "sheet"}
+          key={
+            importSession
+              ? `import-${importSession.fileLabel}`
+              : (selectedId ?? draft?.id ?? "sheet")
+          }
           fallbackTitle="This card could not be opened. Close and pick someone else — the list is still there."
           onReset={() => {
             setImportSession(null);
@@ -604,243 +664,304 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
             setError(null);
           }}
         >
-        {importSession && (
-          <>
-          <SillyTavernImportReview
-            rawText={importSession.rawText}
-            fileLabel={importSession.fileLabel}
-            draft={importSession.draft}
-            busy={busy}
-            error={error}
-            notice={importSession.lorebook ? `${notice ?? ""} Included lorebook: ${importSession.lorebook.entries.length} entries. Review the lore section below; no entries are selected automatically.` : notice}
-            onChange={(next) => setImportSession({ ...importSession, draft: { ...importSession.draft, ...next } })}
-            onPickPortrait={() => portraitRef.current?.click()}
-            onRemovePortrait={() =>
-              setImportSession({
-                ...importSession,
-                draft: { ...importSession.draft, portraitDataUrl: "" }
-              })
-            }
-            onImport={() => void confirmImport()}
-            onCancel={() => {
-              stopCompact();
-              setImportSession(null);
-              setError(null);
-              setNotice(null);
-            }}
-            compacting={compacting}
-            canUndoCompact={Boolean(compactUndo)}
-            onCompact={() => void compactCard()}
-            onUndoCompact={undoCompact}
-          />
-          {importSession.lorebook && <section className="sb-embedded-lore"><h2>Included lorebook</h2><p>Saved with this character. Choose entries to use in new conversations.</p><LoreReview book={importSession.lorebook} disabled={busy} onChange={lorebook => setImportSession({ ...importSession, lorebook })} /></section>}
-          </>
-        )}
-        {!importSession && draft && (
-          <>
-            {generatorOpen && (
-              <CharacterGeneratorPanel key={generatorKey} busy={busy} onApply={applyGenerated} />
-            )}
-            <SheetNameField
-              ariaLabel="Full name"
-              value={
-                titleFocused
-                  ? titleText
-                  : formatPersonName(draft.name, draft.familyName, draft.middleName)
-              }
-              placeholder="New character"
-              onFocus={() => {
-                setTitleText(formatPersonName(draft.name, draft.familyName, draft.middleName));
-                setTitleFocused(true);
-              }}
-              onBlur={() => setTitleFocused(false)}
-              onChange={(raw) => {
-                const parsed = splitPersonName(raw);
-                setTitleText(raw);
-                setDraft({
-                  ...draft,
-                  name: parsed.given,
-                  middleName: parsed.middle,
-                  familyName: parsed.family
-                });
-              }}
-            />
-            {!saved && <div className="studio-portrait studio-portrait--character">
-              <div className="studio-portrait__frame">
-                {portraitSrc(draft.portraitDataUrl) ? (
-                  <img className="studio-portrait__img" src={portraitSrc(draft.portraitDataUrl)} alt="" />
-                ) : (
-                  <div className="studio-portrait__empty" aria-hidden="true" />
-                )}
-                {portraitSrc(draft.portraitDataUrl) ? (
-                  <button
-                    type="button"
-                    className="studio-portrait__trash"
-                    aria-label="Remove portrait"
-                    disabled={busy}
-                    onClick={() =>
-                      void applyPortrait("").catch((err) => {
-                        setError(err instanceof Error ? err.message : "Could not save.");
-                      })
-                    }
-                  >
-                    <svg viewBox="0 0 16 16" aria-hidden="true">
-                      <path
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.35"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M3.2 4.2h9.6M6.2 4.2V3.1A.9.9 0 0 1 7.1 2.2h1.8a.9.9 0 0 1 .9.9v1.1M5.1 4.2l.5 8.2a1 1 0 0 0 1 .9h2.8a1 1 0 0 0 1-.9l.5-8.2M6.8 6.4v5M9.2 6.4v5"
-                      />
-                    </svg>
-                  </button>
-                ) : null}
-              </div>
-              <button
-                type="button"
-                className="studio-portrait__btn"
-                disabled={busy}
-                onClick={() => portraitRef.current?.click()}
-              >
-                {draft.portraitDataUrl ? "Change portrait" : "Add portrait"}
-              </button>
-            </div>}
-            <FactionField repo={repo} value={draft.factionIds} onChange={factionIds => setDraft({ ...draft, factionIds })} />
-            {saved && draft.id && <CharacterImages key={draft.id} characterId={draft.id} repo={repo} portrait={draft.portraitDataUrl} onPortrait={applyPortrait} />}
-            <div className="setup-field">
-              <span className="setup-field__label">Pronoun</span>
-              <PickChips
-                ariaLabel="Pronoun"
-                choices={[
-                  ...BUILTIN_PRONOUNS,
-                  ...(draft.pronoun && !isBuiltinPronoun(draft.pronoun) ? [draft.pronoun] : [])
-                ]}
-                value={draft.pronoun ?? undefined}
-                labelFor={pronounLabel}
-                addPlaceholder="they…"
-                onPick={(choice) =>
-                  setDraft({ ...draft, pronoun: draft.pronoun === choice ? null : choice })
+          {importSession && (
+            <>
+              <SillyTavernImportReview
+                rawText={importSession.rawText}
+                fileLabel={importSession.fileLabel}
+                draft={importSession.draft}
+                busy={busy}
+                error={error}
+                notice={
+                  importSession.lorebook
+                    ? `${notice ?? ""} Included lorebook: ${importSession.lorebook.entries.length} entries. Review the lore section below; no entries are selected automatically.`
+                    : notice
                 }
-                onAdd={(label) => {
-                  const next = normalizePronoun(label);
-                  setDraft({ ...draft, pronoun: next });
+                onChange={(next) =>
+                  setImportSession({ ...importSession, draft: { ...importSession.draft, ...next } })
+                }
+                onPickPortrait={() => portraitRef.current?.click()}
+                onRemovePortrait={() =>
+                  setImportSession({
+                    ...importSession,
+                    draft: { ...importSession.draft, portraitDataUrl: "" },
+                  })
+                }
+                onImport={() => void confirmImport()}
+                onCancel={() => {
+                  stopCompact();
+                  setImportSession(null);
+                  setError(null);
+                  setNotice(null);
                 }}
+                compacting={compacting}
+                canUndoCompact={Boolean(compactUndo)}
+                onCompact={() => void compactCard()}
+                onUndoCompact={undoCompact}
               />
-            </div>
-            <label className="setup-field setup-field--row">
-              <span className="setup-field__label">Approximate age</span>
-              <input
-                type="number"
-                min={1}
-                max={130}
-                inputMode="numeric"
-                value={draft.approximateAge ?? ""}
-                onChange={(e) => {
-                  const raw = e.target.value;
+              {importSession.lorebook && (
+                <section className="sb-embedded-lore">
+                  <h2>Included lorebook</h2>
+                  <p>Saved with this character. Choose entries to use in new conversations.</p>
+                  <LoreReview
+                    book={importSession.lorebook}
+                    disabled={busy}
+                    onChange={(lorebook) => setImportSession({ ...importSession, lorebook })}
+                  />
+                </section>
+              )}
+            </>
+          )}
+          {!importSession && draft && (
+            <>
+              {generatorOpen && (
+                <CharacterGeneratorPanel key={generatorKey} busy={busy} onApply={applyGenerated} />
+              )}
+              <SheetNameField
+                ariaLabel="Full name"
+                value={
+                  titleFocused
+                    ? titleText
+                    : formatPersonName(draft.name, draft.familyName, draft.middleName)
+                }
+                placeholder="New character"
+                onFocus={() => {
+                  setTitleText(formatPersonName(draft.name, draft.familyName, draft.middleName));
+                  setTitleFocused(true);
+                }}
+                onBlur={() => setTitleFocused(false)}
+                onChange={(raw) => {
+                  const parsed = splitPersonName(raw);
+                  setTitleText(raw);
                   setDraft({
                     ...draft,
-                    approximateAge: raw === "" ? null : Number(raw)
+                    name: parsed.given,
+                    middleName: parsed.middle,
+                    familyName: parsed.family,
                   });
                 }}
-                placeholder="28"
               />
-            </label>
-            <label className="setup-field setup-field--row">
-              <span className="setup-field__label">Looks</span>
-              <textarea
-                className="setup-field__story setup-field__looks"
-                value={draft.appearance}
-                onChange={(e) => setDraft({ ...draft, appearance: e.target.value })}
-                placeholder="body and face, not clothes"
+              {!saved && (
+                <div className="studio-portrait studio-portrait--character">
+                  <div className="studio-portrait__frame">
+                    {portraitSrc(draft.portraitDataUrl) ? (
+                      <img
+                        className="studio-portrait__img"
+                        src={portraitSrc(draft.portraitDataUrl)}
+                        alt=""
+                      />
+                    ) : (
+                      <div className="studio-portrait__empty" aria-hidden="true" />
+                    )}
+                    {portraitSrc(draft.portraitDataUrl) ? (
+                      <button
+                        type="button"
+                        className="studio-portrait__trash"
+                        aria-label="Remove portrait"
+                        disabled={busy}
+                        onClick={() =>
+                          void applyPortrait("").catch((err) => {
+                            setError(err instanceof Error ? err.message : "Could not save.");
+                          })
+                        }
+                      >
+                        <svg viewBox="0 0 16 16" aria-hidden="true">
+                          <path
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.35"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M3.2 4.2h9.6M6.2 4.2V3.1A.9.9 0 0 1 7.1 2.2h1.8a.9.9 0 0 1 .9.9v1.1M5.1 4.2l.5 8.2a1 1 0 0 0 1 .9h2.8a1 1 0 0 0 1-.9l.5-8.2M6.8 6.4v5M9.2 6.4v5"
+                          />
+                        </svg>
+                      </button>
+                    ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    className="studio-portrait__btn"
+                    disabled={busy}
+                    onClick={() => portraitRef.current?.click()}
+                  >
+                    {draft.portraitDataUrl ? "Change portrait" : "Add portrait"}
+                  </button>
+                </div>
+              )}
+              <FactionField
+                repo={repo}
+                value={draft.factionIds}
+                onChange={(factionIds) => setDraft({ ...draft, factionIds })}
               />
-            </label>
-            <label className="setup-field setup-field--row">
-              <span className="setup-field__label">Anatomy (optional)</span>
-              <select value={draft.anatomyTemplateId} onChange={(e) => setDraft({ ...draft, anatomyTemplateId: e.target.value })}>
-                <option value="">No anatomy template</option>
-                {anatomyOptions.map((template) => <option key={template.id} value={template.id}>{template.name} (v{template.version})</option>)}
-              </select>
-            </label>
-            <label className="setup-field setup-field--row">
-              <span className="setup-field__label">Typical mood</span>
-              <input
-                value={draft.mood}
-                onChange={(e) => setDraft({ ...draft, mood: e.target.value })}
-                placeholder="not a scene"
-              />
-            </label>
-            <label className="setup-field setup-field--row">
-              <span className="setup-field__label">How they speak</span>
-              <input
-                value={draft.speech}
-                onChange={(e) => setDraft({ ...draft, speech: e.target.value })}
-                placeholder="Clipped. Few words, no padding."
-              />
-            </label>
-            <label className="setup-field setup-field--row">
-              <span className="setup-field__label">
-                Tags
-                <span className="setup-optional">this person only</span>
-              </span>
-              <input
-                value={draft.tags}
-                onChange={(e) => setDraft({ ...draft, tags: e.target.value })}
-                placeholder="middle-aged, double nature"
-              />
-            </label>
-            <label className="setup-field">
-              <span className="setup-field__label">Personality</span>
-              <textarea
-                className="setup-field__story"
-                value={draft.personality}
-                onChange={(e) => setDraft({ ...draft, personality: e.target.value })}
-                placeholder="Dry-witted, slow to open up, speaks in short sentences…"
-              />
-            </label>
-            {notice && <p className="setup-notice">{notice}</p>}
-            {error && <p className="setup-error">{error}</p>}
-            <div className="studio-sheet__actions">
-              <button type="button" className="setup-start" disabled={busy} onClick={() => void save()}>
-                Save
-              </button>
-              <button type="button" className="setup-example" disabled={busy} onClick={() => void compactCard()}>
-                {compacting ? "Compacting…" : "Compact"}
-              </button>
-              {compactUndo ? (
-                <button type="button" className="setup-example" disabled={busy} onClick={undoCompact}>
-                  Undo compact
-                </button>
-              ) : null}
               {saved && draft.id && (
+                <CharacterImages
+                  key={draft.id}
+                  characterId={draft.id}
+                  repo={repo}
+                  portrait={draft.portraitDataUrl}
+                  onPortrait={applyPortrait}
+                />
+              )}
+              <div className="setup-field">
+                <span className="setup-field__label">Pronoun</span>
+                <PickChips
+                  ariaLabel="Pronoun"
+                  choices={[
+                    ...BUILTIN_PRONOUNS,
+                    ...(draft.pronoun && !isBuiltinPronoun(draft.pronoun) ? [draft.pronoun] : []),
+                  ]}
+                  value={draft.pronoun ?? undefined}
+                  labelFor={pronounLabel}
+                  addPlaceholder="they…"
+                  onPick={(choice) =>
+                    setDraft({ ...draft, pronoun: draft.pronoun === choice ? null : choice })
+                  }
+                  onAdd={(label) => {
+                    const next = normalizePronoun(label);
+                    setDraft({ ...draft, pronoun: next });
+                  }}
+                />
+              </div>
+              <label className="setup-field setup-field--row">
+                <span className="setup-field__label">Approximate age</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={130}
+                  inputMode="numeric"
+                  value={draft.approximateAge ?? ""}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    setDraft({
+                      ...draft,
+                      approximateAge: raw === "" ? null : Number(raw),
+                    });
+                  }}
+                  placeholder="28"
+                />
+              </label>
+              <label className="setup-field setup-field--row">
+                <span className="setup-field__label">Looks</span>
+                <textarea
+                  className="setup-field__story setup-field__looks"
+                  value={draft.appearance}
+                  onChange={(e) => setDraft({ ...draft, appearance: e.target.value })}
+                  placeholder="body and face, not clothes"
+                />
+              </label>
+              <label className="setup-field setup-field--row">
+                <span className="setup-field__label">Anatomy (optional)</span>
+                <select
+                  value={draft.anatomyTemplateId}
+                  onChange={(e) => setDraft({ ...draft, anatomyTemplateId: e.target.value })}
+                >
+                  <option value="">No anatomy template</option>
+                  {anatomyOptions.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name} (v{template.version})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="setup-field setup-field--row">
+                <span className="setup-field__label">Typical mood</span>
+                <input
+                  value={draft.mood}
+                  onChange={(e) => setDraft({ ...draft, mood: e.target.value })}
+                  placeholder="not a scene"
+                />
+              </label>
+              <label className="setup-field setup-field--row">
+                <span className="setup-field__label">How they speak</span>
+                <input
+                  value={draft.speech}
+                  onChange={(e) => setDraft({ ...draft, speech: e.target.value })}
+                  placeholder="Clipped. Few words, no padding."
+                />
+              </label>
+              <label className="setup-field setup-field--row">
+                <span className="setup-field__label">
+                  Tags
+                  <span className="setup-optional">this person only</span>
+                </span>
+                <input
+                  value={draft.tags}
+                  onChange={(e) => setDraft({ ...draft, tags: e.target.value })}
+                  placeholder="middle-aged, double nature"
+                />
+              </label>
+              <label className="setup-field">
+                <span className="setup-field__label">Personality</span>
+                <textarea
+                  className="setup-field__story"
+                  value={draft.personality}
+                  onChange={(e) => setDraft({ ...draft, personality: e.target.value })}
+                  placeholder="Dry-witted, slow to open up, speaks in short sentences…"
+                />
+              </label>
+              {notice && <p className="setup-notice">{notice}</p>}
+              {error && <p className="setup-error">{error}</p>}
+              <div className="studio-sheet__actions">
+                <button
+                  type="button"
+                  className="setup-start"
+                  disabled={busy}
+                  onClick={() => void save()}
+                >
+                  Save
+                </button>
                 <button
                   type="button"
                   className="setup-example"
-                  onClick={() => void (async () => {
-                    try {
-                      const record = library.find((item) => item.id === draft.id);
-                      if (!record) return;
-                      downloadJson(
-                        `${slugifyCharacterId(formatPersonName(record.name, record.familyName, record.middleName))}.json`,
-                        await collectCharacterBackup(repo, record)
-                      );
-                    } catch (error) { setError(error instanceof Error ? error.message : "Could not export character."); }
-                  })()}
+                  disabled={busy}
+                  onClick={() => void compactCard()}
                 >
-                  Export JSON
+                  {compacting ? "Compacting…" : "Compact"}
                 </button>
-              )}
-              {saved && (
-                <button type="button" className="setup-example" onClick={() => void remove()}>
-                  Delete
-                </button>
-              )}
-            </div>
-          </>
-        )}
+                {compactUndo ? (
+                  <button
+                    type="button"
+                    className="setup-example"
+                    disabled={busy}
+                    onClick={undoCompact}
+                  >
+                    Undo compact
+                  </button>
+                ) : null}
+                {saved && draft.id && (
+                  <button
+                    type="button"
+                    className="setup-example"
+                    onClick={() =>
+                      void (async () => {
+                        try {
+                          const record = library.find((item) => item.id === draft.id);
+                          if (!record) return;
+                          downloadJson(
+                            `${slugifyCharacterId(formatPersonName(record.name, record.familyName, record.middleName))}.json`,
+                            await collectCharacterBackup(repo, record),
+                          );
+                        } catch (error) {
+                          setError(
+                            error instanceof Error ? error.message : "Could not export character.",
+                          );
+                        }
+                      })()
+                    }
+                  >
+                    Export JSON
+                  </button>
+                )}
+                {saved && (
+                  <button type="button" className="setup-example" onClick={() => void remove()}>
+                    Delete
+                  </button>
+                )}
+              </div>
+            </>
+          )}
         </StudioErrorBoundary>
       </section>
     </div>
   );
 }
-

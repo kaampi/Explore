@@ -1,5 +1,5 @@
-import { startInnExample } from '../../scenarios/innVisit';
-import { loadingBayScenario } from './encounterScenario';
+import { startInnExample } from "../../scenarios/innVisit";
+import { loadingBayScenario } from "./encounterScenario";
 import { gateEncounterScenario } from "./gateScenario";
 import { PlayStartPaths } from "./PlayStartPaths";
 import { CheckUpdates } from "./CheckUpdates";
@@ -77,8 +77,8 @@ export function HomeScreen({
   const { discovery, preferredModel, refresh } = useConnection();
   const [starting, setBusy] = useState(false);
   const busy = starting || navigationBusy;
-  const [rulesTest,setRulesTest]=useState(false);
-  const [freePicker,setFreePicker]=useState(false);
+  const [rulesTest, setRulesTest] = useState(false);
+  const [freePicker, setFreePicker] = useState(false);
   const [creating, setCreating] = useState(false);
   const [quickName, setQuickName] = useState("");
   const [quickPersonality, setQuickPersonality] = useState("");
@@ -88,14 +88,19 @@ export function HomeScreen({
   const [characterId, setCharacterId] = useState("");
   useEffect(() => {
     let cancelled = false;
-    repo.installExampleMona().then(() => Promise.all([
-      repo.listCharacters(),
-      repo.listRealms(),
-      repo.listPlaces(),
-      repo.listCampaigns(),
-      repo.listVoices(),
-      repo.listRulesets(),
-    ])).then(([people, worlds, venues, stories, narrativeVoices, ruleSets]) => {
+    repo
+      .installExampleMona()
+      .then(() =>
+        Promise.all([
+          repo.listCharacters(),
+          repo.listRealms(),
+          repo.listPlaces(),
+          repo.listCampaigns(),
+          repo.listVoices(),
+          repo.listRulesets(),
+        ]),
+      )
+      .then(([people, worlds, venues, stories, narrativeVoices, ruleSets]) => {
         if (cancelled) return;
         setCharacters(people);
         setRealms(worlds);
@@ -106,9 +111,7 @@ export function HomeScreen({
       })
       .catch((err: unknown) => {
         if (!cancelled)
-          setError(
-            err instanceof Error ? err.message : "Could not load your library.",
-          );
+          setError(err instanceof Error ? err.message : "Could not load your library.");
       })
       .finally(() => {
         if (!cancelled) setReady(true);
@@ -125,13 +128,10 @@ export function HomeScreen({
     setBusy(true);
     setError(null);
     try {
-      const connection =
-        discovery.state === "checking" ? await refresh() : discovery;
-      const model =
-        initialModel(preferredModel, connection.models) ||
-        session?.runtime.model;
-      const voice = chatVoices.find(item => item.id === voiceId);
-      const ruleset = chatRulesets.find(item => item.id === rulesetId);
+      const connection = discovery.state === "checking" ? await refresh() : discovery;
+      const model = initialModel(preferredModel, connection.models) || session?.runtime.model;
+      const voice = chatVoices.find((item) => item.id === voiceId);
+      const ruleset = chatRulesets.find((item) => item.id === rulesetId);
       await onStart(
         quickCharacterSession(character, sessionId, {
           ...(place ? { place } : {}),
@@ -142,11 +142,7 @@ export function HomeScreen({
         }),
       );
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Could not start this conversation.",
-      );
+      setError(err instanceof Error ? err.message : "Could not start this conversation.");
     } finally {
       setBusy(false);
     }
@@ -179,17 +175,13 @@ export function HomeScreen({
       if (!built.ok) throw new Error(built.reason);
       await onStart(built.session);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Could not start this adventure.",
-      );
+      setError(err instanceof Error ? err.message : "Could not start this adventure.");
     } finally {
       setBusy(false);
     }
   }
   const person = session ? primaryCharacter(session) : null;
-  const currentTitle = conversations.find(
-    (entry) => entry.id === session?.id,
-  )?.title;
+  const currentTitle = conversations.find((entry) => entry.id === session?.id)?.title;
   const lastTurn = session?.conversation.at(-1);
   const recent =
     lastTurn &&
@@ -199,7 +191,9 @@ export function HomeScreen({
       ? lastTurn.content
       : undefined;
   function openCreate() {
-    setChatPlaceId(""); setVoiceId(""); setRulesetId("");
+    setChatPlaceId("");
+    setVoiceId("");
+    setRulesetId("");
     setCreating(true);
     setError(null);
   }
@@ -217,39 +211,70 @@ export function HomeScreen({
       setCreating(false);
       setQuickName("");
       setQuickPersonality("");
-      const place = chatPlaces.find(item => item.id === chatPlaceId);
+      const place = chatPlaces.find((item) => item.id === chatPlaceId);
       await startCharacter(character, place, realmFor(place));
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Could not save this character.",
-      );
+      setError(err instanceof Error ? err.message : "Could not save this character.");
     } finally {
       setBusy(false);
     }
   }
   function openWorld(realm: RealmTemplate) {
-    setVoiceId(""); setRulesetId("");
+    setVoiceId("");
+    setRulesetId("");
     setWorld(realm);
     setPlaceId(places.find((place) => place.realmId === realm.id)?.id ?? "");
     setCharacterId(characters[0]?.id ?? "");
     setError(null);
   }
   function realmFor(place?: PlaceTemplate): RealmTemplate | undefined {
-    return place ? realms.find(item => item.id === place.realmId) ?? (place.realmId === exampleRealmDunbaar().id ? exampleRealmDunbaar() : undefined) : undefined;
+    return place
+      ? (realms.find((item) => item.id === place.realmId) ??
+          (place.realmId === exampleRealmDunbaar().id ? exampleRealmDunbaar() : undefined))
+      : undefined;
   }
   function openChatSetup(character: CharacterTemplate, place?: PlaceTemplate) {
-    setChatCharacter(character); setChatPlaceId(place?.id ?? "");
-    setVoiceId(""); setRulesetId(""); setError(null);
+    setChatCharacter(character);
+    setChatPlaceId(place?.id ?? "");
+    setVoiceId("");
+    setRulesetId("");
+    setError(null);
   }
-  const chatFields = <ChatSetupFields places={chatPlaces} voices={chatVoices} rulesets={chatRulesets} placeId={chatPlaceId} voiceId={voiceId} rulesetId={rulesetId} onPlace={setChatPlaceId} onVoice={setVoiceId} onRuleset={setRulesetId} disabled={busy} />;
+  const chatFields = (
+    <ChatSetupFields
+      places={chatPlaces}
+      voices={chatVoices}
+      rulesets={chatRulesets}
+      placeId={chatPlaceId}
+      voiceId={voiceId}
+      rulesetId={rulesetId}
+      onPlace={setChatPlaceId}
+      onVoice={setVoiceId}
+      onRuleset={setRulesetId}
+      disabled={busy}
+    />
+  );
   return (
     <main className="sb-home sb-home--welcome">
       <section className="sb-hero sb-hero--welcome" aria-label="Welcome to Explore">
-        <img className="sb-hero__image" src={conversationsWorld} alt="" fetchPriority="high"/>
-        <div className="sb-hero__shade"/>
-        <div className="sb-hero__content"><h1>A familiar face. <em>A world of possibilities.</em></h1><p>Every story has more to discover.</p><CheckUpdates /></div>
+        <img className="sb-hero__image" src={conversationsWorld} alt="" fetchPriority="high" />
+        <div className="sb-hero__shade" />
+        <div className="sb-hero__content">
+          <h1>
+            A familiar face. <em>A world of possibilities.</em>
+          </h1>
+          <p>Every story has more to discover.</p>
+          <CheckUpdates />
+        </div>
       </section>
-      <PlayStartPaths onFree={()=>setFreePicker(true)} onStudio={view=>{if(view==='rulesets')setRulesTest(true);else onStudio(view);}} disabled={busy||!ready}/>
+      <PlayStartPaths
+        onFree={() => setFreePicker(true)}
+        onStudio={(view) => {
+          if (view === "rulesets") setRulesTest(true);
+          else onStudio(view);
+        }}
+        disabled={busy || !ready}
+      />
       {!ready ? (
         <p className="sb-muted" role="status">
           Opening your worlds…
@@ -265,11 +290,7 @@ export function HomeScreen({
                 <button type="button" className="sb-link" onClick={openCreate}>
                   ＋ Create
                 </button>
-                <button
-                  type="button"
-                  className="sb-link"
-                  onClick={() => onStudio("characters")}
-                >
+                <button type="button" className="sb-link" onClick={() => onStudio("characters")}>
                   Import card ↗
                 </button>
               </div>
@@ -286,16 +307,20 @@ export function HomeScreen({
                   disabled={busy}
                   onClick={() => openChatSetup(character)}
                 >
-                  <MorphPortrait characterId={character.id} repo={repo} fallback={portraitSrc(character.portraitDataUrl)} className="sb-character-morph" initial={character.name.charAt(0)} />
+                  <MorphPortrait
+                    characterId={character.id}
+                    repo={repo}
+                    fallback={portraitSrc(character.portraitDataUrl)}
+                    className="sb-character-morph"
+                    initial={character.name.charAt(0)}
+                  />
                   <span>
                     <strong>
-                      {formatPersonName(
-                        character.name,
-                        character.familyName,
-                        character.middleName,
-                      )}
+                      {formatPersonName(character.name, character.familyName, character.middleName)}
                     </strong>
-                    {character.id === "example-mona-sanchez" && <small>Built-in demo · Morph portrait</small>}
+                    {character.id === "example-mona-sanchez" && (
+                      <small>Built-in demo · Morph portrait</small>
+                    )}
                     <small>
                       {character.personality ||
                         character.mood ||
@@ -309,15 +334,8 @@ export function HomeScreen({
                 <div className="sb-empty-card">
                   <span aria-hidden="true">♧</span>
                   <h3>A character is enough.</h3>
-                  <p>
-                    Create someone new or import a SillyTavern card. No world
-                    setup needed.
-                  </p>
-                  <button
-                    type="button"
-                    className="sb-button"
-                    onClick={openCreate}
-                  >
+                  <p>Create someone new or import a SillyTavern card. No world setup needed.</p>
+                  <button type="button" className="sb-button" onClick={openCreate}>
                     Add a character
                   </button>
                 </div>
@@ -326,21 +344,11 @@ export function HomeScreen({
                 type="button"
                 className="sb-example-card"
                 disabled={busy}
-                onClick={() =>
-                  openChatSetup(
-                    exampleCharacterTemplate(),
-                    examplePlaceTemplate(),
-                  )
-                }
+                onClick={() => openChatSetup(exampleCharacterTemplate(), examplePlaceTemplate())}
               >
-                <span className="sb-eyebrow">
-                  A PLACE TO START · BUILT-IN EXAMPLE
-                </span>
+                <span className="sb-eyebrow">A PLACE TO START · BUILT-IN EXAMPLE</span>
                 <h3>Meet Emma at the Aurora Room</h3>
-                <p>
-                  A quiet venue, a familiar face, and the beginning of a
-                  conversation.
-                </p>
+                <p>A quiet venue, a familiar face, and the beginning of a conversation.</p>
                 <span>
                   Try a conversation <b>→</b>
                 </span>
@@ -350,11 +358,7 @@ export function HomeScreen({
           <section className="sb-home-section">
             <div className="sb-section-heading">
               <h2>Your worlds, waiting</h2>
-              <button
-                type="button"
-                className="sb-link"
-                onClick={() => onStudio("places")}
-              >
+              <button type="button" className="sb-link" onClick={() => onStudio("places")}>
                 Manage worlds & places ↗
               </button>
             </div>
@@ -371,10 +375,7 @@ export function HomeScreen({
                 >
                   <div className="sb-world-card__art">
                     {realm.imageDataUrl || realm.thumbDataUrl ? (
-                      <img
-                        src={realm.imageDataUrl || realm.thumbDataUrl}
-                        alt=""
-                      />
+                      <img src={realm.imageDataUrl || realm.thumbDataUrl} alt="" />
                     ) : (
                       <WorldArtwork variant={index} />
                     )}
@@ -384,11 +385,7 @@ export function HomeScreen({
                     <h3>{realm.name}</h3>
                     <p>{realm.note || "There is more to discover here."}</p>
                     <small>
-                      {
-                        places.filter((place) => place.realmId === realm.id)
-                          .length
-                      }{" "}
-                      places <b>↗</b>
+                      {places.filter((place) => place.realmId === realm.id).length} places <b>↗</b>
                     </small>
                   </div>
                 </button>
@@ -405,9 +402,7 @@ export function HomeScreen({
                 >
                   <span className="sb-eyebrow">PREPARED ADVENTURE</span>
                   <h3>{item.name}</h3>
-                  <p>
-                    {item.playerIntro || "Choose a scene and enter the story."}
-                  </p>
+                  <p>{item.playerIntro || "Choose a scene and enter the story."}</p>
                   <small>
                     {item.scenes.length} scenes <b>↗</b>
                   </small>
@@ -418,16 +413,9 @@ export function HomeScreen({
                   <span aria-hidden="true">⌖</span>
                   <div>
                     <h3>A world can come later.</h3>
-                    <p>
-                      Start with a conversation, or build a setting in your
-                      library.
-                    </p>
+                    <p>Start with a conversation, or build a setting in your library.</p>
                   </div>
-                  <button
-                    type="button"
-                    className="sb-link"
-                    onClick={() => onStudio("places")}
-                  >
+                  <button type="button" className="sb-link" onClick={() => onStudio("places")}>
                     Create a world →
                   </button>
                 </div>
@@ -439,14 +427,10 @@ export function HomeScreen({
             <p>
               <strong>One imagination. More ways to create.</strong>
               <br />
-              Write in kaampi Write. Explore in kaampi Explore. Bring scenes to life
-              in kaampi Comic.
+              Write in kaampi Write. Explore in kaampi Explore. Bring scenes to life in kaampi
+              Comic.
             </p>
-            <button
-              type="button"
-              className="sb-link"
-              onClick={() => onStudio("campaigns")}
-            >
+            <button type="button" className="sb-link" onClick={() => onStudio("campaigns")}>
               Open your studio →
             </button>
           </div>
@@ -457,34 +441,188 @@ export function HomeScreen({
           {error}
         </p>
       )}
-      {rulesTest&&<Modal title="Try a game with rules" onClose={()=>{if(!busy)setRulesTest(false);}}>
-        <p>Choose a short scenario. Explore at your own pace, talk to the people you meet, and let the rules resolve uncertain actions.</p>
-        <div className="sb-rules-scenarios">{[
-          {title:'The gatehouse',genre:'Fantasy · Exploration & combat',description:'Mona guards a locked city gate. Persuade her, find another way in, or face the guards.',label:'Try the gate scenario',create:gateEncounterScenario},
-          {title:'The Copper Lantern',genre:'Exploration · Rooms & return visits',description:'Visit an inn, find a key and unlock its store room. Leave and return to see what the world remembers.',label:'Try the inn',create:(id:string,model?:string)=>startInnExample(repo,id,model)},
-          {title:'The orbital depot',genre:'Sci-fi · Bargaining, trading & combat',description:'Meet quartermaster Imani, bargain for supplies, and explore a depot guarded by officers and a patrol drone.',label:'Try the orbital depot',create:loadingBayScenario}
-        ].map(scenario=><section key={scenario.title}><small>{scenario.genre}</small><h3>{scenario.title}</h3><p>{scenario.description}</p><button type="button" className="sb-button" disabled={busy} onClick={async()=>{setBusy(true);setError(null);try{const connection=discovery.state==='checking'?await refresh():discovery;const model=initialModel(preferredModel,connection.models)||session?.runtime.model;await onStart(await scenario.create(sessionId,model));setRulesTest(false);}catch(e){setError(e instanceof Error?e.message:'Could not start the scenario.');}finally{setBusy(false);}}}>{scenario.label}</button></section>)}</div>
-        <p>Uncertain checks use d100: roll at or below the target to succeed. Use Say for your character’s words, and Do or the action buttons to attempt something. The inn needs no dice rolls. Your progress and rolls are saved.</p>
-        <div className="sb-dialog__actions"><button type="button" disabled={busy} onClick={()=>{setRulesTest(false);onStudio('rulesets');}}>Manage rule-sets</button></div>{error&&<p role="alert">{error}</p>}
-      </Modal>}
-      {freePicker&&<Modal title="Choose someone to meet" wide onClose={()=>setFreePicker(false)}><p className="sb-muted">Start freely with a character from your library, try an example, or create someone new. No rule-set is required.</p><div className="sb-free-character-picker">{mergeWithExamples(characters,[exampleCharacterTemplate()]).map(character=><button type="button" key={character.id} disabled={busy} onClick={()=>{setFreePicker(false);openChatSetup(character);}}>{portraitSrc(character.portraitDataUrl)&&<img src={portraitSrc(character.portraitDataUrl)} alt=""/>}<span><strong>{formatPersonName(character.name,character.familyName,character.middleName)}</strong><small>{character.personality?.slice(0,150)||'Choose a setting and begin your conversation.'}</small></span><span aria-hidden="true">→</span></button>)}</div><div className="sb-dialog__actions"><button type="button" className="sb-link" onClick={()=>setFreePicker(false)}>Cancel</button><button type="button" className="sb-button" disabled={busy} onClick={()=>{setFreePicker(false);openCreate();}}>Create a new character</button></div></Modal>}
-      {chatCharacter && <Modal title={`Chat with ${formatPersonName(chatCharacter.name, chatCharacter.familyName, chatCharacter.middleName)}`} onClose={() => { if (!busy) setChatCharacter(null); }}>
-        <p className="sb-muted">Choose a setting, or leave everything as None and begin. All three choices are optional.</p>
-        {chatFields}
-        {error && <p className="sb-error" role="alert">{error}</p>}
-        <div className="sb-dialog__actions">
-          <button type="button" className="sb-link" disabled={busy} onClick={() => setChatCharacter(null)}>Cancel</button>
-          <button type="button" className="sb-button" disabled={busy} onClick={() => {
-            const place = chatPlaces.find(item => item.id === chatPlaceId);
-            void startCharacter(chatCharacter, place, realmFor(place));
-          }}>{busy ? "Opening…" : "Start conversation →"}</button>
-        </div>
-      </Modal>}
+      {rulesTest && (
+        <Modal
+          title="Try a game with rules"
+          onClose={() => {
+            if (!busy) setRulesTest(false);
+          }}
+        >
+          <p>
+            Choose a short scenario. Explore at your own pace, talk to the people you meet, and let
+            the rules resolve uncertain actions.
+          </p>
+          <div className="sb-rules-scenarios">
+            {[
+              {
+                title: "The gatehouse",
+                genre: "Fantasy · Exploration & combat",
+                description:
+                  "Mona guards a locked city gate. Persuade her, find another way in, or face the guards.",
+                label: "Try the gate scenario",
+                create: gateEncounterScenario,
+              },
+              {
+                title: "The Copper Lantern",
+                genre: "Exploration · Rooms & return visits",
+                description:
+                  "Visit an inn, find a key and unlock its store room. Leave and return to see what the world remembers.",
+                label: "Try the inn",
+                create: (id: string, model?: string) => startInnExample(repo, id, model),
+              },
+              {
+                title: "The orbital depot",
+                genre: "Sci-fi · Bargaining, trading & combat",
+                description:
+                  "Meet quartermaster Imani, bargain for supplies, and explore a depot guarded by officers and a patrol drone.",
+                label: "Try the orbital depot",
+                create: loadingBayScenario,
+              },
+            ].map((scenario) => (
+              <section key={scenario.title}>
+                <small>{scenario.genre}</small>
+                <h3>{scenario.title}</h3>
+                <p>{scenario.description}</p>
+                <button
+                  type="button"
+                  className="sb-button"
+                  disabled={busy}
+                  onClick={async () => {
+                    setBusy(true);
+                    setError(null);
+                    try {
+                      const connection =
+                        discovery.state === "checking" ? await refresh() : discovery;
+                      const model =
+                        initialModel(preferredModel, connection.models) || session?.runtime.model;
+                      await onStart(await scenario.create(sessionId, model));
+                      setRulesTest(false);
+                    } catch (e) {
+                      setError(e instanceof Error ? e.message : "Could not start the scenario.");
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  {scenario.label}
+                </button>
+              </section>
+            ))}
+          </div>
+          <p>
+            Uncertain checks use d100: roll at or below the target to succeed. Use Say for your
+            character’s words, and Do or the action buttons to attempt something. The inn needs no
+            dice rolls. Your progress and rolls are saved.
+          </p>
+          <div className="sb-dialog__actions">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setRulesTest(false);
+                onStudio("rulesets");
+              }}
+            >
+              Manage rule-sets
+            </button>
+          </div>
+          {error && <p role="alert">{error}</p>}
+        </Modal>
+      )}
+      {freePicker && (
+        <Modal title="Choose someone to meet" wide onClose={() => setFreePicker(false)}>
+          <p className="sb-muted">
+            Start freely with a character from your library, try an example, or create someone new.
+            No rule-set is required.
+          </p>
+          <div className="sb-free-character-picker">
+            {mergeWithExamples(characters, [exampleCharacterTemplate()]).map((character) => (
+              <button
+                type="button"
+                key={character.id}
+                disabled={busy}
+                onClick={() => {
+                  setFreePicker(false);
+                  openChatSetup(character);
+                }}
+              >
+                {portraitSrc(character.portraitDataUrl) && (
+                  <img src={portraitSrc(character.portraitDataUrl)} alt="" />
+                )}
+                <span>
+                  <strong>
+                    {formatPersonName(character.name, character.familyName, character.middleName)}
+                  </strong>
+                  <small>
+                    {character.personality?.slice(0, 150) ||
+                      "Choose a setting and begin your conversation."}
+                  </small>
+                </span>
+                <span aria-hidden="true">→</span>
+              </button>
+            ))}
+          </div>
+          <div className="sb-dialog__actions">
+            <button type="button" className="sb-link" onClick={() => setFreePicker(false)}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="sb-button"
+              disabled={busy}
+              onClick={() => {
+                setFreePicker(false);
+                openCreate();
+              }}
+            >
+              Create a new character
+            </button>
+          </div>
+        </Modal>
+      )}
+      {chatCharacter && (
+        <Modal
+          title={`Chat with ${formatPersonName(chatCharacter.name, chatCharacter.familyName, chatCharacter.middleName)}`}
+          onClose={() => {
+            if (!busy) setChatCharacter(null);
+          }}
+        >
+          <p className="sb-muted">
+            Choose a setting, or leave everything as None and begin. All three choices are optional.
+          </p>
+          {chatFields}
+          {error && (
+            <p className="sb-error" role="alert">
+              {error}
+            </p>
+          )}
+          <div className="sb-dialog__actions">
+            <button
+              type="button"
+              className="sb-link"
+              disabled={busy}
+              onClick={() => setChatCharacter(null)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="sb-button"
+              disabled={busy}
+              onClick={() => {
+                const place = chatPlaces.find((item) => item.id === chatPlaceId);
+                void startCharacter(chatCharacter, place, realmFor(place));
+              }}
+            >
+              {busy ? "Opening…" : "Start conversation →"}
+            </button>
+          </div>
+        </Modal>
+      )}
       {creating && (
         <Modal title="Someone new to meet" onClose={() => setCreating(false)}>
           <p className="sb-muted">
-            A name is enough to begin. A little personality makes the
-            conversation yours.
+            A name is enough to begin. A little personality makes the conversation yours.
           </p>
           <form
             onSubmit={(event) => {
@@ -519,18 +657,10 @@ export function HomeScreen({
               </p>
             )}
             <div className="sb-dialog__actions">
-              <button
-                type="button"
-                className="sb-link"
-                onClick={() => onStudio("characters")}
-              >
+              <button type="button" className="sb-link" onClick={() => onStudio("characters")}>
                 Open full character studio ↗
               </button>
-              <button
-                type="submit"
-                className="sb-button"
-                disabled={busy || !quickName.trim()}
-              >
+              <button type="submit" className="sb-button" disabled={busy || !quickName.trim()}>
                 {busy ? "Opening…" : "Create & chat →"}
               </button>
             </div>
@@ -544,10 +674,7 @@ export function HomeScreen({
           </p>
           <label className="sb-field">
             Visit a place
-            <select
-              value={placeId}
-              onChange={(event) => setPlaceId(event.target.value)}
-            >
+            <select value={placeId} onChange={(event) => setPlaceId(event.target.value)}>
               <option value="">Choose a place</option>
               {places
                 .filter((place) => place.realmId === world.id)
@@ -560,18 +687,11 @@ export function HomeScreen({
           </label>
           <label className="sb-field">
             Meet a character
-            <select
-              value={characterId}
-              onChange={(event) => setCharacterId(event.target.value)}
-            >
+            <select value={characterId} onChange={(event) => setCharacterId(event.target.value)}>
               <option value="">Choose a character</option>
               {characters.map((character) => (
                 <option key={character.id} value={character.id}>
-                  {formatPersonName(
-                    character.name,
-                    character.familyName,
-                    character.middleName,
-                  )}
+                  {formatPersonName(character.name, character.familyName, character.middleName)}
                 </option>
               ))}
             </select>
@@ -581,11 +701,21 @@ export function HomeScreen({
               This world needs a place to visit. Add one in Worlds & places.
             </p>
           )}
-          <ChatSetupFields places={chatPlaces} voices={chatVoices} rulesets={chatRulesets} placeId={placeId} voiceId={voiceId} rulesetId={rulesetId} onPlace={setPlaceId} onVoice={setVoiceId} onRuleset={setRulesetId} disabled={busy} includePlace={false} />
+          <ChatSetupFields
+            places={chatPlaces}
+            voices={chatVoices}
+            rulesets={chatRulesets}
+            placeId={placeId}
+            voiceId={voiceId}
+            rulesetId={rulesetId}
+            onPlace={setPlaceId}
+            onVoice={setVoiceId}
+            onRuleset={setRulesetId}
+            disabled={busy}
+            includePlace={false}
+          />
           {characters.length === 0 && (
-            <p className="sb-muted">
-              Add a character to start a meeting in this world.
-            </p>
+            <p className="sb-muted">Add a character to start a meeting in this world.</p>
           )}
           {error && (
             <p role="alert" className="sb-error">
@@ -593,11 +723,7 @@ export function HomeScreen({
             </p>
           )}
           <div className="sb-dialog__actions">
-            <button
-              type="button"
-              className="sb-link"
-              onClick={() => onStudio("places")}
-            >
+            <button type="button" className="sb-link" onClick={() => onStudio("places")}>
               Worlds & places ↗
             </button>
             <button
@@ -605,12 +731,9 @@ export function HomeScreen({
               className="sb-button"
               disabled={busy || !placeId || !characterId}
               onClick={() => {
-                const character = characters.find(
-                  (item) => item.id === characterId,
-                );
+                const character = characters.find((item) => item.id === characterId);
                 const place = places.find((item) => item.id === placeId);
-                if (character && place)
-                  void startCharacter(character, place, world);
+                if (character && place) void startCharacter(character, place, world);
               }}
             >
               {busy ? "Opening…" : "Begin exploring →"}
@@ -651,11 +774,7 @@ export function HomeScreen({
               {error}
             </p>
           )}
-          <button
-            type="button"
-            className="sb-link"
-            onClick={() => onStudio("campaigns")}
-          >
+          <button type="button" className="sb-link" onClick={() => onStudio("campaigns")}>
             Open adventure studio ↗
           </button>
         </Modal>

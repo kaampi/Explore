@@ -11,7 +11,7 @@ export function HintSelect({
   noneLabel,
   choices,
   onChange,
-  ariaLabel
+  ariaLabel,
 }: {
   value: string;
   noneLabel: string;

@@ -50,7 +50,7 @@ export class ProviderError extends Error {
   constructor(
     public readonly providerName: string,
     message: string,
-    public override readonly cause?: unknown
+    public override readonly cause?: unknown,
   ) {
     super(`[${providerName}] ${message}`);
     this.name = "ProviderError";

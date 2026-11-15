@@ -50,7 +50,7 @@ function tryPlay(el: HTMLAudioElement) {
   el.muted = false;
   return el.play().then(
     () => true,
-    () => false
+    () => false,
   );
 }
 
@@ -102,7 +102,7 @@ function usePlayableUrls(clips: string[]): string[] {
 export function PlaceAudio({
   clips,
   play,
-  locationKey
+  locationKey,
 }: {
   clips: string[];
   play: PicturePlay;
@@ -224,7 +224,7 @@ export function PlaceAudio({
         const t = Math.min(1, (now - started) / FADE_MS);
         mixRef.current = {
           a: startA + (endA - startA) * t,
-          b: startB + (endB - startB) * t
+          b: startB + (endB - startB) * t,
         };
         applyGains();
         if (t < 1) {

@@ -2,7 +2,7 @@ import {
   EXAMPLE_AURORA_BRIEF,
   EXAMPLE_AURORA_LORE,
   EXAMPLE_AURORA_NOTE,
-  EXAMPLE_PLACE_ID
+  EXAMPLE_PLACE_ID,
 } from "@library/exampleTemplates";
 import type { PlaceTemplate, RealmTemplate } from "@library/LibrarySchema";
 import { placeVisualFromTemplate } from "@session/campaignStart";
@@ -12,7 +12,10 @@ import { copyAudioFields } from "@state/placeAudio";
 import { copyPictureFields } from "@state/placePictures";
 
 /** Live scene + place layers for walking to another landmark. */
-export function landmarkTravelPatch(place: PlaceTemplate, _realm?: RealmTemplate): LandmarkTravelPatch {
+export function landmarkTravelPatch(
+  place: PlaceTemplate,
+  _realm?: RealmTemplate,
+): LandmarkTravelPatch {
   const visual = placeVisualFromTemplate(place);
   const note = place.note.trim() || (place.id === EXAMPLE_PLACE_ID ? EXAMPLE_AURORA_NOTE : "");
   const brief = place.brief?.trim() || (place.id === EXAMPLE_PLACE_ID ? EXAMPLE_AURORA_BRIEF : "");
@@ -26,7 +29,7 @@ export function landmarkTravelPatch(place: PlaceTemplate, _realm?: RealmTemplate
       priority: 10,
       content: placeForModel,
       active: true,
-      aiGenerated: false
+      aiGenerated: false,
     });
   }
   lore.forEach((item, index) => {
@@ -40,7 +43,7 @@ export function landmarkTravelPatch(place: PlaceTemplate, _realm?: RealmTemplate
       content,
       ...(keywords.length > 0 ? { keywords } : {}),
       active: true,
-      aiGenerated: false
+      aiGenerated: false,
     });
   });
   return {
@@ -53,8 +56,9 @@ export function landmarkTravelPatch(place: PlaceTemplate, _realm?: RealmTemplate
     ...(brief ? { brief } : {}),
     ...copyPictureFields(visual),
     ...copyAudioFields(visual),
-    ...(visual.rooms && visual.rooms.length > 0 ? { rooms: visual.rooms.map((room) => SceneRoomSchema.parse(room)) } : {}),
-    placeLayers
+    ...(visual.rooms && visual.rooms.length > 0
+      ? { rooms: visual.rooms.map((room) => SceneRoomSchema.parse(room)) }
+      : {}),
+    placeLayers,
   };
 }
-

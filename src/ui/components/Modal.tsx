@@ -23,7 +23,10 @@ export function Modal({
     <dialog
       ref={ref}
       className={`sb-dialog${wide ? " sb-dialog--wide" : ""}`}
-      onCancel={(event) => { event.preventDefault(); onClose(); }}
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
       aria-label={title}
       onClick={(event) => {
         if (event.target !== event.currentTarget) return;
@@ -39,12 +42,7 @@ export function Modal({
     >
       <div className="sb-dialog__heading">
         <h2>{title}</h2>
-        <button
-          type="button"
-          className="sb-icon"
-          onClick={onClose}
-          aria-label="Close dialog"
-        >
+        <button type="button" className="sb-icon" onClick={onClose} aria-label="Close dialog">
           ×
         </button>
       </div>

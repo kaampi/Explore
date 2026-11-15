@@ -65,7 +65,8 @@ function PromptBudgetSection() {
 
 function eventChainDot(event: StateEvent): "ai" | "player" | "active" {
   const payload = event.payload as { source?: string } | undefined;
-  if (payload?.source === "ai_approved_state_mutation" || payload?.source === "ai_inference") return "ai";
+  if (payload?.source === "ai_approved_state_mutation" || payload?.source === "ai_inference")
+    return "ai";
   if (payload?.source) return "player";
   return "active";
 }
@@ -130,7 +131,8 @@ export function InspectorPanel() {
   const beatEvents = beat ? inspectEventsForBeat(events, beat) : [];
   const beatEventIds = new Set(beatEvents.map((event) => event.id));
   const committed = beatEvents.find((event) => event.type === "turn_committed");
-  const committedPayload = committed?.payload as { mutationsApplied?: number; mutationsRejected?: number } | undefined;
+  const committedPayload = committed?.payload as
+    { mutationsApplied?: number; mutationsRejected?: number } | undefined;
   const chainEvents = beat ? [...beatEvents].reverse() : [...events].slice(-6).reverse();
   const [undoMessage, setUndoMessage] = useState<string | null>(null);
 
@@ -232,7 +234,9 @@ export function InspectorPanel() {
         {session.story?.premise ? (
           <div className="inspector-row">
             <span className="inspector-row__key">story</span>
-            <span className="inspector-row__value">{session.story.title.trim() || "ground story"}</span>
+            <span className="inspector-row__value">
+              {session.story.title.trim() || "ground story"}
+            </span>
           </div>
         ) : null}
         {session.voice?.instruction ? (
@@ -358,14 +362,16 @@ export function InspectorPanel() {
         <div className="inspector-row">
           <span className="inspector-row__key">layers in play</span>
           <span className="inspector-row__value">
-            {getEffectiveActiveLayers(session).length} / {session.layers.filter((l) => l.active).length} on /{" "}
-            {session.layers.length}
+            {getEffectiveActiveLayers(session).length} /{" "}
+            {session.layers.filter((l) => l.active).length} on / {session.layers.length}
           </span>
         </div>
         <div className="inspector-row">
           <span className="inspector-row__key">memory</span>
           <span className="inspector-row__value">
-            {session.memory.episodic.length + session.memory.semantic.length + session.memory.relational.length}{" "}
+            {session.memory.episodic.length +
+              session.memory.semantic.length +
+              session.memory.relational.length}{" "}
             entries
           </span>
         </div>
@@ -395,7 +401,7 @@ export function InspectorPanel() {
                 borderRadius: 4,
                 padding: "2px 8px",
                 fontSize: "11px",
-                fontFamily: "var(--font-mono)"
+                fontFamily: "var(--font-mono)",
               }}
               title="Undo the most recent state change (§31)"
             >
@@ -438,11 +444,16 @@ export function InspectorPanel() {
         )}
         <div className="chain">
           {chainEvents.map((event) => (
-            <div className={beatEventIds.has(event.id) && beat ? "chain-link chain-link--on" : "chain-link"} key={event.id}>
+            <div
+              className={
+                beatEventIds.has(event.id) && beat ? "chain-link chain-link--on" : "chain-link"
+              }
+              key={event.id}
+            >
               <span
                 className="chain-link__node"
                 style={{
-                  background: `var(--accent-${eventChainDot(event)})`
+                  background: `var(--accent-${eventChainDot(event)})`,
                 }}
               />
               <div className="chain-link__body">

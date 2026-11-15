@@ -16,8 +16,8 @@ function baseSession(): Session {
     characters: {
       emma: {
         position: { value: "table", lock: "unlocked" },
-        mood: { value: "calm", lock: "unlocked" }
-      }
+        mood: { value: "calm", lock: "unlocked" },
+      },
     },
     relationships: {},
     layers: [],
@@ -25,7 +25,7 @@ function baseSession(): Session {
     conversation: [],
     events: [],
     snapshots: [],
-    diagnostics: []
+    diagnostics: [],
   };
 }
 
@@ -49,9 +49,9 @@ describe("StateVersioning", () => {
       characters: {
         emma: {
           mood: { value: "calm", lock: "unlocked" as const },
-          position: { value: "table", lock: "unlocked" as const }
-        }
-      }
+          position: { value: "table", lock: "unlocked" as const },
+        },
+      },
     };
     expect(hashState(a)).toBe(hashState(b));
   });
@@ -70,4 +70,3 @@ describe("StateVersioning", () => {
     expect(() => new Date(snapshot.takenAt).toISOString()).not.toThrow();
   });
 });
-

@@ -1,12 +1,17 @@
 import { describe, it, expect } from "vitest";
-import { closeReplyIfCut, formatPass1UserContent, splitPlayerAgency, stripPass1InstructionLeak } from "@context/PlayerAgency";
+import {
+  closeReplyIfCut,
+  formatPass1UserContent,
+  splitPlayerAgency,
+  stripPass1InstructionLeak,
+} from "@context/PlayerAgency";
 
 describe("splitPlayerAgency", () => {
   it("keeps the player's walk and rejects Emma yodeling", () => {
     const split = splitPlayerAgency(
       "*As I walk to Emma she starts Yoddling*",
       ["Emma", "emma"],
-      "she"
+      "she",
     );
     expect(split.playerFacts.toLowerCase()).toContain("walk to emma");
     expect(split.rejectedClaims.join(" ").toLowerCase()).toMatch(/yoddl/);
@@ -16,7 +21,7 @@ describe("splitPlayerAgency", () => {
     const split = splitPlayerAgency(
       "*Emma asks if she can spend the night with me*",
       ["Emma"],
-      "she"
+      "she",
     );
     expect(split.playerFacts).toBe("");
     expect(split.rejectedClaims[0]?.toLowerCase()).toContain("emma asks");
@@ -26,7 +31,7 @@ describe("splitPlayerAgency", () => {
     const split = splitPlayerAgency(
       "*I see Emma starting to dance to the Jazz music*",
       ["Emma"],
-      "she"
+      "she",
     );
     expect(split.rejectedClaims.join(" ").toLowerCase()).toContain("dance");
   });
@@ -35,7 +40,7 @@ describe("splitPlayerAgency", () => {
     expect(splitPlayerAgency("*I fall asleep*", ["Emma"], "she").rejectedClaims).toEqual([]);
     expect(splitPlayerAgency("*I walk to Emma*", ["Emma"], "she").rejectedClaims).toEqual([]);
     expect(
-      splitPlayerAgency("I ask Emma if she wants to dance", ["Emma"], "she").rejectedClaims
+      splitPlayerAgency("I ask Emma if she wants to dance", ["Emma"], "she").rejectedClaims,
     ).toEqual([]);
   });
 });
@@ -50,7 +55,7 @@ describe("formatPass1UserContent", () => {
       "*As I walk to Emma she starts Yoddling*",
       ["Emma", "emma"],
       "she",
-      "Emma"
+      "Emma",
     );
     expect(content).toContain("[Player action — this happened]");
     expect(content).toContain("walk to Emma");
@@ -64,31 +69,31 @@ describe("stripPass1InstructionLeak", () => {
   it("drops a trailing parenthetical that parrots writing rules", () => {
     expect(
       stripPass1InstructionLeak(
-        'Emma nods. "Cheers." (Present tense. Third person about Emma. No invented places. Character actions are not controlled by the player.)'
-      )
+        'Emma nods. "Cheers." (Present tense. Third person about Emma. No invented places. Character actions are not controlled by the player.)',
+      ),
     ).toBe('Emma nods. "Cheers."');
   });
 
   it("leaves ordinary narration in parentheses", () => {
     expect(stripPass1InstructionLeak("She pauses (just a second) then pours.")).toBe(
-      "She pauses (just a second) then pours."
+      "She pauses (just a second) then pours.",
     );
   });
 });
 
 describe("closeReplyIfCut", () => {
   it("drops a trailing fragment when the token wall hit", () => {
-    expect(
-      closeReplyIfCut('Emma nods. "Stay." She reaches for the', true)
-    ).toBe('Emma nods. "Stay."');
+    expect(closeReplyIfCut('Emma nods. "Stay." She reaches for the', true)).toBe(
+      'Emma nods. "Stay."',
+    );
   });
 
   it("drops a trailing fragment even when the provider did not flag length", () => {
     expect(
       closeReplyIfCut(
         `Emma's hand slides down to grasp his. "Let's make a pact, you and I."\n\nWith that, she pulls him down into a`,
-        false
-      )
+        false,
+      ),
     ).toBe(`Emma's hand slides down to grasp his. "Let's make a pact, you and I."`);
   });
 });

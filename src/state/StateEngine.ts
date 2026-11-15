@@ -1,13 +1,26 @@
-import { encounterDescription } from '../game/sceneDescription';
-import { applyAdventurePresentation } from '../session/adventurePresentation';
-import { advanceAdventure } from '../game/AdventureEngine';
-import type { AdventureTransition } from '../game/AdventureSchema';
-import { initializeSpatialReferences, resolveLocation, locationLabel, type SpatialPlace } from "./spatialLocation";
+import { encounterDescription } from "../game/sceneDescription";
+import { applyAdventurePresentation } from "../session/adventurePresentation";
+import { advanceAdventure } from "../game/AdventureEngine";
+import type { AdventureTransition } from "../game/AdventureSchema";
+import {
+  initializeSpatialReferences,
+  resolveLocation,
+  locationLabel,
+  type SpatialPlace,
+} from "./spatialLocation";
 import { resolveGateAction, POSITION_NAMES, type GateRequest } from "../checks/gateEncounter";
-import { resolveEncounterAction } from '../game/EncounterEngine';
-import type { EncounterRequest } from '../game/EncounterSchema';
-import { CombatFigureImageSchema } from './combatArtwork';
-import { beginJourney, advanceJourney, recordJourneyRest, removePlannedJourneyStop, travelWorkMinutes, TRAVEL_STAGE_MINUTES, JourneyError } from "./journey";
+import { resolveEncounterAction } from "../game/EncounterEngine";
+import type { EncounterRequest } from "../game/EncounterSchema";
+import { CombatFigureImageSchema } from "./combatArtwork";
+import {
+  beginJourney,
+  advanceJourney,
+  recordJourneyRest,
+  removePlannedJourneyStop,
+  travelWorkMinutes,
+  TRAVEL_STAGE_MINUTES,
+  JourneyError,
+} from "./journey";
 import { validateAnatomicalRelation } from "./anatomy";
 import { applyPhysicalChange, type PhysicalChange } from "./physicalContinuity";
 import { EventLog } from "@events/EventLog";
@@ -24,9 +37,14 @@ import {
   type Layer,
   type LayerType,
   MemoryEntrySchema,
-  type MemoryType
+  type MemoryType,
 } from "./StateSchema";
-import { mustForceInactiveOnAdd, resolveLayerActivationChange, shouldBlockLayerActivation, shouldDiscardAiLayerProposal } from "@layers/LayerPolicy";
+import {
+  mustForceInactiveOnAdd,
+  resolveLayerActivationChange,
+  shouldBlockLayerActivation,
+  shouldDiscardAiLayerProposal,
+} from "@layers/LayerPolicy";
 import { deepFreeze } from "./deepFreeze";
 import { isUngroundedPlace, collapsesNamedRoomToVenue } from "./WorldCanon";
 import { clampAiStatValue, parseStatPath } from "./statShift";
@@ -35,7 +53,15 @@ import { clipHandoff } from "./sceneHandoff";
 import { sessionWhatNowSets } from "./whatNowGate";
 import { roomIdForDest, roomIdsNamedInText } from "./roomGate";
 import { nextFlagsAfterClear, nextFlagsAfterSet } from "./storyFlags";
-import { nextPartyAfterLeave, nextPartyAfterPlayerText, nextPendingAfterOffer, nextPendingAfterIds, idsFromOfferValue, canAcceptParty, holdingPartyIds } from "./party";
+import {
+  nextPartyAfterLeave,
+  nextPartyAfterPlayerText,
+  nextPendingAfterOffer,
+  nextPendingAfterIds,
+  idsFromOfferValue,
+  canAcceptParty,
+  holdingPartyIds,
+} from "./party";
 import { applyLandmarkTravel, type LandmarkTravelPatch } from "./landmarkTravel";
 
 export interface MutationProposal {
@@ -48,8 +74,7 @@ export interface MutationProposal {
 }
 
 export type MutationResult =
-  | { committed: true; newStateVersion: number }
-  | { committed: false; reason: string };
+  { committed: true; newStateVersion: number } | { committed: false; reason: string };
 
 /**
  * Event types that represent a reversible state change. "turn_committed"
@@ -70,7 +95,7 @@ export const UNDOABLE_EVENT_TYPES = new Set([
   "layer_spent",
   "layer_removed",
   "layers_compacted",
-  "memory_entry_added"
+  "memory_entry_added",
 ]);
 
 /**
@@ -81,8 +106,12 @@ export const UNDOABLE_EVENT_TYPES = new Set([
  */
 export class StateEngine {
   setCombatArtwork(actorId: string, image: string | null): void {
-    const participants = this.session.encounter ? Object.keys(this.session.encounter.state.actors) : this.session.gateEncounter ? ['player', 'mona', 'archer'] : [];
-    if (!participants.includes(actorId)) throw new Error('Unknown combat participant.');
+    const participants = this.session.encounter
+      ? Object.keys(this.session.encounter.state.actors)
+      : this.session.gateEncounter
+        ? ["player", "mona", "archer"]
+        : [];
+    if (!participants.includes(actorId)) throw new Error("Unknown combat participant.");
     const imageDataUrl = image === null ? null : CombatFigureImageSchema.parse(image);
     this.session.combatArtwork ??= {};
     if (imageDataUrl === null) delete this.session.combatArtwork[actorId];
@@ -90,50 +119,174 @@ export class StateEngine {
     this.session.stateVersion++;
   }
   executeEncounterAction(request: EncounterRequest, rng: () => number = Math.random): void {
-    if(this.session.adventure&&request.expectedSceneId!==this.session.adventure.currentSceneId)throw new Error('The scene changed. Review your action again.');
-    if (!this.session.encounter) throw new Error('This session has no authored encounter.');
-    const next = resolveEncounterAction(this.session.encounter, request, rng), entry = next.history.at(-1)!;
-    const turn = Math.max(0, ...this.session.conversation.map(value => typeof value === 'object' && value !== null && 'turn' in value ? Number(value.turn) || 0 : 0)) + 1;
+    if (this.session.adventure && request.expectedSceneId !== this.session.adventure.currentSceneId)
+      throw new Error("The scene changed. Review your action again.");
+    if (!this.session.encounter) throw new Error("This session has no authored encounter.");
+    const next = resolveEncounterAction(this.session.encounter, request, rng),
+      entry = next.history.at(-1)!;
+    const turn =
+      Math.max(
+        0,
+        ...this.session.conversation.map((value) =>
+          typeof value === "object" && value !== null && "turn" in value
+            ? Number(value.turn) || 0
+            : 0,
+        ),
+      ) + 1;
     this.session.encounter = next;
-    if(this.session.scene)this.session.scene.note=encounterDescription(next.definition,next.state);
+    if (this.session.scene)
+      this.session.scene.note = encounterDescription(next.definition, next.state);
     this.session.stateVersion++;
-    this.session.conversation.push({ turn, role: 'player', content: entry.label,actionId:entry.id,actionSceneId:next.definition.id }, { turn: turn + 1, role: 'character', toldBy: 'narrator', content: entry.text,actionId:entry.id,actionSceneId:next.definition.id });
+    this.session.conversation.push(
+      {
+        turn,
+        role: "player",
+        content: entry.label,
+        actionId: entry.id,
+        actionSceneId: next.definition.id,
+      },
+      {
+        turn: turn + 1,
+        role: "character",
+        toldBy: "narrator",
+        content: entry.text,
+        actionId: entry.id,
+        actionSceneId: next.definition.id,
+      },
+    );
     this.session.storyFlags = [...new Set([...this.session.storyFlags, ...next.state.flags])];
-    if (this.session.player) this.session.player.position = { ...this.session.player.position, value: next.definition.places.find(p => p.id === next.state.actors[next.definition.playerId]!.position)!.name };
-    const event = this.eventLog.append({ turn: this.session.stateVersion, timestamp: new Date().toISOString(), type: 'encounter_action_resolved', payload: entry });
+    if (this.session.player)
+      this.session.player.position = {
+        ...this.session.player.position,
+        value: next.definition.places.find(
+          (p) => p.id === next.state.actors[next.definition.playerId]!.position,
+        )!.name,
+      };
+    const event = this.eventLog.append({
+      turn: this.session.stateVersion,
+      timestamp: new Date().toISOString(),
+      type: "encounter_action_resolved",
+      payload: entry,
+    });
     this.session.events.push(event);
   }
-  transitionAdventure(request:AdventureTransition):void {
-    const next=advanceAdventure(this.session,request),turn=Math.max(0,...this.session.conversation.map(t=>typeof t==='object'&&t!==null&&'turn' in t?Number(t.turn)||0:0))+1;
-    this.session.adventure=next.run;this.session.encounter=next.game;this.session.storyFlags=next.flags;this.session.sceneId=next.target.id;
-    if(this.session.scene)this.session.scene={...this.session.scene,location:next.target.location,placeId:next.target.placeId,note:encounterDescription(next.game.definition,next.game.state)};
-    if(this.session.player){this.session.player.position={...this.session.player.position,value:next.target.location};if(next.run.geography)this.session.player.locationRef={placeId:next.target.placeId,side:'at'};}
+  transitionAdventure(request: AdventureTransition): void {
+    const next = advanceAdventure(this.session, request),
+      turn =
+        Math.max(
+          0,
+          ...this.session.conversation.map((t) =>
+            typeof t === "object" && t !== null && "turn" in t ? Number(t.turn) || 0 : 0,
+          ),
+        ) + 1;
+    this.session.adventure = next.run;
+    this.session.encounter = next.game;
+    this.session.storyFlags = next.flags;
+    this.session.sceneId = next.target.id;
+    if (this.session.scene)
+      this.session.scene = {
+        ...this.session.scene,
+        location: next.target.location,
+        placeId: next.target.placeId,
+        note: encounterDescription(next.game.definition, next.game.state),
+      };
+    if (this.session.player) {
+      this.session.player.position = {
+        ...this.session.player.position,
+        value: next.target.location,
+      };
+      if (next.run.geography)
+        this.session.player.locationRef = { placeId: next.target.placeId, side: "at" };
+    }
     applyAdventurePresentation(this.session);
     this.session.stateVersion++;
-    this.session.conversation.push({turn,role:'character',toldBy:'narrator',content:encounterDescription(next.game.definition,next.game.state),adventureSceneId:next.target.id});
-    const event=this.eventLog.append({turn:this.session.stateVersion,timestamp:new Date().toISOString(),type:'adventure_scene_entered',payload:next.run.transitions.at(-1)});this.session.events.push(event);
+    this.session.conversation.push({
+      turn,
+      role: "character",
+      toldBy: "narrator",
+      content: encounterDescription(next.game.definition, next.game.state),
+      adventureSceneId: next.target.id,
+    });
+    const event = this.eventLog.append({
+      turn: this.session.stateVersion,
+      timestamp: new Date().toISOString(),
+      type: "adventure_scene_entered",
+      payload: next.run.transitions.at(-1),
+    });
+    this.session.events.push(event);
   }
   /** Closed test scene: every consequence and its transcript commit together. */
-  executeGateAction(request: GateRequest, rng:()=>number=Math.random):void {
-    if(!this.session.gateEncounter)throw new Error('This is not the gatehouse test.');
-    const next=resolveGateAction(this.session.gateEncounter,request,rng);
-    const entry=next.history.at(-1)!;
-    const base=Math.max(0,...this.session.conversation.map(value=>typeof value==='object'&&value!==null&&'turn' in value?Number(value.turn)||0:0))+1;
-    this.session.gateEncounter=next;
+  executeGateAction(request: GateRequest, rng: () => number = Math.random): void {
+    if (!this.session.gateEncounter) throw new Error("This is not the gatehouse test.");
+    const next = resolveGateAction(this.session.gateEncounter, request, rng);
+    const entry = next.history.at(-1)!;
+    const base =
+      Math.max(
+        0,
+        ...this.session.conversation.map((value) =>
+          typeof value === "object" && value !== null && "turn" in value
+            ? Number(value.turn) || 0
+            : 0,
+        ),
+      ) + 1;
+    this.session.gateEncounter = next;
     this.session.stateVersion++;
-    this.session.conversation.push({turn:base,role:'player',content:entry.intention?`${entry.intention}\n\nAttempt: ${entry.action}`:entry.action},{turn:base+1,role:'character',...(entry.speaker==='mona'?{speaker:Object.keys(this.session.characters)[0]}:{toldBy:'narrator'}),content:entry.text});
-    this.session.storyFlags=[...new Set([...this.session.storyFlags,...next.flags])];
-    if(this.session.player)this.session.player.position={...this.session.player.position,value:POSITION_NAMES[next.position]};
-    const guard=Object.values(this.session.characters)[0];
-    if(guard){guard.position={...guard.position,value:POSITION_NAMES[next.monaPosition]};guard.mood={...guard.mood,value:next.monaHp===0?'incapacitated':next.monaDisposition==='surrendered'?'surrendered':next.monaDisposition==='fled'?'retreated':next.monaDefending?'defensive':next.phase==='combat'?'hostile':guard.mood.value};}
-    for(const object of this.session.objects??[])if(object.id==='gatehouse-port')object.isOpen=next.gateOpen;
-    const event=this.eventLog.append({turn:this.session.stateVersion,timestamp:new Date().toISOString(),type:'gate_action_resolved',payload:entry});
+    this.session.conversation.push(
+      {
+        turn: base,
+        role: "player",
+        content: entry.intention ? `${entry.intention}\n\nAttempt: ${entry.action}` : entry.action,
+      },
+      {
+        turn: base + 1,
+        role: "character",
+        ...(entry.speaker === "mona"
+          ? { speaker: Object.keys(this.session.characters)[0] }
+          : { toldBy: "narrator" }),
+        content: entry.text,
+      },
+    );
+    this.session.storyFlags = [...new Set([...this.session.storyFlags, ...next.flags])];
+    if (this.session.player)
+      this.session.player.position = {
+        ...this.session.player.position,
+        value: POSITION_NAMES[next.position],
+      };
+    const guard = Object.values(this.session.characters)[0];
+    if (guard) {
+      guard.position = { ...guard.position, value: POSITION_NAMES[next.monaPosition] };
+      guard.mood = {
+        ...guard.mood,
+        value:
+          next.monaHp === 0
+            ? "incapacitated"
+            : next.monaDisposition === "surrendered"
+              ? "surrendered"
+              : next.monaDisposition === "fled"
+                ? "retreated"
+                : next.monaDefending
+                  ? "defensive"
+                  : next.phase === "combat"
+                    ? "hostile"
+                    : guard.mood.value,
+      };
+    }
+    for (const object of this.session.objects ?? [])
+      if (object.id === "gatehouse-port") object.isOpen = next.gateOpen;
+    const event = this.eventLog.append({
+      turn: this.session.stateVersion,
+      timestamp: new Date().toISOString(),
+      type: "gate_action_resolved",
+      payload: entry,
+    });
     this.session.events.push(event);
   }
   constructor(
     private session: Session,
-    private eventLog: EventLog
-  ) { initializeSpatialReferences(this.session); }
+    private eventLog: EventLog,
+  ) {
+    initializeSpatialReferences(this.session);
+  }
 
   /**
    * Returns a read-only snapshot of the session. This is a frozen clone,
@@ -141,7 +294,9 @@ export class StateEngine {
    * §51). External code, including the UI, must go through
    * proposeMutation()/proposeLockChange() to change anything.
    */
-  registerSpatialPlaces(places:SpatialPlace[]):void { initializeSpatialReferences(this.session,places); }
+  registerSpatialPlaces(places: SpatialPlace[]): void {
+    initializeSpatialReferences(this.session, places);
+  }
 
   getSession(): Readonly<Session> {
     return deepFreeze(structuredClone(this.session));
@@ -166,7 +321,11 @@ export class StateEngine {
     if (proposal.path === "physical.change") {
       if (isStale(proposal.expectedStateVersion, this.session.stateVersion))
         return { committed: false, reason: "Stale physical state proposal." };
-      if (proposal.source !== "ai_approved_state_mutation" && proposal.source !== "player_manual_state" && proposal.source !== "immutable_system_constraint")
+      if (
+        proposal.source !== "ai_approved_state_mutation" &&
+        proposal.source !== "player_manual_state" &&
+        proposal.source !== "immutable_system_constraint"
+      )
         return { committed: false, reason: "Unauthorized physical state proposal." };
       let change: PhysicalChange;
       try {
@@ -183,8 +342,11 @@ export class StateEngine {
       }
       const previousState = structuredClone(this.session.physical);
       let result: ReturnType<typeof applyPhysicalChange>;
-      try { result = applyPhysicalChange(previousState, change); }
-      catch { return { committed: false, reason: "Malformed physical change." }; }
+      try {
+        result = applyPhysicalChange(previousState, change);
+      } catch {
+        return { committed: false, reason: "Malformed physical change." };
+      }
       if (!result.ok) return { committed: false, reason: result.reason };
       this.session.physical = result.state;
       this.session.stateVersion = nextVersion(this.session.stateVersion);
@@ -192,7 +354,7 @@ export class StateEngine {
         turn: this.session.stateVersion,
         timestamp: new Date().toISOString(),
         type: "physical_state_changed",
-        payload: { previousState, change, source: proposal.source }
+        payload: { previousState, change, source: proposal.source },
       });
       return { committed: true, newStateVersion: this.session.stateVersion };
     }
@@ -237,22 +399,29 @@ export class StateEngine {
       if (isUngroundedPlace(value, this.session)) {
         return {
           committed: false,
-          reason: `Cannot invent a place that is not in the scene, story, or active place notes: ${value}`
+          reason: `Cannot invent a place that is not in the scene, story, or active place notes: ${value}`,
         };
       }
       const current = typeof target.field.value === "string" ? target.field.value : "";
       if (collapsesNamedRoomToVenue(value, current, this.session)) {
         return {
           committed: false,
-          reason: `Cannot replace a named room with the venue or bar: ${value}`
+          reason: `Cannot replace a named room with the venue or bar: ${value}`,
         };
       }
     }
 
-    const positionMatch=/^(player|characters\.([^.]+))\.position$/.exec(proposal.path);
-    const resolvedPosition=positionMatch&&this.session.spatialPlaces?.length&&typeof value==="string"?resolveLocation(this.session,value):undefined;
-    if(positionMatch&&this.session.spatialPlaces?.length&&!resolvedPosition)return {committed:false,reason:"Position must refer to one known map place. Describe local posture separately."};
-    if(resolvedPosition)value=locationLabel(this.session,resolvedPosition);
+    const positionMatch = /^(player|characters\.([^.]+))\.position$/.exec(proposal.path);
+    const resolvedPosition =
+      positionMatch && this.session.spatialPlaces?.length && typeof value === "string"
+        ? resolveLocation(this.session, value)
+        : undefined;
+    if (positionMatch && this.session.spatialPlaces?.length && !resolvedPosition)
+      return {
+        committed: false,
+        reason: "Position must refer to one known map place. Describe local posture separately.",
+      };
+    if (resolvedPosition) value = locationLabel(this.session, resolvedPosition);
     // 2. Authority / Lock Validation
     const authority = resolveAuthority({ source: proposal.source, fieldLock: target.lock });
     if (!authority.allowed) {
@@ -263,26 +432,39 @@ export class StateEngine {
     if (isStale(proposal.expectedStateVersion, this.session.stateVersion)) {
       return {
         committed: false,
-        reason: `Stale state version: proposal expected ${proposal.expectedStateVersion}, current is ${this.session.stateVersion}.`
+        reason: `Stale state version: proposal expected ${proposal.expectedStateVersion}, current is ${this.session.stateVersion}.`,
       };
     }
 
     // 4. Commit
     const previousValue = target.field.value;
     const positionActor = positionMatch
-      ? positionMatch[1] === "player" ? this.session.player : this.session.characters[positionMatch[2]!]
+      ? positionMatch[1] === "player"
+        ? this.session.player
+        : this.session.characters[positionMatch[2]!]
       : undefined;
     const previousLocationRef = positionActor?.locationRef;
     target.container[target.key] = { ...target.field, value };
-    if(resolvedPosition&&positionMatch){const actor=positionMatch[1]==="player"?this.session.player:this.session.characters[positionMatch[2]!];if(actor)actor.locationRef=resolvedPosition;}
+    if (resolvedPosition && positionMatch) {
+      const actor =
+        positionMatch[1] === "player"
+          ? this.session.player
+          : this.session.characters[positionMatch[2]!];
+      if (actor) actor.locationRef = resolvedPosition;
+    }
     this.session.stateVersion = nextVersion(this.session.stateVersion);
 
     this.eventLog.append({
       turn: this.session.stateVersion,
       timestamp: new Date().toISOString(),
       type: "state_mutation_committed",
-      payload: { path: proposal.path, value, previousValue, source: proposal.source,
-        ...(positionMatch ? { previousLocationRef: previousLocationRef ?? null } : {}) }
+      payload: {
+        path: proposal.path,
+        value,
+        previousValue,
+        source: proposal.source,
+        ...(positionMatch ? { previousLocationRef: previousLocationRef ?? null } : {}),
+      },
     });
 
     return { committed: true, newStateVersion: this.session.stateVersion };
@@ -308,7 +490,7 @@ export class StateEngine {
     const decision = resolveLockChange({
       currentLock: target.lock,
       requestedLock: params.requestedLock,
-      requestedBy: params.source
+      requestedBy: params.source,
     });
     if (!decision.allowed) {
       return { committed: false, reason: decision.reason };
@@ -317,7 +499,7 @@ export class StateEngine {
     if (isStale(params.expectedStateVersion, this.session.stateVersion)) {
       return {
         committed: false,
-        reason: `Stale state version: proposal expected ${params.expectedStateVersion}, current is ${this.session.stateVersion}.`
+        reason: `Stale state version: proposal expected ${params.expectedStateVersion}, current is ${this.session.stateVersion}.`,
       };
     }
 
@@ -332,8 +514,8 @@ export class StateEngine {
         path: params.path,
         newLock: params.requestedLock,
         previousLock: target.lock,
-        source: params.source
-      }
+        source: params.source,
+      },
     });
 
     return { committed: true, newStateVersion: this.session.stateVersion };
@@ -347,12 +529,12 @@ export class StateEngine {
    */
   appendConversationTurn(
     entry: Omit<ConversationTurn, "turn">,
-    expectedStateVersion: number
+    expectedStateVersion: number,
   ): MutationResult {
     if (isStale(expectedStateVersion, this.session.stateVersion)) {
       return {
         committed: false,
-        reason: `Stale state version: proposal expected ${expectedStateVersion}, current is ${this.session.stateVersion}.`
+        reason: `Stale state version: proposal expected ${expectedStateVersion}, current is ${this.session.stateVersion}.`,
       };
     }
 
@@ -366,7 +548,7 @@ export class StateEngine {
       turn: turnNumber,
       timestamp: new Date().toISOString(),
       type: "conversation_turn_appended",
-      payload: fullEntry
+      payload: fullEntry,
     });
 
     return { committed: true, newStateVersion: turnNumber };
@@ -385,9 +567,10 @@ export class StateEngine {
     turnNumber: number,
     newContent: string,
     source: AuthoritySource,
-    expectedStateVersion: number
+    expectedStateVersion: number,
   ): MutationResult {
-    if(this.session.gateEncounter||this.session.encounter)return {committed:false,reason:'Transcript editing is disabled in authored encounters.'};
+    if (this.session.gateEncounter || this.session.encounter)
+      return { committed: false, reason: "Transcript editing is disabled in authored encounters." };
     const isAiSource = source === "ai_approved_state_mutation" || source === "ai_inference";
     if (isAiSource) {
       return { committed: false, reason: "AI-sourced requests can never edit dialogue." };
@@ -396,20 +579,25 @@ export class StateEngine {
     if (isStale(expectedStateVersion, this.session.stateVersion)) {
       return {
         committed: false,
-        reason: `Stale state version: proposal expected ${expectedStateVersion}, current is ${this.session.stateVersion}.`
+        reason: `Stale state version: proposal expected ${expectedStateVersion}, current is ${this.session.stateVersion}.`,
       };
     }
 
     const existing = this.session.conversation.find(
-      (t) => (t as unknown as ConversationTurn).turn === turnNumber
+      (t) => (t as unknown as ConversationTurn).turn === turnNumber,
     ) as ConversationTurn | undefined;
     if (!existing) {
-      return { committed: false, reason: `No conversation turn found with turn number ${turnNumber}.` };
+      return {
+        committed: false,
+        reason: `No conversation turn found with turn number ${turnNumber}.`,
+      };
     }
 
     const previousContent = existing.content;
     this.session.conversation = this.session.conversation.map((t) =>
-      (t as unknown as ConversationTurn).turn === turnNumber ? { ...(t as ConversationTurn), content: newContent } : t
+      (t as unknown as ConversationTurn).turn === turnNumber
+        ? { ...(t as ConversationTurn), content: newContent }
+        : t,
     );
     const newVersion = nextVersion(this.session.stateVersion);
     this.session.stateVersion = newVersion;
@@ -418,7 +606,7 @@ export class StateEngine {
       turn: newVersion,
       timestamp: new Date().toISOString(),
       type: "conversation_turn_edited",
-      payload: { turn: turnNumber, newContent, previousContent, source }
+      payload: { turn: turnNumber, newContent, previousContent, source },
     });
 
     return { committed: true, newStateVersion: newVersion };
@@ -443,12 +631,12 @@ export class StateEngine {
       active?: boolean;
     },
     source: AuthoritySource,
-    expectedStateVersion: number
+    expectedStateVersion: number,
   ): MutationResult {
     if (isStale(expectedStateVersion, this.session.stateVersion)) {
       return {
         committed: false,
-        reason: `Stale state version: proposal expected ${expectedStateVersion}, current is ${this.session.stateVersion}.`
+        reason: `Stale state version: proposal expected ${expectedStateVersion}, current is ${this.session.stateVersion}.`,
       };
     }
 
@@ -468,7 +656,7 @@ export class StateEngine {
       ...(layer.once ? { once: true } : {}),
       ...(layer.spent ? { spent: true } : {}),
       active: forceInactive ? false : (layer.active ?? false),
-      aiGenerated: forceInactive
+      aiGenerated: forceInactive,
     });
 
     this.session.layers = [...this.session.layers, newLayer];
@@ -479,7 +667,7 @@ export class StateEngine {
       turn: newVersion,
       timestamp: new Date().toISOString(),
       type: "layer_added",
-      payload: { layer: newLayer, source }
+      payload: { layer: newLayer, source },
     });
 
     return { committed: true, newStateVersion: newVersion };
@@ -495,7 +683,7 @@ export class StateEngine {
     layerId: string,
     active: boolean,
     source: AuthoritySource,
-    expectedStateVersion: number
+    expectedStateVersion: number,
   ): MutationResult {
     const decision = resolveLayerActivationChange(source);
     if (!decision.allowed) {
@@ -505,7 +693,7 @@ export class StateEngine {
     if (isStale(expectedStateVersion, this.session.stateVersion)) {
       return {
         committed: false,
-        reason: `Stale state version: proposal expected ${expectedStateVersion}, current is ${this.session.stateVersion}.`
+        reason: `Stale state version: proposal expected ${expectedStateVersion}, current is ${this.session.stateVersion}.`,
       };
     }
 
@@ -531,7 +719,7 @@ export class StateEngine {
       turn: newVersion,
       timestamp: new Date().toISOString(),
       type: "layer_activation_changed",
-      payload: { layerId, active, previousActive, source }
+      payload: { layerId, active, previousActive, source },
     });
 
     return { committed: true, newStateVersion: newVersion };
@@ -545,7 +733,7 @@ export class StateEngine {
     layerId: string,
     keywords: string[],
     source: AuthoritySource,
-    expectedStateVersion: number
+    expectedStateVersion: number,
   ): MutationResult {
     const decision = resolveLayerActivationChange(source);
     if (!decision.allowed) {
@@ -555,7 +743,7 @@ export class StateEngine {
     if (isStale(expectedStateVersion, this.session.stateVersion)) {
       return {
         committed: false,
-        reason: `Stale state version: proposal expected ${expectedStateVersion}, current is ${this.session.stateVersion}.`
+        reason: `Stale state version: proposal expected ${expectedStateVersion}, current is ${this.session.stateVersion}.`,
       };
     }
 
@@ -567,7 +755,7 @@ export class StateEngine {
     const previousKeywords = [...(layer.keywords ?? [])];
     const nextKeywords = LayerSchema.shape.keywords.parse(keywords);
     this.session.layers = this.session.layers.map((item) =>
-      item.id === layerId ? { ...item, keywords: nextKeywords } : item
+      item.id === layerId ? { ...item, keywords: nextKeywords } : item,
     );
     const newVersion = nextVersion(this.session.stateVersion);
     this.session.stateVersion = newVersion;
@@ -576,7 +764,7 @@ export class StateEngine {
       turn: newVersion,
       timestamp: new Date().toISOString(),
       type: "layer_keywords_changed",
-      payload: { layerId, keywords: nextKeywords, previousKeywords, source }
+      payload: { layerId, keywords: nextKeywords, previousKeywords, source },
     });
 
     return { committed: true, newStateVersion: newVersion };
@@ -589,7 +777,7 @@ export class StateEngine {
   markLayerSpent(
     layerId: string,
     source: AuthoritySource,
-    expectedStateVersion: number
+    expectedStateVersion: number,
   ): MutationResult {
     const decision = resolveLayerActivationChange(source);
     if (!decision.allowed) {
@@ -599,7 +787,7 @@ export class StateEngine {
     if (isStale(expectedStateVersion, this.session.stateVersion)) {
       return {
         committed: false,
-        reason: `Stale state version: proposal expected ${expectedStateVersion}, current is ${this.session.stateVersion}.`
+        reason: `Stale state version: proposal expected ${expectedStateVersion}, current is ${this.session.stateVersion}.`,
       };
     }
 
@@ -612,7 +800,7 @@ export class StateEngine {
     }
 
     this.session.layers = this.session.layers.map((item) =>
-      item.id === layerId ? { ...item, spent: true, active: false } : item
+      item.id === layerId ? { ...item, spent: true, active: false } : item,
     );
     const newVersion = nextVersion(this.session.stateVersion);
     this.session.stateVersion = newVersion;
@@ -621,7 +809,7 @@ export class StateEngine {
       turn: newVersion,
       timestamp: new Date().toISOString(),
       type: "layer_spent",
-      payload: { layerId, previousActive: layer.active, source }
+      payload: { layerId, previousActive: layer.active, source },
     });
 
     return { committed: true, newStateVersion: newVersion };
@@ -635,7 +823,11 @@ export class StateEngine {
    * mutation here — the removed layer's full record is captured in the
    * event so undo can restore it exactly.
    */
-  removeLayer(layerId: string, source: AuthoritySource, expectedStateVersion: number): MutationResult {
+  removeLayer(
+    layerId: string,
+    source: AuthoritySource,
+    expectedStateVersion: number,
+  ): MutationResult {
     const decision = resolveLayerActivationChange(source);
     if (!decision.allowed) {
       return { committed: false, reason: decision.reason };
@@ -644,7 +836,7 @@ export class StateEngine {
     if (isStale(expectedStateVersion, this.session.stateVersion)) {
       return {
         committed: false,
-        reason: `Stale state version: proposal expected ${expectedStateVersion}, current is ${this.session.stateVersion}.`
+        reason: `Stale state version: proposal expected ${expectedStateVersion}, current is ${this.session.stateVersion}.`,
       };
     }
 
@@ -661,7 +853,7 @@ export class StateEngine {
       turn: newVersion,
       timestamp: new Date().toISOString(),
       type: "layer_removed",
-      payload: { layer, source }
+      payload: { layer, source },
     });
 
     return { committed: true, newStateVersion: newVersion };
@@ -683,7 +875,7 @@ export class StateEngine {
       keywords?: string[];
     }>,
     source: AuthoritySource,
-    expectedStateVersion: number
+    expectedStateVersion: number,
   ): MutationResult {
     const decision = resolveLayerActivationChange(source);
     if (!decision.allowed) {
@@ -693,12 +885,15 @@ export class StateEngine {
     if (isStale(expectedStateVersion, this.session.stateVersion)) {
       return {
         committed: false,
-        reason: `Stale state version: proposal expected ${expectedStateVersion}, current is ${this.session.stateVersion}.`
+        reason: `Stale state version: proposal expected ${expectedStateVersion}, current is ${this.session.stateVersion}.`,
       };
     }
 
     if (removeIds.length < 2 || replacements.length === 0) {
-      return { committed: false, reason: "Compaction needs at least two source layers and one replacement." };
+      return {
+        committed: false,
+        reason: "Compaction needs at least two source layers and one replacement.",
+      };
     }
 
     const removed: Layer[] = [];
@@ -716,12 +911,15 @@ export class StateEngine {
         content: item.content,
         active: item.active,
         aiGenerated: item.aiGenerated,
-        keywords: item.keywords ?? []
-      })
+        keywords: item.keywords ?? [],
+      }),
     );
 
     const removeSet = new Set(removeIds);
-    this.session.layers = [...this.session.layers.filter((layer) => !removeSet.has(layer.id)), ...added];
+    this.session.layers = [
+      ...this.session.layers.filter((layer) => !removeSet.has(layer.id)),
+      ...added,
+    ];
     const newVersion = nextVersion(this.session.stateVersion);
     this.session.stateVersion = newVersion;
 
@@ -729,7 +927,7 @@ export class StateEngine {
       turn: newVersion,
       timestamp: new Date().toISOString(),
       type: "layers_compacted",
-      payload: { removed, added, source }
+      payload: { removed, added, source },
     });
 
     return { committed: true, newStateVersion: newVersion };
@@ -743,12 +941,12 @@ export class StateEngine {
   addMemoryEntry(
     type: MemoryType,
     entry: { content: string; importance: number; createdAtTurn?: number },
-    expectedStateVersion: number
+    expectedStateVersion: number,
   ): MutationResult {
     if (isStale(expectedStateVersion, this.session.stateVersion)) {
       return {
         committed: false,
-        reason: `Stale state version: proposal expected ${expectedStateVersion}, current is ${this.session.stateVersion}.`
+        reason: `Stale state version: proposal expected ${expectedStateVersion}, current is ${this.session.stateVersion}.`,
       };
     }
 
@@ -756,12 +954,12 @@ export class StateEngine {
       id: crypto.randomUUID(),
       createdAtTurn: entry.createdAtTurn ?? this.session.stateVersion,
       importance: entry.importance,
-      content: entry.content
+      content: entry.content,
     });
 
     this.session.memory = {
       ...this.session.memory,
-      [type]: [...this.session.memory[type], fullEntry]
+      [type]: [...this.session.memory[type], fullEntry],
     };
     const newVersion = nextVersion(this.session.stateVersion);
     this.session.stateVersion = newVersion;
@@ -770,7 +968,7 @@ export class StateEngine {
       turn: newVersion,
       timestamp: new Date().toISOString(),
       type: "memory_entry_added",
-      payload: { memoryType: type, entry: fullEntry }
+      payload: { memoryType: type, entry: fullEntry },
     });
 
     return { committed: true, newStateVersion: newVersion };
@@ -790,7 +988,8 @@ export class StateEngine {
    * the AI proposes or approves.
    */
   undoLastMutation(source: AuthoritySource, expectedStateVersion: number): MutationResult {
-    if(this.session.gateEncounter||this.session.encounter)return {committed:false,reason:'Rewinding is disabled in authored encounters.'};
+    if (this.session.gateEncounter || this.session.encounter)
+      return { committed: false, reason: "Rewinding is disabled in authored encounters." };
     const isAiSource = source === "ai_approved_state_mutation" || source === "ai_inference";
     if (isAiSource) {
       return { committed: false, reason: "AI-sourced requests can never trigger undo." };
@@ -799,7 +998,7 @@ export class StateEngine {
     if (isStale(expectedStateVersion, this.session.stateVersion)) {
       return {
         committed: false,
-        reason: `Stale state version: proposal expected ${expectedStateVersion}, current is ${this.session.stateVersion}.`
+        reason: `Stale state version: proposal expected ${expectedStateVersion}, current is ${this.session.stateVersion}.`,
       };
     }
 
@@ -833,7 +1032,11 @@ export class StateEngine {
    * expected to treat any failure here as fatal to whatever redo it was
    * about to attempt, rather than proceeding on inconsistent state.
    */
-  undoEvents(eventIds: string[], source: AuthoritySource, expectedStateVersion: number): MutationResult {
+  undoEvents(
+    eventIds: string[],
+    source: AuthoritySource,
+    expectedStateVersion: number,
+  ): MutationResult {
     const isAiSource = source === "ai_approved_state_mutation" || source === "ai_inference";
     if (isAiSource) {
       return { committed: false, reason: "AI-sourced requests can never trigger undo." };
@@ -842,7 +1045,7 @@ export class StateEngine {
     if (isStale(expectedStateVersion, this.session.stateVersion)) {
       return {
         committed: false,
-        reason: `Stale state version: proposal expected ${expectedStateVersion}, current is ${this.session.stateVersion}.`
+        reason: `Stale state version: proposal expected ${expectedStateVersion}, current is ${this.session.stateVersion}.`,
       };
     }
 
@@ -883,7 +1086,7 @@ export class StateEngine {
   /** Reverses one event's effect, bumps the version, and logs the mutation_undone marker. Shared by both public undo entry points. */
   private applyUndo(
     target: { id: string; type: string; payload?: unknown },
-    source: AuthoritySource
+    source: AuthoritySource,
   ): MutationResult {
     const applied = this.reverseEvent(target);
     if (!applied.ok) {
@@ -897,13 +1100,16 @@ export class StateEngine {
       turn: newVersion,
       timestamp: new Date().toISOString(),
       type: "mutation_undone",
-      payload: { undoneEventId: target.id, undoneEventType: target.type, source }
+      payload: { undoneEventId: target.id, undoneEventType: target.type, source },
     });
 
     return { committed: true, newStateVersion: newVersion };
   }
 
-  private reverseEvent(event: { type: string; payload?: unknown }): { ok: true } | { ok: false; reason: string } {
+  private reverseEvent(event: {
+    type: string;
+    payload?: unknown;
+  }): { ok: true } | { ok: false; reason: string } {
     const p = (event.payload ?? {}) as Record<string, unknown>;
 
     switch (event.type) {
@@ -911,19 +1117,27 @@ export class StateEngine {
         if ("previousJourney" in p) {
           const previous = p.previousJourney as Session["journey"] | null;
           const current = this.session.journey;
-          if (previous?.id !== current?.id || previous?.completedStages !== current?.completedStages ||
-            JSON.stringify(previous?.plan?.stops)!==JSON.stringify(current?.plan?.stops)||
-            ("placeId" in p && p.placeId !== (this.session.scene?.placeId ?? null))) {
-            return {ok:false, reason:"Cannot undo this time change after travelling to another stage or place."};
+          if (
+            previous?.id !== current?.id ||
+            previous?.completedStages !== current?.completedStages ||
+            JSON.stringify(previous?.plan?.stops) !== JSON.stringify(current?.plan?.stops) ||
+            ("placeId" in p && p.placeId !== (this.session.scene?.placeId ?? null))
+          ) {
+            return {
+              ok: false,
+              reason: "Cannot undo this time change after travelling to another stage or place.",
+            };
           }
         }
-        if (p.previousClock) this.session.gameClock = p.previousClock as NonNullable<Session["gameClock"]>;
+        if (p.previousClock)
+          this.session.gameClock = p.previousClock as NonNullable<Session["gameClock"]>;
         else delete this.session.gameClock;
         if ("previousJourney" in p) {
-          if (p.previousJourney) this.session.journey = p.previousJourney as NonNullable<Session["journey"]>;
+          if (p.previousJourney)
+            this.session.journey = p.previousJourney as NonNullable<Session["journey"]>;
           else delete this.session.journey;
         }
-        return {ok: true};
+        return { ok: true };
       }
       case "physical_state_changed": {
         this.session.physical = p.previousState as Session["physical"];
@@ -931,15 +1145,25 @@ export class StateEngine {
       }
       case "state_mutation_committed": {
         const target = this.resolveLockableTarget(p.path as string);
-        if (!target) return { ok: false, reason: `Cannot undo: target path no longer resolvable (${String(p.path)}).` };
+        if (!target)
+          return {
+            ok: false,
+            reason: `Cannot undo: target path no longer resolvable (${String(p.path)}).`,
+          };
         target.container[target.key] = { ...target.field, value: p.previousValue };
         const positionMatch = /^(player|characters\.([^.]+))\.position$/.exec(p.path as string);
         if (positionMatch) {
-          const actor = positionMatch[1] === "player" ? this.session.player : this.session.characters[positionMatch[2]!];
+          const actor =
+            positionMatch[1] === "player"
+              ? this.session.player
+              : this.session.characters[positionMatch[2]!];
           if (actor) {
-            const previousRef = "previousLocationRef" in p
-              ? p.previousLocationRef as NonNullable<Session["player"]>["locationRef"] | null
-              : typeof p.previousValue === "string" ? resolveLocation(this.session, p.previousValue) : undefined;
+            const previousRef =
+              "previousLocationRef" in p
+                ? (p.previousLocationRef as NonNullable<Session["player"]>["locationRef"] | null)
+                : typeof p.previousValue === "string"
+                  ? resolveLocation(this.session, p.previousValue)
+                  : undefined;
             if (previousRef) actor.locationRef = previousRef;
             else delete actor.locationRef;
           }
@@ -948,14 +1172,18 @@ export class StateEngine {
       }
       case "lock_state_changed": {
         const target = this.resolveLockableTarget(p.path as string);
-        if (!target) return { ok: false, reason: `Cannot undo: target path no longer resolvable (${String(p.path)}).` };
+        if (!target)
+          return {
+            ok: false,
+            reason: `Cannot undo: target path no longer resolvable (${String(p.path)}).`,
+          };
         target.container[target.key] = { ...target.field, lock: p.previousLock as LockState };
         return { ok: true };
       }
       case "conversation_turn_appended": {
         const turnNumber = (p as unknown as ConversationTurn).turn;
         this.session.conversation = this.session.conversation.filter(
-          (c) => (c as unknown as ConversationTurn).turn !== turnNumber
+          (c) => (c as unknown as ConversationTurn).turn !== turnNumber,
         );
         return { ok: true };
       }
@@ -965,7 +1193,7 @@ export class StateEngine {
         this.session.conversation = this.session.conversation.map((c) =>
           (c as unknown as ConversationTurn).turn === turnNumber
             ? { ...(c as unknown as ConversationTurn), content: previousContent }
-            : c
+            : c,
         );
         return { ok: true };
       }
@@ -985,7 +1213,7 @@ export class StateEngine {
         const addedIds = new Set(added.map((layer) => layer.id));
         this.session.layers = [
           ...this.session.layers.filter((layer) => !addedIds.has(layer.id)),
-          ...removed
+          ...removed,
         ];
         return { ok: true };
       }
@@ -993,7 +1221,7 @@ export class StateEngine {
         const layerId = p.layerId as string;
         const previousActive = p.previousActive as boolean;
         this.session.layers = this.session.layers.map((l) =>
-          l.id === layerId ? { ...l, active: previousActive } : l
+          l.id === layerId ? { ...l, active: previousActive } : l,
         );
         return { ok: true };
       }
@@ -1001,7 +1229,7 @@ export class StateEngine {
         const layerId = p.layerId as string;
         const previousKeywords = p.previousKeywords as string[];
         this.session.layers = this.session.layers.map((l) =>
-          l.id === layerId ? { ...l, keywords: previousKeywords } : l
+          l.id === layerId ? { ...l, keywords: previousKeywords } : l,
         );
         return { ok: true };
       }
@@ -1009,7 +1237,7 @@ export class StateEngine {
         const layerId = p.layerId as string;
         const previousActive = p.previousActive as boolean;
         this.session.layers = this.session.layers.map((l) =>
-          l.id === layerId ? { ...l, spent: false, active: previousActive } : l
+          l.id === layerId ? { ...l, spent: false, active: previousActive } : l,
         );
         return { ok: true };
       }
@@ -1018,7 +1246,7 @@ export class StateEngine {
         const entry = p.entry as { id: string };
         this.session.memory = {
           ...this.session.memory,
-          [memoryType]: this.session.memory[memoryType].filter((e) => e.id !== entry.id)
+          [memoryType]: this.session.memory[memoryType].filter((e) => e.id !== entry.id),
         };
         return { ok: true };
       }
@@ -1031,22 +1259,37 @@ export class StateEngine {
    * Resolves a dot-path like "characters.emma.mood" or
    * "relationships.emma.trust" to its lockable field container.
    */
-  private resolveLockableTarget(
-    path: string
-  ): { container: Record<string, { value: unknown; lock: LockState }>; key: string; field: { value: unknown; lock: LockState }; lock: LockState } | undefined {
+  private resolveLockableTarget(path: string):
+    | {
+        container: Record<string, { value: unknown; lock: LockState }>;
+        key: string;
+        field: { value: unknown; lock: LockState };
+        lock: LockState;
+      }
+    | undefined {
     const parts = path.split(".");
 
-    if (parts[0] === "player" && parts.length === 2 && (parts[1] === "position" || parts[1] === "status")) {
+    if (
+      parts[0] === "player" &&
+      parts.length === 2 &&
+      (parts[1] === "position" || parts[1] === "status")
+    ) {
       if (!this.session.player) {
         this.session.player = {
           position: { value: this.session.scene?.location ?? "here", lock: "unlocked" },
-          status: { value: "awake", lock: "unlocked" }
+          status: { value: "awake", lock: "unlocked" },
         };
       }
       return lockableFrom(this.session.player as Record<string, unknown>, parts[1]);
     }
 
-    if (parts[0] === "characters" && parts.length === 4 && parts[2] === "stats" && parts[1] && parts[3]) {
+    if (
+      parts[0] === "characters" &&
+      parts.length === 4 &&
+      parts[2] === "stats" &&
+      parts[1] &&
+      parts[3]
+    ) {
       const stats = this.session.characters[parts[1]]?.stats as Record<string, unknown> | undefined;
       if (!stats) return undefined;
       return lockableFrom(stats, parts[3]);
@@ -1055,12 +1298,13 @@ export class StateEngine {
     if (parts.length !== 3 || !parts[1] || !parts[2]) return undefined;
 
     if (parts[0] === "characters") {
-      const character = this.session.characters[parts[1]] as
-        | Record<string, unknown>
-        | undefined;
+      const character = this.session.characters[parts[1]] as Record<string, unknown> | undefined;
       if (!character) return undefined;
       const key = parts[2];
-      if ((key === "clothing" || key === "holding" || key === "pose") && !isLockableField(character[key])) {
+      if (
+        (key === "clothing" || key === "holding" || key === "pose") &&
+        !isLockableField(character[key])
+      ) {
         character[key] = { value: "", lock: "unlocked" };
       }
       return lockableFrom(character, key);
@@ -1068,10 +1312,10 @@ export class StateEngine {
 
     if (parts[0] === "relationships") {
       const relationship = this.session.relationships[parts[1]] as
-        | Record<string, unknown>
-        | undefined;
+        Record<string, unknown> | undefined;
       if (!relationship) return undefined;
-      if (parts[2] !== "trust" && parts[2] !== "familiarity" && parts[2] !== "tension") return undefined;
+      if (parts[2] !== "trust" && parts[2] !== "familiarity" && parts[2] !== "tension")
+        return undefined;
       return lockableFrom(relationship, parts[2]);
     }
 
@@ -1091,7 +1335,7 @@ export class StateEngine {
       turn: this.session.stateVersion,
       timestamp: new Date().toISOString(),
       type: "runtime_model_changed",
-      payload: { model: next }
+      payload: { model: next },
     });
   }
 
@@ -1106,7 +1350,7 @@ export class StateEngine {
       turn: this.session.stateVersion,
       timestamp: new Date().toISOString(),
       type: "runtime_max_reply_changed",
-      payload: { maxReplyTokens: next }
+      payload: { maxReplyTokens: next },
     });
   }
 
@@ -1122,7 +1366,7 @@ export class StateEngine {
       turn: this.session.stateVersion,
       timestamp: new Date().toISOString(),
       type: "outgoing_handoff_changed",
-      payload: { outgoingHandoff: next }
+      payload: { outgoingHandoff: next },
     });
   }
 
@@ -1135,7 +1379,7 @@ export class StateEngine {
       turn: this.session.stateVersion,
       timestamp: new Date().toISOString(),
       type: "handoff_changed",
-      payload: { handoff: next }
+      payload: { handoff: next },
     });
   }
 
@@ -1146,7 +1390,7 @@ export class StateEngine {
       turn: this.session.stateVersion,
       timestamp: new Date().toISOString(),
       type: "what_now_open_changed",
-      payload: { open }
+      payload: { open },
     });
   }
 
@@ -1163,7 +1407,12 @@ export class StateEngine {
   /** This trigger’s listed fork is taken — other groups may still wait. */
   spendWhatNow(setId?: string): void {
     const id = setId?.trim() || this.session.whatNowActiveSetId?.trim();
-    if (!this.session.whatNow?.length && !this.session.whatNowOpen && !this.session.whatNowSets?.length) return;
+    if (
+      !this.session.whatNow?.length &&
+      !this.session.whatNowOpen &&
+      !this.session.whatNowSets?.length
+    )
+      return;
     if (id && this.session.whatNowSets?.length) {
       this.session.whatNowSets = this.session.whatNowSets.filter((item) => item.id !== id);
       if (this.session.whatNowSets.length === 0) this.session.whatNowSets = undefined;
@@ -1178,7 +1427,7 @@ export class StateEngine {
       turn: this.session.stateVersion,
       timestamp: new Date().toISOString(),
       type: "what_now_spent",
-      payload: { setId: id ?? "" }
+      payload: { setId: id ?? "" },
     });
   }
 
@@ -1194,7 +1443,7 @@ export class StateEngine {
       turn: this.session.stateVersion,
       timestamp: new Date().toISOString(),
       type: "room_opened_changed",
-      payload: { roomId: id, opened }
+      payload: { roomId: id, opened },
     });
   }
 
@@ -1207,7 +1456,7 @@ export class StateEngine {
       turn: this.session.stateVersion,
       timestamp: new Date().toISOString(),
       type: "story_flag_set",
-      payload: { flag: flag.trim() }
+      payload: { flag: flag.trim() },
     });
   }
 
@@ -1220,7 +1469,7 @@ export class StateEngine {
       turn: this.session.stateVersion,
       timestamp: new Date().toISOString(),
       type: "story_flag_cleared",
-      payload: { flag: flag.trim() }
+      payload: { flag: flag.trim() },
     });
   }
 
@@ -1259,7 +1508,7 @@ export class StateEngine {
       turn: this.session.stateVersion,
       timestamp: new Date().toISOString(),
       type: "party_member_changed",
-      payload: { characterId: id, withPlayer: true }
+      payload: { characterId: id, withPlayer: true },
     });
   }
 
@@ -1273,7 +1522,7 @@ export class StateEngine {
       turn: this.session.stateVersion,
       timestamp: new Date().toISOString(),
       type: "party_member_changed",
-      payload: { characterId: characterId.trim(), withPlayer: false, waitlist: true }
+      payload: { characterId: characterId.trim(), withPlayer: false, waitlist: true },
     });
   }
 
@@ -1289,7 +1538,7 @@ export class StateEngine {
       turn: this.session.stateVersion,
       timestamp: new Date().toISOString(),
       type: "party_hold_changed",
-      payload: { characterId: id, hold: true }
+      payload: { characterId: id, hold: true },
     });
   }
 
@@ -1303,7 +1552,7 @@ export class StateEngine {
       turn: this.session.stateVersion,
       timestamp: new Date().toISOString(),
       type: "party_hold_changed",
-      payload: { characterId: id, hold: false }
+      payload: { characterId: id, hold: false },
     });
   }
 
@@ -1328,7 +1577,7 @@ export class StateEngine {
       turn: this.session.stateVersion,
       timestamp: new Date().toISOString(),
       type: "party_member_changed",
-      payload: { characterId: id, withPlayer: false, pending: inPending && !inParty }
+      payload: { characterId: id, withPlayer: false, pending: inPending && !inParty },
     });
   }
 
@@ -1350,7 +1599,7 @@ export class StateEngine {
       turn: this.session.stateVersion,
       timestamp: new Date().toISOString(),
       type: "party_offer_changed",
-      payload: { ...(characterId ? { characterId } : {}), pending: true, partyPendingIds: next }
+      payload: { ...(characterId ? { characterId } : {}), pending: true, partyPendingIds: next },
     });
   }
 
@@ -1360,16 +1609,31 @@ export class StateEngine {
     if (!Number.isSafeInteger(totalMinutes)) return;
     const previousClock = structuredClone(this.session.gameClock);
     const previousJourney = this.session.journey ? structuredClone(this.session.journey) : null;
-    this.session.gameClock = {totalMinutes, lastAdvance: {minutes, reason}};
+    this.session.gameClock = { totalMinutes, lastAdvance: { minutes, reason } };
     if (reason === "rest" || reason === "sleep") recordJourneyRest(this.session, minutes);
     this.session.stateVersion = nextVersion(this.session.stateVersion);
-    this.eventLog.append({turn: this.session.stateVersion, timestamp: new Date().toISOString(),
-      type: "game_time_advanced", payload: {previousClock, previousJourney, placeId:this.session.scene?.placeId ?? null, minutes, reason}});
+    this.eventLog.append({
+      turn: this.session.stateVersion,
+      timestamp: new Date().toISOString(),
+      type: "game_time_advanced",
+      payload: {
+        previousClock,
+        previousJourney,
+        placeId: this.session.scene?.placeId ?? null,
+        minutes,
+        reason,
+      },
+    });
   }
 
   travelToLandmark(patch: LandmarkTravelPatch): void {
-    if (this.session.journey) throw new JourneyError("Continue the current journey before choosing another destination.");
-    if (this.session.scene?.placeId === patch.placeId && this.session.scene?.location === patch.location) return;
+    if (this.session.journey)
+      throw new JourneyError("Continue the current journey before choosing another destination.");
+    if (
+      this.session.scene?.placeId === patch.placeId &&
+      this.session.scene?.location === patch.location
+    )
+      return;
     const work = travelWorkMinutes(patch);
     if (work !== undefined && (work > TRAVEL_STAGE_MINUTES || patch.plan?.stops.length)) {
       beginJourney(this.session, patch);
@@ -1377,22 +1641,32 @@ export class StateEngine {
       this.logJourneyStage();
       return;
     }
-    if (patch.travelDays !== undefined && work !== undefined) patch = {...patch, travelMinutes:work};
+    if (patch.travelDays !== undefined && work !== undefined)
+      patch = { ...patch, travelMinutes: work };
     applyLandmarkTravel(this.session, patch);
     this.eventLog.append({
       turn: this.session.stateVersion,
       timestamp: new Date().toISOString(),
       type: "landmark_traveled",
-      payload: { placeId: patch.placeId, location: patch.location, travelMinutes: patch.travelMinutes ?? null,
-        gameMinutes: this.session.gameClock?.totalMinutes ?? null }
+      payload: {
+        placeId: patch.placeId,
+        location: patch.location,
+        travelMinutes: patch.travelMinutes ?? null,
+        gameMinutes: this.session.gameClock?.totalMinutes ?? null,
+      },
     });
   }
 
   removeJourneyStop(index: number): void {
-    const label=this.session.journey?.plan?.stops[index]?.label;
-    removePlannedJourneyStop(this.session,index);
-    this.session.stateVersion=nextVersion(this.session.stateVersion);
-    this.eventLog.append({turn:this.session.stateVersion,timestamp:new Date().toISOString(),type:"journey_plan_changed",payload:{action:"remove_stop",index,label}});
+    const label = this.session.journey?.plan?.stops[index]?.label;
+    removePlannedJourneyStop(this.session, index);
+    this.session.stateVersion = nextVersion(this.session.stateVersion);
+    this.eventLog.append({
+      turn: this.session.stateVersion,
+      timestamp: new Date().toISOString(),
+      type: "journey_plan_changed",
+      payload: { action: "remove_stop", index, label },
+    });
   }
 
   continueJourney(pushOn = false): void {
@@ -1402,9 +1676,17 @@ export class StateEngine {
   }
 
   private logJourneyStage(): void {
-    this.eventLog.append({turn:this.session.stateVersion, timestamp:new Date().toISOString(), type:"journey_stage_completed",
-      payload:{location:this.session.scene?.location, remainingTravelMinutes:this.session.journey?.remainingTravelMinutes ?? 0,
-        completedStages:this.session.journey?.completedStages ?? null, gameMinutes:this.session.gameClock?.totalMinutes}});
+    this.eventLog.append({
+      turn: this.session.stateVersion,
+      timestamp: new Date().toISOString(),
+      type: "journey_stage_completed",
+      payload: {
+        location: this.session.scene?.location,
+        remainingTravelMinutes: this.session.journey?.remainingTravelMinutes ?? 0,
+        completedStages: this.session.journey?.completedStages ?? null,
+        gameMinutes: this.session.gameClock?.totalMinutes,
+      },
+    });
   }
 
   syncPartyFromPlayerText(playerMessage: string, focusId: string): void {
@@ -1424,7 +1706,7 @@ export class StateEngine {
       turn: this.session.stateVersion,
       timestamp: new Date().toISOString(),
       type: "party_member_changed",
-      payload: { partyIds: next.partyIds, partyPendingIds: next.partyPendingIds }
+      payload: { partyIds: next.partyIds, partyPendingIds: next.partyPendingIds },
     });
   }
 }
@@ -1441,20 +1723,22 @@ function isLockableField(value: unknown): value is { value: unknown; lock: LockS
 
 function lockableFrom(
   container: Record<string, unknown>,
-  key: string
-): {
-  container: Record<string, { value: unknown; lock: LockState }>;
-  key: string;
-  field: { value: unknown; lock: LockState };
-  lock: LockState;
-} | undefined {
+  key: string,
+):
+  | {
+      container: Record<string, { value: unknown; lock: LockState }>;
+      key: string;
+      field: { value: unknown; lock: LockState };
+      lock: LockState;
+    }
+  | undefined {
   const field = container[key];
   if (!isLockableField(field)) return undefined;
   return {
     container: container as Record<string, { value: unknown; lock: LockState }>,
     key,
     field,
-    lock: field.lock
+    lock: field.lock,
   };
 }
 

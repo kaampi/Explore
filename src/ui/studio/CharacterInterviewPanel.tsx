@@ -7,7 +7,10 @@ import { conductCharacterInterviewWithOllama } from "./characterInterviewWithOll
 type Turn = { role: "guide" | "user"; text: string };
 
 function formatName(card: GeneratedCharacter): string {
-  return [card.name, card.middleName, card.familyName].map((part) => part.trim()).filter(Boolean).join(" ");
+  return [card.name, card.middleName, card.familyName]
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(" ");
 }
 
 function userLines(turns: readonly Turn[]): string[] {
@@ -16,7 +19,7 @@ function userLines(turns: readonly Turn[]): string[] {
 
 export function CharacterInterviewPanel({
   busy,
-  onApply
+  onApply,
 }: {
   busy: boolean;
   onApply: (card: GeneratedCharacter) => void;
@@ -42,12 +45,13 @@ export function CharacterInterviewPanel({
     try {
       const result = await conductCharacterInterviewWithOllama(
         { messages: userLines(nextTurns), seed },
-        controller.signal
+        controller.signal,
       );
       if (controller.signal.aborted) return;
       setDraft(result.reply);
       setNote(result.note);
-      const guide = result.reply.question || "This is the person. Accept puts the card on the sheet.";
+      const guide =
+        result.reply.question || "This is the person. Accept puts the card on the sheet.";
       setTurns([...nextTurns, { role: "guide", text: guide }]);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;
@@ -63,7 +67,10 @@ export function CharacterInterviewPanel({
     <div className="character-interview">
       <div className="character-generator__thread">
         {turns.map((turn, index) => (
-          <p key={`${turn.role}-${index}`} className={`character-generator__turn character-generator__turn--${turn.role}`}>
+          <p
+            key={`${turn.role}-${index}`}
+            className={`character-generator__turn character-generator__turn--${turn.role}`}
+          >
             {turn.role === "user" ? `You: ${turn.text}` : turn.text}
           </p>
         ))}
@@ -114,12 +121,22 @@ export function CharacterInterviewPanel({
           {asking ? "Thinking..." : "Send"}
         </button>
         {card && (
-          <button type="button" className="setup-start" disabled={busy || asking} onClick={() => onApply(card)}>
+          <button
+            type="button"
+            className="setup-start"
+            disabled={busy || asking}
+            onClick={() => onApply(card)}
+          >
             Accept
           </button>
         )}
         {card && (
-          <button type="button" className="setup-example" disabled={busy || asking} onClick={() => void submit("Someone else.")}>
+          <button
+            type="button"
+            className="setup-example"
+            disabled={busy || asking}
+            onClick={() => void submit("Someone else.")}
+          >
             Someone else
           </button>
         )}

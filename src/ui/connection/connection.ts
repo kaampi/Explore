@@ -1,32 +1,19 @@
-import {
-  listOllamaModels,
-  pickListedOllamaModel,
-} from "@llm/providers/OllamaProvider";
+import { listOllamaModels, pickListedOllamaModel } from "@llm/providers/OllamaProvider";
 
 export type Discovery = {
   state: "checking" | "available" | "unavailable";
   models: string[];
   unsupportedModels?: string[];
 };
-export type Readiness =
-  | "checking"
-  | "unavailable"
-  | "empty"
-  | "missing-model"
-  | "ready";
-export function installedModelName(
-  model: string,
-  models: string[],
-): string | undefined {
+export type Readiness = "checking" | "unavailable" | "empty" | "missing-model" | "ready";
+export function installedModelName(model: string, models: string[]): string | undefined {
   if (models.includes(model)) return model;
   return models.includes(`${model}:latest`) ? `${model}:latest` : undefined;
 }
 export function modelReadiness(discovery: Discovery, model: string): Readiness {
   if (discovery.state !== "available") return discovery.state;
   if (!discovery.models.length) return "empty";
-  return installedModelName(model, discovery.models)
-    ? "ready"
-    : "missing-model";
+  return installedModelName(model, discovery.models) ? "ready" : "missing-model";
 }
 export function initialModel(preferred: string, models: string[]): string {
   // A saved preference belongs to the user. Only the first setup gets an automatic choice.
@@ -37,9 +24,7 @@ export async function discoverOllama(
 ): Promise<Discovery> {
   try {
     const timeout = AbortSignal.timeout(2500);
-    const signal = options.signal
-      ? AbortSignal.any([options.signal, timeout])
-      : timeout;
+    const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
     const models = await listOllamaModels({
       ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
       signal,
@@ -61,15 +46,10 @@ export async function discoverOllama(
             });
             const payload: unknown = response.ok ? await response.json() : null;
             const capabilities =
-              payload &&
-              typeof payload === "object" &&
-              "capabilities" in payload
+              payload && typeof payload === "object" && "capabilities" in payload
                 ? payload.capabilities
                 : undefined;
-            if (
-              Array.isArray(capabilities) &&
-              !capabilities.includes("completion")
-            )
+            if (Array.isArray(capabilities) && !capabilities.includes("completion"))
               unsupportedModels.push(model);
             else supported.add(model);
           } catch {

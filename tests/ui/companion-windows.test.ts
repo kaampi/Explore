@@ -3,7 +3,11 @@ import { openCompanionApp, openCompanionWindow } from "../../src/integrations/co
 
 const native = vi.hoisted(() => ({ isTauri: vi.fn(() => false), invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => native);
-afterEach(() => { native.isTauri.mockReturnValue(false); native.invoke.mockReset(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  native.isTauri.mockReturnValue(false);
+  native.invoke.mockReset();
+  vi.unstubAllGlobals();
+});
 
 it("focuses an existing app without reloading and reopens it after closing", () => {
   const first = { closed: false, focus: vi.fn(), location: { href: "original" }, opener: {} };
@@ -21,25 +25,33 @@ it("focuses an existing app without reloading and reopens it after closing", () 
     first.closed = true;
     openCompanionWindow("storybook", "http://localhost:3001");
     expect(open).toHaveBeenCalledTimes(2);
-  } finally { vi.unstubAllGlobals(); }
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });
 
 it("routes desktop app opening through the native command without a browser window", async () => {
   native.isTauri.mockReturnValue(true);
   native.invoke.mockResolvedValue(undefined);
-  const open = vi.fn(); vi.stubGlobal("window", {open});
+  const open = vi.fn();
+  vi.stubGlobal("window", { open });
   await openCompanionApp("storybook", "http://localhost:5175/");
-  expect(native.invoke).toHaveBeenCalledWith("open_companion_app", {appId:"storybook"});
+  expect(native.invoke).toHaveBeenCalledWith("open_companion_app", { appId: "storybook" });
   expect(open).not.toHaveBeenCalled();
 });
 it("surfaces a missing desktop app without opening a web fallback", async () => {
-  native.isTauri.mockReturnValue(true); native.invoke.mockRejectedValue("Not installed");
-  const open = vi.fn(); vi.stubGlobal("window", {open});
-  await expect(openCompanionApp("comicbook", "http://localhost:5176/")).rejects.toBe("Not installed");
+  native.isTauri.mockReturnValue(true);
+  native.invoke.mockRejectedValue("Not installed");
+  const open = vi.fn();
+  vi.stubGlobal("window", { open });
+  await expect(openCompanionApp("comicbook", "http://localhost:5176/")).rejects.toBe(
+    "Not installed",
+  );
   expect(open).not.toHaveBeenCalled();
 });
 it("continues to open web companions in a browser", async () => {
-  const open=vi.fn().mockReturnValue({closed:false,focus:vi.fn(),opener:null}); vi.stubGlobal("window",{open});
+  const open = vi.fn().mockReturnValue({ closed: false, focus: vi.fn(), opener: null });
+  vi.stubGlobal("window", { open });
   await openCompanionApp("comicbook", "http://localhost:5176/");
   expect(open).toHaveBeenCalledWith("http://localhost:5176/", "kaampi-comicbook");
   expect(native.invoke).not.toHaveBeenCalled();

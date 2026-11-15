@@ -30,7 +30,7 @@ export function publicWorkClothing(character: CharacterState): string {
 export function dressForPublicBarWrites(
   session: Session,
   playerMessage: string,
-  characterId: string
+  characterId: string,
 ): { path: string; value: string }[] {
   if (playerKeepsUndressed(playerMessage)) return [];
   const character = session.characters[characterId];

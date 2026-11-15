@@ -4,17 +4,11 @@
 
 /** Fold apostrophes so "Emmas room" and "Emma's room" are the same place. */
 export function foldPlace(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/['’]/g, "")
-    .replace(/\s+/g, " ");
+  return value.trim().toLowerCase().replace(/['’]/g, "").replace(/\s+/g, " ");
 }
 
 export function roomTokens(room: { label: string; keywords?: string[] }): string[] {
-  return [room.label, ...(room.keywords ?? [])]
-    .map((token) => foldPlace(token))
-    .filter(Boolean);
+  return [room.label, ...(room.keywords ?? [])].map((token) => foldPlace(token)).filter(Boolean);
 }
 
 export function escapeRegExp(value: string): string {
@@ -39,7 +33,7 @@ export function roomMatchScore(here: string, room: { label: string; keywords?: s
 
 export function matchSceneRoom<T extends { label: string; keywords?: string[] }>(
   here: string,
-  rooms: T[]
+  rooms: T[],
 ): T | undefined {
   let best: { room: T; score: number } | undefined;
   for (const room of rooms) {

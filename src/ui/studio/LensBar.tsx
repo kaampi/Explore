@@ -4,7 +4,7 @@ export function LensBar({
   filter,
   tags,
   onPick,
-  lede = "Hides the shelf. Does not change who already belongs."
+  lede = "Hides the shelf. Does not change who already belongs.",
 }: {
   filter: TagFilter;
   tags: string[];
@@ -24,7 +24,9 @@ export function LensBar({
         </button>
         <button
           type="button"
-          className={filter === TAG_FILTER_UNSORTED ? "setup-chip setup-chip--active" : "setup-chip"}
+          className={
+            filter === TAG_FILTER_UNSORTED ? "setup-chip setup-chip--active" : "setup-chip"
+          }
           onClick={() => onPick(TAG_FILTER_UNSORTED)}
         >
           <span className="setup-chip__pick">Unsorted</span>

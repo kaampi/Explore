@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { isUngroundedPlace, isUngroundedObject, isUngroundedInvention, namedRoomsInCanon, matchRoomMention, collapsesNamedRoomToVenue } from "@state/WorldCanon";
+import {
+  isUngroundedPlace,
+  isUngroundedObject,
+  isUngroundedInvention,
+  namedRoomsInCanon,
+  matchRoomMention,
+  collapsesNamedRoomToVenue,
+} from "@state/WorldCanon";
 import type { Session } from "@state/StateSchema";
 
 function makeSession(overrides: Partial<Session> = {}): Session {
@@ -16,13 +23,13 @@ function makeSession(overrides: Partial<Session> = {}): Session {
     characters: {
       emma: {
         position: { value: "behind the bar", lock: "unlocked" },
-        mood: { value: "reserved", lock: "unlocked" }
-      }
+        mood: { value: "reserved", lock: "unlocked" },
+      },
     },
     scene: { location: "The Aurora Room — a quiet late-night bar", environment: {} },
     player: {
       position: { value: "at the bar", lock: "unlocked" },
-      status: { value: "awake", lock: "unlocked" }
+      status: { value: "awake", lock: "unlocked" },
     },
     relationships: {},
     layers: [],
@@ -31,7 +38,7 @@ function makeSession(overrides: Partial<Session> = {}): Session {
     events: [],
     snapshots: [],
     diagnostics: [],
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -53,9 +60,9 @@ describe("isUngroundedPlace", () => {
           priority: 0,
           content: "An inn. Guest rooms upstairs.",
           active: true,
-          aiGenerated: false
-        }
-      ]
+          aiGenerated: false,
+        },
+      ],
     });
     expect(isUngroundedPlace("guest room upstairs", session)).toBe(false);
   });
@@ -70,9 +77,9 @@ describe("isUngroundedPlace", () => {
           content:
             "Adjoining the bar: toilets off the hall, Emma's room behind the staff door, a guest room upstairs, and a cellar door behind the bar.",
           active: true,
-          aiGenerated: false
-        }
-      ]
+          aiGenerated: false,
+        },
+      ],
     });
     expect(isUngroundedPlace("Emma's room", session)).toBe(false);
     expect(isUngroundedPlace("guest room upstairs", session)).toBe(false);
@@ -89,7 +96,7 @@ describe("isUngroundedPlace", () => {
 
   it("allows a dog when an object card already names it", () => {
     const session = makeSession({
-      objects: [{ id: "obj-dog", name: "a mongrel dog", note: "Asleep under the bar.", tags: [] }]
+      objects: [{ id: "obj-dog", name: "a mongrel dog", note: "Asleep under the bar.", tags: [] }],
     });
     expect(isUngroundedObject("A stray dog waits by the door.", session)).toBe(false);
     expect(isUngroundedInvention("A stray dog waits by the door.", session)).toBe(false);
@@ -107,10 +114,10 @@ describe("isUngroundedPlace", () => {
             id: "room-emmas",
             label: "Emma's room",
             keywords: ["staff room"],
-            description: "A narrow bed, a chair, curtains drawn."
-          }
-        ]
-      }
+            description: "A narrow bed, a chair, curtains drawn.",
+          },
+        ],
+      },
     });
     expect(isUngroundedPlace("Emma's room", session)).toBe(false);
     expect(namedRoomsInCanon(session)).toEqual(["Emma's room"]);
@@ -127,9 +134,9 @@ describe("isUngroundedPlace", () => {
           content: "An inn. Guest rooms upstairs.",
           keywords: ["guest"],
           active: true,
-          aiGenerated: false
-        }
-      ]
+          aiGenerated: false,
+        },
+      ],
     });
     expect(isUngroundedPlace("guest room upstairs", session)).toBe(true);
   });
@@ -145,9 +152,9 @@ describe("isUngroundedPlace", () => {
           content: "An inn. Guest rooms upstairs.",
           keywords: ["guest"],
           active: true,
-          aiGenerated: false
-        }
-      ]
+          aiGenerated: false,
+        },
+      ],
     });
     expect(isUngroundedPlace("guest room upstairs", session)).toBe(false);
   });
@@ -159,9 +166,9 @@ describe("isUngroundedPlace", () => {
           id: "key",
           name: "Guest-house key",
           note: "Unlocks the guest room upstairs.",
-          tags: ["key"]
-        }
-      ]
+          tags: ["key"],
+        },
+      ],
     });
     expect(isUngroundedPlace("guest room upstairs", session)).toBe(false);
   });
@@ -178,9 +185,9 @@ describe("namedRoomsInCanon", () => {
           content:
             "Adjoining the bar: toilets off the hall, Emma's room behind the staff door, a guest room upstairs, and a cellar door behind the bar.",
           active: true,
-          aiGenerated: false
-        }
-      ]
+          aiGenerated: false,
+        },
+      ],
     });
     expect(namedRoomsInCanon(session)).toEqual(["Emma's room", "guest room", "cellar", "toilets"]);
   });
@@ -195,9 +202,9 @@ describe("namedRoomsInCanon", () => {
           content:
             "Adjoining the bar: toilets off the hall, Emma's room behind the staff door, a guest room upstairs, and a cellar door behind the bar.",
           active: true,
-          aiGenerated: false
-        }
-      ]
+          aiGenerated: false,
+        },
+      ],
     });
     expect(matchRoomMention("her staff room", session)).toBe("Emma's room");
     expect(matchRoomMention("Emmas room", session)).toBe("Emma's room");
@@ -215,15 +222,15 @@ describe("collapsesNamedRoomToVenue", () => {
         content:
           "Adjoining the bar: toilets off the hall, Emma's room behind the staff door, a guest room upstairs, and a cellar door behind the bar.",
         active: true,
-        aiGenerated: false
-      }
-    ]
+        aiGenerated: false,
+      },
+    ],
   });
 
   it("rejects swapping Emma's room for the venue title or the bar", () => {
     expect(collapsesNamedRoomToVenue("The Aurora Room", "Emma's room", aurora)).toBe(true);
     expect(
-      collapsesNamedRoomToVenue("The Aurora Room — a quiet late-night bar", "Emma's room", aurora)
+      collapsesNamedRoomToVenue("The Aurora Room — a quiet late-night bar", "Emma's room", aurora),
     ).toBe(true);
     expect(collapsesNamedRoomToVenue("behind the bar", "Emma's room", aurora)).toBe(true);
   });
@@ -246,7 +253,7 @@ describe("rooms from the place card", () => {
             id: "room-mira",
             label: "Mira's den",
             keywords: ["her den", "staff den", "my den"],
-            description: "A bedroll and a lamp."
+            description: "A bedroll and a lamp.",
           },
           {
             fromRoomIds: [],
@@ -254,17 +261,17 @@ describe("rooms from the place card", () => {
             id: "room-crypt",
             label: "the crypt",
             keywords: ["crypt", "ossuary"],
-            description: "Cold stone."
-          }
-        ]
+            description: "Cold stone.",
+          },
+        ],
       },
       characters: {
         mira: {
           name: "Mira",
           position: { value: "at The Hollow", lock: "unlocked" },
-          mood: { value: "wary", lock: "unlocked" }
-        }
-      }
+          mood: { value: "wary", lock: "unlocked" },
+        },
+      },
     });
     expect(namedRoomsInCanon(session)).toEqual(["Mira's den", "the crypt"]);
     expect(matchRoomMention("I walk into her den", session)).toBe("Mira's den");
@@ -273,4 +280,3 @@ describe("rooms from the place card", () => {
     expect(isUngroundedPlace("a hotel lobby", session)).toBe(true);
   });
 });
-

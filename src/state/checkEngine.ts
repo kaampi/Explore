@@ -34,7 +34,10 @@ export function rollD20(rng: () => number = Math.random): number {
  * (that was the warm-beat bug): a 1–18 fantasy stat and a 0–100 meter
  * both land on the same scale here.
  */
-export function normalizedAttributeValue(value: number, def: { min?: number | undefined; max?: number | undefined }): number {
+export function normalizedAttributeValue(
+  value: number,
+  def: { min?: number | undefined; max?: number | undefined },
+): number {
   const { min, max } = attributeRange(def);
   if (max <= min) return 50;
   return Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100));
@@ -62,7 +65,8 @@ export function checkAttempt(params: {
   const normalized = normalizedAttributeValue(params.attributeValue, params.attributeDef);
   const modifier = attributeModifier(normalized);
   const total = roll + modifier;
-  const critical: CheckCritical | undefined = roll === 20 ? "success" : roll === 1 ? "failure" : undefined;
+  const critical: CheckCritical | undefined =
+    roll === 20 ? "success" : roll === 1 ? "failure" : undefined;
   const success = critical ? critical === "success" : total >= params.difficulty;
   return { roll, modifier, total, difficulty: params.difficulty, success, critical };
 }

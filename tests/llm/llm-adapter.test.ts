@@ -4,7 +4,7 @@ import { MockProvider } from "@llm/providers/MockProvider";
 import type { CompletionRequest, LLMProvider, StreamChunk } from "@llm/types";
 
 const baseRequest: CompletionRequest = {
-  messages: [{ role: "user", content: "hi" }]
+  messages: [{ role: "user", content: "hi" }],
 };
 
 async function collect(adapter: LLMAdapter, request: CompletionRequest = baseRequest) {
@@ -21,7 +21,9 @@ describe("LLMAdapter — happy path", () => {
     const adapter = new LLMAdapter({ primary });
 
     const chunks = await collect(adapter);
-    const text = chunks.filter((c) => c.type === "text_delta").map((c) => (c as { text: string }).text);
+    const text = chunks
+      .filter((c) => c.type === "text_delta")
+      .map((c) => (c as { text: string }).text);
 
     expect(text).toEqual(["a", "b"]);
     expect(chunks.every((c) => c.provider === "primary")).toBe(true);
@@ -58,7 +60,7 @@ describe("LLMAdapter — no fallback after partial output", () => {
       async *streamCompletion(): AsyncGenerator<StreamChunk> {
         yield { type: "text_delta", text: "partial " };
         throw new Error("connection dropped mid-stream");
-      }
+      },
     };
     const fallback = new MockProvider({ name: "fallback", responseChunks: ["should not appear"] });
     const adapter = new LLMAdapter({ primary: flaky, fallbacks: [fallback] });
@@ -85,14 +87,17 @@ describe("LLMAdapter — cancellation", () => {
     const primary = new MockProvider({
       name: "primary",
       responseChunks: ["a", "b", "c", "d"],
-      chunkDelayMs: 5
+      chunkDelayMs: 5,
     });
     const adapter = new LLMAdapter({ primary });
     const controller = new AbortController();
 
     const chunks: unknown[] = [];
     let i = 0;
-    for await (const chunk of adapter.streamCompletion({ ...baseRequest, signal: controller.signal })) {
+    for await (const chunk of adapter.streamCompletion({
+      ...baseRequest,
+      signal: controller.signal,
+    })) {
       chunks.push(chunk);
       i++;
       if (i === 2) controller.abort();
@@ -107,7 +112,7 @@ describe("LLMAdapter — capability detection", () => {
   it("filters providers by required capabilities", () => {
     const noStructured = new MockProvider({
       name: "basic",
-      capabilities: { structuredOutput: false }
+      capabilities: { structuredOutput: false },
     });
     const full = new MockProvider({ name: "full" });
     const adapter = new LLMAdapter({ primary: noStructured, fallbacks: [full] });

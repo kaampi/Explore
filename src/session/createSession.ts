@@ -6,7 +6,7 @@ import {
   parseSession,
   type AttributeDef,
   type CharacterPronoun,
-  type Session
+  type Session,
 } from "@state/StateSchema";
 import { copyPictureFields } from "@state/placePictures";
 import { copyAudioFields } from "@state/placeAudio";
@@ -97,15 +97,26 @@ export interface SceneSetup {
   };
   ruleset?: { name: string; attributes: AttributeDef[] };
   characters: CharacterDraft[];
-  objects?: Array<Pick<ObjectTemplate, "startingLocation" | "readableContent" | "openable" | "portable" | "lockable" | "storyRole" | "storyImportance"> & {
-    id: string;
-    name: string;
-    note?: string;
-    tags?: string[];
-    weight?: number;
-    difficulty?: number;
-    checkAttribute?: string;
-  }>;
+  objects?: Array<
+    Pick<
+      ObjectTemplate,
+      | "startingLocation"
+      | "readableContent"
+      | "openable"
+      | "portable"
+      | "lockable"
+      | "storyRole"
+      | "storyImportance"
+    > & {
+      id: string;
+      name: string;
+      note?: string;
+      tags?: string[];
+      weight?: number;
+      difficulty?: number;
+      checkAttribute?: string;
+    }
+  >;
   /** Venue intro + room pictures/audio. Pictures and sound are UI only — never assembled into the prompt. */
   placeVisual?: {
     thumbDataUrl?: string | undefined;
@@ -115,22 +126,24 @@ export interface SceneSetup {
     audioDataUrl?: string | undefined;
     audioGallery?: string[] | undefined;
     audioPlay?: "fade" | "random" | undefined;
-    rooms?: Array<{
-      id: string;
-      label: string;
-      description?: string | undefined;
-      brief?: string | undefined;
-      keywords?: string[] | undefined;
-      fromRoomIds?: string[] | undefined;
-      gate?: "open" | "locked" | "hidden" | undefined;
-      thumbDataUrl?: string | undefined;
-      imageDataUrl?: string | undefined;
-      gallery?: Array<{ thumbDataUrl: string; imageDataUrl: string }> | undefined;
-      picturePlay?: "fade" | "random" | undefined;
-      audioDataUrl?: string | undefined;
-      audioGallery?: string[] | undefined;
-      audioPlay?: "fade" | "random" | undefined;
-    }> | undefined;
+    rooms?:
+      | Array<{
+          id: string;
+          label: string;
+          description?: string | undefined;
+          brief?: string | undefined;
+          keywords?: string[] | undefined;
+          fromRoomIds?: string[] | undefined;
+          gate?: "open" | "locked" | "hidden" | undefined;
+          thumbDataUrl?: string | undefined;
+          imageDataUrl?: string | undefined;
+          gallery?: Array<{ thumbDataUrl: string; imageDataUrl: string }> | undefined;
+          picturePlay?: "fade" | "random" | undefined;
+          audioDataUrl?: string | undefined;
+          audioGallery?: string[] | undefined;
+          audioPlay?: "fade" | "random" | undefined;
+        }>
+      | undefined;
   };
   /** Authored Triggers. Copied onto the session as once-beats. */
   onceBeats?: Array<{
@@ -170,7 +183,7 @@ export function displayCharacterName(
   id: string,
   storedName?: string,
   familyName?: string,
-  middleName?: string
+  middleName?: string,
 ): string {
   if (storedName?.trim()) return formatPersonName(storedName, familyName, middleName);
   return id
@@ -189,7 +202,7 @@ export function primaryCharacter(session: Session): { id: string; name: string }
     name:
       stored?.name !== undefined
         ? displayCharacterName(id, stored.name, stored.familyName, stored.middleName)
-        : displayCharacterName(id)
+        : displayCharacterName(id),
   };
 }
 
@@ -208,7 +221,7 @@ function meterFromDraft(text: string | undefined, fallback: number): number {
 
 function statsFromDraft(
   draft: CharacterDraft,
-  ruleset: SceneSetup["ruleset"]
+  ruleset: SceneSetup["ruleset"],
 ): Record<string, { value: string | number; lock: "unlocked" }> | undefined {
   const defs = ruleset?.attributes ?? [];
   if (defs.length === 0) return undefined;
@@ -252,7 +265,10 @@ export function createSessionFromSetup(setup: SceneSetup, sessionId: string): Se
 
     const familyName = (draft.familyName ?? "").trim();
     const middleName = (draft.middleName ?? "").trim();
-    const id = uniqueSlug(slugifyCharacterId(formatPersonName(name, familyName, middleName)), usedIds);
+    const id = uniqueSlug(
+      slugifyCharacterId(formatPersonName(name, familyName, middleName)),
+      usedIds,
+    );
     usedIds.add(id);
 
     const stats = statsFromDraft(draft, setup.ruleset);
@@ -260,7 +276,13 @@ export function createSessionFromSetup(setup: SceneSetup, sessionId: string): Se
       ...(draft.libraryId ? { sourceLibraryId: draft.libraryId } : {}),
       ...(draft.anatomyTemplateId ? { anatomyTemplateId: draft.anatomyTemplateId } : {}),
       name,
-      position: { value: !draft.position.trim()||draft.position.trim().toLowerCase()==="here"?setup.playerPosition?.trim()||setup.location: draft.position.trim(), lock: "unlocked" },
+      position: {
+        value:
+          !draft.position.trim() || draft.position.trim().toLowerCase() === "here"
+            ? setup.playerPosition?.trim() || setup.location
+            : draft.position.trim(),
+        lock: "unlocked",
+      },
       mood: { value: draft.mood.trim() || "neutral", lock: "unlocked" },
       ...(familyName ? { familyName } : {}),
       ...(middleName ? { middleName } : {}),
@@ -270,17 +292,19 @@ export function createSessionFromSetup(setup: SceneSetup, sessionId: string): Se
       clothing: { value: (draft.clothing ?? "").trim(), lock: "unlocked" },
       holding: { value: (draft.holding ?? "").trim(), lock: "unlocked" },
       ...(draft.portraitDataUrl ? { portraitDataUrl: draft.portraitDataUrl } : {}),
-      ...(stats ? { stats } : {})
+      ...(stats ? { stats } : {}),
     };
     relationships[id] = {
       trust: { value: meterFromDraft(draft.trust, 20), lock: "unlocked" },
       familiarity: { value: meterFromDraft(draft.familiarity, 10), lock: "unlocked" },
-      tension: { value: meterFromDraft(draft.tension, 5), lock: "unlocked" }
+      tension: { value: meterFromDraft(draft.tension, 5), lock: "unlocked" },
     };
 
     const personality = draft.personality.trim();
     const speech = (draft.speech ?? "").trim();
-    const identity = [personality, speech ? `How they speak: ${speech}` : ""].filter(Boolean).join("\n\n");
+    const identity = [personality, speech ? `How they speak: ${speech}` : ""]
+      .filter(Boolean)
+      .join("\n\n");
     if (identity) {
       layers.push({
         id: `layer-core-${id}`,
@@ -288,7 +312,7 @@ export function createSessionFromSetup(setup: SceneSetup, sessionId: string): Se
         priority: 0,
         content: identity,
         active: true,
-        aiGenerated: false
+        aiGenerated: false,
       });
     }
 
@@ -304,7 +328,7 @@ export function createSessionFromSetup(setup: SceneSetup, sessionId: string): Se
         content: title ? `${title}\n\n${body}` : body,
         ...(keywords.length > 0 ? { keywords } : {}),
         active: true,
-        aiGenerated: false
+        aiGenerated: false,
       });
     });
   }
@@ -319,7 +343,7 @@ export function createSessionFromSetup(setup: SceneSetup, sessionId: string): Se
       priority: 10,
       content: placeForModel,
       active: true,
-      aiGenerated: false
+      aiGenerated: false,
     });
   }
 
@@ -334,7 +358,7 @@ export function createSessionFromSetup(setup: SceneSetup, sessionId: string): Se
       content,
       ...(keywords.length > 0 ? { keywords } : {}),
       active: true,
-      aiGenerated: false
+      aiGenerated: false,
     });
   });
 
@@ -343,7 +367,9 @@ export function createSessionFromSetup(setup: SceneSetup, sessionId: string): Se
     const keywords = (item.keywords ?? []).map((word) => word.trim()).filter(Boolean);
     if (!content || keywords.length === 0) return;
     const requiresFlags = (item.requiresFlags ?? []).map((flag) => flag.trim()).filter(Boolean);
-    const requiresAbsentFlags = (item.requiresAbsentFlags ?? []).map((flag) => flag.trim()).filter(Boolean);
+    const requiresAbsentFlags = (item.requiresAbsentFlags ?? [])
+      .map((flag) => flag.trim())
+      .filter(Boolean);
     const setsFlags = (item.setsFlags ?? []).map((flag) => flag.trim()).filter(Boolean);
     layers.push({
       id: `layer-once-${index + 1}`,
@@ -357,7 +383,7 @@ export function createSessionFromSetup(setup: SceneSetup, sessionId: string): Se
       aiGenerated: false,
       ...(requiresFlags.length > 0 ? { requiresFlags } : {}),
       ...(requiresAbsentFlags.length > 0 ? { requiresAbsentFlags } : {}),
-      ...(setsFlags.length > 0 ? { setsFlags } : {})
+      ...(setsFlags.length > 0 ? { setsFlags } : {}),
     });
   });
 
@@ -406,57 +432,64 @@ export function createSessionFromSetup(setup: SceneSetup, sessionId: string): Se
         ? {
             realmVisual: {
               ...copyPictureFields(setup.realmVisual),
-              ...copyAudioFields(setup.realmVisual)
-            }
+              ...copyAudioFields(setup.realmVisual),
+            },
           }
         : {}),
       environment: {
         ...(lighting ? { lighting } : {}),
         ...(noise ? { noise } : {}),
-        music: setup.music
+        music: setup.music,
       },
       ...(placeNote ? { note: placeNote } : {}),
       ...(placeBrief ? { brief: placeBrief } : {}),
       ...copyPictureFields(setup.placeVisual),
       ...copyAudioFields(setup.placeVisual),
-      ...(rooms.length > 0 ? { rooms } : {})
+      ...(rooms.length > 0 ? { rooms } : {}),
     },
     player: {
-      position: { value: (setup.playerPosition?.trim() || setup.location.trim() || "Somewhere"), lock: "unlocked" },
+      position: {
+        value: setup.playerPosition?.trim() || setup.location.trim() || "Somewhere",
+        lock: "unlocked",
+      },
       status: { value: "awake", lock: "unlocked" },
       ...(setup.playerIdentity?.name?.trim() ? { name: setup.playerIdentity.name.trim() } : {}),
-      ...(setup.playerIdentity?.appearance?.trim() ? { appearance: setup.playerIdentity.appearance.trim() } : {}),
-      ...(setup.playerIdentity?.personality?.trim() ? { personality: setup.playerIdentity.personality.trim() } : {}),
+      ...(setup.playerIdentity?.appearance?.trim()
+        ? { appearance: setup.playerIdentity.appearance.trim() }
+        : {}),
+      ...(setup.playerIdentity?.personality?.trim()
+        ? { personality: setup.playerIdentity.personality.trim() }
+        : {}),
       ...(setup.playerIdentity?.pronoun ? { pronoun: setup.playerIdentity.pronoun } : {}),
       ...(setup.playerIdentity?.portraitDataUrl?.trim()
         ? { portraitDataUrl: setup.playerIdentity.portraitDataUrl.trim() }
         : {}),
       ...(setup.playerIdentity?.stats && Object.keys(setup.playerIdentity.stats).length > 0
         ? { stats: setup.playerIdentity.stats }
-        : {})
+        : {}),
     },
     ...(storyPremise
       ? {
           story: {
             title: storyTitle,
-            premise: storyPremise
-          }
+            premise: storyPremise,
+          },
         }
       : {}),
     ...(voiceInstruction
       ? {
           voice: {
             title: voiceTitle,
-            instruction: voiceInstruction
-          }
+            instruction: voiceInstruction,
+          },
         }
       : {}),
     ...(setup.ruleset?.name.trim()
       ? {
           ruleset: {
             name: setup.ruleset.name.trim(),
-            attributes: setup.ruleset.attributes
-          }
+            attributes: setup.ruleset.attributes,
+          },
         }
       : {}),
     ...(setup.campaignIntro?.trim() ? { campaignIntro: setup.campaignIntro.trim() } : {}),
@@ -472,7 +505,7 @@ export function createSessionFromSetup(setup: SceneSetup, sessionId: string): Se
           : copyWhatNowSets(
               setup.whatNow?.length
                 ? [{ id: "replies", keywords: setup.whatNowKeywords ?? [], choices: setup.whatNow }]
-                : []
+                : [],
             );
       return whatNowSets.length > 0 ? { whatNowSets, whatNowOpen: false } : {};
     })(),
@@ -492,7 +525,7 @@ export function createSessionFromSetup(setup: SceneSetup, sessionId: string): Se
         tags: item.tags ?? [],
         ...(item.weight !== undefined ? { weight: item.weight } : {}),
         ...(item.difficulty !== undefined ? { difficulty: item.difficulty } : {}),
-        ...(item.checkAttribute?.trim() ? { checkAttribute: item.checkAttribute.trim() } : {})
+        ...(item.checkAttribute?.trim() ? { checkAttribute: item.checkAttribute.trim() } : {}),
       })),
     relationships,
     layers,
@@ -500,7 +533,6 @@ export function createSessionFromSetup(setup: SceneSetup, sessionId: string): Se
     conversation: [],
     events: [],
     snapshots: [],
-    diagnostics: []
+    diagnostics: [],
   });
 }
-

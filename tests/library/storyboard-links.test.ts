@@ -7,11 +7,13 @@ import {
   removeSceneLink,
   sceneIsAvailable,
   setScenePosition,
-  upsertSceneLink
+  upsertSceneLink,
 } from "@library/storyboardLinks";
 import { emptyCampaignScene, type StoryboardLink } from "@library/LibrarySchema";
 
-function link(overrides: Partial<StoryboardLink> & Pick<StoryboardLink, "id" | "fromSceneId" | "toSceneId">): StoryboardLink {
+function link(
+  overrides: Partial<StoryboardLink> & Pick<StoryboardLink, "id" | "fromSceneId" | "toSceneId">,
+): StoryboardLink {
   return { requiresFlags: [], requiresAbsentFlags: [], setsFlags: [], label: "", ...overrides };
 }
 
@@ -19,7 +21,7 @@ describe("linksFromScene / linksToScene", () => {
   const links = [
     link({ id: "l1", fromSceneId: "bar", toSceneId: "morning" }),
     link({ id: "l2", fromSceneId: "bar", toSceneId: "fight" }),
-    link({ id: "l3", fromSceneId: "fight", toSceneId: "morning" })
+    link({ id: "l3", fromSceneId: "fight", toSceneId: "morning" }),
   ];
 
   it("filters by source scene", () => {
@@ -37,13 +39,22 @@ describe("sceneIsAvailable", () => {
   });
 
   it("stays closed until a satisfied incoming link exists", () => {
-    const links = [link({ id: "l1", fromSceneId: "bar", toSceneId: "epilogue", requiresFlags: ["fienden_dod"] })];
+    const links = [
+      link({ id: "l1", fromSceneId: "bar", toSceneId: "epilogue", requiresFlags: ["fienden_dod"] }),
+    ];
     expect(sceneIsAvailable(links, "epilogue", [])).toBe(false);
     expect(sceneIsAvailable(links, "epilogue", ["fienden_dod"])).toBe(true);
   });
 
   it("respects requiresAbsentFlags — the Förhandla/Attackera exclusion", () => {
-    const links = [link({ id: "l1", fromSceneId: "meeting", toSceneId: "negotiate", requiresAbsentFlags: ["fienden_dod"] })];
+    const links = [
+      link({
+        id: "l1",
+        fromSceneId: "meeting",
+        toSceneId: "negotiate",
+        requiresAbsentFlags: ["fienden_dod"],
+      }),
+    ];
     expect(sceneIsAvailable(links, "negotiate", [])).toBe(true);
     expect(sceneIsAvailable(links, "negotiate", ["fienden_dod"])).toBe(false);
   });
@@ -51,7 +62,7 @@ describe("sceneIsAvailable", () => {
   it("several incoming links are alternative paths — one satisfied is enough", () => {
     const links = [
       link({ id: "l1", fromSceneId: "bar", toSceneId: "morning", requiresFlags: ["slept"] }),
-      link({ id: "l2", fromSceneId: "room", toSceneId: "morning", requiresFlags: ["stayed_over"] })
+      link({ id: "l2", fromSceneId: "room", toSceneId: "morning", requiresFlags: ["stayed_over"] }),
     ];
     expect(sceneIsAvailable(links, "morning", [])).toBe(false);
     expect(sceneIsAvailable(links, "morning", ["stayed_over"])).toBe(true);
@@ -83,7 +94,7 @@ describe("removeLinksForScene", () => {
     const links = [
       link({ id: "l1", fromSceneId: "bar", toSceneId: "morning" }),
       link({ id: "l2", fromSceneId: "morning", toSceneId: "epilogue" }),
-      link({ id: "l3", fromSceneId: "fight", toSceneId: "epilogue" })
+      link({ id: "l3", fromSceneId: "fight", toSceneId: "epilogue" }),
     ];
     expect(removeLinksForScene(links, "morning").map((l) => l.id)).toEqual(["l3"]);
   });
@@ -94,7 +105,7 @@ describe("danglingLinkIds", () => {
     const scenes = [{ ...emptyCampaignScene(), id: "bar" }];
     const sceneLinks = [
       link({ id: "l1", fromSceneId: "bar", toSceneId: "bar" }),
-      link({ id: "l2", fromSceneId: "bar", toSceneId: "deleted-scene" })
+      link({ id: "l2", fromSceneId: "bar", toSceneId: "deleted-scene" }),
     ];
     expect(danglingLinkIds({ scenes, sceneLinks })).toEqual(["l2"]);
   });
@@ -104,7 +115,7 @@ describe("setScenePosition", () => {
   it("sets one scene's position and leaves the others untouched", () => {
     const scenes = [
       { ...emptyCampaignScene(), id: "a" },
-      { ...emptyCampaignScene(), id: "b" }
+      { ...emptyCampaignScene(), id: "b" },
     ];
     const moved = setScenePosition(scenes, "b", { x: 100, y: 200 });
     expect(moved.find((s) => s.id === "a")?.position).toBeUndefined();

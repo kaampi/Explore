@@ -1,11 +1,15 @@
-import type { AdventureTransition } from '../game/AdventureSchema';
-import type { EncounterRequest } from '../game/EncounterSchema';
-import { ActionSaveError } from '../persistence/ActionSaveError';
+import type { AdventureTransition } from "../game/AdventureSchema";
+import type { EncounterRequest } from "../game/EncounterSchema";
+import { ActionSaveError } from "../persistence/ActionSaveError";
 import type { CheckResult } from "../checks/CheckEngine";
 import type { GateRequest } from "../checks/gateEncounter";
 import { interpretGateIntent, type GateIntent } from "../checks/gateIntent";
 import { EngineContext } from "./EngineContext";
-import { resolveMapMovement, resolvePlannedMapMovement, MapMovementError } from "@session/mapMovement";
+import {
+  resolveMapMovement,
+  resolvePlannedMapMovement,
+  MapMovementError,
+} from "@session/mapMovement";
 import { JourneyError } from "@state/journey";
 import { RoutePlanSchema, type RoutePlan } from "@library/routePlan";
 import React, {
@@ -23,10 +27,7 @@ import { EventLog, type StateEvent } from "@events/EventLog";
 import { LLMAdapter } from "@llm/LLMAdapter";
 import { OpenAICompatibleProvider } from "@llm/providers/OpenAICompatibleProvider";
 import { useConnection } from "./connection/ConnectionProvider";
-import {
-  OllamaProvider,
-  DEFAULT_OLLAMA_MODEL,
-} from "@llm/providers/OllamaProvider";
+import { OllamaProvider, DEFAULT_OLLAMA_MODEL } from "@llm/providers/OllamaProvider";
 import {
   SessionEngine,
   TurnFailedError,
@@ -45,14 +46,8 @@ import {
   selectPendingForCompaction,
   type CompactableType,
 } from "@layers/LayerCompaction";
-import type {
-  IndexedDBRepository,
-  StudioResume,
-} from "@persistence/IndexedDBRepository";
-import {
-  examplePlaceTemplate,
-  mergeWithExamples,
-} from "@library/exampleTemplates";
+import type { IndexedDBRepository, StudioResume } from "@persistence/IndexedDBRepository";
+import { examplePlaceTemplate, mergeWithExamples } from "@library/exampleTemplates";
 import type { PlaceTemplate } from "@library/LibrarySchema";
 import { primaryCharacter } from "@session/createSession";
 import { landmarkTravelPatch } from "@session/landmarkTravel";
@@ -74,13 +69,13 @@ import { draftSceneHandoff } from "@state/sceneHandoff";
 export type ChatPhase = "idle" | "streaming" | "error";
 
 export interface EngineContextValue {
-  transitionAdventure:(request:AdventureTransition)=>Promise<void>;
-  setCombatArtwork: (actorId:string,image:string|null)=>Promise<void>;
-  executeEncounterAction: (request:EncounterRequest)=>Promise<void>;
-  saveEncounter: ()=>Promise<void>;
-  executeGateAction: (request:GateRequest)=>Promise<void>;
-  saveGateScene: ()=>Promise<void>;
-  interpretGateText: (text:string,signal?:AbortSignal)=>Promise<GateIntent>;
+  transitionAdventure: (request: AdventureTransition) => Promise<void>;
+  setCombatArtwork: (actorId: string, image: string | null) => Promise<void>;
+  executeEncounterAction: (request: EncounterRequest) => Promise<void>;
+  saveEncounter: () => Promise<void>;
+  executeGateAction: (request: GateRequest) => Promise<void>;
+  saveGateScene: () => Promise<void>;
+  interpretGateText: (text: string, signal?: AbortSignal) => Promise<GateIntent>;
   useSession: () => Session;
   useEventLog: () => readonly StateEvent[];
   phase: ChatPhase;
@@ -91,7 +86,7 @@ export interface EngineContextValue {
   lastError: string | null;
   sendMessage: (
     text: string,
-    options?: { check?:CheckResult; goTo?: string; travelPlaceId?: string; plan?: RoutePlan },
+    options?: { check?: CheckResult; goTo?: string; travelPlaceId?: string; plan?: RoutePlan },
   ) => Promise<void>;
   regenerate: (note?: string) => Promise<void>;
   replay: (conversationTurn: number, note?: string) => Promise<void>;
@@ -108,15 +103,10 @@ export interface EngineContextValue {
   }) => void;
   setLayerKeywords: (layerId: string, keywords: string[]) => void;
   removeLayer: (layerId: string) => void;
-  removeJourneyStop: (index:number)=>void;
-  compactLayers: (
-    scope: "pending" | CompactableType,
-  ) => Promise<{ ok: boolean; reason?: string }>;
+  removeJourneyStop: (index: number) => void;
+  compactLayers: (scope: "pending" | CompactableType) => Promise<{ ok: boolean; reason?: string }>;
   compacting: boolean;
-  editMessage: (
-    turnNumber: number,
-    newContent: string,
-  ) => { ok: boolean; reason?: string };
+  editMessage: (turnNumber: number, newContent: string) => { ok: boolean; reason?: string };
   undo: () => { ok: boolean; reason?: string };
   ollamaModel: string;
   setOllamaModel: (model: string) => void;
@@ -133,8 +123,6 @@ export interface EngineContextValue {
   resetSession: () => Promise<void>;
 }
 
-
-
 export function useEngine(): EngineContextValue {
   const ctx = useContext(EngineContext);
   if (!ctx) throw new Error("useEngine must be used within <EngineProvider>");
@@ -150,10 +138,7 @@ export function EngineProvider({
   initialSession: Session;
   repo: IndexedDBRepository;
   children: React.ReactNode;
-  onNewConversation: (
-    session: Session,
-    resume: StudioResume | null,
-  ) => Promise<void>;
+  onNewConversation: (session: Session, resume: StudioResume | null) => Promise<void>;
 }) {
   const { backend, baseUrl, discovery } = useConnection();
   const [ollamaModel, setOllamaModelState] = useState(
@@ -162,9 +147,7 @@ export function EngineProvider({
   const [phase, setPhase] = useState<ChatPhase>("idle");
   const [streamingText, setStreamingText] = useState("");
   const [replyComplete, setReplyComplete] = useState(false);
-  const [streamingCharacterId, setStreamingCharacterId] = useState<
-    string | null
-  >(null);
+  const [streamingCharacterId, setStreamingCharacterId] = useState<string | null>(null);
   const [streamingNarrator, setStreamingNarrator] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
   const [hasCompletedTurn, setHasCompletedTurn] = useState(false);
@@ -177,12 +160,30 @@ export function EngineProvider({
 
   const pass1Adapter = useMemo(
     () =>
-      new LLMAdapter({ primary: backend === "strata" ? new OpenAICompatibleProvider({ model: ollamaModel, baseUrl, name: "strata:" + ollamaModel }) : new OllamaProvider({ model: ollamaModel }) }),
+      new LLMAdapter({
+        primary:
+          backend === "strata"
+            ? new OpenAICompatibleProvider({
+                model: ollamaModel,
+                baseUrl,
+                name: "strata:" + ollamaModel,
+              })
+            : new OllamaProvider({ model: ollamaModel }),
+      }),
     [ollamaModel, backend, baseUrl],
   );
   const pass2Adapter = useMemo(
     () =>
-      new LLMAdapter({ primary: backend === "strata" ? new OpenAICompatibleProvider({ model: ollamaModel, baseUrl, name: "strata:" + ollamaModel }) : new OllamaProvider({ model: ollamaModel }) }),
+      new LLMAdapter({
+        primary:
+          backend === "strata"
+            ? new OpenAICompatibleProvider({
+                model: ollamaModel,
+                baseUrl,
+                name: "strata:" + ollamaModel,
+              })
+            : new OllamaProvider({ model: ollamaModel }),
+      }),
     [ollamaModel, backend, baseUrl],
   );
 
@@ -194,7 +195,8 @@ export function EngineProvider({
   const sharedEventLogRef = useRef<EventLog>();
   if (!sharedEventLogRef.current) {
     sharedEventLogRef.current = new EventLog();
-    if(initialSession.gateEncounter||initialSession.encounter)for(const event of initialSession.events)sharedEventLogRef.current.append(event);
+    if (initialSession.gateEncounter || initialSession.encounter)
+      for (const event of initialSession.events) sharedEventLogRef.current.append(event);
   }
   const sharedEventLog = sharedEventLogRef.current;
 
@@ -208,17 +210,12 @@ export function EngineProvider({
     [pass2Adapter],
   );
   const layerProposalExtractor = useMemo(
-    () =>
-      createLLMLayerProposalExtractor(pass2Adapter, { onFailure: () => {} }),
+    () => createLLMLayerProposalExtractor(pass2Adapter, { onFailure: () => {} }),
     [pass2Adapter],
   );
-  const layerCompactor = useMemo(
-    () => createLLMLayerCompactor(pass2Adapter),
-    [pass2Adapter],
-  );
+  const layerCompactor = useMemo(() => createLLMLayerCompactor(pass2Adapter), [pass2Adapter]);
   const conversationSummarizer = useMemo(
-    () =>
-      createLLMConversationSummarizer(pass2Adapter, { onFailure: () => {} }),
+    () => createLLMConversationSummarizer(pass2Adapter, { onFailure: () => {} }),
     [pass2Adapter],
   );
   const sessionEngineRef = useMemo(
@@ -301,9 +298,7 @@ export function EngineProvider({
   }, [sessionListeners]);
 
   // --- Reactive event log snapshot -------------------------------------
-  const eventLogSnapshotRef = useRef<readonly StateEvent[]>(
-    sharedEventLog.all(),
-  );
+  const eventLogSnapshotRef = useRef<readonly StateEvent[]>(sharedEventLog.all());
   const useEventLog = useCallback((): readonly StateEvent[] => {
     // eslint-disable-next-line react-hooks/rules-of-hooks -- useSession/useEventLog are hooks, created once here and called by consumers.
     return useSyncExternalStore(
@@ -332,22 +327,39 @@ export function EngineProvider({
   const sendMessage = useCallback(
     async (
       text: string,
-      options?: { check?:CheckResult; goTo?: string; travelPlaceId?: string; plan?: RoutePlan },
+      options?: { check?: CheckResult; goTo?: string; travelPlaceId?: string; plan?: RoutePlan },
     ) => {
-      if(stateEngine.getSession().gateEncounter||stateEngine.getSession().encounter){setLastError('Use Say or Do in this encounter. Free text cannot change its rules.');return;}
+      if (stateEngine.getSession().gateEncounter || stateEngine.getSession().encounter) {
+        setLastError("Use Say or Do in this encounter. Free text cannot change its rules.");
+        return;
+      }
       setPhase("streaming");
-      setStreamingText(""); setReplyComplete(false);
+      setStreamingText("");
+      setReplyComplete(false);
       setLastError(null);
       const turnId = crypto.randomUUID();
 
       try {
         let session = stateEngine.getSession();
-        const spatialWorlds=await repo.listRealms();
-        stateEngine.registerSpatialPlaces(spatialWorlds.filter(w=>w.worldMap?.nodes.some(n=>n.placeId===session.scene?.placeId)).flatMap(w=>w.worldMap?.nodes.filter(n=>n.placeId).map(n=>({id:n.placeId!,name:n.name,kind:n.kind}))??[]));
-        session=stateEngine.getSession();
-        const plan=options?.plan?RoutePlanSchema.parse(options.plan):undefined;
-        if(plan&&(plan.fromPlaceId!==session.scene?.placeId||session.journey))throw new JourneyError("Your position changed. Open the route planner again.");
-        const speakingAsId = options?.check?.targetId ?? focusCharacterId(session, text) ?? primaryCharacter(session)?.id;
+        const spatialWorlds = await repo.listRealms();
+        stateEngine.registerSpatialPlaces(
+          spatialWorlds
+            .filter((w) => w.worldMap?.nodes.some((n) => n.placeId === session.scene?.placeId))
+            .flatMap(
+              (w) =>
+                w.worldMap?.nodes
+                  .filter((n) => n.placeId)
+                  .map((n) => ({ id: n.placeId!, name: n.name, kind: n.kind })) ?? [],
+            ),
+        );
+        session = stateEngine.getSession();
+        const plan = options?.plan ? RoutePlanSchema.parse(options.plan) : undefined;
+        if (plan && (plan.fromPlaceId !== session.scene?.placeId || session.journey))
+          throw new JourneyError("Your position changed. Open the route planner again.");
+        const speakingAsId =
+          options?.check?.targetId ??
+          focusCharacterId(session, text) ??
+          primaryCharacter(session)?.id;
         if (!speakingAsId) {
           throw new Error("There is no character in this scene to speak.");
         }
@@ -358,7 +370,22 @@ export function EngineProvider({
           const live = stateEngine.getSession();
           setStreamingNarrator(isLeftBehind(live, speakingAsId));
         };
-        const mapMovement = options?.check?{handled:true}:session.journey ? {handled:true} : plan?.legs ? resolvePlannedMapMovement(text,session,spatialWorlds,placesRef.current,plan) : !options?.goTo?.trim() ? resolveMapMovement(text,session,spatialWorlds,placesRef.current,options?.travelPlaceId?.trim(),plan) : {handled:false};
+        const mapMovement = options?.check
+          ? { handled: true }
+          : session.journey
+            ? { handled: true }
+            : plan?.legs
+              ? resolvePlannedMapMovement(text, session, spatialWorlds, placesRef.current, plan)
+              : !options?.goTo?.trim()
+                ? resolveMapMovement(
+                    text,
+                    session,
+                    spatialWorlds,
+                    placesRef.current,
+                    options?.travelPlaceId?.trim(),
+                    plan,
+                  )
+                : { handled: false };
         let travel = options?.travelPlaceId?.trim()
           ? (() => {
               const place = placesRef.current.find(
@@ -367,25 +394,36 @@ export function EngineProvider({
               return place ? landmarkTravelPatch(place) : undefined;
             })()
           : undefined;
-        if(mapMovement.place) travel={...landmarkTravelPatch(mapMovement.place),...(mapMovement.travelMinutes !== undefined ? {travelMinutes: mapMovement.travelMinutes} : {}), ...(mapMovement.travelDays !== undefined ? {travelDays:mapMovement.travelDays} : {}), ...(mapMovement.encounter ? {encounter:mapMovement.encounter} : {}), ...(mapMovement.routeInfo ? {routeInfo:mapMovement.routeInfo} : {})};
-        if(plan){if(!travel||!mapMovement.place)throw new JourneyError("The planned route could not be resolved. Open the planner again.");travel={...travel,plan};}
+        if (mapMovement.place)
+          travel = {
+            ...landmarkTravelPatch(mapMovement.place),
+            ...(mapMovement.travelMinutes !== undefined
+              ? { travelMinutes: mapMovement.travelMinutes }
+              : {}),
+            ...(mapMovement.travelDays !== undefined ? { travelDays: mapMovement.travelDays } : {}),
+            ...(mapMovement.encounter ? { encounter: mapMovement.encounter } : {}),
+            ...(mapMovement.routeInfo ? { routeInfo: mapMovement.routeInfo } : {}),
+          };
+        if (plan) {
+          if (!travel || !mapMovement.place)
+            throw new JourneyError(
+              "The planned route could not be resolved. Open the planner again.",
+            );
+          travel = { ...travel, plan };
+        }
         if (!options?.check && !mapMovement.handled && !travel && !options?.goTo?.trim()) {
           const exits = mapLandmarkTravels(session, placesRef.current);
           const hay = foldPlace(text);
           if (/\b(?:walk|go|gå|head|leave)\b/i.test(text)) {
             const hit = exits.find((exit) => {
-              const place = placesRef.current.find(
-                (item) => item.id === exit.id,
-              );
+              const place = placesRef.current.find((item) => item.id === exit.id);
               return (
                 hay.includes(foldPlace(exit.label)) ||
                 (place ? hay.includes(foldPlace(place.name)) : false)
               );
             });
             if (hit) {
-              const place = placesRef.current.find(
-                (item) => item.id === hit.id,
-              );
+              const place = placesRef.current.find((item) => item.id === hit.id);
               if (place) travel = landmarkTravelPatch(place);
             }
           }
@@ -401,13 +439,14 @@ export function EngineProvider({
             onSessionUpdated: syncStreamingFace,
           },
           {
-            ...(options?.check?{check:options.check}:{}),
+            ...(options?.check ? { check: options.check } : {}),
             ...(options?.goTo?.trim() ? { goTo: options.goTo.trim() } : {}),
             ...(travel ? { travel } : {}),
           },
         );
         setPhase("idle");
-        setStreamingText(""); setReplyComplete(false);
+        setStreamingText("");
+        setReplyComplete(false);
         setStreamingCharacterId(null);
         setStreamingNarrator(false);
         if (!result.openedWhatNow) setHasCompletedTurn(true);
@@ -415,19 +454,23 @@ export function EngineProvider({
       } catch (err) {
         if (err instanceof WhatNowRequiredError) {
           setPhase("idle");
-          setStreamingText(""); setReplyComplete(false);
+          setStreamingText("");
+          setReplyComplete(false);
           setStreamingCharacterId(null);
           setStreamingNarrator(false);
           refreshSnapshots();
           return;
         }
         setPhase("error");
-        setStreamingText(""); setReplyComplete(false);
+        setStreamingText("");
+        setReplyComplete(false);
         setStreamingCharacterId(null);
         setStreamingNarrator(false);
         console.error("Turn failed:", err); // full cause chain visible in DevTools, even though the UI message is short
         const message =
-          err instanceof TurnFailedError || err instanceof MapMovementError || err instanceof JourneyError
+          err instanceof TurnFailedError ||
+          err instanceof MapMovementError ||
+          err instanceof JourneyError
             ? err.message
             : "Something went wrong with this turn.";
         setLastError(message);
@@ -439,22 +482,18 @@ export function EngineProvider({
 
   const regenerate = useCallback(
     async (note?: string) => {
-      if(stateEngine.getSession().gateEncounter||stateEngine.getSession().encounter)return;
+      if (stateEngine.getSession().gateEncounter || stateEngine.getSession().encounter) return;
       setPhase("streaming");
-      setStreamingText(""); setReplyComplete(false);
+      setStreamingText("");
+      setReplyComplete(false);
       setLastError(null);
       const turnId = crypto.randomUUID();
 
       try {
         const session = stateEngine.getSession();
-        const speakingAsId =
-          lastCharacterSpeaker(session) ??
-          primaryCharacter(session)?.id ??
-          null;
+        const speakingAsId = lastCharacterSpeaker(session) ?? primaryCharacter(session)?.id ?? null;
         setStreamingCharacterId(speakingAsId);
-        setStreamingNarrator(
-          Boolean(speakingAsId && isLeftBehind(session, speakingAsId)),
-        );
+        setStreamingNarrator(Boolean(speakingAsId && isLeftBehind(session, speakingAsId)));
         const trimmed = note?.trim();
         await sessionEngineRef.regenerateLastTurn(
           turnId,
@@ -464,26 +503,25 @@ export function EngineProvider({
             onSessionUpdated: () => {
               refreshSnapshots();
               if (speakingAsId)
-                setStreamingNarrator(
-                  isLeftBehind(stateEngine.getSession(), speakingAsId),
-                );
+                setStreamingNarrator(isLeftBehind(stateEngine.getSession(), speakingAsId));
             },
           },
           trimmed ? { note: trimmed } : {},
         );
         setPhase("idle");
-        setStreamingText(""); setReplyComplete(false);
+        setStreamingText("");
+        setReplyComplete(false);
         setStreamingCharacterId(null);
         setStreamingNarrator(false);
         refreshSnapshots();
       } catch (err) {
         setPhase("error");
-        setStreamingText(""); setReplyComplete(false);
+        setStreamingText("");
+        setReplyComplete(false);
         setStreamingCharacterId(null);
         setStreamingNarrator(false);
         console.error("Regeneration failed:", err);
-        const message =
-          err instanceof TurnFailedError ? err.message : "Regeneration failed.";
+        const message = err instanceof TurnFailedError ? err.message : "Regeneration failed.";
         setLastError(message);
         refreshSnapshots();
       }
@@ -493,23 +531,19 @@ export function EngineProvider({
 
   const replay = useCallback(
     async (conversationTurn: number, note?: string) => {
-      if(stateEngine.getSession().gateEncounter||stateEngine.getSession().encounter)return;
+      if (stateEngine.getSession().gateEncounter || stateEngine.getSession().encounter) return;
       setPhase("streaming");
-      setStreamingText(""); setReplyComplete(false);
+      setStreamingText("");
+      setReplyComplete(false);
       setLastError(null);
       setInspectTurn(null);
       const turnId = crypto.randomUUID();
 
       try {
         const session = stateEngine.getSession();
-        const speakingAsId =
-          lastCharacterSpeaker(session) ??
-          primaryCharacter(session)?.id ??
-          null;
+        const speakingAsId = lastCharacterSpeaker(session) ?? primaryCharacter(session)?.id ?? null;
         setStreamingCharacterId(speakingAsId);
-        setStreamingNarrator(
-          Boolean(speakingAsId && isLeftBehind(session, speakingAsId)),
-        );
+        setStreamingNarrator(Boolean(speakingAsId && isLeftBehind(session, speakingAsId)));
         const trimmed = note?.trim();
         await sessionEngineRef.replayTurn(
           turnId,
@@ -520,22 +554,22 @@ export function EngineProvider({
             onSessionUpdated: () => {
               refreshSnapshots();
               if (speakingAsId)
-                setStreamingNarrator(
-                  isLeftBehind(stateEngine.getSession(), speakingAsId),
-                );
+                setStreamingNarrator(isLeftBehind(stateEngine.getSession(), speakingAsId));
             },
           },
           trimmed ? { note: trimmed } : {},
         );
         setHasCompletedTurn(true);
         setPhase("idle");
-        setStreamingText(""); setReplyComplete(false);
+        setStreamingText("");
+        setReplyComplete(false);
         setStreamingCharacterId(null);
         setStreamingNarrator(false);
         refreshSnapshots();
       } catch (err) {
         setPhase("error");
-        setStreamingText(""); setReplyComplete(false);
+        setStreamingText("");
+        setReplyComplete(false);
         setStreamingCharacterId(null);
         setStreamingNarrator(false);
         console.error("Replay failed:", err);
@@ -555,12 +589,7 @@ export function EngineProvider({
   const toggleLayer = useCallback(
     (layerId: string, active: boolean) => {
       const currentVersion = stateEngine.getSession().stateVersion;
-      stateEngine.setLayerActive(
-        layerId,
-        active,
-        "player_manual_state",
-        currentVersion,
-      );
+      stateEngine.setLayerActive(layerId, active, "player_manual_state", currentVersion);
       refreshSnapshots();
     },
     [stateEngine, refreshSnapshots],
@@ -596,12 +625,7 @@ export function EngineProvider({
   const setLayerKeywords = useCallback(
     (layerId: string, keywords: string[]) => {
       const currentVersion = stateEngine.getSession().stateVersion;
-      stateEngine.setLayerKeywords(
-        layerId,
-        keywords,
-        "player_manual_state",
-        currentVersion,
-      );
+      stateEngine.setLayerKeywords(layerId, keywords, "player_manual_state", currentVersion);
       refreshSnapshots();
     },
     [stateEngine, refreshSnapshots],
@@ -617,9 +641,7 @@ export function EngineProvider({
   );
 
   const compactLayers = useCallback(
-    async (
-      scope: "pending" | CompactableType,
-    ): Promise<{ ok: boolean; reason?: string }> => {
+    async (scope: "pending" | CompactableType): Promise<{ ok: boolean; reason?: string }> => {
       if (compacting) return { ok: false, reason: "Already compacting." };
       const session = stateEngine.getSession();
       const characterIds = Object.keys(session.characters);
@@ -653,9 +675,7 @@ export function EngineProvider({
           if (!merged || !compactionIsUseful(contents, merged)) continue;
           const flags = flagsForCompactedGroup(group.layers);
           const keywords = keywordsForCompactedGroup(group.layers);
-          const priority = Math.min(
-            ...group.layers.map((layer) => layer.priority),
-          );
+          const priority = Math.min(...group.layers.map((layer) => layer.priority));
           removeIds.push(...group.layers.map((layer) => layer.id));
           for (const content of merged) {
             replacements.push({
@@ -697,10 +717,7 @@ export function EngineProvider({
   );
 
   const editMessage = useCallback(
-    (
-      turnNumber: number,
-      newContent: string,
-    ): { ok: boolean; reason?: string } => {
+    (turnNumber: number, newContent: string): { ok: boolean; reason?: string } => {
       const currentVersion = stateEngine.getSession().stateVersion;
       const result = stateEngine.editConversationTurn(
         turnNumber,
@@ -709,24 +726,18 @@ export function EngineProvider({
         currentVersion,
       );
       refreshSnapshots();
-      return result.committed
-        ? { ok: true }
-        : { ok: false, reason: result.reason };
+      return result.committed ? { ok: true } : { ok: false, reason: result.reason };
     },
     [stateEngine, refreshSnapshots],
   );
 
   const undo = useCallback((): { ok: boolean; reason?: string } => {
-    if(stateEngine.getSession().gateEncounter||stateEngine.getSession().encounter)return {ok:false,reason:'Rewinding is disabled in authored encounters.'};
+    if (stateEngine.getSession().gateEncounter || stateEngine.getSession().encounter)
+      return { ok: false, reason: "Rewinding is disabled in authored encounters." };
     const currentVersion = stateEngine.getSession().stateVersion;
-    const result = stateEngine.undoLastMutation(
-      "player_manual_state",
-      currentVersion,
-    );
+    const result = stateEngine.undoLastMutation("player_manual_state", currentVersion);
     refreshSnapshots();
-    return result.committed
-      ? { ok: true }
-      : { ok: false, reason: result.reason };
+    return result.committed ? { ok: true } : { ok: false, reason: result.reason };
   }, [stateEngine, refreshSnapshots]);
 
   const resetSession = useCallback(async () => {
@@ -744,11 +755,7 @@ export function EngineProvider({
     try {
       await onNewConversation(current, resume);
     } catch (err) {
-      setLastError(
-        err instanceof Error
-          ? err.message
-          : "Could not save this conversation.",
-      );
+      setLastError(err instanceof Error ? err.message : "Could not save this conversation.");
       setPhase("error");
     }
   }, [stateEngine, phase, onNewConversation]);
@@ -841,31 +848,59 @@ export function EngineProvider({
   );
 
   const value: EngineContextValue = {
-    transitionAdventure:async request=>{stateEngine.transitionAdventure(request);eventLogSnapshotRef.current=sharedEventLog.all();notifySession();try{await repo.saveSession(stateEngine.getSession());}catch(error){throw new ActionSaveError(error);}},
-    setCombatArtwork:async(actorId,image)=>{stateEngine.setCombatArtwork(actorId,image);notifySession();await repo.saveSession(stateEngine.getSession());},
-    saveEncounter:()=>repo.saveSession(stateEngine.getSession()),
-    executeEncounterAction:async request=>{
-      stateEngine.executeEncounterAction(request);
-      eventLogSnapshotRef.current=sharedEventLog.all();
+    transitionAdventure: async (request) => {
+      stateEngine.transitionAdventure(request);
+      eventLogSnapshotRef.current = sharedEventLog.all();
       notifySession();
-      try{await repo.saveSession(stateEngine.getSession());}catch(error){throw new ActionSaveError(error);}
+      try {
+        await repo.saveSession(stateEngine.getSession());
+      } catch (error) {
+        throw new ActionSaveError(error);
+      }
     },
-    executeGateAction:async request=>{
-      stateEngine.executeGateAction(request);
-      eventLogSnapshotRef.current=sharedEventLog.all();
+    setCombatArtwork: async (actorId, image) => {
+      stateEngine.setCombatArtwork(actorId, image);
       notifySession();
       await repo.saveSession(stateEngine.getSession());
     },
-    saveGateScene:()=>repo.saveSession(stateEngine.getSession()),
-    interpretGateText:(text,signal)=>{
-      const current=stateEngine.getSession().gateEncounter;
-      if(!current)return Promise.resolve({status:'unknown' as const,revision:0});
-      return interpretGateIntent(text,current,discovery?.state==='available'?pass1Adapter:undefined,signal);
+    saveEncounter: () => repo.saveSession(stateEngine.getSession()),
+    executeEncounterAction: async (request) => {
+      stateEngine.executeEncounterAction(request);
+      eventLogSnapshotRef.current = sharedEventLog.all();
+      notifySession();
+      try {
+        await repo.saveSession(stateEngine.getSession());
+      } catch (error) {
+        throw new ActionSaveError(error);
+      }
     },
-    removeJourneyStop:(index)=>{
-      if(phase==="streaming")return;
-      try{stateEngine.removeJourneyStop(index);setLastError(null);refreshSnapshots();}
-      catch(err){setLastError(err instanceof Error?err.message:"Could not remove the stop.");setPhase("error");}
+    executeGateAction: async (request) => {
+      stateEngine.executeGateAction(request);
+      eventLogSnapshotRef.current = sharedEventLog.all();
+      notifySession();
+      await repo.saveSession(stateEngine.getSession());
+    },
+    saveGateScene: () => repo.saveSession(stateEngine.getSession()),
+    interpretGateText: (text, signal) => {
+      const current = stateEngine.getSession().gateEncounter;
+      if (!current) return Promise.resolve({ status: "unknown" as const, revision: 0 });
+      return interpretGateIntent(
+        text,
+        current,
+        discovery?.state === "available" ? pass1Adapter : undefined,
+        signal,
+      );
+    },
+    removeJourneyStop: (index) => {
+      if (phase === "streaming") return;
+      try {
+        stateEngine.removeJourneyStop(index);
+        setLastError(null);
+        refreshSnapshots();
+      } catch (err) {
+        setLastError(err instanceof Error ? err.message : "Could not remove the stop.");
+        setPhase("error");
+      }
     },
     useSession,
     useEventLog,
@@ -904,7 +939,5 @@ export function EngineProvider({
     resetSession,
   };
 
-  return (
-    <EngineContext.Provider value={value}>{children}</EngineContext.Provider>
-  );
+  return <EngineContext.Provider value={value}>{children}</EngineContext.Provider>;
 }

@@ -22,6 +22,6 @@ export function checkFavor(trust: number, roll: number): FavorCheck {
   return {
     roll: clampedRoll,
     trust: clampedTrust,
-    granted: clampedRoll < clampedTrust
+    granted: clampedRoll < clampedTrust,
   };
 }

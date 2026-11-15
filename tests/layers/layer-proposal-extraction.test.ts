@@ -1,12 +1,15 @@
 import { describe, it, expect, vi } from "vitest";
-import { parseLayerProposal, createLLMLayerProposalExtractor } from "@layers/LayerProposalExtraction";
+import {
+  parseLayerProposal,
+  createLLMLayerProposalExtractor,
+} from "@layers/LayerProposalExtraction";
 import { LLMAdapter } from "@llm/LLMAdapter";
 import type { CompletionRequest, LLMProvider, StreamChunk } from "@llm/types";
 
 describe("parseLayerProposal", () => {
   it("parses a well-formed proposal", () => {
     const result = parseLayerProposal(
-      '{"propose": true, "type": "relationship", "content": "Emma trusts the player now."}'
+      '{"propose": true, "type": "relationship", "content": "Emma trusts the player now."}',
     );
     expect(result).toEqual({ type: "relationship", content: "Emma trusts the player now." });
   });
@@ -25,7 +28,7 @@ describe("parseLayerProposal", () => {
 
   it("extracts from a markdown-fenced response", () => {
     const result = parseLayerProposal(
-      '```json\n{"propose": true, "type": "core", "content": "Dry-witted and slow to trust."}\n```'
+      '```json\n{"propose": true, "type": "core", "content": "Dry-witted and slow to trust."}\n```',
     );
     expect(result).toEqual({ type: "core", content: "Dry-witted and slow to trust." });
   });
@@ -38,14 +41,16 @@ function providerReturning(text: string): LLMProvider {
     async *streamCompletion(_req: CompletionRequest): AsyncGenerator<StreamChunk> {
       yield { type: "text_delta", text };
       yield { type: "done", finishReason: "stop" };
-    }
+    },
   };
 }
 
 describe("createLLMLayerProposalExtractor", () => {
   it("returns a parsed proposal on success", async () => {
     const adapter = new LLMAdapter({
-      primary: providerReturning('{"propose": true, "type": "environment", "content": "It always rains here."}')
+      primary: providerReturning(
+        '{"propose": true, "type": "environment", "content": "It always rains here."}',
+      ),
     });
     const extractor = createLLMLayerProposalExtractor(adapter, { sleepImpl: async () => {} });
 
@@ -56,15 +61,15 @@ describe("createLLMLayerProposalExtractor", () => {
   it("coerces a personality note tagged environment into core", async () => {
     const adapter = new LLMAdapter({
       primary: providerReturning(
-        '{"propose": true, "type": "environment", "content": "Emma maintains a reserved demeanor in public."}'
-      )
+        '{"propose": true, "type": "environment", "content": "Emma maintains a reserved demeanor in public."}',
+      ),
     });
     const extractor = createLLMLayerProposalExtractor(adapter, { sleepImpl: async () => {} });
 
     const proposal = await extractor("She barely looks up.", "emma");
     expect(proposal).toEqual({
       type: "core",
-      content: "Emma maintains a reserved demeanor in public."
+      content: "Emma maintains a reserved demeanor in public.",
     });
   });
 
@@ -82,14 +87,14 @@ describe("createLLMLayerProposalExtractor", () => {
       capabilities: { streaming: true, structuredOutput: false, cancellation: true },
       async *streamCompletion(): AsyncGenerator<StreamChunk> {
         throw new Error("connection refused");
-      }
+      },
     };
     const adapter = new LLMAdapter({ primary: failing });
     const onFailure = vi.fn();
     const extractor = createLLMLayerProposalExtractor(adapter, {
       maxAttempts: 2,
       sleepImpl: async () => {},
-      onFailure
+      onFailure,
     });
 
     const proposal = await extractor("Some dialogue.", "emma");
@@ -98,7 +103,9 @@ describe("createLLMLayerProposalExtractor", () => {
   });
 
   it("treats a malformed (but successfully fetched) response as no proposal, not a retry-worthy failure", async () => {
-    const adapter = new LLMAdapter({ primary: providerReturning("I don't think anything stands out here.") });
+    const adapter = new LLMAdapter({
+      primary: providerReturning("I don't think anything stands out here."),
+    });
     const extractor = createLLMLayerProposalExtractor(adapter, { sleepImpl: async () => {} });
 
     const proposal = await extractor("Some dialogue.", "emma");

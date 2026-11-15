@@ -13,12 +13,16 @@ export function splitPersonName(full: string): PersonName {
   return {
     given: parts[0] ?? "",
     middle: parts.slice(1, -1).join(" "),
-    family: parts[parts.length - 1] ?? ""
+    family: parts[parts.length - 1] ?? "",
   };
 }
 
 /** Open a stored card: split a legacy single field if family/middle were never filled. */
-export function namesFromStored(name: string, familyName?: string, middleName?: string): PersonName {
+export function namesFromStored(
+  name: string,
+  familyName?: string,
+  middleName?: string,
+): PersonName {
   const family = (familyName ?? "").trim();
   const middle = (middleName ?? "").trim();
   if (family || middle) return { given: name.trim(), middle, family };
@@ -26,7 +30,10 @@ export function namesFromStored(name: string, familyName?: string, middleName?: 
 }
 
 export function formatPersonName(given: string, family?: string, middle?: string): string {
-  return [given, middle, family].map((part) => (part ?? "").trim()).filter(Boolean).join(" ");
+  return [given, middle, family]
+    .map((part) => (part ?? "").trim())
+    .filter(Boolean)
+    .join(" ");
 }
 
 /** What the model should call them in ordinary narration. */

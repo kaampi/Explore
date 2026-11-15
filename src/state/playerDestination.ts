@@ -21,7 +21,7 @@ const TOGETHER =
 export function isRecruitingFollowers(text: string): boolean {
   const stripped = text.replace(/\*+/g, " ");
   return /\b(?:who wants to (?:follow|come)|who(?:'s| is) (?:up for(?: it)?|in|coming)|follow me\b|come with me\b|följ med(?: mig)?|kom med mig|vem (?:följer|vill komma|hänger på))\b/i.test(
-    stripped
+    stripped,
   );
 }
 
@@ -96,7 +96,7 @@ export function canWalkToLandmark(session: Session): boolean {
 
 export function roomIsReachable(
   room: { id?: string; fromRoomIds?: string[] },
-  session: Session
+  session: Session,
 ): boolean {
   const here = currentFocalId(session);
   if (room.id && here === room.id) return false;
@@ -155,7 +155,7 @@ export function sideRoomStage(session: Session): string | undefined {
   if (mentioned) return mentioned;
   const needle = pos.toLowerCase();
   return namedRoomsInCanon(session).find(
-    (room) => needle === room.toLowerCase() || needle.includes(room.toLowerCase())
+    (room) => needle === room.toLowerCase() || needle.includes(room.toLowerCase()),
   );
 }
 
@@ -245,7 +245,7 @@ export function sceneStageLabel(session: Session): string {
 export function roomBelongsToCharacter(
   room: string,
   characterId: string,
-  characterName?: string
+  characterName?: string,
 ): boolean {
   const hay = room.toLowerCase();
   const tokens = [characterId, characterName]
@@ -267,7 +267,7 @@ export function spatialWritesForTurn(
   session: Session,
   playerMessage: string,
   characterId: string,
-  goTo?: string
+  goTo?: string,
 ): SpatialWrite[] {
   if (isWhatNowStay(goTo)) return [];
   const dest =
@@ -281,29 +281,27 @@ export function spatialWritesForTurn(
   if (player && player.position.lock === "unlocked" && player.position.value !== dest) {
     writes.push({ path: "player.position", value: dest });
   }
-  if (
-    player &&
-    player.status.lock === "unlocked" &&
-    /\basleep\b/i.test(player.status.value)
-  ) {
+  if (player && player.status.lock === "unlocked" && /\basleep\b/i.test(player.status.value)) {
     writes.push({ path: "player.status", value: "awake" });
   }
 
   const character = session.characters[characterId];
   const hold = new Set(
-    (session.partyHoldIds ?? []).filter((id) => (session.partyIds ?? []).includes(id) && session.characters[id])
+    (session.partyHoldIds ?? []).filter(
+      (id) => (session.partyIds ?? []).includes(id) && session.characters[id],
+    ),
   );
   const party = (session.partyIds ?? []).filter((id) => session.characters[id] && !hold.has(id));
   const enteringTheirRoom = Boolean(
     character &&
-      !hold.has(characterId) &&
-      roomBelongsToCharacter(dest, characterId, character.name) &&
-      !isVenueFloor(dest, session)
+    !hold.has(characterId) &&
+    roomBelongsToCharacter(dest, characterId, character.name) &&
+    !isVenueFloor(dest, session),
   );
   const sharedHere =
     isSharedCloseBeat(playerMessage) && Boolean(sideRoomStage(session)) && !hold.has(characterId);
   const bringFocus = Boolean(
-    character && (party.includes(characterId) || enteringTheirRoom || sharedHere)
+    character && (party.includes(characterId) || enteringTheirRoom || sharedHere),
   );
   const moving = new Set<string>(party);
   if (bringFocus) moving.add(characterId);
@@ -331,7 +329,7 @@ export function dropAiPlayerPosition<T extends { path: string }>(proposals: T[])
 export function filterUninvitedFollowProposals<T extends { path: string; value: unknown }>(
   proposals: T[],
   session: Session,
-  characterId: string
+  characterId: string,
 ): T[] {
   if (
     (session.partyIds ?? []).includes(characterId) &&
@@ -372,7 +370,7 @@ export function sceneContinuesAfterNight(
   session: Session,
   playerMessage: string,
   previousStage: string,
-  currentStage: string
+  currentStage: string,
 ): boolean {
   if (
     previousStage !== currentStage &&
@@ -383,7 +381,10 @@ export function sceneContinuesAfterNight(
   }
   if (NIGHT.test(playerMessage)) return true;
   for (const entry of session.conversation.slice(-12)) {
-    const content = typeof (entry as { content?: unknown })?.content === "string" ? (entry as { content: string }).content : "";
+    const content =
+      typeof (entry as { content?: unknown })?.content === "string"
+        ? (entry as { content: string }).content
+        : "";
     if (NIGHT.test(content)) return true;
   }
   return false;

@@ -1,135 +1,360 @@
 export const mapTopics = [
   {
-    id:'map-inn-test',label:'Try a playable interior',title:'The Copper Lantern: rooms that remember your visit',
-    intro:'Try a small authored inn on its real map. This example demonstrates rooms, a locked door, carried objects, room pictures and saved return visits without dice rolls.',
-    steps:[
-      {title:'1. Start the example',body:'From the home page choose With Rules → Try the inn. A separate map and adventure are saved; your existing worlds are preserved. To inspect an editable example, choose Adventures → Inn & rooms example.'},
-      {title:'2. Find the key and visit the rooms',body:'Enter the inn. The right-hand map follows you into its floor plan. Inspect and take the brass key in the common room, then unlock and open the store room door. The key is required. Use the passage choices to move; map clicks only inspect the map.'},
-      {title:'3. Bring the ledger outside',body:'Read and take the guest ledger in the store room. Its own test picture replaces the inherited inn background when scene backgrounds are enabled. Return through the common room and leave the inn to complete the objective.'},
-      {title:'Your inventory',body:'The right-hand Inventory separates carried objects, weapons, ammunition and money/resources. Choose an item to inspect its saved description or readable text. New possessions are briefly highlighted. Key and handover actions use the same game checks as the scene’s buttons. Inspecting never changes ownership. Weight limits, equipment slots and unrestricted dropping are not part of this first version.'},
-      {title:'4. Save and return',body:'Choose Save & return home and resume the saved conversation. On re-entry, the door remains open and unlocked, taken objects remain in your inventory, and descriptions reflect the empty table and shelf. Starting a new playthrough resets this example. Play never rewrites the authored map. This test does not generate residents or stories for arbitrary buildings.'}
-    ]
+    id: "map-inn-test",
+    label: "Try a playable interior",
+    title: "The Copper Lantern: rooms that remember your visit",
+    intro:
+      "Try a small authored inn on its real map. This example demonstrates rooms, a locked door, carried objects, room pictures and saved return visits without dice rolls.",
+    steps: [
+      {
+        title: "1. Start the example",
+        body: "From the home page choose With Rules → Try the inn. A separate map and adventure are saved; your existing worlds are preserved. To inspect an editable example, choose Adventures → Inn & rooms example.",
+      },
+      {
+        title: "2. Find the key and visit the rooms",
+        body: "Enter the inn. The right-hand map follows you into its floor plan. Inspect and take the brass key in the common room, then unlock and open the store room door. The key is required. Use the passage choices to move; map clicks only inspect the map.",
+      },
+      {
+        title: "3. Bring the ledger outside",
+        body: "Read and take the guest ledger in the store room. Its own test picture replaces the inherited inn background when scene backgrounds are enabled. Return through the common room and leave the inn to complete the objective.",
+      },
+      {
+        title: "Your inventory",
+        body: "The right-hand Inventory separates carried objects, weapons, ammunition and money/resources. Choose an item to inspect its saved description or readable text. New possessions are briefly highlighted. Key and handover actions use the same game checks as the scene’s buttons. Inspecting never changes ownership. Weight limits, equipment slots and unrestricted dropping are not part of this first version.",
+      },
+      {
+        title: "4. Save and return",
+        body: "Choose Save & return home and resume the saved conversation. On re-entry, the door remains open and unlocked, taken objects remain in your inventory, and descriptions reflect the empty table and shelf. Starting a new playthrough resets this example. Play never rewrites the authored map. This test does not generate residents or stories for arbitrary buildings.",
+      },
+    ],
   },
   {
-    id: 'map-start', label: 'Start a map', title: 'Map Studio: start with the world',
-    intro: 'The map describes where places are, what contains them and how they are connected. Storyboard describes the situations that can happen there. Start with a small area and add detail when you need it.',
+    id: "map-start",
+    label: "Start a map",
+    title: "Map Studio: start with the world",
+    intro:
+      "The map describes where places are, what contains them and how they are connected. Storyboard describes the situations that can happen there. Start with a small area and add detail when you need it.",
     steps: [
-      { title: '1. Open World Maps', body: 'Open My library → World Maps. The list on the left contains your worlds and their places. Select a world or place to edit its information, or choose Open Map Studio to work on its map.' },
-      { title: '2. Create an overview', body: 'Choose New map. Leave World set to Create a new world, enter a name and choose World / region. Open Map Studio. This gives you an overview where you can paint terrain and place settlements, buildings and other locations.' },
-      { title: '3. Choose the right level of detail', body: 'World / region is for geography. Village / city is for a settlement’s streets and places. House / interior is for rooms and doorways. A town can have a detailed map inside the world overview, and a building can have another map inside the town. The levels belong to the same world.' },
-      { title: '4. Find your way around', body: 'The toolbox is on the left, the map is in the middle and details of the selected place are on the right. Hold Space and drag to pan. Use + and − to zoom, Ctrl + scroll to zoom with the mouse, or Fit to fit the map. When you zoom out, some symbols and labels become less detailed; the underlying places remain.' },
-      { title: '5. Save your work', body: 'Choose Save map when you have made changes. The asterisk indicates unsaved changes. Closing Map Studio with changes offers Save & close, Discard changes or Keep editing. Saving the map and saving an adventure are separate operations.' },
-      { title: 'A first small map', body: 'Try one forest, a named clearing, a ruin and a nearby village. Give the places short descriptions, draw a road and save. You can use those actual places in Storyboard later; you do not need to build an entire continent first.' }
-    ]
+      {
+        title: "1. Open World Maps",
+        body: "Open My library → World Maps. The list on the left contains your worlds and their places. Select a world or place to edit its information, or choose Open Map Studio to work on its map.",
+      },
+      {
+        title: "2. Create an overview",
+        body: "Choose New map. Leave World set to Create a new world, enter a name and choose World / region. Open Map Studio. This gives you an overview where you can paint terrain and place settlements, buildings and other locations.",
+      },
+      {
+        title: "3. Choose the right level of detail",
+        body: "World / region is for geography. Village / city is for a settlement’s streets and places. House / interior is for rooms and doorways. A town can have a detailed map inside the world overview, and a building can have another map inside the town. The levels belong to the same world.",
+      },
+      {
+        title: "4. Find your way around",
+        body: "The toolbox is on the left, the map is in the middle and details of the selected place are on the right. Hold Space and drag to pan. Use + and − to zoom, Ctrl + scroll to zoom with the mouse, or Fit to fit the map. When you zoom out, some symbols and labels become less detailed; the underlying places remain.",
+      },
+      {
+        title: "5. Save your work",
+        body: "Choose Save map when you have made changes. The asterisk indicates unsaved changes. Closing Map Studio with changes offers Save & close, Discard changes or Keep editing. Saving the map and saving an adventure are separate operations.",
+      },
+      {
+        title: "A first small map",
+        body: "Try one forest, a named clearing, a ruin and a nearby village. Give the places short descriptions, draw a road and save. You can use those actual places in Storyboard later; you do not need to build an entire continent first.",
+      },
+    ],
   },
   {
-    id: 'map-terrain', label: 'Paint terrain', title: 'Paint forests, clearings, water and mountains',
-    intro: 'Terrain painting creates editable areas with names and information. The symbols are the illustration of that area; each tree or mountain peak is not a separate game location.',
+    id: "map-terrain",
+    label: "Paint terrain",
+    title: "Paint forests, clearings, water and mountains",
+    intro:
+      "Terrain painting creates editable areas with names and information. The symbols are the illustration of that area; each tree or mountain peak is not a separate game location.",
     steps: [
-      { title: '1. Choose the brush', body: 'On a World / region map, click the brush in the left toolbox. Choose Forest, Clearing, Lake, Low mountain, High mountain or Snow peak. Drag on the map to paint. Use Brush size, or hold Alt and scroll while using the brush or eraser, to change its width.' },
-      { title: '2. Extend an area or start a separate one', body: 'Select an existing painted area before painting to extend that area. To start a separate forest or lake, switch to Select / Move, click empty ground to clear the selection and then choose the brush again. Give separate places distinct names so that you can recognise them later.' },
-      { title: '3. Paint a clearing when it is a place', body: 'Select a forest, choose Clearing and paint within it. The clearing is a named subarea of that forest, with its own information. Erasing trees only removes forest coverage: an erased gap is not automatically a named clearing. Use Clearing for a place the player should be able to identify or visit.' },
-      { title: '4. Use the eraser on the selected terrain', body: 'Select the painted area you want to change, then choose the eraser below the brush. It edits that selected area. To shrink a lake, erase the lake rather than painting forest over the water. A gap in the water can form an island visually, but does not automatically create a named island location.' },
-      { title: '5. Build and finish a mountain', body: 'Paint Low mountain, then keep the same mountain selected while adding High mountain and Snow peak areas. Select the mountain and choose Finish mountain to render its finished symbols. Edit mountain returns to editing. Painting the mountain again makes it unfinished. Higher mountain areas mask the forest illustration; low areas can retain trees.' },
-      { title: '6. Water and terrain have different controls', body: 'Painted lakes use a smoothed shoreline automatically; there is no separate Finish lake button. Use the River map entity for a river: a long shape painted with Lake is still a lake in the map information. Automatic river flow from mountain sources, cave-painting tools and additional biome brushes are not available yet.' }
-    ]
+      {
+        title: "1. Choose the brush",
+        body: "On a World / region map, click the brush in the left toolbox. Choose Forest, Clearing, Lake, Low mountain, High mountain or Snow peak. Drag on the map to paint. Use Brush size, or hold Alt and scroll while using the brush or eraser, to change its width.",
+      },
+      {
+        title: "2. Extend an area or start a separate one",
+        body: "Select an existing painted area before painting to extend that area. To start a separate forest or lake, switch to Select / Move, click empty ground to clear the selection and then choose the brush again. Give separate places distinct names so that you can recognise them later.",
+      },
+      {
+        title: "3. Paint a clearing when it is a place",
+        body: "Select a forest, choose Clearing and paint within it. The clearing is a named subarea of that forest, with its own information. Erasing trees only removes forest coverage: an erased gap is not automatically a named clearing. Use Clearing for a place the player should be able to identify or visit.",
+      },
+      {
+        title: "4. Use the eraser on the selected terrain",
+        body: "Select the painted area you want to change, then choose the eraser below the brush. It edits that selected area. To shrink a lake, erase the lake rather than painting forest over the water. A gap in the water can form an island visually, but does not automatically create a named island location.",
+      },
+      {
+        title: "5. Build and finish a mountain",
+        body: "Paint Low mountain, then keep the same mountain selected while adding High mountain and Snow peak areas. Select the mountain and choose Finish mountain to render its finished symbols. Edit mountain returns to editing. Painting the mountain again makes it unfinished. Higher mountain areas mask the forest illustration; low areas can retain trees.",
+      },
+      {
+        title: "6. Water and terrain have different controls",
+        body: "Painted lakes use a smoothed shoreline automatically; there is no separate Finish lake button. Use the River map entity for a river: a long shape painted with Lake is still a lake in the map information. Automatic river flow from mountain sources, cave-painting tools and additional biome brushes are not available yet.",
+      },
+    ],
   },
   {
-    id: 'map-settlements', label: 'Build a settlement', title: 'Generate and build a village or city',
-    intro: 'A settlement is a location on the world map with its own detailed map inside. New settlements use a readable location marker, which does not define geographic size. Streets, buildings and their distances belong to the local map.',
+    id: "map-settlements",
+    label: "Build a settlement",
+    title: "Generate and build a village or city",
+    intro:
+      "A settlement is a location on the world map with its own detailed map inside. New settlements use a readable location marker, which does not define geographic size. Streets, buildings and their distances belong to the local map.",
     steps: [
-      { title: '1. Place the settlement on the world map', body: 'On a World / region map, right-click where the village or city belongs and choose Build settlement here…. Enter its name and choose Build settlement to open its empty local map. Cancel creates nothing. The + Settlement button is an alternative: choose the location with a small marker, then enter its name. No large area is drawn or assigned by placement. Inside, Show world map underlay displays nearby roads, water and terrain as a locked background, also in the generator preview. Both maps’ distance scales determine the alignment; legacy travel-time scales are marked approximate. Local houses and streets stay editable, while the parent geography must be edited on the world map. The generator is a starting plan to adjust to this geography, not an automatic shoreline-aware city planner.' },
-      { title: '2. Preview an organised starting layout', body: 'In an empty settlement choose Generate layout…. Pick Village, Town or City starter, then Along a main street or Around a crossroads. Optionally include a Place of worship or Community hall on the outskirts. The preview changes before your map does. Cancel leaves the map unchanged; Use this layout adds the preview’s actual places and routes.' },
-      { title: '3. Understand the layout rules', body: 'Shops, a workshop, a café and an inn stand near the central market square. Homes face the streets, buildings occupy separate lots, and entrance paths connect them to the street network. The edge landmark has its own approach. The size chooses a starting amount of development and a local map scale. It is a starting plan for further work, not an automatically populated complete city.' },
-      { title: '4. Make it your settlement', body: 'Select buildings to rename them, change their descriptions or choose a Building symbol. Move, resize and rotate them as needed. Use Cottage, Longhouse, Townhouse, Inn or + Square in the settlement toolbar to place more by hand. Objects offers Fields, Cattle pasture, Well and Docks. Docks must touch both land and water; validation uses local water and the world underlay even when hidden, and also checks moving or resizing. From template… opens reusable location templates, including Police station tagged modern and crime. The template editor can require Shoreline placement. New buildings have Default entrance set to Open. A player can approach and enter without drawing a path or generating rooms. Change the entrance to Locked, Hidden or No default entrance in the inspector or building template. Existing buildings are unchanged, and authored doors into rooms retain their own destinations, locks and direction. Routes are still needed for specific journeys and cross-level passages. Select a street to drag its gold junctions; connected streets follow. Choose Add bend in the right panel, then drag the blue point. Right-click a bend and choose Make Smooth for curve handles. Building entrances remain attached to their buildings. Drawn roads and paths are simplified automatically. For an existing road, choose Simplify route under Route shape; the panel shows the point count, offers Gentle, Balanced and Stronger, and lets you undo the last simplification until the shape is edited again. Junctions and terrain entry points remain connected.' },
-      { title: '5. Add the places the adventure needs', body: 'Open a building’s contents to create its rooms. Give important locations introductions, information and visibility settings. The square, inn, workshop and other placed buildings can be chosen directly in Storyboard through Place on map. Generated locations do not automatically receive people, shop inventories, secrets or playable scenes.' },
-      { title: '6. Return to the overview and save', body: 'Use the breadcrumbs to return to the world. A new settlement is shown as a location marker; its visible symbol does not shorten routes by pretending the town spans several grid cells. Open it to see and edit the actual local layout. During play, a linked map appears in the right sidebar. It follows the current place: a new planned interior shows the house’s known rooms; other locations show the containing village. Open the map for zoom, panning and place names. Only known places and visited arrival locations are shown; map clicks do not move the player or expose author notes. Adventures use their pinned map snapshot, so start a new playthrough to include later map edits. Older settlements with drawn areas retain their authored geometry; select one and choose Show as location marker to convert it while keeping its identity and contents. Local and world scales remain separate under World settings. Save map stores both levels. Generating a starting layout is available only in an empty settlement, so existing places and story references are not silently replaced.' }
-    ]
+      {
+        title: "1. Place the settlement on the world map",
+        body: "On a World / region map, right-click where the village or city belongs and choose Build settlement here…. Enter its name and choose Build settlement to open its empty local map. Cancel creates nothing. The + Settlement button is an alternative: choose the location with a small marker, then enter its name. No large area is drawn or assigned by placement. Inside, Show world map underlay displays nearby roads, water and terrain as a locked background, also in the generator preview. Both maps’ distance scales determine the alignment; legacy travel-time scales are marked approximate. Local houses and streets stay editable, while the parent geography must be edited on the world map. The generator is a starting plan to adjust to this geography, not an automatic shoreline-aware city planner.",
+      },
+      {
+        title: "2. Preview an organised starting layout",
+        body: "In an empty settlement choose Generate layout…. Pick Village, Town or City starter, then Along a main street or Around a crossroads. Optionally include a Place of worship or Community hall on the outskirts. The preview changes before your map does. Cancel leaves the map unchanged; Use this layout adds the preview’s actual places and routes.",
+      },
+      {
+        title: "3. Understand the layout rules",
+        body: "Shops, a workshop, a café and an inn stand near the central market square. Homes face the streets, buildings occupy separate lots, and entrance paths connect them to the street network. The edge landmark has its own approach. The size chooses a starting amount of development and a local map scale. It is a starting plan for further work, not an automatically populated complete city.",
+      },
+      {
+        title: "4. Make it your settlement",
+        body: "Select buildings to rename them, change their descriptions or choose a Building symbol. Move, resize and rotate them as needed. Use Cottage, Longhouse, Townhouse, Inn or + Square in the settlement toolbar to place more by hand. Objects offers Fields, Cattle pasture, Well and Docks. Docks must touch both land and water; validation uses local water and the world underlay even when hidden, and also checks moving or resizing. From template… opens reusable location templates, including Police station tagged modern and crime. The template editor can require Shoreline placement. New buildings have Default entrance set to Open. A player can approach and enter without drawing a path or generating rooms. Change the entrance to Locked, Hidden or No default entrance in the inspector or building template. Existing buildings are unchanged, and authored doors into rooms retain their own destinations, locks and direction. Routes are still needed for specific journeys and cross-level passages. Select a street to drag its gold junctions; connected streets follow. Choose Add bend in the right panel, then drag the blue point. Right-click a bend and choose Make Smooth for curve handles. Building entrances remain attached to their buildings. Drawn roads and paths are simplified automatically. For an existing road, choose Simplify route under Route shape; the panel shows the point count, offers Gentle, Balanced and Stronger, and lets you undo the last simplification until the shape is edited again. Junctions and terrain entry points remain connected.",
+      },
+      {
+        title: "5. Add the places the adventure needs",
+        body: "Open a building’s contents to create its rooms. Give important locations introductions, information and visibility settings. The square, inn, workshop and other placed buildings can be chosen directly in Storyboard through Place on map. Generated locations do not automatically receive people, shop inventories, secrets or playable scenes.",
+      },
+      {
+        title: "6. Return to the overview and save",
+        body: "Use the breadcrumbs to return to the world. A new settlement is shown as a location marker; its visible symbol does not shorten routes by pretending the town spans several grid cells. Open it to see and edit the actual local layout. During play, a linked map appears in the right sidebar. It follows the current place: a new planned interior shows the house’s known rooms; other locations show the containing village. Open the map for zoom, panning and place names. Only known places and visited arrival locations are shown; map clicks do not move the player or expose author notes. Adventures use their pinned map snapshot, so start a new playthrough to include later map edits. Older settlements with drawn areas retain their authored geometry; select one and choose Show as location marker to convert it while keeping its identity and contents. Local and world scales remain separate under World settings. Save map stores both levels. Generating a starting layout is available only in an empty settlement, so existing places and story references are not silently replaced.",
+      },
+    ],
   },
   {
-    id: 'map-places', label: 'Places within places', title: 'Build places within places',
-    intro: 'A forest can contain a clearing, the clearing can contain a ruin, and the ruin can contain rooms. Containment describes where something belongs; a route or exit describes how it can be reached.',
+    id: "map-places",
+    label: "Places within places",
+    title: "Build places within places",
+    intro:
+      "A forest can contain a clearing, the clearing can contain a ruin, and the ruin can contain rooms. Containment describes where something belongs; a route or exit describes how it can be reached.",
     steps: [
-      { title: '1. Add a place', body: 'Right-click empty map ground and choose Add map entity. On a world map you can start with a River, Forest, Lake, Region, Settlement, Building or Point of Interest. Change its Name, Type and description in the right panel. A point of interest can represent something important even when you do not need a detailed illustration.' },
-      { title: '2. Reuse a location template', body: 'Location templates in My library stores reusable starting definitions, such as Ruin or Inn. You can edit their descriptions, symbols and genre tags. On empty map ground, choose Add from template… and use a template to place an independent location. Changing that location does not change the template or its other copies.' },
-      { title: '3. Put a place inside another place', body: 'Select a place and set Inside in the right panel. For example, a ruin can be inside a clearing, which is inside a forest. You can also use Add place inside in the World Maps information browser. A place cannot be inside itself or one of its own descendants.' },
-      { title: '4. Add terrain subareas', body: 'Right-click an existing forest and choose Add subarea for choices such as Clearing, Dense woodland and Marsh. These describe local parts of the forest. The menu for an existing place currently differs from the empty-ground menu: to use a Ruin template inside a clearing, open the clearing’s contents and add it there, or place it on empty ground and set Inside afterwards.' },
-      { title: '5. Open a detailed map', body: 'Double-click a building to open its interior. Standard houses get an editable plan once, on first opening. Use Wall to click a start on a boundary, add corners inside the room, and finish on an existing wall. Shift aligns a segment horizontally or vertically; Backspace or Undo corner removes the last bend, and Escape cancels. Dragging a straight partition still works. The map changes only when the complete chain can form closed rooms; Select lets you drag wall junctions. Door creates a real passage with Open, Locked or Hidden access; Window adds an outside window. Choose furniture, fixtures and lights in the left toolbar. Table & chairs places a table and four seats as one object. Ctrl + scroll rotates selected furniture or its placement preview in 15-degree steps. A translucent placement preview follows the pointer; red outlines indicate invalid placement, and openings snap to walls. Escape returns to Select. Select furniture, a door or a window and press Delete to remove it; Undo restores it and its door connection. Delete does not remove rooms or interfere with text editing. Select rooms to rename them, describe them and add an optional Room background picture. Without a room picture, its house or surroundings can supply the backdrop. Extend building adds a rectangular side wing and checks nearby streets and buildings. Add a door to connect the wing. Save map preserves rooms, pictures and identities. Existing authored rooms are never replaced automatically. House size uses metres, with editable starter dimensions under House size → Apply house size. Furniture and openings keep fixed real dimensions, including rotation and extensions. The plan shows a metre grid, scale bar and room area. Red objects in older plans need repositioning; their identities and data are preserved. Drag an opening to see it snap to its new position on the wall before you release it. This version has one floor. Select a place and choose Open contents →. The breadcrumb above the map lets you return to its parent or the world. You can also choose New map in World Maps, select an existing World and Map for a particular place, then choose the map type for its contents. A building interior is a different map level, not a new world or automatically a new Storyboard scene.' },
-      { title: '6. Connect entrances and exits', body: 'Inside a place, use Exits & doorways to choose an Exit destination and Add open exit ↔. This can connect places on different map levels, such as a cellar and an outdoor entrance. Containment alone does not create an accessible passage. You can describe a cave as a place and give it a map level, but dedicated tools for painting cave passages have not been built yet.' }
-    ]
+      {
+        title: "1. Add a place",
+        body: "Right-click empty map ground and choose Add map entity. On a world map you can start with a River, Forest, Lake, Region, Settlement, Building or Point of Interest. Change its Name, Type and description in the right panel. A point of interest can represent something important even when you do not need a detailed illustration.",
+      },
+      {
+        title: "2. Reuse a location template",
+        body: "Location templates in My library stores reusable starting definitions, such as Ruin or Inn. You can edit their descriptions, symbols and genre tags. On empty map ground, choose Add from template… and use a template to place an independent location. Changing that location does not change the template or its other copies.",
+      },
+      {
+        title: "3. Put a place inside another place",
+        body: "Select a place and set Inside in the right panel. For example, a ruin can be inside a clearing, which is inside a forest. You can also use Add place inside in the World Maps information browser. A place cannot be inside itself or one of its own descendants.",
+      },
+      {
+        title: "4. Add terrain subareas",
+        body: "Right-click an existing forest and choose Add subarea for choices such as Clearing, Dense woodland and Marsh. These describe local parts of the forest. The menu for an existing place currently differs from the empty-ground menu: to use a Ruin template inside a clearing, open the clearing’s contents and add it there, or place it on empty ground and set Inside afterwards.",
+      },
+      {
+        title: "5. Open a detailed map",
+        body: "Double-click a building to open its interior. Standard houses get an editable plan once, on first opening. Use Wall to click a start on a boundary, add corners inside the room, and finish on an existing wall. Shift aligns a segment horizontally or vertically; Backspace or Undo corner removes the last bend, and Escape cancels. Dragging a straight partition still works. The map changes only when the complete chain can form closed rooms; Select lets you drag wall junctions. Door creates a real passage with Open, Locked or Hidden access; Window adds an outside window. Choose furniture, fixtures and lights in the left toolbar. Table & chairs places a table and four seats as one object. Ctrl + scroll rotates selected furniture or its placement preview in 15-degree steps. A translucent placement preview follows the pointer; red outlines indicate invalid placement, and openings snap to walls. Escape returns to Select. Select furniture, a door or a window and press Delete to remove it; Undo restores it and its door connection. Delete does not remove rooms or interfere with text editing. Select rooms to rename them, describe them and add an optional Room background picture. Without a room picture, its house or surroundings can supply the backdrop. Extend building adds a rectangular side wing and checks nearby streets and buildings. Add a door to connect the wing. Save map preserves rooms, pictures and identities. Existing authored rooms are never replaced automatically. House size uses metres, with editable starter dimensions under House size → Apply house size. Furniture and openings keep fixed real dimensions, including rotation and extensions. The plan shows a metre grid, scale bar and room area. Red objects in older plans need repositioning; their identities and data are preserved. Drag an opening to see it snap to its new position on the wall before you release it. This version has one floor. Select a place and choose Open contents →. The breadcrumb above the map lets you return to its parent or the world. You can also choose New map in World Maps, select an existing World and Map for a particular place, then choose the map type for its contents. A building interior is a different map level, not a new world or automatically a new Storyboard scene.",
+      },
+      {
+        title: "6. Connect entrances and exits",
+        body: "Inside a place, use Exits & doorways to choose an Exit destination and Add open exit ↔. This can connect places on different map levels, such as a cellar and an outdoor entrance. Containment alone does not create an accessible passage. You can describe a cave as a place and give it a map level, but dedicated tools for painting cave passages have not been built yet.",
+      },
+    ],
   },
   {
-    id: 'map-routes', label: 'Roads and travel', title: 'Draw roads and describe the journey',
-    intro: 'Roads and paths record how places connect. Their shape and the map’s scale provide a basis for distance and travel-time estimates. This is separate from a Storyboard connection between situations.',
+    id: "map-routes",
+    label: "Roads and travel",
+    title: "Draw roads and describe the journey",
+    intro:
+      "Roads and paths record how places connect. Their shape and the map’s scale provide a basis for distance and travel-time estimates. This is separate from a Storyboard connection between situations.",
     steps: [
-      { title: '1. Draw a road or path', body: 'Choose Draw road or Draw path in the left toolbox and drag along the intended route. The Connect hint shows nearby places or routes that an endpoint can attach to. You can also use Connect entities to link selected places without drawing a freehand route.' },
-      { title: '2. Understand forests and junctions', body: 'A road through a forest can record its passage through the area without treating the entire forest as one arrival point. With automatic junctions enabled, crossing roads and paths create junctions. Separate entry and exit positions matter when an area is large. A water crossing has separate choices such as Bridge, Ferry or No crossing; a visual crossing alone does not imply a bridge.' },
-      { title: '3. Set a useful scale', body: 'Open World settings → Scale mode and choose Distance per grid cell. Set the distance and unit. For kilometres use km per unit = 1; for metres use 0.001. Each map level can use its own scale, so an interior does not need the same grid distance as the world overview. The legacy time-per-cell mode is also available.' },
-      { title: '4. Review travel time', body: 'Select a connection to review its type, travel method, direction and access. Distance-based estimates use route geometry, scale and travel speed. Set Travel speed (km/h) when needed, or enable Set travel time manually and enter a duration. Moving places or reshaping a route can change automatically calculated travel times.' },
-      { title: '5. Describe conditions along the route', body: 'Use Route surroundings & terrain and Route instructions for AI to explain the journey. Subareas can have Normal, Difficult or Blocked passage and a travel-time multiplier. Ignore terrain (maintained road) lets a connection ignore terrain penalties. Both directions and Open, Locked or Hidden access describe the connection; they are not a complete replacement for authored gameplay rules.' },
-      { title: '6. Geography and gameplay are separate', body: 'Save the map to keep its routes and scale. Map geography supplies context, but the current Storyboard scene transitions do not automatically calculate or enforce travel time. Do not use a Storyboard line as proof of a road, an open door or instant travel.' }
-    ]
+      {
+        title: "1. Draw a road or path",
+        body: "Choose Draw road or Draw path in the left toolbox and drag along the intended route. The Connect hint shows nearby places or routes that an endpoint can attach to. You can also use Connect entities to link selected places without drawing a freehand route.",
+      },
+      {
+        title: "2. Understand forests and junctions",
+        body: "A road through a forest can record its passage through the area without treating the entire forest as one arrival point. With automatic junctions enabled, crossing roads and paths create junctions. Separate entry and exit positions matter when an area is large. A water crossing has separate choices such as Bridge, Ferry or No crossing; a visual crossing alone does not imply a bridge.",
+      },
+      {
+        title: "3. Set a useful scale",
+        body: "Open World settings → Scale mode and choose Distance per grid cell. Set the distance and unit. For kilometres use km per unit = 1; for metres use 0.001. Each map level can use its own scale, so an interior does not need the same grid distance as the world overview. The legacy time-per-cell mode is also available.",
+      },
+      {
+        title: "4. Review travel time",
+        body: "Select a connection to review its type, travel method, direction and access. Distance-based estimates use route geometry, scale and travel speed. Set Travel speed (km/h) when needed, or enable Set travel time manually and enter a duration. Moving places or reshaping a route can change automatically calculated travel times.",
+      },
+      {
+        title: "5. Describe conditions along the route",
+        body: "Use Route surroundings & terrain and Route instructions for AI to explain the journey. Subareas can have Normal, Difficult or Blocked passage and a travel-time multiplier. Ignore terrain (maintained road) lets a connection ignore terrain penalties. Both directions and Open, Locked or Hidden access describe the connection; they are not a complete replacement for authored gameplay rules.",
+      },
+      {
+        title: "6. Geography and gameplay are separate",
+        body: "Save the map to keep its routes and scale. Map geography supplies context, but the current Storyboard scene transitions do not automatically calculate or enforce travel time. Do not use a Storyboard line as proof of a road, an open door or instant travel.",
+      },
+    ],
   },
   {
-    id: 'map-information', label: 'Place information', title: 'Give places information the game can use',
-    intro: 'A location is more than its illustration. Names, descriptions, visibility and the places it contains help distinguish what exists in the world from what the player already knows.',
+    id: "map-information",
+    label: "Place information",
+    title: "Give places information the game can use",
+    intro:
+      "A location is more than its illustration. Names, descriptions, visibility and the places it contains help distinguish what exists in the world from what the player already knows.",
     steps: [
-      { title: '1. Edit the place information', body: 'In World Maps, select a world or place in the information browser. You can edit its introduction, background information, instructions, images and sound. In Map Studio, select a place and open the Place tab for its information, or the Map tab for geometry and map settings.' },
-      { title: '2. Separate arrival text from background facts', body: 'An introduction describes the arrival experience. Background information and instructions can include facts that guide the setting. In Storyboard, Use the introduction from the map displays the map introduction as the scene’s arrival text. It is currently finished player-facing text, not a prompt that asks AI to rewrite it.' },
-      { title: '3. Choose player visibility', body: 'Player visibility offers Visible from start, Discovered on arrival and Hidden until revealed. Preview player map lets you inspect the map presentation for the player. These settings express intended player knowledge; defining a visibility state does not by itself author the action or event that reveals a secret.' },
-      { title: '4. Place people without assuming they are present', body: 'Associated characters and Population & encounters describe a place’s usual inhabitants. They do not prove that a person is currently standing there. A Storyboard scene defines its own playable situation and participants. Encounter chance settings are world preparation; automatic encounter rolls are not connected to gameplay yet.' },
-      { title: '5. Save and refresh', body: 'Use Save information in the information browser, or Save map in Map Studio. If Storyboard is open elsewhere, choose Refresh map places there to load the saved changes. Closing Map Studio opened from Storyboard refreshes the place list automatically.' },
-      { title: '6. Keep an existing adventure consistent', body: 'Moving or renaming a place preserves its stable link to a scene. You can add further places and details. Currently, deleting a referenced map place is detected when preparing the next test: choose a replacement before starting. Map Studio does not yet block every deletion because an adventure uses the place. A running map-linked adventure keeps its saved map version; later edits apply to new playthroughs.' }
-    ]
+      {
+        title: "1. Edit the place information",
+        body: "In World Maps, select a world or place in the information browser. You can edit its introduction, background information, instructions, images and sound. In Map Studio, select a place and open the Place tab for its information, or the Map tab for geometry and map settings.",
+      },
+      {
+        title: "2. Separate arrival text from background facts",
+        body: "An introduction describes the arrival experience. Background information and instructions can include facts that guide the setting. In Storyboard, Use the introduction from the map displays the map introduction as the scene’s arrival text. It is currently finished player-facing text, not a prompt that asks AI to rewrite it.",
+      },
+      {
+        title: "3. Choose player visibility",
+        body: "Player visibility offers Visible from start, Discovered on arrival and Hidden until revealed. Preview player map lets you inspect the map presentation for the player. These settings express intended player knowledge; defining a visibility state does not by itself author the action or event that reveals a secret.",
+      },
+      {
+        title: "4. Place people without assuming they are present",
+        body: "Associated characters and Population & encounters describe a place’s usual inhabitants. They do not prove that a person is currently standing there. A Storyboard scene defines its own playable situation and participants. Encounter chance settings are world preparation; automatic encounter rolls are not connected to gameplay yet.",
+      },
+      {
+        title: "5. Save and refresh",
+        body: "Use Save information in the information browser, or Save map in Map Studio. If Storyboard is open elsewhere, choose Refresh map places there to load the saved changes. Closing Map Studio opened from Storyboard refreshes the place list automatically.",
+      },
+      {
+        title: "6. Keep an existing adventure consistent",
+        body: "Moving or renaming a place preserves its stable link to a scene. You can add further places and details. Currently, deleting a referenced map place is detected when preparing the next test: choose a replacement before starting. Map Studio does not yet block every deletion because an adventure uses the place. A running map-linked adventure keeps its saved map version; later edits apply to new playthroughs.",
+      },
+    ],
   },
   {
-    id: 'map-storyboard', label: 'Use a map in Storyboard', title: 'Connect your map to an adventure',
-    intro: 'Choose the actual location from the map, then describe what can happen there. You can reuse a location in several scenes without creating another copy of the place.',
+    id: "map-storyboard",
+    label: "Use a map in Storyboard",
+    title: "Connect your map to an adventure",
+    intro:
+      "Choose the actual location from the map, then describe what can happen there. You can reuse a location in several scenes without creating another copy of the place.",
     steps: [
-      { title: '1. Save the map first', body: 'Create the places you need in Map Studio and choose Save map. A reusable location template is not a placed location until you put it on a map. The adventure’s place selector uses the saved map locations.' },
-      { title: '2. Choose Adventure map', body: 'Open Adventures, select the adventure and open Storyboard Editor. Choose its saved world under Adventure map at the top. Earlier adventures can remain unlinked until you explicitly choose a map. When you change maps, authored actions and characters stay, but scenes whose locations are missing need new place choices.' },
-      { title: '3. Choose Place on map', body: 'Select a scene and choose Place on map in the right panel. The list includes places within other places, shown as paths such as Pine forest / Clearing / Hunter’s cabin. The small position preview helps you recognise the selected location. Changing a location preserves the scene’s prepared actions.' },
-      { title: '4. Choose the arrival description', body: 'Enable Use the introduction from the map to use the saved location introduction. Turn it off, or edit What the player sees on arrival, to write a scene-specific arrival. For example, the same ruin can be deserted in one situation and occupied in another. The underlying ruin is still the same location.' },
-      { title: '5. Return to the map when needed', body: 'Open Map Studio from the Storyboard toolbar to edit the chosen world. Save & return stores its changes and refreshes the location list without closing your adventure draft. Refresh map places loads saved edits from another window. Save adventure stores the scenes and their map links.' },
-      { title: '6. Test and continue', body: 'Open Test, choose a scene under Start from and select Test this scene. The new playthrough uses the latest saved map. A missing location or incomplete scene must be fixed before testing; the right panel lists the issues. Continue an existing run through My conversations. Existing runs keep their own adventure and map snapshot, so editing the library does not rewrite them.' }
-    ]
-  }
+      {
+        title: "1. Save the map first",
+        body: "Create the places you need in Map Studio and choose Save map. A reusable location template is not a placed location until you put it on a map. The adventure’s place selector uses the saved map locations.",
+      },
+      {
+        title: "2. Choose Adventure map",
+        body: "Open Adventures, select the adventure and open Storyboard Editor. Choose its saved world under Adventure map at the top. Earlier adventures can remain unlinked until you explicitly choose a map. When you change maps, authored actions and characters stay, but scenes whose locations are missing need new place choices.",
+      },
+      {
+        title: "3. Choose Place on map",
+        body: "Select a scene and choose Place on map in the right panel. The list includes places within other places, shown as paths such as Pine forest / Clearing / Hunter’s cabin. The small position preview helps you recognise the selected location. Changing a location preserves the scene’s prepared actions.",
+      },
+      {
+        title: "4. Choose the arrival description",
+        body: "Enable Use the introduction from the map to use the saved location introduction. Turn it off, or edit What the player sees on arrival, to write a scene-specific arrival. For example, the same ruin can be deserted in one situation and occupied in another. The underlying ruin is still the same location.",
+      },
+      {
+        title: "5. Return to the map when needed",
+        body: "Open Map Studio from the Storyboard toolbar to edit the chosen world. Save & return stores its changes and refreshes the location list without closing your adventure draft. Refresh map places loads saved edits from another window. Save adventure stores the scenes and their map links.",
+      },
+      {
+        title: "6. Test and continue",
+        body: "Open Test, choose a scene under Start from and select Test this scene. The new playthrough uses the latest saved map. A missing location or incomplete scene must be fixed before testing; the right panel lists the issues. Continue an existing run through My conversations. Existing runs keep their own adventure and map snapshot, so editing the library does not rewrite them.",
+      },
+    ],
+  },
 ];
 
 export const storyboardTopics = [
   {
-    id: 'storyboard-scenes', label: 'What is a scene?', title: 'A scene is a playable situation',
-    intro: 'A map location answers “where?”. A scene answers “what is happening here?”. A scene can be an exploration, a conversation, a confrontation or another phase of an encounter.',
+    id: "storyboard-scenes",
+    label: "What is a scene?",
+    title: "A scene is a playable situation",
+    intro:
+      "A map location answers “where?”. A scene answers “what is happening here?”. A scene can be an exploration, a conversation, a confrontation or another phase of an encounter.",
     steps: [
-      { title: '1. Start with a situation', body: 'A ruin is a map location. “Search the ruined hall before nightfall” is a scene there. A private conversation can also be a scene without anyone moving to another place. Discovering a hatch or changing the direction of a conversation can be an outcome within the current scene; you do not need a new scene for every reply.' },
-      { title: '2. Open the full editor', body: 'Open Adventures and choose Storyboard or Open Storyboard Editor. The story outline is on the left, the board is in the middle and the editing panel is on the right. Use Scenes, Connections and Test above the board to move between tasks. The panels scroll independently. Closing the editor keeps the draft in the current adventure view; Save adventure stores it.' },
-      { title: '3. Add and name a scene', body: 'Choose + Scene, or right-click empty workspace and choose Add scene here. Drag a scene card to arrange the workspace. Give the scene a name and choose its map location. If a scene is not yet playable, choose Make scene playable before adding actions. An author’s card positions are for organising the adventure, not geographical coordinates.' },
-      { title: '4. Write the arrival text', body: 'What the player sees on arrival is the finished text shown when this scene begins. Write only what you intend the player to learn, or use the map introduction. The current editor does not offer an AI narration mode for this field.' },
-      { title: '5. Reuse places and understand continuity', body: 'Several scenes can use the same map place. Scene transitions in a saved adventure preserve the conversation history and tracked player progress. Shared NPC relationship memory and automatic presence across scenes are not complete yet, so do not assume that reusing a character automatically carries every feeling or conversation fact into another scene.' }
-    ]
+      {
+        title: "1. Start with a situation",
+        body: "A ruin is a map location. “Search the ruined hall before nightfall” is a scene there. A private conversation can also be a scene without anyone moving to another place. Discovering a hatch or changing the direction of a conversation can be an outcome within the current scene; you do not need a new scene for every reply.",
+      },
+      {
+        title: "2. Open the full editor",
+        body: "Open Adventures and choose Storyboard or Open Storyboard Editor. The story outline is on the left, the board is in the middle and the editing panel is on the right. Use Scenes, Connections and Test above the board to move between tasks. The panels scroll independently. Closing the editor keeps the draft in the current adventure view; Save adventure stores it.",
+      },
+      {
+        title: "3. Add and name a scene",
+        body: "Choose + Scene, or right-click empty workspace and choose Add scene here. Drag a scene card to arrange the workspace. Give the scene a name and choose its map location. If a scene is not yet playable, choose Make scene playable before adding actions. An author’s card positions are for organising the adventure, not geographical coordinates.",
+      },
+      {
+        title: "4. Write the arrival text",
+        body: "What the player sees on arrival is the finished text shown when this scene begins. Write only what you intend the player to learn, or use the map introduction. The current editor does not offer an AI narration mode for this field.",
+      },
+      {
+        title: "5. Reuse places and understand continuity",
+        body: "Several scenes can use the same map place. Scene transitions in a saved adventure preserve the conversation history and tracked player progress. Shared NPC relationship memory and automatic presence across scenes are not complete yet, so do not assume that reusing a character automatically carries every feeling or conversation fact into another scene.",
+      },
+    ],
   },
   {
-    id: 'storyboard-actions', label: 'Actions and dialogue', title: 'Prepare actions, replies and discoveries',
-    intro: 'Possible actions defines what the player can deliberately try in a playable scene. You write its outcomes; the game checks availability and resolves any configured skill roll.',
+    id: "storyboard-actions",
+    label: "Actions and dialogue",
+    title: "Prepare actions, replies and discoveries",
+    intro:
+      "Possible actions defines what the player can deliberately try in a playable scene. You write its outcomes; the game checks availability and resolves any configured skill roll.",
     steps: [
-      { title: '1. Add an action', body: 'Select a scene and choose + Action under Player actions. The new card opens with its label ready to edit. Action label is the player’s choice, such as “Examine the floor”. Open People, conversation & conditions on the action card to choose who it concerns.' },
-      { title: '2. Write the outcome', body: 'Under What happens on success, write the exact text the player should receive. For example: “Beneath the rubble you find a stone hatch with a rusted iron ring.” A successful action records a discovery that other actions and connections can require. Writing about a door in the outcome does not automatically create that door or a passage on the map.' },
-      { title: '3. Add a roll only when it matters', body: 'Enable Requires a skill roll, choose one of the scene’s available skills and set Difficulty. Write What happens on failure too. These playable Storyboard actions currently use d100: the roll is resolved by the game, not by a claim in the player’s message. Leave the roll disabled for an action that should simply happen when available.' },
-      { title: '4. Question or Share a discovery?', body: 'Question is for asking a person about a topic. Share a discovery is for reporting something the player has learned, such as telling Edda what the messenger’s note says. Select the person and add Conversation topics separated by semicolons. A recognised question or report in Say something uses the same prepared action, conditions and outcome as its button. Free topics outside the prepared dialogue do not yet generate a new authored response.' },
-      { title: '5. Require an earlier discovery', body: 'Under Available after these discoveries, select what must already have happened. For example, “Open the hatch” can require “Examine the floor · succeeded”. A report about a found note should require the actual discovery of that note. Merely telling the game that you found it does not satisfy the condition.' },
-      { title: '6. Know the current consequence tools', body: 'The editor can use discoveries from successful and failed actions to control later actions and scene connections. A general visual editor for multiple consequences—such as poison exposure, changing an NPC’s affection or triggering nearby reinforcements—is not available yet. Describing those changes in prose alone does not make them enforced game state.' }
-    ]
+      {
+        title: "1. Add an action",
+        body: "Select a scene and choose + Action under Player actions. The new card opens with its label ready to edit. Action label is the player’s choice, such as “Examine the floor”. Open People, conversation & conditions on the action card to choose who it concerns.",
+      },
+      {
+        title: "2. Write the outcome",
+        body: "Under What happens on success, write the exact text the player should receive. For example: “Beneath the rubble you find a stone hatch with a rusted iron ring.” A successful action records a discovery that other actions and connections can require. Writing about a door in the outcome does not automatically create that door or a passage on the map.",
+      },
+      {
+        title: "3. Add a roll only when it matters",
+        body: "Enable Requires a skill roll, choose one of the scene’s available skills and set Difficulty. Write What happens on failure too. These playable Storyboard actions currently use d100: the roll is resolved by the game, not by a claim in the player’s message. Leave the roll disabled for an action that should simply happen when available.",
+      },
+      {
+        title: "4. Question or Share a discovery?",
+        body: "Question is for asking a person about a topic. Share a discovery is for reporting something the player has learned, such as telling Edda what the messenger’s note says. Select the person and add Conversation topics separated by semicolons. A recognised question or report in Say something uses the same prepared action, conditions and outcome as its button. Free topics outside the prepared dialogue do not yet generate a new authored response.",
+      },
+      {
+        title: "5. Require an earlier discovery",
+        body: "Under Available after these discoveries, select what must already have happened. For example, “Open the hatch” can require “Examine the floor · succeeded”. A report about a found note should require the actual discovery of that note. Merely telling the game that you found it does not satisfy the condition.",
+      },
+      {
+        title: "6. Know the current consequence tools",
+        body: "The editor can use discoveries from successful and failed actions to control later actions and scene connections. A general visual editor for multiple consequences—such as poison exposure, changing an NPC’s affection or triggering nearby reinforcements—is not available yet. Describing those changes in prose alone does not make them enforced game state.",
+      },
+    ],
   },
   {
-    id: 'storyboard-connections', label: 'Connections and testing', title: 'Connect situations and test the result',
-    intro: 'A Storyboard line connects playable situations and defines when a next choice becomes available. It is not a road or a measurement of distance between map locations.',
+    id: "storyboard-connections",
+    label: "Connections and testing",
+    title: "Connect situations and test the result",
+    intro:
+      "A Storyboard line connects playable situations and defines when a next choice becomes available. It is not a road or a measurement of distance between map locations.",
     steps: [
-      { title: '1. Attach the start of the connector', body: 'Right-click the starting scene and choose Connect to another scene. The connector stays attached to that card while its other end follows the pointer. Click the destination card to attach it. Escape cancels without creating a connection. Alternatively, drag from the dot on a scene’s right edge, or select the starting scene and choose + Connection.' },
-      { title: '2. Edit the connection', body: 'Select its line or its entry under Connections. From and To let you change either end. What the player chooses is the text of the continuation choice in the game. Connecting the same two scenes again selects the existing connection instead of creating a duplicate.' },
-      { title: '3. Set the conditions', body: 'Under Open after all of these discoveries, choose the required outcomes. For example, a confrontation scene can require a failed action, while another branch requires success. All selected discoveries must be present. Without conditions the continuation is available immediately. More conditions & consequences can keep a connection closed after a discovery or record facts on arrival.' },
-      { title: '4. Set an objective when useful', body: 'Open Adventure objective in Test and choose the discoveries that together complete the adventure and give the objective a title. Completion marks the objective as achieved; it does not delete the conversation or automatically prevent further exploration.' },
-      { title: '5. Save and start a fresh test', body: 'Open Test, choose Start from and select Test this scene. Testing starts a new saved run from that scene; it is not a continuation of yesterday’s run. Required discoveries are not automatically granted when you start in a later scene. To try a complete branch, start at the scene where its prerequisites can be earned.' },
-      { title: '6. Continue or revise', body: 'Use My conversations to resume a saved run with its progress. After changing the adventure or map, start another test to use the new version. Current connections present continuation choices and switch scenes; configurable automatic transitions are not available yet. If a test is blocked, click an item in the Test checklist to open the scene, action or connection that needs attention.' }
-    ]
-  }
+      {
+        title: "1. Attach the start of the connector",
+        body: "Right-click the starting scene and choose Connect to another scene. The connector stays attached to that card while its other end follows the pointer. Click the destination card to attach it. Escape cancels without creating a connection. Alternatively, drag from the dot on a scene’s right edge, or select the starting scene and choose + Connection.",
+      },
+      {
+        title: "2. Edit the connection",
+        body: "Select its line or its entry under Connections. From and To let you change either end. What the player chooses is the text of the continuation choice in the game. Connecting the same two scenes again selects the existing connection instead of creating a duplicate.",
+      },
+      {
+        title: "3. Set the conditions",
+        body: "Under Open after all of these discoveries, choose the required outcomes. For example, a confrontation scene can require a failed action, while another branch requires success. All selected discoveries must be present. Without conditions the continuation is available immediately. More conditions & consequences can keep a connection closed after a discovery or record facts on arrival.",
+      },
+      {
+        title: "4. Set an objective when useful",
+        body: "Open Adventure objective in Test and choose the discoveries that together complete the adventure and give the objective a title. Completion marks the objective as achieved; it does not delete the conversation or automatically prevent further exploration.",
+      },
+      {
+        title: "5. Save and start a fresh test",
+        body: "Open Test, choose Start from and select Test this scene. Testing starts a new saved run from that scene; it is not a continuation of yesterday’s run. Required discoveries are not automatically granted when you start in a later scene. To try a complete branch, start at the scene where its prerequisites can be earned.",
+      },
+      {
+        title: "6. Continue or revise",
+        body: "Use My conversations to resume a saved run with its progress. After changing the adventure or map, start another test to use the new version. Current connections present continuation choices and switch scenes; configurable automatic transitions are not available yet. If a test is blocked, click an item in the Test checklist to open the scene, action or connection that needs attention.",
+      },
+    ],
+  },
 ];

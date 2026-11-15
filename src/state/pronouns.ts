@@ -34,7 +34,7 @@ export function pronounForms(pronoun?: string): PronounForms | undefined {
       themselves: "herself",
       subject: "she",
       object: "her",
-      possessive: "her"
+      possessive: "her",
     };
   }
   if (pronoun === "he") {
@@ -46,7 +46,7 @@ export function pronounForms(pronoun?: string): PronounForms | undefined {
       themselves: "himself",
       subject: "he",
       object: "him",
-      possessive: "his"
+      possessive: "his",
     };
   }
   if (pronoun === "it") {
@@ -58,7 +58,7 @@ export function pronounForms(pronoun?: string): PronounForms | undefined {
       themselves: "itself",
       subject: "it",
       object: "it",
-      possessive: "its"
+      possessive: "its",
     };
   }
   if (pronoun === "they") {
@@ -70,7 +70,7 @@ export function pronounForms(pronoun?: string): PronounForms | undefined {
       themselves: "themselves",
       subject: "they",
       object: "them",
-      possessive: "their"
+      possessive: "their",
     };
   }
   return {
@@ -81,7 +81,7 @@ export function pronounForms(pronoun?: string): PronounForms | undefined {
     themselves: pronoun,
     subject: pronoun,
     object: pronoun,
-    possessive: `${pronoun}'s`
+    possessive: `${pronoun}'s`,
   };
 }
 

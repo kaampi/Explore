@@ -42,6 +42,6 @@ function placeCopy(session: Session, kind: "intro" | "prompt"): PlaceIntro | und
   return {
     title: here || session.scene?.location?.trim() || "here",
     body,
-    room: false
+    room: false,
   };
 }

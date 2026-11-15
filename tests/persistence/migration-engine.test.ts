@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { migrate, needsMigration, UnmigratableSchemaVersionError } from "@persistence/MigrationEngine";
+import {
+  migrate,
+  needsMigration,
+  UnmigratableSchemaVersionError,
+} from "@persistence/MigrationEngine";
 import { safeParseSession } from "@state/StateSchema";
 
 const v1Record = {
@@ -11,8 +15,8 @@ const v1Record = {
     emma: {
       // v1 shape: raw values, no {value, lock} wrapper
       position: "table",
-      mood: "reserved"
-    }
+      mood: "reserved",
+    },
   },
   relationships: {},
   layers: [],
@@ -20,7 +24,7 @@ const v1Record = {
   conversation: [],
   events: [],
   snapshots: [],
-  diagnostics: []
+  diagnostics: [],
 };
 
 describe("MigrationEngine", () => {
@@ -57,8 +61,8 @@ describe("MigrationEngine", () => {
     const alreadyWrapped = {
       ...v1Record,
       characters: {
-        emma: { position: { value: "bar", lock: "player_locked" } }
-      }
+        emma: { position: { value: "bar", lock: "player_locked" } },
+      },
     };
     const migrated = migrate(alreadyWrapped);
     const characters = migrated.characters as Record<string, Record<string, unknown>>;
@@ -66,6 +70,8 @@ describe("MigrationEngine", () => {
   });
 
   it("throws UnmigratableSchemaVersionError for a version with no registered migration", () => {
-    expect(() => migrate({ ...v1Record, schemaVersion: 0 })).toThrow(UnmigratableSchemaVersionError);
+    expect(() => migrate({ ...v1Record, schemaVersion: 0 })).toThrow(
+      UnmigratableSchemaVersionError,
+    );
   });
 });

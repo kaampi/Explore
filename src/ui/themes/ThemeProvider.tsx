@@ -8,12 +8,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
-import {
-  defaultThemeLibrary,
-  rgb,
-  type PlayTheme,
-  type ThemeLibrary,
-} from "./theme";
+import { defaultThemeLibrary, rgb, type PlayTheme, type ThemeLibrary } from "./theme";
 import { activatePlayTheme, applyPlayTheme, removeConversationTheme } from "./conversationTheme";
 import { loadThemeLibrary, saveThemeLibrary } from "./themeStorage";
 
@@ -52,11 +47,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       })
       .catch((err: unknown) => {
         if (!cancelled)
-          setError(
-            err instanceof Error
-              ? err.message
-              : "Appearance storage is unavailable.",
-          );
+          setError(err instanceof Error ? err.message : "Appearance storage is unavailable.");
       })
       .finally(() => {
         if (!cancelled) setReady(true);
@@ -83,21 +74,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     library,
     conversationId,
     activateConversation,
-    forgetConversation: id => setLibrary(state => removeConversationTheme(state, id)),
+    forgetConversation: (id) => setLibrary((state) => removeConversationTheme(state, id)),
     ready,
     error,
     update: (patch) =>
       setLibrary((state) =>
-        applyPlayTheme(
-          state,
-          { ...state.active, ...patch },
-          scope.current ?? null,
-        ),
+        applyPlayTheme(state, { ...state.active, ...patch }, scope.current ?? null),
       ),
-    select: (theme) =>
-      setLibrary((state) =>
-        applyPlayTheme(state, theme, scope.current ?? null),
-      ),
+    select: (theme) => setLibrary((state) => applyPlayTheme(state, theme, scope.current ?? null)),
     save: (name) =>
       setLibrary((state) => {
         if (!name.trim() || state.saved.length >= 50) return state;
@@ -142,7 +126,6 @@ export function playThemeStyle(theme: PlayTheme): CSSProperties {
     "--play-dim": theme.backdropDim,
     "--play-size": `${theme.textSize}px`,
     "--play-width": `${theme.textWidth}px`,
-    "--play-font":
-      theme.font === "serif" ? "Georgia, serif" : '"Barlow", system-ui, sans-serif',
+    "--play-font": theme.font === "serif" ? "Georgia, serif" : '"Barlow", system-ui, sans-serif',
   } as CSSProperties;
 }

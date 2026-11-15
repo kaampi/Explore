@@ -40,7 +40,7 @@ export function movableStatsForCharacter(session: Session, characterId: string):
 export function clampAiStatValue(
   current: number,
   proposed: number,
-  def: Pick<AttributeDef, "min" | "max" | "maxShift">
+  def: Pick<AttributeDef, "min" | "max" | "maxShift">,
 ): number {
   const { min, max } = attributeRange(def);
   const cap = Math.max(0, def.maxShift ?? 0);

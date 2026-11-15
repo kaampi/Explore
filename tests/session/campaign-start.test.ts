@@ -5,10 +5,14 @@ import {
   inferCampaignRealmId,
   newCampaignTemplate,
   parseCampaignTemplate,
-  triggerWhenLabel
+  triggerWhenLabel,
 } from "@library/LibrarySchema";
 import { sessionFromCampaignScene } from "@session/campaignStart";
-import { exampleCharacterTemplate, examplePlaceTemplate, exampleRealmDunbaar } from "@library/exampleTemplates";
+import {
+  exampleCharacterTemplate,
+  examplePlaceTemplate,
+  exampleRealmDunbaar,
+} from "@library/exampleTemplates";
 import { createSessionFromSetup } from "@session/createSession";
 import { WHAT_NOW_STAY } from "@state/playerDestination";
 
@@ -17,15 +21,26 @@ describe("campaign templates", () => {
     const scene = {
       ...emptyCampaignScene(),
       placeId: "place-1",
-      people: [{ characterId: "emma", position: "behind the bar", mood: "", clothing: "", holding: "", trust: "20", familiarity: "10", tension: "5" }],
+      people: [
+        {
+          characterId: "emma",
+          position: "behind the bar",
+          mood: "",
+          clothing: "",
+          holding: "",
+          trust: "20",
+          familiarity: "10",
+          tension: "5",
+        },
+      ],
       triggers: [
         {
           id: "t1",
           content: "Two strangers ask about a brooch.",
           keywords: ["brooch"],
-          when: "return_to_bar" as const
-        }
-      ]
+          when: "return_to_bar" as const,
+        },
+      ],
     };
     const campaign = newCampaignTemplate({
       name: "The Aurora Room",
@@ -33,7 +48,7 @@ describe("campaign templates", () => {
       startPrompt: "A hidden jazz bar.",
       placeIds: ["place-1"],
       people: [{ characterId: "emma", stats: {} }],
-      scenes: [scene]
+      scenes: [scene],
     });
     const loaded = parseCampaignTemplate(JSON.parse(JSON.stringify(campaign)));
     expect(loaded.scenes[0]?.triggers[0]?.content).toContain("brooch");
@@ -45,7 +60,7 @@ describe("campaign templates", () => {
     const campaign = newCampaignTemplate({
       name: "Neon",
       lens: "Cyberpunk",
-      scenes: [emptyCampaignScene()]
+      scenes: [emptyCampaignScene()],
     });
     expect(parseCampaignTemplate(JSON.parse(JSON.stringify(campaign))).lens).toBe("Cyberpunk");
     expect(
@@ -56,11 +71,11 @@ describe("campaign templates", () => {
               name: "Dunbaar",
               placeLens: "harbour",
               objectLens: "relic",
-              scenes: [emptyCampaignScene()]
-            })
-          )
-        )
-      )
+              scenes: [emptyCampaignScene()],
+            }),
+          ),
+        ),
+      ),
     ).toMatchObject({ placeLens: "harbour", objectLens: "relic" });
     expect(exampleCharacterTemplate().tags).toEqual([]);
     expect(examplePlaceTemplate().tags).toEqual([]);
@@ -72,17 +87,22 @@ describe("campaign templates", () => {
     const campaign = newCampaignTemplate({
       name: "Dunbaar",
       realmId: aurora.realmId,
-      scenes: [emptyCampaignScene()]
+      scenes: [emptyCampaignScene()],
     });
-    expect(campaignLandmarks(campaign, [aurora, cabin]).map((item) => item.id)).toEqual([aurora.id, "cabin"]);
-    expect(inferCampaignRealmId({ realmId: undefined, placeIds: [aurora.id] }, [aurora])).toBe(aurora.realmId);
+    expect(campaignLandmarks(campaign, [aurora, cabin]).map((item) => item.id)).toEqual([
+      aurora.id,
+      "cabin",
+    ]);
+    expect(inferCampaignRealmId({ realmId: undefined, placeIds: [aurora.id] }, [aurora])).toBe(
+      aurora.realmId,
+    );
   });
 
   it("keeps a campaign whose stats were stored as numbers", () => {
     const campaign = newCampaignTemplate({
       name: "The Aurora Room",
       people: [{ characterId: "emma", stats: { safety: "40" } }],
-      scenes: [emptyCampaignScene()]
+      scenes: [emptyCampaignScene()],
     });
     const raw = JSON.parse(JSON.stringify(campaign)) as {
       people: { characterId: string; stats: Record<string, string | number> }[];
@@ -95,7 +115,7 @@ describe("campaign templates", () => {
     const campaign = newCampaignTemplate({
       name: "Dunbaar",
       player: { name: "Mats", appearance: "tall, dark hair", pronoun: "he", stats: { grit: "12" } },
-      scenes: [emptyCampaignScene()]
+      scenes: [emptyCampaignScene()],
     });
     const loaded = parseCampaignTemplate(JSON.parse(JSON.stringify(campaign)));
     expect(loaded.player?.name).toBe("Mats");
@@ -128,25 +148,25 @@ describe("sessionFromCampaignScene", () => {
               holding: "",
               trust: "20",
               familiarity: "10",
-              tension: "5"
-            }
+              tension: "5",
+            },
           ],
           triggers: [
             {
               id: "hunters",
               content: "Two strangers enter and ask who showed a brooch.",
               keywords: ["brooch"],
-              when: "return_to_bar"
-            }
+              when: "return_to_bar",
+            },
           ],
           whatNow: [
             { id: "wn1", label: "Go with Emma to her room", room: "Emma's room" },
             { id: "wn2", label: "", room: "cellar" },
-            { id: "wn3", label: "I tell her the truth", room: "" }
+            { id: "wn3", label: "I tell her the truth", room: "" },
           ],
-          whatNowKeywords: ["last call", "tired"]
-        }
-      ]
+          whatNowKeywords: ["last call", "tired"],
+        },
+      ],
     });
     const result = sessionFromCampaignScene(
       {
@@ -157,14 +177,16 @@ describe("sessionFromCampaignScene", () => {
         characters: [emma],
         objects: [],
         voices: [],
-        rulesets: []
+        rulesets: [],
       },
-      "camp-1"
+      "camp-1",
     );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.session.scene?.realm).toBe("City of Dunbaar");
-    expect(result.session.scene?.realmNote).toBe("A quiet city. Hidden rooms sit behind ordinary doors.");
+    expect(result.session.scene?.realmNote).toBe(
+      "A quiet city. Hidden rooms sit behind ordinary doors.",
+    );
     expect(result.session.campaignIntro).toBe("Stay as long as you like.");
     expect(result.session.campaignId).toBe(campaign.id);
     expect(result.session.sceneId).toBe(campaign.scenes[0]!.id);
@@ -183,9 +205,9 @@ describe("sessionFromCampaignScene", () => {
         keywords: ["last call", "tired"],
         choices: [
           { id: "wn1", label: "Go with Emma to her room", room: "Emma's room" },
-          { id: "wn3", label: "I tell her the truth", room: WHAT_NOW_STAY }
-        ]
-      }
+          { id: "wn3", label: "I tell her the truth", room: WHAT_NOW_STAY },
+        ],
+      },
     ]);
     expect(result.session.player?.position.value).toBe(place.name);
   });
@@ -210,8 +232,8 @@ describe("sessionFromCampaignScene", () => {
               holding: "",
               trust: "20",
               familiarity: "10",
-              tension: "5"
-            }
+              tension: "5",
+            },
           ],
           triggers: [
             {
@@ -221,11 +243,11 @@ describe("sessionFromCampaignScene", () => {
               when: "return_to_bar",
               requiresFlags: ["brooch_shown"],
               requiresAbsentFlags: ["brooch_given"],
-              setsFlags: ["had_the_dream"]
-            }
-          ]
-        }
-      ]
+              setsFlags: ["had_the_dream"],
+            },
+          ],
+        },
+      ],
     });
     const result = sessionFromCampaignScene(
       {
@@ -236,9 +258,9 @@ describe("sessionFromCampaignScene", () => {
         characters: [emma],
         objects: [],
         voices: [],
-        rulesets: []
+        rulesets: [],
       },
-      "camp-2"
+      "camp-2",
     );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -269,11 +291,11 @@ describe("sessionFromCampaignScene", () => {
               holding: "",
               trust: "20",
               familiarity: "10",
-              tension: "5"
-            }
-          ]
-        }
-      ]
+              tension: "5",
+            },
+          ],
+        },
+      ],
     });
     const result = sessionFromCampaignScene(
       {
@@ -284,9 +306,9 @@ describe("sessionFromCampaignScene", () => {
         characters: [emma],
         objects: [],
         voices: [],
-        rulesets: []
+        rulesets: [],
       },
-      "camp-3"
+      "camp-3",
     );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -315,11 +337,11 @@ describe("sessionFromCampaignScene", () => {
               holding: "",
               trust: "20",
               familiarity: "10",
-              tension: "5"
-            }
-          ]
-        }
-      ]
+              tension: "5",
+            },
+          ],
+        },
+      ],
     });
     const result = sessionFromCampaignScene(
       {
@@ -330,9 +352,9 @@ describe("sessionFromCampaignScene", () => {
         characters: [emma],
         objects: [],
         voices: [],
-        rulesets: []
+        rulesets: [],
       },
-      "camp-4"
+      "camp-4",
     );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -349,7 +371,7 @@ describe("sessionFromCampaignScene", () => {
         appearance: "tall, dark hair",
         personality: "curious",
         pronoun: "he",
-        stats: { grit: "12" }
+        stats: { grit: "12" },
       },
       realmId: place.realmId,
       people: [{ characterId: emma.id, stats: {} }],
@@ -366,11 +388,11 @@ describe("sessionFromCampaignScene", () => {
               holding: "",
               trust: "",
               familiarity: "",
-              tension: ""
-            }
-          ]
-        }
-      ]
+              tension: "",
+            },
+          ],
+        },
+      ],
     });
     const result = sessionFromCampaignScene(
       {
@@ -381,9 +403,9 @@ describe("sessionFromCampaignScene", () => {
         characters: [emma],
         objects: [],
         voices: [],
-        rulesets: []
+        rulesets: [],
       },
-      "camp-you"
+      "camp-you",
     );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -415,11 +437,11 @@ describe("sessionFromCampaignScene", () => {
               holding: "",
               trust: "20",
               familiarity: "10",
-              tension: "5"
-            }
-          ]
-        }
-      ]
+              tension: "5",
+            },
+          ],
+        },
+      ],
     });
     const result = sessionFromCampaignScene(
       {
@@ -429,9 +451,9 @@ describe("sessionFromCampaignScene", () => {
         characters: [emma],
         objects: [],
         voices: [],
-        rulesets: []
+        rulesets: [],
       },
-      "camp-room"
+      "camp-room",
     );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -460,11 +482,11 @@ describe("sessionFromCampaignScene", () => {
               holding: "",
               trust: "20",
               familiarity: "10",
-              tension: "5"
-            }
-          ]
-        }
-      ]
+              tension: "5",
+            },
+          ],
+        },
+      ],
     });
     const result = sessionFromCampaignScene(
       {
@@ -475,9 +497,9 @@ describe("sessionFromCampaignScene", () => {
         objects: [],
         voices: [],
         rulesets: [],
-        handoff: "He asked to sleep. No sex."
+        handoff: "He asked to sleep. No sex.",
       },
-      "camp-handoff"
+      "camp-handoff",
     );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -499,10 +521,10 @@ describe("sessionFromCampaignScene", () => {
               id: "ring",
               title: "The ring",
               content: "She keeps a plain gold band in her apron pocket.",
-              keywords: ["ring", "gold band"]
-            }
-          ]
-        }
+              keywords: ["ring", "gold band"],
+            },
+          ],
+        },
       ],
       scenes: [
         {
@@ -517,11 +539,11 @@ describe("sessionFromCampaignScene", () => {
               holding: "",
               trust: "20",
               familiarity: "10",
-              tension: "5"
-            }
-          ]
-        }
-      ]
+              tension: "5",
+            },
+          ],
+        },
+      ],
     });
     const result = sessionFromCampaignScene(
       {
@@ -531,9 +553,9 @@ describe("sessionFromCampaignScene", () => {
         characters: [{ ...emma, lore: [] }],
         objects: [],
         voices: [],
-        rulesets: []
+        rulesets: [],
       },
-      "camp-lore"
+      "camp-lore",
     );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -544,16 +566,16 @@ describe("sessionFromCampaignScene", () => {
           content: "The ring\n\nShe keeps a plain gold band in her apron pocket.",
           keywords: ["ring", "gold band"],
           type: "core",
-          active: true
-        })
-      ])
+          active: true,
+        }),
+      ]),
     );
   });
 
   it("refuses to start without a place or people", () => {
     const campaign = newCampaignTemplate({
       name: "Empty",
-      scenes: [emptyCampaignScene()]
+      scenes: [emptyCampaignScene()],
     });
     const result = sessionFromCampaignScene(
       {
@@ -563,9 +585,9 @@ describe("sessionFromCampaignScene", () => {
         characters: [],
         objects: [],
         voices: [],
-        rulesets: []
+        rulesets: [],
       },
-      "camp-2"
+      "camp-2",
     );
     expect(result.ok).toBe(false);
   });
@@ -580,12 +602,13 @@ describe("createSession once-beats", () => {
         noise: "",
         music: false,
         placeNote: "",
-        characters: [{ name: "Emma", personality: "Dry.", mood: "reserved", position: "behind the bar" }],
-        onceBeats: [{ content: "Bandits.", keywords: [] }]
+        characters: [
+          { name: "Emma", personality: "Dry.", mood: "reserved", position: "behind the bar" },
+        ],
+        onceBeats: [{ content: "Bandits.", keywords: [] }],
       },
-      "once-skip"
+      "once-skip",
     );
     expect(session.layers.some((layer) => layer.once)).toBe(false);
   });
 });
-

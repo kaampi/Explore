@@ -3,7 +3,12 @@ import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 import { IDEA_KINDS, IDEA_LABELS, IdeaSchema, type Idea } from "../../ideas/IdeaSchema";
 import { Modal } from "../components/Modal";
 
-export function IdeaEditor({ idea, repo, onSaved, onClose }: {
+export function IdeaEditor({
+  idea,
+  repo,
+  onSaved,
+  onClose,
+}: {
   idea: Idea;
   repo: IndexedDBRepository;
   onSaved: (idea: Idea) => void;
@@ -19,7 +24,11 @@ export function IdeaEditor({ idea, repo, onSaved, onClose }: {
   async function save() {
     if (pending.current) return;
     const parsed = IdeaSchema.safeParse({
-      ...idea, title, description, kind, updatedAt: new Date().toISOString(),
+      ...idea,
+      title,
+      description,
+      kind,
+      updatedAt: new Date().toISOString(),
     });
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Check your idea.");
@@ -40,42 +49,67 @@ export function IdeaEditor({ idea, repo, onSaved, onClose }: {
   }
 
   return (
-    <Modal title="Save an idea" onClose={() => { if (!pending.current) onClose(); }} wide>
+    <Modal
+      title="Save an idea"
+      onClose={() => {
+        if (!pending.current) onClose();
+      }}
+      wide
+    >
       <p className="sb-muted">
         Keep a possibility to explore later. Saving an idea does not change your story.
       </p>
-      <form onSubmit={event => { event.preventDefault(); void save(); }}>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          void save();
+        }}
+      >
         <fieldset disabled={saving} className="sb-idea-fields">
           <label className="sb-field">
             Title
-            <input autoFocus maxLength={120} required value={title}
-              onChange={event => setTitle(event.target.value)} />
+            <input
+              autoFocus
+              maxLength={120}
+              required
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+            />
           </label>
           <label className="sb-field">
             Idea type
-            <select value={kind} onChange={event => setKind(event.target.value as Idea["kind"])}>
-              {IDEA_KINDS.map(value => (
-                <option key={value} value={value}>{IDEA_LABELS[value]}</option>
+            <select value={kind} onChange={(event) => setKind(event.target.value as Idea["kind"])}>
+              {IDEA_KINDS.map((value) => (
+                <option key={value} value={value}>
+                  {IDEA_LABELS[value]}
+                </option>
               ))}
             </select>
           </label>
           <label className="sb-field">
             Description
-            <textarea required maxLength={50000} rows={8} value={description}
-              onChange={event => setDescription(event.target.value)} />
+            <textarea
+              required
+              maxLength={50000}
+              rows={8}
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+            />
           </label>
         </fieldset>
-        {idea.origin !== "manual" && <details className="sb-idea-source">
-          <summary>
-            From {idea.source.conversationTitle} · {idea.source.excerpts.length} message(s)
-          </summary>
-          {idea.source.excerpts.map((excerpt, index) => (
-            <blockquote key={index}>
-              <strong>{excerpt.speaker}</strong>
-              <p>{excerpt.content}</p>
-            </blockquote>
-          ))}
-        </details>}
+        {idea.origin !== "manual" && (
+          <details className="sb-idea-source">
+            <summary>
+              From {idea.source.conversationTitle} · {idea.source.excerpts.length} message(s)
+            </summary>
+            {idea.source.excerpts.map((excerpt, index) => (
+              <blockquote key={index}>
+                <strong>{excerpt.speaker}</strong>
+                <p>{excerpt.content}</p>
+              </blockquote>
+            ))}
+          </details>
+        )}
         {error && <p role="alert">{error}</p>}
         <div className="sb-dialog__actions">
           <button type="button" className="sb-button" disabled={saving} onClick={onClose}>

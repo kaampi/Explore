@@ -7,7 +7,7 @@ import {
   interviewFromModelText,
   localInterview,
   OLLAMA_UNREACHABLE_NOTE,
-  OLLAMA_UNREADABLE_NOTE
+  OLLAMA_UNREADABLE_NOTE,
 } from "@library/characterInterview";
 
 const WISH = "a warm healer, korthugget";
@@ -44,7 +44,9 @@ describe("localInterview", () => {
   it("rolls someone else from the original wish and keeps a correction on the same name", () => {
     const first = localInterview([WISH], 5);
     const other = localInterview([WISH, "Someone else."], 5);
-    expect(`${other.card?.name} ${other.card?.familyName}`).not.toBe(`${first.card?.name} ${first.card?.familyName}`);
+    expect(`${other.card?.name} ${other.card?.familyName}`).not.toBe(
+      `${first.card?.name} ${first.card?.familyName}`,
+    );
     expect(other.card?.speech).toMatch(/clipped/i);
     expect(other.question).toBe("How do you picture them? Body and face.");
 
@@ -63,12 +65,19 @@ describe("localInterview", () => {
   });
 
   it("does not copy clothes or a kink from the wish onto the card", () => {
-    const step = localInterview(["hon, 34, vaksam bartender med rött hår, wears a leather jacket, kink"], 4);
+    const step = localInterview(
+      ["hon, 34, vaksam bartender med rött hår, wears a leather jacket, kink"],
+      4,
+    );
     const card = step.card;
     expect(card).not.toBeNull();
     if (!card) return;
-    expect(CharacterTemplateSchema.parse(characterTemplateFromGenerated(card, "talk-1")).id).toBe("talk-1");
-    expect(`${card.appearance} ${card.personality} ${card.speech} ${step.imagePrompt}`).not.toMatch(/jacket|kink/i);
+    expect(CharacterTemplateSchema.parse(characterTemplateFromGenerated(card, "talk-1")).id).toBe(
+      "talk-1",
+    );
+    expect(`${card.appearance} ${card.personality} ${card.speech} ${step.imagePrompt}`).not.toMatch(
+      /jacket|kink/i,
+    );
     expect(card.appearance).toMatch(/auburn hair/i);
   });
 
@@ -76,7 +85,9 @@ describe("localInterview", () => {
     const step = localInterview(["Jag vill skapa en hjältefigur till ett Sci-Fi äventyr."], 12);
     expect(step.card?.name.length).toBeGreaterThan(1);
     expect(step.question).toBe("How do they speak?");
-    expect(`${step.card?.appearance} ${step.card?.personality}`).not.toMatch(/sci-fi|äventyr|hjälte/i);
+    expect(`${step.card?.appearance} ${step.card?.personality}`).not.toMatch(
+      /sci-fi|äventyr|hjälte/i,
+    );
   });
 });
 
@@ -97,10 +108,10 @@ describe("interviewFromModelText", () => {
         personality: "Nova measures a risk before she moves. People get a straight answer.",
         tags: ["pilot", "Healer"],
         imagePrompt: "Head-and-shoulders portrait. Tall and spare build, dark hair, grey eyes.",
-        question: "How do they treat people? What is their home ship?"
+        question: "How do they treat people? What is their home ship?",
       }),
       local,
-      WISH
+      WISH,
     );
     expect(shaped?.card?.name).toBe("Nova");
     expect(shaped?.card?.familyName).toBe("Keene");
@@ -112,7 +123,7 @@ describe("interviewFromModelText", () => {
     const shaped = interviewFromModelText(
       '{"name":"Nova","familyName":"Keene","approximateAge":36,"pronoun":"she","appearance":"Wears a leather jacket.","mood":"warm","speech":"Speech is clipped.","personality":"A sister in the fleet.","tags":["kink"],"imagePrompt":"Uniform and boots.","question":"How do they speak?"}',
       local,
-      WISH
+      WISH,
     );
     expect(shaped?.card?.name).toBe("Nova");
     expect(shaped?.card?.appearance).toBe(local.card?.appearance);
@@ -131,7 +142,7 @@ describe("interviewFromModelText", () => {
     const shaped = interviewFromModelText(
       '{"name":"Nova","approximateAge":36,"pronoun":"she","appearance":"Tall and spare build, dark hair, grey eyes. A calm face.","mood":"warm","speech":"Speech is clipped.","personality":"Nova is easy to be around.","question":"Anything else?"}',
       local,
-      "yes"
+      "yes",
     );
     expect(shaped?.question).toBe("");
   });
@@ -148,17 +159,23 @@ describe("conductCharacterInterview", () => {
   });
 
   it("uses the local card when the reply is not a card", async () => {
-    const result = await conductCharacterInterview({ messages: [WISH], seed: 5 }, async () => "I think a hero.");
+    const result = await conductCharacterInterview(
+      { messages: [WISH], seed: 5 },
+      async () => "I think a hero.",
+    );
     expect(result.source).toBe("local");
     expect(result.note).toBe(OLLAMA_UNREADABLE_NOTE);
   });
 
   it("keeps a model card when the reply is JSON", async () => {
-    const result = await conductCharacterInterview({ messages: [WISH], seed: 5 }, async (messages) => {
-      expect(messages[0]?.content).toMatch(/No clothes/);
-      expect(messages[1]?.content).toContain(WISH);
-      return '{"name":"Nova","familyName":"Keene","approximateAge":36,"pronoun":"she","appearance":"Tall and spare build, dark hair, grey eyes. A calm face.","mood":"warm","speech":"Speech is clipped. Few words, and no padding.","personality":"Nova is easy to be around and hard to fool. People get a second chance.","tags":["healer"],"imagePrompt":"Head-and-shoulders portrait. Tall and spare build, dark hair, grey eyes.","question":"How do you picture them? Body and face."}';
-    });
+    const result = await conductCharacterInterview(
+      { messages: [WISH], seed: 5 },
+      async (messages) => {
+        expect(messages[0]?.content).toMatch(/No clothes/);
+        expect(messages[1]?.content).toContain(WISH);
+        return '{"name":"Nova","familyName":"Keene","approximateAge":36,"pronoun":"she","appearance":"Tall and spare build, dark hair, grey eyes. A calm face.","mood":"warm","speech":"Speech is clipped. Few words, and no padding.","personality":"Nova is easy to be around and hard to fool. People get a second chance.","tags":["healer"],"imagePrompt":"Head-and-shoulders portrait. Tall and spare build, dark hair, grey eyes.","question":"How do you picture them? Body and face."}';
+      },
+    );
     expect(result.source).toBe("ollama");
     expect(result.note).toBe("");
     expect(result.reply.card?.name).toBe("Nova");

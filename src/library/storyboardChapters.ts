@@ -40,7 +40,7 @@ export function scenesInChapter(scenes: CampaignScene[], chapterId: string): Cam
 export function setSceneChapter(
   scenes: CampaignScene[],
   sceneId: string,
-  chapterId: string | undefined
+  chapterId: string | undefined,
 ): CampaignScene[] {
   return scenes.map((scene) => {
     if (scene.id !== sceneId) return scene;
@@ -82,7 +82,7 @@ function chapterBrief(scenes: CampaignScene[]): string {
 
 export function buildChapterExport(
   campaign: Pick<CampaignTemplate, "name" | "scenes" | "chapters">,
-  exportedAt = new Date().toISOString()
+  exportedAt = new Date().toISOString(),
 ): ChapterExportPayload {
   return {
     kind: CHAPTER_EXPORT_KIND,
@@ -93,8 +93,8 @@ export function buildChapterExport(
       id: chapter.id,
       title: chapter.title.trim() || `Chapter ${index + 1}`,
       sequence_index: index,
-      brief: chapterBrief(scenesInChapter(campaign.scenes, chapter.id))
-    }))
+      brief: chapterBrief(scenesInChapter(campaign.scenes, chapter.id)),
+    })),
   };
 }
 
@@ -106,7 +106,10 @@ function slugify(value: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-export function chapterExportFilename(campaignName: string, exportedAt = new Date().toISOString()): string {
+export function chapterExportFilename(
+  campaignName: string,
+  exportedAt = new Date().toISOString(),
+): string {
   const slug = slugify(campaignName) || "campaign";
   const day = exportedAt.slice(0, 10) || new Date().toISOString().slice(0, 10);
   return `${slug}-chapters-${day}.json`;

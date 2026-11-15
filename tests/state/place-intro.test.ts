@@ -16,8 +16,8 @@ function makeSession(overrides: Partial<Session> = {}): Session {
     characters: {
       emma: {
         position: { value: "behind the bar", lock: "unlocked" },
-        mood: { value: "reserved", lock: "unlocked" }
-      }
+        mood: { value: "reserved", lock: "unlocked" },
+      },
     },
     scene: {
       location: "The Aurora Room — a quiet late-night bar",
@@ -30,13 +30,13 @@ function makeSession(overrides: Partial<Session> = {}): Session {
           id: "room-emmas",
           label: "Emma's room",
           keywords: ["staff room"],
-          description: "A narrow bed, a chair, curtains drawn."
-        }
-      ]
+          description: "A narrow bed, a chair, curtains drawn.",
+        },
+      ],
     },
     player: {
       position: { value: "at the bar", lock: "unlocked" },
-      status: { value: "awake", lock: "unlocked" }
+      status: { value: "awake", lock: "unlocked" },
     },
     relationships: {},
     layers: [],
@@ -45,7 +45,7 @@ function makeSession(overrides: Partial<Session> = {}): Session {
     events: [],
     snapshots: [],
     diagnostics: [],
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -54,7 +54,7 @@ describe("hereIntro", () => {
     expect(hereIntro(makeSession())).toEqual({
       title: "at the bar",
       body: "A quiet late-night bar. Jazz on the speakers.",
-      room: false
+      room: false,
     });
   });
 
@@ -62,13 +62,13 @@ describe("hereIntro", () => {
     const session = makeSession({
       player: {
         position: { value: "Emma's room", lock: "unlocked" },
-        status: { value: "awake", lock: "unlocked" }
-      }
+        status: { value: "awake", lock: "unlocked" },
+      },
     });
     expect(hereIntro(session)).toEqual({
       title: "Emma's room",
       body: "A narrow bed, a chair, curtains drawn.",
-      room: true
+      room: true,
     });
   });
 
@@ -76,18 +76,23 @@ describe("hereIntro", () => {
     const session = makeSession({
       player: {
         position: { value: "Emma's room", lock: "unlocked" },
-        status: { value: "awake", lock: "unlocked" }
+        status: { value: "awake", lock: "unlocked" },
       },
       scene: {
         location: "The Aurora Room — a quiet late-night bar",
         environment: { lighting: "low" },
         note: "A quiet late-night bar.",
-        rooms: [{
-          description: "",
-          fromRoomIds: [],
-          gate: "open" as const,
-          id: "room-emmas", label: "Emma's room", keywords: ["staff room"] }]
-      }
+        rooms: [
+          {
+            description: "",
+            fromRoomIds: [],
+            gate: "open" as const,
+            id: "room-emmas",
+            label: "Emma's room",
+            keywords: ["staff room"],
+          },
+        ],
+      },
     });
     expect(hereIntro(session)).toBeUndefined();
   });
@@ -109,16 +114,16 @@ describe("herePrompt", () => {
             id: "room-emmas",
             label: "Emma's room",
             keywords: ["staff room"],
-            description: "A narrow bed, a chair, curtains drawn."
-          }
-        ]
-      }
+            description: "A narrow bed, a chair, curtains drawn.",
+          },
+        ],
+      },
     });
     expect(hereIntro(session)?.body).toBe("A long typewriter intro about every shadow and door.");
     expect(herePrompt(session)).toEqual({
       title: "at the bar",
       body: "The Aurora Room is a hidden, atmospheric jazz bar with subdued lighting, weathered wooden surfaces and dark doors lurking in the shadows.",
-      room: false
+      room: false,
     });
   });
 
@@ -130,7 +135,7 @@ describe("herePrompt", () => {
     const session = makeSession({
       player: {
         position: { value: "Emma's room", lock: "unlocked" },
-        status: { value: "awake", lock: "unlocked" }
+        status: { value: "awake", lock: "unlocked" },
       },
       scene: {
         location: "The Aurora Room — a quiet late-night bar",
@@ -144,17 +149,16 @@ describe("herePrompt", () => {
             label: "Emma's room",
             keywords: ["staff room"],
             description: "A long walk-in intro for the picture.",
-            brief: "A narrow staff room. Bed, chair, curtains drawn."
-          }
-        ]
-      }
+            brief: "A narrow staff room. Bed, chair, curtains drawn.",
+          },
+        ],
+      },
     });
     expect(hereIntro(session)?.body).toBe("A long walk-in intro for the picture.");
     expect(herePrompt(session)).toEqual({
       title: "Emma's room",
       body: "A narrow staff room. Bed, chair, curtains drawn.",
-      room: true
+      room: true,
     });
   });
 });
-

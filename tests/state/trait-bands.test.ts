@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { applyTraitTokens, desireAttribute, desireBandFromStats, liveTraitBody, liveTraitLine, traitBand } from "@state/traitBands";
+import {
+  applyTraitTokens,
+  desireAttribute,
+  desireBandFromStats,
+  liveTraitBody,
+  liveTraitLine,
+  traitBand,
+} from "@state/traitBands";
 
 describe("traitBand", () => {
   it("uses 0–30 / 31–69 / 70–100 on a 0–100 scale", () => {
@@ -30,24 +37,24 @@ describe("liveTraitBody / liveTraitLine", () => {
     max: 100,
     highMeaning: "She initiates, she stays in the scene.",
     lowMeaning: "She waits, she does not start it.",
-    description: ""
+    description: "",
   };
 
   it("renders the high band with the high meaning", () => {
     expect(liveTraitLine("Emma", boldness, 72)).toBe(
-      "- Emma Boldness 72/100 (high): She initiates, she stays in the scene."
+      "- Emma Boldness 72/100 (high): She initiates, she stays in the scene.",
     );
   });
 
   it("renders the low band with the low meaning", () => {
     expect(liveTraitLine("Emma", boldness, 20)).toBe(
-      "- Emma Boldness 20/100 (low): She waits, she does not start it."
+      "- Emma Boldness 20/100 (low): She waits, she does not start it.",
     );
   });
 
   it("frames mid as neither extreme when midMeaning is empty", () => {
     expect(liveTraitBody(boldness, 50)).toBe(
-      "high would mean She initiates, she stays in the scene. low would mean She waits, she does not start it."
+      "high would mean She initiates, she stays in the scene. low would mean She waits, she does not start it.",
     );
     expect(liveTraitLine("Emma", boldness, 50)).toContain("(neither high nor low):");
   });
@@ -55,7 +62,7 @@ describe("liveTraitBody / liveTraitLine", () => {
   it("uses authored midMeaning in the mid band", () => {
     const withMid = { ...boldness, midMeaning: "She neither waits nor initiates." };
     expect(liveTraitLine("Emma", withMid, 50)).toBe(
-      "- Emma Boldness 50/100 (mid): She neither waits nor initiates."
+      "- Emma Boldness 50/100 (mid): She neither waits nor initiates.",
     );
   });
 
@@ -65,10 +72,10 @@ describe("liveTraitBody / liveTraitLine", () => {
       kind: "number" as const,
       min: 0,
       max: 100,
-      description: "How far she dares in an NSFW beat."
+      description: "How far she dares in an NSFW beat.",
     };
     expect(liveTraitLine("Emma", legacy, 70)).toBe(
-      "- Emma Boldness 70/100 (high): How far she dares in an NSFW beat."
+      "- Emma Boldness 70/100 (high): How far she dares in an NSFW beat.",
     );
   });
 
@@ -80,16 +87,16 @@ describe("liveTraitBody / liveTraitLine", () => {
       max: 100,
       highMeaning: "{{char}} stays in {{their}} scene.",
       lowMeaning: "Only in {{their}} private room.",
-      description: ""
+      description: "",
     };
     expect(liveTraitLine("Emma", shared, 72, { char: "Emma", pronoun: "she" })).toBe(
-      "- Emma Boldness 72/100 (high): Emma stays in her scene."
+      "- Emma Boldness 72/100 (high): Emma stays in her scene.",
     );
     expect(liveTraitLine("Alex", shared, 72, { char: "Alex", pronoun: "he" })).toBe(
-      "- Alex Boldness 72/100 (high): Alex stays in his scene."
+      "- Alex Boldness 72/100 (high): Alex stays in his scene.",
     );
     expect(liveTraitLine("Alex", shared, 20, { char: "Alex", pronoun: "he" })).toBe(
-      "- Alex Boldness 20/100 (low): Only in his private room."
+      "- Alex Boldness 20/100 (low): Only in his private room.",
     );
   });
 });
@@ -97,18 +104,18 @@ describe("liveTraitBody / liveTraitLine", () => {
 describe("applyTraitTokens", () => {
   it("leaves they-forms when pronoun is unset", () => {
     expect(applyTraitTokens("{{char}} keeps {{their}} distance.", { char: "Sam" })).toBe(
-      "Sam keeps their distance."
+      "Sam keeps their distance.",
     );
   });
 
   it("maps themselves / them for she, he, and it", () => {
     expect(applyTraitTokens("{{they}} pull {{themselves}} in.", { pronoun: "she" })).toBe(
-      "she pull herself in."
+      "she pull herself in.",
     );
     expect(applyTraitTokens("stand with {{them}}.", { pronoun: "he" })).toBe("stand with him.");
     expect(applyTraitTokens("{{their}} room.", { pronoun: "it" })).toBe("its room.");
     expect(applyTraitTokens("{{they}} keep {{their}} distance.", { pronoun: "they" })).toBe(
-      "they keep their distance."
+      "they keep their distance.",
     );
   });
 });
@@ -126,7 +133,7 @@ describe("desireAttribute", () => {
     midMeaning: "",
     options: [] as string[],
     maxShift: 15,
-    role: "desire" as const
+    role: "desire" as const,
   };
   const boldness = {
     id: "boldness",
@@ -139,7 +146,7 @@ describe("desireAttribute", () => {
     lowMeaning: "",
     midMeaning: "",
     options: [] as string[],
-    maxShift: 0
+    maxShift: 0,
   };
 
   it("returns the marked number field, not a high-valued neighbor", () => {

@@ -32,10 +32,21 @@ function readPreferred(): string {
   }
 }
 export function ConnectionProvider({ children }: { children: ReactNode }) {
-  const [backend, setBackend] = useState<AIBackend>(() => localStorage.getItem("sandboxai-ai-backend") === "strata" ? "strata" : "ollama");
-  const [baseUrl, setBaseUrlState] = useState(() => localStorage.getItem("sandboxai-strata-url") || DEFAULT_STRATA_URL);
-  const chooseBackend = useCallback((value: AIBackend) => { setBackend(value); localStorage.setItem("sandboxai-ai-backend", value); setPreferredModel(""); }, []);
-  const setBaseUrl = useCallback((value: string) => { setBaseUrlState(value); localStorage.setItem("sandboxai-strata-url", value); }, []);
+  const [backend, setBackend] = useState<AIBackend>(() =>
+    localStorage.getItem("sandboxai-ai-backend") === "strata" ? "strata" : "ollama",
+  );
+  const [baseUrl, setBaseUrlState] = useState(
+    () => localStorage.getItem("sandboxai-strata-url") || DEFAULT_STRATA_URL,
+  );
+  const chooseBackend = useCallback((value: AIBackend) => {
+    setBackend(value);
+    localStorage.setItem("sandboxai-ai-backend", value);
+    setPreferredModel("");
+  }, []);
+  const setBaseUrl = useCallback((value: string) => {
+    setBaseUrlState(value);
+    localStorage.setItem("sandboxai-strata-url", value);
+  }, []);
   const [discovery, setDiscovery] = useState<Discovery>({
     state: "checking",
     models: [],
@@ -52,9 +63,7 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(PREFERENCE_KEY, trimmed);
       setPreferenceError(null);
     } catch {
-      setPreferenceError(
-        "Your model choice works for this visit, but could not be saved.",
-      );
+      setPreferenceError("Your model choice works for this visit, but could not be saved.");
     }
   }, []);
   const refresh = useCallback((): Promise<Discovery> => {
@@ -62,7 +71,13 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
     const request = new AbortController();
     controller.current = request;
     setDiscovery((previous) => ({ ...previous, state: "checking" }));
-    const promise = (backend === "ollama" ? discoverOllama({ signal: request.signal }) : listOpenAIModels(baseUrl, request.signal).then(models => ({ state: "available" as const, models })).catch(() => ({ state: "unavailable" as const, models: [] })))
+    const promise = (
+      backend === "ollama"
+        ? discoverOllama({ signal: request.signal })
+        : listOpenAIModels(baseUrl, request.signal)
+            .then((models) => ({ state: "available" as const, models }))
+            .catch(() => ({ state: "unavailable" as const, models: [] }))
+    )
       .then((result) => {
         if (mounted.current && !request.signal.aborted) setDiscovery(result);
         return result;
@@ -112,7 +127,6 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
 }
 export function useConnection(): Connection {
   const connection = useContext(Context);
-  if (!connection)
-    throw new Error("AI connection requires ConnectionProvider.");
+  if (!connection) throw new Error("AI connection requires ConnectionProvider.");
   return connection;
 }

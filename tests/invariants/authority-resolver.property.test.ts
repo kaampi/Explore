@@ -16,7 +16,7 @@ describe("Property: resolveAuthority never allows AI to write player_locked stat
         if (isAiSource && fieldLock === "player_locked") {
           expect(decision.allowed).toBe(false);
         }
-      })
+      }),
     );
   });
 
@@ -27,7 +27,7 @@ describe("Property: resolveAuthority never allows AI to write player_locked stat
         if (source !== "immutable_system_constraint") {
           expect(decision.allowed).toBe(false);
         }
-      })
+      }),
     );
   });
 });

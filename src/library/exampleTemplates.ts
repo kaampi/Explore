@@ -11,7 +11,7 @@ import {
   type PlaceTemplate,
   type RealmTemplate,
   type RulesetTemplate,
-  type VoiceTemplate
+  type VoiceTemplate,
 } from "./LibrarySchema";
 import { ROOM_FROM_LANDMARK } from "@state/playerDestination";
 
@@ -31,31 +31,31 @@ export const EXAMPLE_AURORA_BRIEF =
 export const EXAMPLE_CELLAR_LORE = {
   content:
     "A locked cellar door sits behind the counter. Old manifests and a strongbox are stored there. Staff do not mention it unless asked.",
-  keywords: ["cellar", "cellar door", "wine cellar", "källare", "källaren"]
+  keywords: ["cellar", "cellar door", "wine cellar", "källare", "källaren"],
 };
 
 export const EXAMPLE_EMMA_ROOM_LORE = {
   content:
     "Emma's room is behind the staff door. A narrow bed, a writing desk, charts pinned to the wall. She keeps this room to herself.",
   brief: "A narrow bed, a writing desk, charts pinned to the wall. They are already in this room.",
-  keywords: ["emma's room", "emmas room", "staff room", "her room", "your room", "my room"]
+  keywords: ["emma's room", "emmas room", "staff room", "her room", "your room", "my room"],
 };
 
 export const EXAMPLE_TOILETS_LORE = {
   content: "A washroom off a short hall from the archive. One lock, one bulb, nothing fancy.",
-  keywords: ["toilet", "toilets", "bathroom", "wc", "loo", "toalett"]
+  keywords: ["toilet", "toilets", "bathroom", "wc", "loo", "toalett"],
 };
 
 export const EXAMPLE_GUEST_ROOM_LORE = {
   content: "A small guest room upstairs. Spare key behind the bar. Not advertised.",
-  keywords: ["guest room", "guestroom", "upstairs", "spare room", "gästrum"]
+  keywords: ["guest room", "guestroom", "upstairs", "spare room", "gästrum"],
 };
 
 export const EXAMPLE_AURORA_LORE = [
   EXAMPLE_CELLAR_LORE,
   EXAMPLE_EMMA_ROOM_LORE,
   EXAMPLE_TOILETS_LORE,
-  EXAMPLE_GUEST_ROOM_LORE
+  EXAMPLE_GUEST_ROOM_LORE,
 ];
 
 /** Named rooms on the Aurora example — pictures attach here; intro is the room itself. */
@@ -67,7 +67,7 @@ export const EXAMPLE_AURORA_ROOMS: PlaceTemplate["rooms"] = [
     description: EXAMPLE_EMMA_ROOM_LORE.content,
     brief: EXAMPLE_EMMA_ROOM_LORE.brief,
     fromRoomIds: [ROOM_FROM_LANDMARK],
-    gate: "hidden"
+    gate: "hidden",
   },
   {
     id: "room-cellar",
@@ -75,7 +75,7 @@ export const EXAMPLE_AURORA_ROOMS: PlaceTemplate["rooms"] = [
     keywords: EXAMPLE_CELLAR_LORE.keywords,
     description: EXAMPLE_CELLAR_LORE.content,
     fromRoomIds: [ROOM_FROM_LANDMARK],
-    gate: "locked"
+    gate: "locked",
   },
   {
     id: "room-toilets",
@@ -83,7 +83,7 @@ export const EXAMPLE_AURORA_ROOMS: PlaceTemplate["rooms"] = [
     keywords: EXAMPLE_TOILETS_LORE.keywords,
     description: EXAMPLE_TOILETS_LORE.content,
     fromRoomIds: [ROOM_FROM_LANDMARK],
-    gate: "open"
+    gate: "open",
   },
   {
     id: "room-gents",
@@ -91,7 +91,7 @@ export const EXAMPLE_AURORA_ROOMS: PlaceTemplate["rooms"] = [
     keywords: ["gents", "gents room", "men's", "mens room"],
     description: EXAMPLE_TOILETS_LORE.content,
     fromRoomIds: [ROOM_FROM_LANDMARK],
-    gate: "open"
+    gate: "open",
   },
   {
     id: "room-ladies",
@@ -99,7 +99,7 @@ export const EXAMPLE_AURORA_ROOMS: PlaceTemplate["rooms"] = [
     keywords: ["ladies", "ladies room", "women's", "womens room"],
     description: EXAMPLE_TOILETS_LORE.content,
     fromRoomIds: [ROOM_FROM_LANDMARK],
-    gate: "open"
+    gate: "open",
   },
   {
     id: "room-guest",
@@ -107,15 +107,19 @@ export const EXAMPLE_AURORA_ROOMS: PlaceTemplate["rooms"] = [
     keywords: EXAMPLE_GUEST_ROOM_LORE.keywords,
     description: EXAMPLE_GUEST_ROOM_LORE.content,
     fromRoomIds: [ROOM_FROM_LANDMARK],
-    gate: "hidden"
-  }
+    gate: "hidden",
+  },
 ];
 
 /** Fill missing Aurora room intros on a saved example that predates the field. */
-export function withAuroraRoomIntros(rooms: PlaceTemplate["rooms"] | undefined): PlaceTemplate["rooms"] {
+export function withAuroraRoomIntros(
+  rooms: PlaceTemplate["rooms"] | undefined,
+): PlaceTemplate["rooms"] {
   const base = rooms && rooms.length > 0 ? rooms : EXAMPLE_AURORA_ROOMS;
   const byId = new Map(EXAMPLE_AURORA_ROOMS.map((room) => [room.id, room]));
-  const byLabel = new Map(EXAMPLE_AURORA_ROOMS.map((room) => [room.label.trim().toLowerCase(), room]));
+  const byLabel = new Map(
+    EXAMPLE_AURORA_ROOMS.map((room) => [room.label.trim().toLowerCase(), room]),
+  );
   const mapped = base.map((room) => {
     const example = byId.get(room.id) ?? byLabel.get(room.label.trim().toLowerCase());
     if (!example) return room;
@@ -125,7 +129,10 @@ export function withAuroraRoomIntros(rooms: PlaceTemplate["rooms"] | undefined):
       description: room.description?.trim() ? room.description : example.description,
       brief: room.brief?.trim() ? room.brief : example.brief,
       fromRoomIds: room.fromRoomIds?.length ? room.fromRoomIds : example.fromRoomIds,
-      gate: room.fromRoomIds?.length || (room.gate && room.gate !== "open") ? room.gate ?? "open" : example.gate
+      gate:
+        room.fromRoomIds?.length || (room.gate && room.gate !== "open")
+          ? (room.gate ?? "open")
+          : example.gate,
     };
   });
   const have = new Set(mapped.map((room) => room.id));
@@ -159,7 +166,7 @@ export function exampleCharacterTemplate(): CharacterTemplate {
     scenario: "",
     source: "example",
     createdAt: STAMP,
-    updatedAt: STAMP
+    updatedAt: STAMP,
   });
 }
 
@@ -170,7 +177,7 @@ export function exampleRealmDunbaar(): RealmTemplate {
     note: "A quiet city. Hidden rooms sit behind ordinary doors.",
     source: "example",
     createdAt: STAMP,
-    updatedAt: STAMP
+    updatedAt: STAMP,
   });
 }
 
@@ -191,7 +198,7 @@ export function examplePlaceTemplate(): PlaceTemplate {
     rooms: EXAMPLE_AURORA_ROOMS,
     source: "example",
     createdAt: STAMP,
-    updatedAt: STAMP
+    updatedAt: STAMP,
   });
 }
 
@@ -203,7 +210,7 @@ export function exampleTolkienVoice(): VoiceTemplate {
       "Du är Spelledare för ett klassiskt fantasyäventyr i en värld präglad av Tolkiens mytologi. Din berättarröst är storslagen, poetisk och atmosfärisk. Fokusera på uråldrig historia, naturbeskrivningar och en känsla av ett smygande mörker. Beskriv platser med vördnad.",
     source: "example",
     createdAt: STAMP,
-    updatedAt: STAMP
+    updatedAt: STAMP,
   });
 }
 
@@ -215,7 +222,7 @@ export function exampleFreighterVoice(): VoiceTemplate {
       "Du är Spelledare för ett sci-fi-rollspel ombord på ett skadat fraktskepp i den oändliga rymden. Din ton är rå, teknisk och klaustrofobisk. Använd sci-fi-jargong (skrovstatus, reaktortryck, syrenivåer) och fokusera på brådskande hot, mekaniska fel och överlevnad. Gör miljön opålitlig.",
     source: "example",
     createdAt: STAMP,
-    updatedAt: STAMP
+    updatedAt: STAMP,
   });
 }
 
@@ -237,7 +244,7 @@ export function exampleFantasyRuleset(): RulesetTemplate {
         highMeaning:
           "Wins physical contests, breaks or forces things open, intimidates through sheer presence, tires slowly in a fight.",
         lowMeaning:
-          "Loses physical contests, struggles to carry or force anything, gets winded quickly, avoided in a straight fight."
+          "Loses physical contests, struggles to carry or force anything, gets winded quickly, avoided in a straight fight.",
       },
       {
         id: "dexterity",
@@ -245,8 +252,9 @@ export function exampleFantasyRuleset(): RulesetTemplate {
         kind: "number",
         min: 1,
         max: 18,
-        highMeaning: "Moves fast and precisely, dodges or catches things reflexively, excels at balance or fine motor control.",
-        lowMeaning: "Clumsy, slow to react, drops things, loses footing easily."
+        highMeaning:
+          "Moves fast and precisely, dodges or catches things reflexively, excels at balance or fine motor control.",
+        lowMeaning: "Clumsy, slow to react, drops things, loses footing easily.",
       },
       {
         id: "intelligence",
@@ -254,8 +262,10 @@ export function exampleFantasyRuleset(): RulesetTemplate {
         kind: "number",
         min: 1,
         max: 18,
-        highMeaning: "Notices details others miss, solves puzzles and reads situations quickly, speaks with precision.",
-        lowMeaning: "Misses obvious clues, struggles with plans that have more than one step, takes things at face value."
+        highMeaning:
+          "Notices details others miss, solves puzzles and reads situations quickly, speaks with precision.",
+        lowMeaning:
+          "Misses obvious clues, struggles with plans that have more than one step, takes things at face value.",
       },
       {
         id: "wisdom",
@@ -263,8 +273,10 @@ export function exampleFantasyRuleset(): RulesetTemplate {
         kind: "number",
         min: 1,
         max: 18,
-        highMeaning: "Reads people's true intentions, gives advice that turns out right, stays calm under pressure.",
-        lowMeaning: "Misjudges people and situations, panics or freezes under pressure, gives advice that backfires."
+        highMeaning:
+          "Reads people's true intentions, gives advice that turns out right, stays calm under pressure.",
+        lowMeaning:
+          "Misjudges people and situations, panics or freezes under pressure, gives advice that backfires.",
       },
       {
         id: "charisma",
@@ -273,12 +285,12 @@ export function exampleFantasyRuleset(): RulesetTemplate {
         min: 1,
         max: 18,
         highMeaning: "Wins people over, holds a room, makes a request land as reasonable.",
-        lowMeaning: "Talks past people, is easy to dismiss, struggles to rally anyone."
-      }
+        lowMeaning: "Talks past people, is easy to dismiss, struggles to rally anyone.",
+      },
     ],
     source: "example",
     createdAt: STAMP,
-    updatedAt: STAMP
+    updatedAt: STAMP,
   });
 }
 
@@ -295,8 +307,9 @@ export function exampleClosenessRuleset(): RulesetTemplate {
         max: 100,
         highMeaning: "{{char}} can stay open with the player.",
         lowMeaning: "{{char}} keeps distance.",
-        description: "How safe {{char}} feels with the player. High: {{char}} can stay open. Low: {{char}} keeps distance.",
-        maxShift: 10
+        description:
+          "How safe {{char}} feels with the player. High: {{char}} can stay open. Low: {{char}} keeps distance.",
+        maxShift: 10,
       },
       {
         id: "suspicion",
@@ -308,7 +321,7 @@ export function exampleClosenessRuleset(): RulesetTemplate {
         lowMeaning: "{{char}} answers questions freely.",
         description:
           "How suspicious {{char}} is of the player's motives. High: {{char}} holds back. Low: {{char}} answers freely.",
-        maxShift: 15
+        maxShift: 15,
       },
       {
         id: "warmth",
@@ -316,17 +329,18 @@ export function exampleClosenessRuleset(): RulesetTemplate {
         kind: "number",
         min: 0,
         max: 100,
-        highMeaning: "{{char}} is comfortable with a hand on the shoulder or a hug from the player.",
+        highMeaning:
+          "{{char}} is comfortable with a hand on the shoulder or a hug from the player.",
         lowMeaning: "{{char}} keeps physical distance.",
         description:
           "How comfortable {{char}} is with physical warmth from the player — a hand on the shoulder, a hug. High: comfortable. Low: keeps distance.",
         maxShift: 15,
-        role: "desire"
-      }
+        role: "desire",
+      },
     ],
     source: "example",
     createdAt: STAMP,
-    updatedAt: STAMP
+    updatedAt: STAMP,
   });
 }
 
@@ -342,7 +356,7 @@ export function exampleRingObject(): ObjectTemplate {
     tags: ["Fantasy", "relic"],
     source: "example",
     createdAt: STAMP,
-    updatedAt: STAMP
+    updatedAt: STAMP,
   });
 }
 
@@ -355,7 +369,7 @@ export function exampleGuestKeyObject(): ObjectTemplate {
     placeId: EXAMPLE_PLACE_ID,
     source: "example",
     createdAt: STAMP,
-    updatedAt: STAMP
+    updatedAt: STAMP,
   });
 }
 
@@ -367,7 +381,7 @@ export function exampleLightsaberObject(): ObjectTemplate {
     tags: ["scifi", "weapon"],
     source: "example",
     createdAt: STAMP,
-    updatedAt: STAMP
+    updatedAt: STAMP,
   });
 }
 
@@ -382,18 +396,25 @@ export function exampleHeavyStoneObject(): ObjectTemplate {
     checkAttribute: "strength",
     source: "example",
     createdAt: STAMP,
-    updatedAt: STAMP
+    updatedAt: STAMP,
   });
 }
 
 export function exampleObjectTemplates(): ObjectTemplate[] {
-  return [exampleRingObject(), exampleGuestKeyObject(), exampleLightsaberObject(), exampleHeavyStoneObject()];
+  return [
+    exampleRingObject(),
+    exampleGuestKeyObject(),
+    exampleLightsaberObject(),
+    exampleHeavyStoneObject(),
+  ];
 }
 
 /** Built-in examples first (library copy wins if saved), then the rest of the shelf. */
 export function mergeWithExamples<T extends { id: string }>(library: T[], examples: T[]): T[] {
   const exampleIds = new Set(examples.map((item) => item.id));
-  const resolved = examples.map((example) => library.find((item) => item.id === example.id) ?? example);
+  const resolved = examples.map(
+    (example) => library.find((item) => item.id === example.id) ?? example,
+  );
   const extras = library.filter((item) => !exampleIds.has(item.id));
   return [...resolved, ...extras];
 }

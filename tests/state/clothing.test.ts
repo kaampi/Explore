@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { dressForPublicBarWrites, isUndressedClothing, playerKeepsUndressed } from "@state/clothing";
+import {
+  dressForPublicBarWrites,
+  isUndressedClothing,
+  playerKeepsUndressed,
+} from "@state/clothing";
 import { EXAMPLE_AURORA_ROOMS } from "@library/exampleTemplates";
 import type { Session } from "@state/StateSchema";
 
@@ -19,17 +23,17 @@ function makeSession(overrides: Partial<Session> = {}): Session {
         name: "Emma",
         position: { value: "behind the bar", lock: "unlocked" },
         mood: { value: "content, loving", lock: "unlocked" },
-        clothing: { value: "nude", lock: "unlocked" }
-      }
+        clothing: { value: "nude", lock: "unlocked" },
+      },
     },
     scene: {
       location: "The Aurora Room — a quiet late-night bar",
       environment: {},
-      rooms: EXAMPLE_AURORA_ROOMS
+      rooms: EXAMPLE_AURORA_ROOMS,
     },
     player: {
       position: { value: "at the bar", lock: "unlocked" },
-      status: { value: "awake", lock: "unlocked" }
+      status: { value: "awake", lock: "unlocked" },
     },
     relationships: {},
     layers: [],
@@ -38,7 +42,7 @@ function makeSession(overrides: Partial<Session> = {}): Session {
     events: [],
     snapshots: [],
     diagnostics: [],
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -53,7 +57,7 @@ describe("isUndressedClothing", () => {
 describe("dressForPublicBarWrites", () => {
   it("dresses her for work when she is nude behind the bar", () => {
     expect(dressForPublicBarWrites(makeSession(), "I sit at the bar", "emma")).toEqual([
-      { path: "characters.emma.clothing", value: "a bartender's apron over indoor clothes" }
+      { path: "characters.emma.clothing", value: "a bartender's apron over indoor clothes" },
     ]);
   });
 
@@ -64,9 +68,9 @@ describe("dressForPublicBarWrites", () => {
           name: "Emma",
           position: { value: "Emma's room", lock: "unlocked" },
           mood: { value: "content", lock: "unlocked" },
-          clothing: { value: "nude", lock: "unlocked" }
-        }
-      }
+          clothing: { value: "nude", lock: "unlocked" },
+        },
+      },
     });
     expect(dressForPublicBarWrites(session, "I look at her", "emma")).toEqual([]);
   });
@@ -76,4 +80,3 @@ describe("dressForPublicBarWrites", () => {
     expect(dressForPublicBarWrites(makeSession(), "Stay nude behind the bar", "emma")).toEqual([]);
   });
 });
-

@@ -98,17 +98,13 @@ export function defaultThemeLibrary(): ThemeLibrary {
   };
 }
 export function rgb(hex: string): string {
-  return [1, 3, 5]
-    .map((offset) => parseInt(hex.slice(offset, offset + 2), 16))
-    .join(", ");
+  return [1, 3, 5].map((offset) => parseInt(hex.slice(offset, offset + 2), 16)).join(", ");
 }
 export function contrastRatio(first: string, second: string): number {
   function luminance(hex: string) {
     const [r = 0, g = 0, b = 0] = [1, 3, 5].map((offset) => {
       const value = parseInt(hex.slice(offset, offset + 2), 16) / 255;
-      return value <= 0.04045
-        ? value / 12.92
-        : ((value + 0.055) / 1.055) ** 2.4;
+      return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
     });
     return r * 0.2126 + g * 0.7152 + b * 0.0722;
   }

@@ -3,12 +3,16 @@ import {
   KEYWORD_SCAN_TURNS,
   keywordHitsText,
   keywordsMatchConversation,
-  parseKeywordList
+  parseKeywordList,
 } from "@layers/keywords";
 
 describe("parseKeywordList", () => {
   it("splits on commas and drops duplicates case-insensitively", () => {
-    expect(parseKeywordList("Ring, ring, One Ring; precious")).toEqual(["Ring", "One Ring", "precious"]);
+    expect(parseKeywordList("Ring, ring, One Ring; precious")).toEqual([
+      "Ring",
+      "One Ring",
+      "precious",
+    ]);
   });
 });
 
@@ -27,7 +31,7 @@ describe("keywordsMatchConversation", () => {
   it("only scans the most recent turns", () => {
     const conversation = Array.from({ length: KEYWORD_SCAN_TURNS + 2 }, (_, i) => ({
       turn: i + 1,
-      content: i === 0 ? "We talked about the cellar." : "Hello."
+      content: i === 0 ? "We talked about the cellar." : "Hello.",
     }));
     expect(keywordsMatchConversation(conversation, ["cellar"])).toBe(false);
     expect(keywordsMatchConversation(conversation.slice(0, 1), ["cellar"])).toBe(true);

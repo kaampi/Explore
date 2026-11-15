@@ -16,7 +16,7 @@ import {
   type RealmTemplate,
   type RulesetTemplate,
   type StoryTemplate,
-  type VoiceTemplate
+  type VoiceTemplate,
 } from "./LibrarySchema";
 
 export const LIBRARY_BACKUP_KIND = "ai-sandbox-library";
@@ -93,12 +93,23 @@ function emptyBackup(exportedAt: string): LibraryBackup {
     rulesets: [],
     objects: [],
     lorebooks: [],
-    campaigns: []
+    campaigns: [],
   };
 }
 
 export async function collectLibraryBackup(store: LibraryBackupStore): Promise<LibraryBackup> {
-  const [characters, places, realms, stories, voices, rulesets, objects, campaigns, lorebooks, factions] = await Promise.all([
+  const [
+    characters,
+    places,
+    realms,
+    stories,
+    voices,
+    rulesets,
+    objects,
+    campaigns,
+    lorebooks,
+    factions,
+  ] = await Promise.all([
     store.listCharacters(),
     store.listPlaces(),
     store.listRealms(),
@@ -108,9 +119,12 @@ export async function collectLibraryBackup(store: LibraryBackupStore): Promise<L
     store.listObjects(),
     store.listCampaigns(),
     store.listLorebooks?.() ?? Promise.resolve({ entries: [], unreadable: 0 }),
-    store.listFactions?.() ?? Promise.resolve([])
+    store.listFactions?.() ?? Promise.resolve([]),
   ]);
-  if (lorebooks.unreadable) throw new LibraryBackupError("Some lorebooks could not be read. Export originals individually before replacing storage.");
+  if (lorebooks.unreadable)
+    throw new LibraryBackupError(
+      "Some lorebooks could not be read. Export originals individually before replacing storage.",
+    );
   const characterMorphs: Record<string, unknown> = Object.create(null);
   if (store.loadCharacterMorph) {
     for (const character of characters) {
@@ -132,7 +146,7 @@ export async function collectLibraryBackup(store: LibraryBackupStore): Promise<L
     voices,
     rulesets,
     objects,
-    campaigns
+    campaigns,
   };
 }
 
@@ -142,9 +156,13 @@ export function parseLibraryBackup(input: unknown): { backup: LibraryBackup; ski
   }
   const row = input as Record<string, unknown>;
   if (row.kind !== LIBRARY_BACKUP_KIND) {
-    throw new LibraryBackupError("That file is not a library backup. Export from Backup in the top bar.");
+    throw new LibraryBackupError(
+      "That file is not a library backup. Export from Backup in the top bar.",
+    );
   }
-  const backup = emptyBackup(typeof row.exportedAt === "string" ? row.exportedAt : new Date().toISOString());
+  const backup = emptyBackup(
+    typeof row.exportedAt === "string" ? row.exportedAt : new Date().toISOString(),
+  );
   backup.format = typeof row.format === "number" ? row.format : LIBRARY_BACKUP_FORMAT;
   let skipped = 0;
 
@@ -162,15 +180,20 @@ export function parseLibraryBackup(input: unknown): { backup: LibraryBackup; ski
     return out;
   };
 
-  backup.factions = take(row.factions, item => FactionSchema.parse(item));
-  backup.lorebooks = take(row.lorebooks, item => LorebookSchema.parse(item));
+  backup.factions = take(row.factions, (item) => FactionSchema.parse(item));
+  backup.lorebooks = take(row.lorebooks, (item) => LorebookSchema.parse(item));
   backup.characters = take(row.characters, recoverCharacterTemplate);
-  if (row.characterMorphs && typeof row.characterMorphs === "object" && !Array.isArray(row.characterMorphs)) {
+  if (
+    row.characterMorphs &&
+    typeof row.characterMorphs === "object" &&
+    !Array.isArray(row.characterMorphs)
+  ) {
     backup.characterMorphs = Object.create(null);
     for (const character of backup.characters) {
       if (Object.prototype.hasOwnProperty.call(row.characterMorphs, character.id)) {
         const profile = (row.characterMorphs as Record<string, unknown>)[character.id];
-        if (profile && typeof profile === "object" && !Array.isArray(profile)) backup.characterMorphs![character.id] = profile;
+        if (profile && typeof profile === "object" && !Array.isArray(profile))
+          backup.characterMorphs![character.id] = profile;
         else skipped += 1;
       }
     }
@@ -187,7 +210,7 @@ export function parseLibraryBackup(input: unknown): { backup: LibraryBackup; ski
 
 export async function restoreLibraryBackup(
   store: LibraryBackupStore,
-  backup: LibraryBackup
+  backup: LibraryBackup,
 ): Promise<RestoreReport> {
   let saved = 0;
   let skipped = 0;
@@ -201,27 +224,31 @@ export async function restoreLibraryBackup(
     }
   };
 
-  for (const faction of backup.factions ?? []) await write(async () => {
-    if (!store.saveFaction) throw new LibraryBackupError("Faction storage is not available.");
-    await store.saveFaction(faction);
-  });
+  for (const faction of backup.factions ?? [])
+    await write(async () => {
+      if (!store.saveFaction) throw new LibraryBackupError("Faction storage is not available.");
+      await store.saveFaction(faction);
+    });
   for (const item of backup.realms) await write(() => store.saveRealm(item));
   for (const item of backup.places) await write(() => store.savePlace(item));
-  for (const item of backup.characters) await write(async () => {
-    const hasMorph = Object.prototype.hasOwnProperty.call(backup.characterMorphs ?? {}, item.id);
-    if (hasMorph && !store.saveCharacterMorph) throw new LibraryBackupError("Character image storage is not available.");
-    await store.saveCharacter(item);
-    if (hasMorph) await store.saveCharacterMorph!(item.id, backup.characterMorphs![item.id]);
-  });
+  for (const item of backup.characters)
+    await write(async () => {
+      const hasMorph = Object.prototype.hasOwnProperty.call(backup.characterMorphs ?? {}, item.id);
+      if (hasMorph && !store.saveCharacterMorph)
+        throw new LibraryBackupError("Character image storage is not available.");
+      await store.saveCharacter(item);
+      if (hasMorph) await store.saveCharacterMorph!(item.id, backup.characterMorphs![item.id]);
+    });
   for (const item of backup.stories) await write(() => store.saveStory(item));
   for (const item of backup.voices) await write(() => store.saveVoice(item));
   for (const item of backup.rulesets) await write(() => store.saveRuleset(item));
   for (const item of backup.objects) await write(() => store.saveObject(item));
   for (const item of backup.campaigns) await write(() => store.saveCampaign(item));
-  for (const item of backup.lorebooks ?? []) await write(async () => {
-    if (!store.saveLorebook) throw new Error("Lorebook storage is not available.");
-    await store.saveLorebook(item);
-  });
+  for (const item of backup.lorebooks ?? [])
+    await write(async () => {
+      if (!store.saveLorebook) throw new Error("Lorebook storage is not available.");
+      await store.saveLorebook(item);
+    });
 
   return { saved, skipped };
 }
@@ -231,16 +258,17 @@ export function backupFilename(exportedAt: string): string {
   return `sandbox-library-${day}.json`;
 }
 
-
 /** Portable character card using the same import format as a library backup. */
 export async function collectCharacterBackup(
   store: Pick<LibraryBackupStore, "loadCharacterMorph" | "listFactions">,
-  character: CharacterTemplate
+  character: CharacterTemplate,
 ): Promise<LibraryBackup> {
   const backup = emptyBackup(new Date().toISOString());
   backup.characters = [character];
   if (character.factionIds?.length && store.listFactions) {
-    backup.factions = (await store.listFactions()).filter(faction => character.factionIds?.includes(faction.id));
+    backup.factions = (await store.listFactions()).filter((faction) =>
+      character.factionIds?.includes(faction.id),
+    );
   }
   const profile = await store.loadCharacterMorph?.(character.id);
   if (profile != null) backup.characterMorphs = { [character.id]: profile };

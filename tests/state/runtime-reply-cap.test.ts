@@ -5,7 +5,7 @@ import {
   DEFAULT_MAX_REPLY_TOKENS,
   effectiveMaxReplyTokens,
   pass1PredictTokens,
-  type Session
+  type Session,
 } from "@state/StateSchema";
 
 function makeSession(): Session {
@@ -26,7 +26,7 @@ function makeSession(): Session {
     conversation: [],
     events: [],
     snapshots: [],
-    diagnostics: []
+    diagnostics: [],
   };
 }
 
@@ -70,4 +70,3 @@ describe("effectiveMaxReplyTokens", () => {
     expect(pass1PredictTokens(96)).toBe(160);
   });
 });
-

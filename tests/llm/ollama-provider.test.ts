@@ -4,11 +4,14 @@ import {
   OllamaRequestError,
   completeOllamaChat,
   listOllamaModels,
-  pickListedOllamaModel
+  pickListedOllamaModel,
 } from "@llm/providers/OllamaProvider";
 import type { CompletionRequest } from "@llm/types";
 
-function ndjsonResponse(lines: string[], init: { ok?: boolean; status?: number; statusText?: string } = {}) {
+function ndjsonResponse(
+  lines: string[],
+  init: { ok?: boolean; status?: number; statusText?: string } = {},
+) {
   const encoder = new TextEncoder();
   const body = new ReadableStream<Uint8Array>({
     start(controller) {
@@ -16,19 +19,19 @@ function ndjsonResponse(lines: string[], init: { ok?: boolean; status?: number; 
         controller.enqueue(encoder.encode(line + "\n"));
       }
       controller.close();
-    }
+    },
   });
 
   return {
     ok: init.ok ?? true,
     status: init.status ?? 200,
     statusText: init.statusText ?? "OK",
-    body
+    body,
   } as Response;
 }
 
 const baseRequest: CompletionRequest = {
-  messages: [{ role: "user", content: "Hej Emma" }]
+  messages: [{ role: "user", content: "Hej Emma" }],
 };
 
 async function collect(provider: OllamaProvider, request: CompletionRequest = baseRequest) {
@@ -41,13 +44,15 @@ async function collect(provider: OllamaProvider, request: CompletionRequest = ba
 
 describe("OllamaProvider — streaming", () => {
   it("parses NDJSON chunks into text_delta events, ending with done", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(
-      ndjsonResponse([
-        JSON.stringify({ message: { role: "assistant", content: "Hej" } }),
-        JSON.stringify({ message: { role: "assistant", content: " Emma" } }),
-        JSON.stringify({ done: true, done_reason: "stop" })
-      ])
-    );
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        ndjsonResponse([
+          JSON.stringify({ message: { role: "assistant", content: "Hej" } }),
+          JSON.stringify({ message: { role: "assistant", content: " Emma" } }),
+          JSON.stringify({ done: true, done_reason: "stop" }),
+        ]),
+      );
 
     const provider = new OllamaProvider({ model: "llama3.1", fetchImpl });
     const chunks = await collect(provider);
@@ -55,17 +60,19 @@ describe("OllamaProvider — streaming", () => {
     expect(chunks).toEqual([
       { type: "text_delta", text: "Hej" },
       { type: "text_delta", text: " Emma" },
-      { type: "done", finishReason: "stop" }
+      { type: "done", finishReason: "stop" },
     ]);
   });
 
   it("treats a full num_predict eval_count as a length stop", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(
-      ndjsonResponse([
-        JSON.stringify({ message: { role: "assistant", content: "Hej" } }),
-        JSON.stringify({ done: true, done_reason: "stop", eval_count: 128 })
-      ])
-    );
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        ndjsonResponse([
+          JSON.stringify({ message: { role: "assistant", content: "Hej" } }),
+          JSON.stringify({ done: true, done_reason: "stop", eval_count: 128 }),
+        ]),
+      );
     const provider = new OllamaProvider({ model: "llama3.1", fetchImpl });
     const chunks = await collect(provider, { ...baseRequest, maxTokens: 128 });
     expect(chunks.at(-1)).toEqual({ type: "done", finishReason: "length" });
@@ -79,7 +86,7 @@ describe("OllamaProvider — streaming", () => {
 
     expect(fetchImpl).toHaveBeenCalledWith(
       "http://localhost:11434/api/chat",
-      expect.objectContaining({ method: "POST" })
+      expect.objectContaining({ method: "POST" }),
     );
     const call = fetchImpl.mock.calls[0] as [string, RequestInit];
     const body = JSON.parse(call[1].body as string);
@@ -105,26 +112,32 @@ describe("OllamaProvider — streaming", () => {
     const provider = new OllamaProvider({
       model: "llama3.1",
       baseUrl: "http://192.168.1.50:11434/",
-      fetchImpl
+      fetchImpl,
     });
     await collect(provider);
     expect(fetchImpl).toHaveBeenCalledWith("http://192.168.1.50:11434/api/chat", expect.anything());
   });
 
   it("surfaces an error line from Ollama as an error chunk and stops", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(
-      ndjsonResponse([JSON.stringify({ error: "model 'llama3.1' not found, try pulling it first" })])
-    );
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        ndjsonResponse([
+          JSON.stringify({ error: "model 'llama3.1' not found, try pulling it first" }),
+        ]),
+      );
     const provider = new OllamaProvider({ model: "llama3.1", fetchImpl });
     const chunks = await collect(provider);
 
-    expect(chunks).toEqual([{ type: "error", message: "model 'llama3.1' not found, try pulling it first" }]);
+    expect(chunks).toEqual([
+      { type: "error", message: "model 'llama3.1' not found, try pulling it first" },
+    ]);
   });
 
   it("throws OllamaRequestError on a non-OK HTTP response", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(
-      ndjsonResponse([], { ok: false, status: 404, statusText: "Not Found" })
-    );
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(ndjsonResponse([], { ok: false, status: 404, statusText: "Not Found" }));
     const provider = new OllamaProvider({ model: "llama3.1", fetchImpl });
 
     await expect(collect(provider)).rejects.toThrow(OllamaRequestError);
@@ -161,7 +174,7 @@ describe("OllamaProvider — streaming", () => {
     const enabled = new OllamaProvider({
       model: "llama3.1",
       structuredOutputSupported: true,
-      fetchImpl: vi.fn()
+      fetchImpl: vi.fn(),
     });
 
     expect(conservative.capabilities.structuredOutput).toBe(false);
@@ -169,12 +182,15 @@ describe("OllamaProvider — streaming", () => {
   });
 });
 
-function jsonResponse(body: unknown, init: { ok?: boolean; status?: number; statusText?: string } = {}) {
+function jsonResponse(
+  body: unknown,
+  init: { ok?: boolean; status?: number; statusText?: string } = {},
+) {
   return {
     ok: init.ok ?? true,
     status: init.status ?? 200,
     statusText: init.statusText ?? "OK",
-    json: async () => body
+    json: async () => body,
   } as Response;
 }
 
@@ -187,15 +203,18 @@ describe("listOllamaModels", () => {
           { name: "Stheno:latest" },
           { name: "llama3.1:latest" },
           { size: 1 },
-          { name: "" }
-        ]
-      })
+          { name: "" },
+        ],
+      }),
     );
 
-    await expect(listOllamaModels({ fetchImpl })).resolves.toEqual(["llama3.1:latest", "Stheno:latest"]);
+    await expect(listOllamaModels({ fetchImpl })).resolves.toEqual([
+      "llama3.1:latest",
+      "Stheno:latest",
+    ]);
     expect(fetchImpl).toHaveBeenCalledWith(
       "http://localhost:11434/api/tags",
-      expect.objectContaining({ method: "GET" })
+      expect.objectContaining({ method: "GET" }),
     );
   });
 
@@ -206,7 +225,9 @@ describe("listOllamaModels", () => {
   });
 
   it("throws OllamaRequestError on a non-OK HTTP response", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(jsonResponse({}, { ok: false, status: 500, statusText: "Error" }));
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({}, { ok: false, status: 500, statusText: "Error" }));
     await expect(listOllamaModels({ fetchImpl })).rejects.toThrow(OllamaRequestError);
   });
 
@@ -218,11 +239,15 @@ describe("listOllamaModels", () => {
 
 describe("pickListedOllamaModel", () => {
   it("prefers an exact match", () => {
-    expect(pickListedOllamaModel("Stheno:latest", ["llama3.1:latest", "Stheno:latest"])).toBe("Stheno:latest");
+    expect(pickListedOllamaModel("Stheno:latest", ["llama3.1:latest", "Stheno:latest"])).toBe(
+      "Stheno:latest",
+    );
   });
 
   it("maps an untagged preferred name to a tagged variant", () => {
-    expect(pickListedOllamaModel("llama3.1", ["Stheno:latest", "llama3.1:latest"])).toBe("llama3.1:latest");
+    expect(pickListedOllamaModel("llama3.1", ["Stheno:latest", "llama3.1:latest"])).toBe(
+      "llama3.1:latest",
+    );
   });
 
   it("falls back to the first listed model when nothing matches", () => {
@@ -236,16 +261,18 @@ describe("pickListedOllamaModel", () => {
 
 describe("completeOllamaChat", () => {
   it("posts stream:false and returns message.content", async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(
-      jsonResponse({ message: { role: "assistant", content: '{"appearance":"a"}' } })
-    );
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse({ message: { role: "assistant", content: '{"appearance":"a"}' } }),
+      );
     await expect(
       completeOllamaChat({
         model: "stheno-custom:latest",
         messages: [{ role: "user", content: "hi" }],
         fetchImpl,
-        maxTokens: 500
-      })
+        maxTokens: 500,
+      }),
     ).resolves.toBe('{"appearance":"a"}');
     const call = fetchImpl.mock.calls[0] as [string, RequestInit];
     const body = JSON.parse(call[1].body as string);

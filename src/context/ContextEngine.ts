@@ -5,15 +5,20 @@ import {
   ConversationTurnSchema,
   type CharacterPronoun,
   type ConversationTurn,
-  type Session
+  type Session,
 } from "@state/StateSchema";
 import { createSnapshot, type StateSnapshot } from "@state/StateVersioning";
-import { applyBudget, DEFAULT_BUDGET, type AssembledBudget, type BudgetConfig } from "./ContextBudgetManager";
+import {
+  applyBudget,
+  DEFAULT_BUDGET,
+  type AssembledBudget,
+  type BudgetConfig,
+} from "./ContextBudgetManager";
 import { PRIORITY, type ContextBlock } from "./ContextBlock";
 import {
   applyInstructionSafety,
   buildInstructionHierarchyPreamble,
-  type InjectionScanResult
+  type InjectionScanResult,
 } from "./InstructionHierarchy";
 import { buildLayerBlocks } from "@layers/LayerEngine";
 import { buildMemoryBlocks } from "@memory/MemoryEngine";
@@ -24,10 +29,20 @@ import type { FavorCheck } from "@state/favorCheck";
 import { namedRoomsInCanon } from "@state/WorldCanon";
 import { isBarishPlace, sideRoomStage } from "@state/playerDestination";
 import { isUndressedClothing } from "@state/clothing";
-import { maskUnheardGivenNames, narrationCallName, nameHeardInConversation } from "@state/nameHeard";
+import {
+  maskUnheardGivenNames,
+  narrationCallName,
+  nameHeardInConversation,
+} from "@state/nameHeard";
 import { herePrompt, type PlaceIntro } from "@state/placeIntro";
 import { pronounForms } from "@state/pronouns";
-import { liveTraitBody, liveTraitLine, traitVoice, desireBandFromStats, type TraitBand } from "@state/traitBands";
+import {
+  liveTraitBody,
+  liveTraitLine,
+  traitVoice,
+  desireBandFromStats,
+  type TraitBand,
+} from "@state/traitBands";
 
 export type Pass1Meters = {
   trust?: number;
@@ -93,7 +108,12 @@ function traitMeaningLines(session: Session): string[] {
     for (const [statId, field] of Object.entries(character.stats)) {
       const def = attributeDef(session, statId);
       if (!def) continue;
-      const line = liveTraitLine(who, def, field.value, traitVoice({ char: who, pronoun: character.pronoun }));
+      const line = liveTraitLine(
+        who,
+        def,
+        field.value,
+        traitVoice({ char: who, pronoun: character.pronoun }),
+      );
       if (line) lines.push(line);
     }
   }
@@ -101,14 +121,17 @@ function traitMeaningLines(session: Session): string[] {
 }
 
 function physicalContinuityLines(session: Session): string[] {
-  const facts = describePhysicalState(session.physical, 30, ["player", ...Object.keys(session.characters)]);
+  const facts = describePhysicalState(session.physical, 30, [
+    "player",
+    ...Object.keys(session.characters),
+  ]);
   if (!facts.length) return [];
   return [
     "Physical continuity: these facts persist until an explicit transition changes them.",
     "Do not silently reverse facing, break contact, move objects or release restraints.",
     "A movement attempt is not automatically a successful change.",
     "An exclusive occupied body part cannot perform another exclusive grip or weapon hold until released. Other free limbs remain usable; never assume humanoid anatomy.",
-    ...facts.map((fact) => `- ${fact}`)
+    ...facts.map((fact) => `- ${fact}`),
   ];
 }
 
@@ -128,7 +151,8 @@ function buildStateSummaryBlock(session: Session): ContextBlock {
       if (family) parts.splice(middle ? 2 : 1, 0, `surname ${family}`);
     }
     if (character.pronoun) parts.push(`pronoun: ${character.pronoun}`);
-    if (typeof character.approximateAge === "number") parts.push(`age: about ${character.approximateAge}`);
+    if (typeof character.approximateAge === "number")
+      parts.push(`age: about ${character.approximateAge}`);
     if (character.appearance?.trim()) parts.push(`looks: ${character.appearance.trim()}`);
     if (character.clothing?.value.trim()) parts.push(`wearing: ${character.clothing.value.trim()}`);
     if (character.holding?.value.trim()) parts.push(`holding: ${character.holding.value.trim()}`);
@@ -146,7 +170,11 @@ function buildStateSummaryBlock(session: Session): ContextBlock {
     }
     const bond = session.relationships[id];
     if (bond) {
-      parts.push(`trust: ${bond.trust.value}`, `familiarity: ${bond.familiarity.value}`, `tension: ${bond.tension.value}`);
+      parts.push(
+        `trust: ${bond.trust.value}`,
+        `familiarity: ${bond.familiarity.value}`,
+        `tension: ${bond.tension.value}`,
+      );
     }
     return `- ${id}: ${parts.join(", ")}`;
   });
@@ -157,19 +185,36 @@ function buildStateSummaryBlock(session: Session): ContextBlock {
       ? stage
         ? "This beat is not in the public bar."
         : `Scene: ${session.scene.location}${session.scene.realm ? ` in ${session.scene.realm}` : ""}`
-      : "Scene: (unset)"
+      : "Scene: (unset)",
   ];
   const env = session.scene?.environment;
   if (session.journey) {
     const j = session.journey;
-    sceneParts.push(`Active journey: from ${j.originName} to ${j.destination.location}. You are stopped ALONG THE ROUTE, not at the departure or destination. ${j.completedStages} stage(s) completed; ${j.remainingTravelMinutes} minutes of active travel remain. ${j.plan?"These are player-planned stages and stops; do not replace them with automatic eight-hour stages.":"Eight active travel hours make one stage; map travel days include overnight opportunities between stages."} ${j.phase === "overnight" ? "An overnight stop is due; pause for the player's choice of rest or pushing on." : j.phase === "pause" ? `Planned pause at ${j.currentStop ?? "the route"}; no overnight stay is required. Remain here until the player continues.` : "Rest is complete; remain stopped until the player chooses to continue."} Do not arrive, continue travel, charge rest twice, invent a mapped inn/campsite, or describe the destination's interior. Only travelling party members are here. ${j.pushedOn ? "The player chose to push on without rest; acknowledge the missed rest without inventing an injury or numeric fatigue penalty." : ""}`);
+    sceneParts.push(
+      `Active journey: from ${j.originName} to ${j.destination.location}. You are stopped ALONG THE ROUTE, not at the departure or destination. ${j.completedStages} stage(s) completed; ${j.remainingTravelMinutes} minutes of active travel remain. ${j.plan ? "These are player-planned stages and stops; do not replace them with automatic eight-hour stages." : "Eight active travel hours make one stage; map travel days include overnight opportunities between stages."} ${j.phase === "overnight" ? "An overnight stop is due; pause for the player's choice of rest or pushing on." : j.phase === "pause" ? `Planned pause at ${j.currentStop ?? "the route"}; no overnight stay is required. Remain here until the player continues.` : "Rest is complete; remain stopped until the player chooses to continue."} Do not arrive, continue travel, charge rest twice, invent a mapped inn/campsite, or describe the destination's interior. Only travelling party members are here. ${j.pushedOn ? "The player chose to push on without rest; acknowledge the missed rest without inventing an injury or numeric fatigue penalty." : ""}`,
+    );
     const event = j.opportunity;
-    if (j.routeInfo) sceneParts.push(`Authored conditions along the journey (not proof these crossings have already been passed): ${j.routeInfo}`);
-    if (event?.triggered && j.encounter) sceneParts.push(`This ${event.kind} stage has an authored encounter opportunity: ${j.encounter.participants}. Tone: ${j.encounter.tone || "unspecified"}. Introduce at most one suitable opportunity and leave choices to the player. This opportunity belongs to this stage: follow it if already introduced in history, do not introduce it again on later messages.`);
-    else sceneParts.push("No new encounter was selected for this stop. Continue established events or quiet interaction; do not invent an arrival just because another chat message was sent.");
+    if (j.routeInfo)
+      sceneParts.push(
+        `Authored conditions along the journey (not proof these crossings have already been passed): ${j.routeInfo}`,
+      );
+    if (event?.triggered && j.encounter)
+      sceneParts.push(
+        `This ${event.kind} stage has an authored encounter opportunity: ${j.encounter.participants}. Tone: ${j.encounter.tone || "unspecified"}. Introduce at most one suitable opportunity and leave choices to the player. This opportunity belongs to this stage: follow it if already introduced in history, do not introduce it again on later messages.`,
+      );
+    else
+      sceneParts.push(
+        "No new encounter was selected for this stop. Continue established events or quiet interaction; do not invent an arrival just because another chat message was sent.",
+      );
   }
-  if (session.gameClock) sceneParts.push(`Game clock: ${formatGameTime(session.gameClock.totalMinutes)} (${gameTimeOfDay(session.gameClock.totalMinutes)}, 24-hour clock: 08:00 is 8 AM). This is authoritative fictional time, not real time. Match the time of day; sleeping does not imply night. Do not continue old night/moon/stars descriptions when the clock now indicates daytime. Indoor darkness may still be part of the established setting. Do not invent elapsed hours, nights or days. Only explicit game actions advance this clock.`);
-  if (session.gameClock?.lastAdvance) sceneParts.push(`Most recent clock advance: ${session.gameClock.lastAdvance.reason}, ${session.gameClock.lastAdvance.minutes} minutes. This is already included in the clock, not additional time. A completed sleep/rest time skip ends at the shown time; do not keep the player asleep solely because the previous action was sleep. Do not invent a new encounter just because time passed.`);
+  if (session.gameClock)
+    sceneParts.push(
+      `Game clock: ${formatGameTime(session.gameClock.totalMinutes)} (${gameTimeOfDay(session.gameClock.totalMinutes)}, 24-hour clock: 08:00 is 8 AM). This is authoritative fictional time, not real time. Match the time of day; sleeping does not imply night. Do not continue old night/moon/stars descriptions when the clock now indicates daytime. Indoor darkness may still be part of the established setting. Do not invent elapsed hours, nights or days. Only explicit game actions advance this clock.`,
+    );
+  if (session.gameClock?.lastAdvance)
+    sceneParts.push(
+      `Most recent clock advance: ${session.gameClock.lastAdvance.reason}, ${session.gameClock.lastAdvance.minutes} minutes. This is already included in the clock, not additional time. A completed sleep/rest time skip ends at the shown time; do not keep the player asleep solely because the previous action was sleep. Do not invent a new encounter just because time passed.`,
+    );
   if (env && !stage) {
     const envBits: string[] = [];
     if (env.lighting) envBits.push(`lighting: ${env.lighting}`);
@@ -189,7 +234,7 @@ function buildStateSummaryBlock(session: Session): ContextBlock {
       you.appearance?.trim() ? `looks: ${you.appearance.trim()}` : null,
       you.personality?.trim() ? `who they are: ${you.personality.trim()}` : null,
       `position: ${you.position.value}`,
-      `status: ${you.status.value}`
+      `status: ${you.status.value}`,
     ].filter(Boolean);
     if (you.stats) {
       for (const [statId, value] of Object.entries(you.stats)) {
@@ -203,30 +248,26 @@ function buildStateSummaryBlock(session: Session): ContextBlock {
     sceneParts.push(
       maskUnheardGivenNames(
         session,
-        `Current room: ${stage}. Write only ${stage}. Do not mention the public bar, "behind the bar", or the venue name.`
-      )
+        `Current room: ${stage}. Write only ${stage}. Do not mention the public bar, "behind the bar", or the venue name.`,
+      ),
     );
   }
   const intro = herePrompt(session);
   if (intro) {
-    sceneParts.push(
-      maskUnheardGivenNames(session, `Here — ${intro.title}: ${intro.body}`)
-    );
+    sceneParts.push(maskUnheardGivenNames(session, `Here — ${intro.title}: ${intro.body}`));
   }
   const arrivedWhy = (session.handoff ?? "").trim();
   if (arrivedWhy) {
     sceneParts.push(
       maskUnheardGivenNames(
         session,
-        `Why they are here (fact — the agreement from the last scene, not a new meeting). Honor it. Do not invent a different reason, including sex if they asked for sleep or comfort: ${arrivedWhy}`
-      )
+        `Why they are here (fact — the agreement from the last scene, not a new meeting). Honor it. Do not invent a different reason, including sex if they asked for sleep or comfort: ${arrivedWhy}`,
+      ),
     );
   }
   const realmFact = (session.scene?.realmBrief ?? session.scene?.realmNote ?? "").trim();
   if (realmFact && session.scene?.realm) {
-    sceneParts.push(
-      maskUnheardGivenNames(session, `Realm — ${session.scene.realm}: ${realmFact}`)
-    );
+    sceneParts.push(maskUnheardGivenNames(session, `Realm — ${session.scene.realm}: ${realmFact}`));
   }
   const rooms = namedRoomsInCanon(session);
   if (rooms.length > 0) {
@@ -239,16 +280,22 @@ function buildStateSummaryBlock(session: Session): ContextBlock {
         const extra: string[] = [];
         const location = object.startingLocation;
         if (location?.kind === "object") {
-          const parent = session.objects?.find(o => o.id === location.objectId);
-          extra.push(`inside ${parent?.name ?? location.objectId}; reveal only when the container and all outer containers are open and in sight`);
+          const parent = session.objects?.find((o) => o.id === location.objectId);
+          extra.push(
+            `inside ${parent?.name ?? location.objectId}; reveal only when the container and all outer containers are open and in sight`,
+          );
         } else if (location?.kind === "place") extra.push(`place ${location.placeId}`);
         else if (location?.kind === "character") extra.push(`carried by ${location.characterId}`);
         else if (location?.kind === "player") extra.push("carried by player");
         if (object.openable) extra.push(object.isOpen ? "open" : "closed");
-        if (object.portable !== undefined) extra.push(object.portable ? "portable" : "fixed in place");
+        if (object.portable !== undefined)
+          extra.push(object.portable ? "portable" : "fixed in place");
         if (object.storyRole) extra.push(`story role ${object.storyRole}`);
         if (object.storyImportance) extra.push(`author-only importance: ${object.storyImportance}`);
-        if (object.readableContent) extra.push(`author-only readable content, reveal only when the player reads or examines it and has access: ${object.readableContent}`);
+        if (object.readableContent)
+          extra.push(
+            `author-only readable content, reveal only when the player reads or examines it and has access: ${object.readableContent}`,
+          );
         if (object.weight !== undefined) extra.push(`weight ${object.weight}`);
         if (object.difficulty !== undefined) extra.push(`difficulty ${object.difficulty}`);
         if (object.checkAttribute) extra.push(`check ${object.checkAttribute}`);
@@ -256,7 +303,7 @@ function buildStateSummaryBlock(session: Session): ContextBlock {
         return object.note
           ? `- ${object.name}${suffix}: ${object.note}`
           : `- ${object.name}${suffix}`;
-      })
+      }),
     );
   }
 
@@ -265,7 +312,7 @@ function buildStateSummaryBlock(session: Session): ContextBlock {
   if (traitLines.length > 0) {
     contentParts.push(
       "Trait meanings (fact). Honor each at the live number. Do not guess from the field name.",
-      ...traitLines
+      ...traitLines,
     );
   }
   const content = contentParts.join("\n");
@@ -275,7 +322,7 @@ function buildStateSummaryBlock(session: Session): ContextBlock {
     source: "state_summary",
     content,
     priority: PRIORITY.STATE_SUMMARY,
-    required: true
+    required: true,
   };
 }
 
@@ -291,7 +338,7 @@ function buildVoiceBlock(session: Session): ContextBlock | null {
     source: "voice",
     content: [heading, instruction].join("\n\n"),
     priority: PRIORITY.VOICE,
-    required: true
+    required: true,
   };
 }
 
@@ -308,14 +355,17 @@ function buildStoryBlock(session: Session): ContextBlock | null {
     content: [
       heading,
       premise,
-      "This is established background for the writer. The current scene is one moment inside it. Do not retell the whole story unless a character would. Characters only know what they have seen or been told in play — not secrets from this block. Do not pin an unnamed thing the player showed onto a name in this story."
+      "This is established background for the writer. The current scene is one moment inside it. Do not retell the whole story unless a character would. Characters only know what they have seen or been told in play — not secrets from this block. Do not pin an unnamed thing the player showed onto a name in this story.",
     ].join("\n\n"),
     priority: PRIORITY.STORY,
-    required: true
+    required: true,
   };
 }
 
-export function parseConversationTurns(session: Session, maxTurns: number | undefined): {
+export function parseConversationTurns(
+  session: Session,
+  maxTurns: number | undefined,
+): {
   turns: ConversationTurn[];
   skipped: number;
 } {
@@ -350,7 +400,7 @@ function buildConversationBlocks(turns: ConversationTurn[]): ContextBlock[] {
       source: "conversation",
       content: `${speaker}: ${turn.content}`,
       priority: PRIORITY.CONVERSATION_RECENT + ageRank,
-      required: false
+      required: false,
     };
   });
 }
@@ -370,17 +420,29 @@ export function assembleContext(session: Session, options: AssembleOptions = {})
   const closenessBlocks = closenessBlocksForSession(session);
   const rawBlocks: ContextBlock[] = [
     preamble,
-    ...(session.journey ? [{
-      id: "journey-grounding", source: "system_rule" as const, priority: 1, required: true,
-      content: `TRAVEL IN PROGRESS: The player is along the route from ${session.journey.originName} to ${session.journey.destination.location}, not at either endpoint. The destination name is a direction, NOT the current setting. Do not describe its forest, trees, canopy, buildings or other destination features as current surroundings before arrival. Use only authored route facts for the intervening terrain; if terrain is unspecified, keep descriptions neutral and focus on the journey or the player's action. Prior AI embellishments do not establish terrain. ${session.journey.routeInfo ?? "No route terrain has been specified."}`
-    }] : []),
-    ...(session.spatialPlaces?.length ? [{
-      id: "mapped-world-grounding",
-      source: "system_rule" as const,
-      priority: 1,
-      required: true,
-      content: "Authored world: ground narration in established scene facts, place descriptions, objects and events. Bring those details to life with fitting sensory language, without adding unsupported facts. Do not introduce new significant objects, books, clues, people, exits, secrets or hazards merely to decorate a reply. A genre stereotype is not evidence that something exists here. Follow explicit player or scenario instructions that introduce new content. An earlier AI embellishment alone does not establish world canon. When the player looks around or returns, describe what is established rather than inventing a discovery."
-    }] : []),
+    ...(session.journey
+      ? [
+          {
+            id: "journey-grounding",
+            source: "system_rule" as const,
+            priority: 1,
+            required: true,
+            content: `TRAVEL IN PROGRESS: The player is along the route from ${session.journey.originName} to ${session.journey.destination.location}, not at either endpoint. The destination name is a direction, NOT the current setting. Do not describe its forest, trees, canopy, buildings or other destination features as current surroundings before arrival. Use only authored route facts for the intervening terrain; if terrain is unspecified, keep descriptions neutral and focus on the journey or the player's action. Prior AI embellishments do not establish terrain. ${session.journey.routeInfo ?? "No route terrain has been specified."}`,
+          },
+        ]
+      : []),
+    ...(session.spatialPlaces?.length
+      ? [
+          {
+            id: "mapped-world-grounding",
+            source: "system_rule" as const,
+            priority: 1,
+            required: true,
+            content:
+              "Authored world: ground narration in established scene facts, place descriptions, objects and events. Bring those details to life with fitting sensory language, without adding unsupported facts. Do not introduce new significant objects, books, clues, people, exits, secrets or hazards merely to decorate a reply. A genre stereotype is not evidence that something exists here. Follow explicit player or scenario instructions that introduce new content. An earlier AI embellishment alone does not establish world canon. When the player looks around or returns, describe what is established rather than inventing a discovery.",
+          },
+        ]
+      : []),
     ...closenessBlocks,
     ...(voiceBlock ? [voiceBlock] : []),
     ...(storyBlock ? [storyBlock] : []),
@@ -388,7 +450,7 @@ export function assembleContext(session: Session, options: AssembleOptions = {})
     ...layerBlocks,
     ...memoryBlocks,
     ...conversationBlocks,
-    ...(options.extraBlocks ?? [])
+    ...(options.extraBlocks ?? []),
   ];
 
   // §23: scan and wrap every untrusted block (conversation, and later
@@ -402,7 +464,7 @@ export function assembleContext(session: Session, options: AssembleOptions = {})
     ...budgetResult,
     snapshot: createSnapshot(session),
     skippedConversationEntries: skipped,
-    injectionFindings: findings
+    injectionFindings: findings,
   };
 }
 
@@ -433,7 +495,7 @@ function whereThisBeat(
     stageRoom?: string;
     venueName?: string;
     inParty?: boolean;
-  }
+  },
 ): string | undefined {
   if (player?.stageRoom) {
     const venue = player.venueName?.trim();
@@ -441,8 +503,7 @@ function whereThisBeat(
       ? `"${venue}", the public floor, the counter`
       : `the public floor, the counter, the venue name`;
     const stayed = player.characterPosition?.trim();
-    const sameRoom =
-      !stayed || stayed.toLowerCase() === player.stageRoom.toLowerCase();
+    const sameRoom = !stayed || stayed.toLowerCase() === player.stageRoom.toLowerCase();
     const theirSpace = Boolean(name && player.stageRoom.toLowerCase().includes(name.toLowerCase()));
     if (player.inParty || sameRoom) {
       return `WHERE this beat: ${player.stageRoom}. Write ${player.stageRoom} only. They are already in ${player.stageRoom} — do not write arriving from the bar, the floor, or a staff door. Forbidden: ${forbidden}. Earlier replies that said the public floor are stale.`;
@@ -453,7 +514,10 @@ function whereThisBeat(
     return `WHERE this beat: the player is in ${player.stageRoom}. ${name} is still in ${stayed}. ${name} is not in the party. Do not walk ${name} with the player. Forbidden: ${forbidden}.`;
   }
   if (player?.position && player.characterPosition) {
-    if (!player.inParty && player.position.toLowerCase() !== player.characterPosition.toLowerCase()) {
+    if (
+      !player.inParty &&
+      player.position.toLowerCase() !== player.characterPosition.toLowerCase()
+    ) {
       return `WHERE this beat: player is in ${player.position}; ${name} is in ${player.characterPosition}. ${name} is not in the party. Do not bring ${name} to the player's place. Do not mention a room they left unless ${name} is still there.`;
     }
     return `WHERE this beat: player is in ${player.position}; ${name} is in ${player.characterPosition}. One geography. Do not put anyone in two rooms at once. Do not mention a room they left.`;
@@ -463,7 +527,7 @@ function whereThisBeat(
 
 function canonAndFavorLines(
   name: string,
-  player?: { status?: string; position?: string; favor?: FavorCheck }
+  player?: { status?: string; position?: string; favor?: FavorCheck },
 ): string[] {
   const asleep = (player?.status ?? "").toLowerCase().includes("asleep");
   const invent =
@@ -471,7 +535,7 @@ function canonAndFavorLines(
   if (asleep) {
     return [
       invent,
-      `The player is asleep${player?.position ? ` (${player.position})` : ""}. Stay with that beat here. Do not invent another room.`
+      `The player is asleep${player?.position ? ` (${player.position})` : ""}. Stay with that beat here. Do not invent another room.`,
     ];
   }
   const lines = [invent];
@@ -479,11 +543,11 @@ function canonAndFavorLines(
   if (!favor) return lines;
   if (favor.granted) {
     lines.push(
-      `Favor this turn: d100 ${favor.roll} vs trust ${favor.trust} — grant. Rooms and objects only. If the player asked to use a room or a thing, ${name} can agree when it stays in this scene — including leaving the floor or going to a named room. A grant does not create a new place.`
+      `Favor this turn: d100 ${favor.roll} vs trust ${favor.trust} — grant. Rooms and objects only. If the player asked to use a room or a thing, ${name} can agree when it stays in this scene — including leaving the floor or going to a named room. A grant does not create a new place.`,
     );
   } else {
     lines.push(
-      `Favor this turn: d100 ${favor.roll} vs trust ${favor.trust} — refuse. Rooms and objects only — if they asked to use a room or a thing, ${name} does not take them there this beat. Listed rooms are still here. Do not invent a hotel.`
+      `Favor this turn: d100 ${favor.roll} vs trust ${favor.trust} — refuse. Rooms and objects only — if they asked to use a room or a thing, ${name} does not take them there this beat. Listed rooms are still here. Do not invent a hotel.`,
     );
   }
   return lines;
@@ -506,14 +570,18 @@ function warmthInstruction(name: string): string {
   return `${name} wants the player this beat. If they ask for a kiss, a hug, or to be held, write ${name} doing that now. Live meters outrank a reserved mood or "slow to open up".`;
 }
 
-export function closenessBeatBlock(name: string, meters?: Pass1Meters, characterId?: string): ContextBlock | null {
+export function closenessBeatBlock(
+  name: string,
+  meters?: Pass1Meters,
+  characterId?: string,
+): ContextBlock | null {
   if (!isWarmBeat(meters)) return null;
   return {
     id: characterId ? `closeness-this-beat-${characterId}` : "closeness-this-beat",
     source: "system_rule",
     content: warmthInstruction(name),
     priority: PRIORITY.CLOSENESS_BEAT,
-    required: true
+    required: true,
   };
 }
 
@@ -536,19 +604,19 @@ export function metersFromSession(session: Session, characterId: string): Pass1M
                   field.value,
                   traitVoice({
                     char: narrationCallName(session, characterId),
-                    pronoun: character.pronoun
-                  })
+                    pronoun: character.pronoun,
+                  }),
                 )
               : undefined;
             return {
               id,
               label: attributeLabel(session, id),
               value: field.value,
-              ...(meaning ? { meaning } : {})
+              ...(meaning ? { meaning } : {}),
             };
-          })
+          }),
         }
-      : {})
+      : {}),
   };
 }
 
@@ -579,11 +647,13 @@ function metersLine(meters?: Pass1Meters): string | undefined {
 
 function othersLine(
   name: string,
-  others?: { name: string; position?: string }[]
+  others?: { name: string; position?: string }[],
 ): string | undefined {
   if (!others?.length) return undefined;
   const list = others
-    .map((person) => (person.position?.trim() ? `${person.name} (${person.position.trim()})` : person.name))
+    .map((person) =>
+      person.position?.trim() ? `${person.name} (${person.position.trim()})` : person.name,
+    )
     .join("; ");
   return `Also here: ${list}. They are in this scene. If the player sat with, looked at, or spoke to one of them, that person can take a spoken line this beat. Do not write the room as only ${name}.`;
 }
@@ -592,7 +662,7 @@ function speechRule(
   name: string,
   warm: boolean,
   others?: { name: string; position?: string }[],
-  outOfSight?: boolean
+  outOfSight?: boolean,
 ): string {
   if (outOfSight) {
     return `SPEECH: ${name} is not here. Do not write ${name}'s body, eyes, or quoted dialogue. If someone at the player's place speaks, they may have one quoted line. If the place is empty, narration only.`;
@@ -626,19 +696,19 @@ function clothingHonorLines(clothing?: string, holding?: string, stageRoom?: str
   if (here) {
     return [
       `Looks is the body. ${outfit} ${hands}`,
-      `This beat is ${here}. They are already here. Work clothes or an apron are leftover cloth, not a shift behind the bar. Do not write pushing off from the bar, the counter, or a staff door.`
+      `This beat is ${here}. They are already here. Work clothes or an apron are leftover cloth, not a shift behind the bar. Do not write pushing off from the bar, the counter, or a staff door.`,
     ];
   }
   return [
     `Looks is the body. ${outfit} ${hands}`,
-    "The public bar is dressed. Nude or a towel stays in a private room unless the player said they walk out like that."
+    "The public bar is dressed. Nude or a towel stays in a private room unless the player said they walk out like that.",
   ];
 }
 
 function hereWritingLines(intro?: PlaceIntro, justArrived?: boolean): string[] {
   if (!intro || !justArrived) return [];
   return [
-    `The player just entered ${intro.title}. Establish the space from HERE this beat — what it looks like — then the action. This is not restarting the scene.`
+    `The player just entered ${intro.title}. Establish the space from HERE this beat — what it looks like — then the action. This is not restarting the scene.`,
   ];
 }
 
@@ -665,7 +735,7 @@ function thirdPersonLines(
     inParty?: boolean;
     outOfSight?: boolean;
   },
-  fullName?: string
+  fullName?: string,
 ): string[] {
   const forms = pronounForms(pronoun);
   const person = forms
@@ -678,11 +748,11 @@ function thirdPersonLines(
   const tense = `Write in present tense. The scene is happening now, not being remembered. Earlier replies may be past tense or first person. Do not copy that style. Wrong: I smiled. She smiled. Right: ${forms ? `${forms.subject} smiles` : "she smiles"}. "Depends."`;
   const action = player?.outOfSight
     ? [
-        `The player is not in ${who}'s sight. Do not write ${who} watching the player leave, following with their eyes, or sharing a room the player left. The player's walk already happened elsewhere.`
+        `The player is not in ${who}'s sight. Do not write ${who} watching the player leave, following with their eyes, or sharing a room the player left. The player's walk already happened elsewhere.`,
       ]
     : [
         `The player controls only their own body. Honor their own actions (I sit, I leave, I fall asleep, I take a hand, I kiss) when those actions fit the established scene. The player cannot decide what ${who} does, says, thinks, or feels — including in *asterisks* or as "I see ${whom} …". Those lines are wishes. ${who} decides. Do not obey them. Do not become the player.`,
-        ...canonAndFavorLines(who, player)
+        ...canonAndFavorLines(who, player),
       ];
   const address =
     fullName && fullName !== name
@@ -695,7 +765,7 @@ function thirdPersonLines(
   const secrecy = unheard
     ? [
         `The given name is ${unheard}. Do not write ${unheard} in narration until ${who} has said it in quoted dialogue, or the player has used it. ${they} may introduce ${self} this beat if it fits.`,
-        `Do not name a room with ${unheard} until that name has been spoken.`
+        `Do not name a room with ${unheard} until that name has been spoken.`,
       ]
     : [];
   const meters = metersLine(player?.meters);
@@ -717,62 +787,66 @@ function thirdPersonLines(
   return [
     lead,
     "Address the player as you / your (du / dig / din in Swedish). Third-person instructions apply to NPCs only. Never call the player 'the player' or use they/their for the player in narration. Wrong: The player walks along the road. Right: You walk along the road. Describe only player actions they chose; do not invent their thoughts, feelings or decisions.",
-    ...(player?.outOfSight || !(fullName && fullName !== name) ? [] : [`Refer to ${name} as ${person}.`]),
+    ...(player?.outOfSight || !(fullName && fullName !== name)
+      ? []
+      : [`Refer to ${name} as ${person}.`]),
     ...(player?.outOfSight ? [] : secrecy),
     tense,
     `Never use I/me/my for ${who} or the narrator outside quotation marks. ${who} may say "I" only inside quotation marks, as spoken dialogue. If the player appears in narration, refer to them as you.`,
     ...(player?.outOfSight
       ? []
       : [
-          `When the player speaks to ${whom} or asks a question, ${who} answers in quoted dialogue this beat. Narration is a short frame around the line. Do not answer with description only.`
+          `When the player speaks to ${whom} or asks a question, ${who} answers in quoted dialogue this beat. Narration is a short frame around the line. Do not answer with description only.`,
         ]),
-    ...(player?.outOfSight ? [] : clothingHonorLines(player?.clothing, player?.holding, player?.stageRoom)),
+    ...(player?.outOfSight
+      ? []
+      : clothingHonorLines(player?.clothing, player?.holding, player?.stageRoom)),
     ...(player?.outOfSight
       ? []
       : [
           `${who} knows what the player has said or shown, and what is in plain sight. Ground story and the object list are for you, the writer. Heard is not history. Do not invent family or jobs among people the player mentioned.`,
-          `A thing they show is only the words they used. Do not give it a famous owner or a hidden history unless the object list says so, or they already said it. Wrong: a small brooch → "That's Elrond's brooch." Right: she looks at the brooch they showed.`
+          `A thing they show is only the words they used. Do not give it a famous owner or a hidden history unless the object list says so, or they already said it. Wrong: a small brooch → "That's Elrond's brooch." Right: she looks at the brooch they showed.`,
         ]),
     ...(player?.outOfSight
       ? []
       : [
-          `Rooms listed as real exist for you, the writer. If the player asks for a room or a place to stay, answer from that list (${roomList}), not a hotel or a street. Do not claim a listed room is not here. ${who} may offer one; ${who} does not have to walk them there this beat.`
+          `Rooms listed as real exist for you, the writer. If the player asks for a room or a place to stay, answer from that list (${roomList}), not a hotel or a street. Do not claim a listed room is not here. ${who} may offer one; ${who} does not have to walk them there this beat.`,
         ]),
     ...(player?.outOfSight
       ? []
       : player?.inParty
         ? [
-            `If you both leave together this beat, stay in the same named room. Do not send the player to one listed room and ${whom} to another in one beat.`
+            `If you both leave together this beat, stay in the same named room. Do not send the player to one listed room and ${whom} to another in one beat.`,
           ]
         : [
-            `The player leaving a room, the floor, or a landmark does not take ${who} along. ${who} stays at live position. Do not walk ${who} into the city or the next place unless the player accepted ${who} into the party.`
+            `The player leaving a room, the floor, or a landmark does not take ${who} along. ${who} stays at live position. Do not walk ${who} into the city or the next place unless the player accepted ${who} into the party.`,
           ]),
     ...(player?.party && player.party.length > 0
       ? [
-          `With the player this beat (engine): ${player.party.join(", ")}. Keep them with the player when the player moves. Do not leave them in the last room.`
+          `With the player this beat (engine): ${player.party.join(", ")}. Keep them with the player when the player moves. Do not leave them in the last room.`,
         ]
       : []),
     ...(player?.partyHold && player.partyHold.length > 0
       ? [
-          `Staying put (still in the party): ${player.partyHold.join(", ")}. They keep their live position. Do not walk them with the player until Come.`
+          `Staying put (still in the party): ${player.partyHold.join(", ")}. They keep their live position. Do not walk them with the player until Come.`,
         ]
       : []),
     ...(player?.partyPending && player.partyPending.length > 0
       ? [
-          `Asked to join later (not traveling): ${player.partyPending.join(", ")}. They stay where they are. The player can recruit them only when they are in the same place, and only if a party slot is free.`
+          `Asked to join later (not traveling): ${player.partyPending.join(", ")}. They stay where they are. The player can recruit them only when they are in the same place, and only if a party slot is free.`,
         ]
       : []),
     ...(toiletLine && !player?.outOfSight ? [toiletLine] : []),
     ...(player?.outOfSight
       ? []
       : [
-          `Live position and pose are where ${who} is at the start of this beat. ${who} can leave the floor or go to a named room this beat. That does not put the player on staff duty and does not erase who ${who} is.`
+          `Live position and pose are where ${who} is at the start of this beat. ${who} can leave the floor or go to a named room this beat. That does not put the player on staff duty and does not erase who ${who} is.`,
         ]),
     ...(where ? [where] : []),
     ...(player?.outOfSight ? [] : hereWritingLines(player?.hereIntro, player?.justArrived)),
     ...action,
     ...(meters ? [meters] : []),
-    `One beat, not a chapter. At most 500 characters. One motion and one spoken line, then a period. Stop. Do not start a sentence you cannot finish. A shorter finished beat is better than a longer cut one. Stay in this motion. Do not write the next step. Do not write the player's body, breath, arousal, or orgasm. That is their body. Honor it only if they wrote it this beat. Write ${whose} body, not yours. If the player falls asleep: one quiet close in this room. Output only the scene beat.`
+    `One beat, not a chapter. At most 500 characters. One motion and one spoken line, then a period. Stop. Do not start a sentence you cannot finish. A shorter finished beat is better than a longer cut one. Stay in this motion. Do not write the next step. Do not write the player's body, breath, arousal, or orgasm. That is their body. Honor it only if they wrote it this beat. Write ${whose} body, not yours. If the player falls asleep: one quiet close in this room. Output only the scene beat.`,
   ];
 }
 
@@ -807,7 +881,7 @@ export function buildPass1WritingInstructions(
     partyHold?: string[];
     inParty?: boolean;
     outOfSight?: boolean;
-  } = {}
+  } = {},
 ): string {
   const name = options.characterName?.trim() || characterId;
   const unheard = options.unheardGiven?.trim();
@@ -835,11 +909,13 @@ export function buildPass1WritingInstructions(
       ...(options.partyPending && options.partyPending.length > 0
         ? { partyPending: options.partyPending }
         : {}),
-      ...(options.partyHold && options.partyHold.length > 0 ? { partyHold: options.partyHold } : {}),
+      ...(options.partyHold && options.partyHold.length > 0
+        ? { partyHold: options.partyHold }
+        : {}),
       ...(options.inParty ? { inParty: true } : {}),
-      ...(outOfSight ? { outOfSight: true } : {})
+      ...(outOfSight ? { outOfSight: true } : {}),
     },
-    fullName && fullName !== name ? fullName : undefined
+    fullName && fullName !== name ? fullName : undefined,
   );
 
   const warm = isWarmBeat(options.meters);
@@ -877,7 +953,7 @@ export function buildPass1WritingInstructions(
       followScene,
       honorHandoff,
       playerCalled,
-      "Do not prefix the reply with a speaker label."
+      "Do not prefix the reply with a speaker label.",
     ]
       .filter((line): line is string => Boolean(line))
       .join("\n");
@@ -894,7 +970,7 @@ export function buildPass1WritingInstructions(
     followScene,
     honorHandoff,
     playerCalled,
-    `Do not prefix the reply with "${name}:" or any speaker label.`
+    `Do not prefix the reply with "${name}:" or any speaker label.`,
   ]
     .filter((line): line is string => Boolean(line))
     .join("\n");
@@ -934,7 +1010,7 @@ export function buildPass1Messages(
     partyHold?: string[];
     inParty?: boolean;
     outOfSight?: boolean;
-  } = {}
+  } = {},
 ): ChatMessage[] {
   const systemBlocks = assembled.includedBlocks
     .filter((block) => block.source !== "conversation")
@@ -961,7 +1037,9 @@ export function buildPass1Messages(
       ...(options.others && options.others.length > 0 ? { others: options.others } : {}),
       ...(options.clothing !== undefined ? { clothing: options.clothing } : {}),
       ...(options.holding !== undefined ? { holding: options.holding } : {}),
-      ...(options.namedRooms && options.namedRooms.length > 0 ? { namedRooms: options.namedRooms } : {}),
+      ...(options.namedRooms && options.namedRooms.length > 0
+        ? { namedRooms: options.namedRooms }
+        : {}),
       ...(options.venueName ? { venueName: options.venueName } : {}),
       ...(options.sceneHandoff ? { sceneHandoff: true } : {}),
       ...(options.playerCalled ? { playerCalled: options.playerCalled } : {}),
@@ -970,14 +1048,18 @@ export function buildPass1Messages(
       ...(options.partyPending && options.partyPending.length > 0
         ? { partyPending: options.partyPending }
         : {}),
-      ...(options.partyHold && options.partyHold.length > 0 ? { partyHold: options.partyHold } : {}),
+      ...(options.partyHold && options.partyHold.length > 0
+        ? { partyHold: options.partyHold }
+        : {}),
       ...(options.inParty ? { inParty: true } : {}),
-      ...(options.outOfSight ? { outOfSight: true } : {})
-    })
+      ...(options.outOfSight ? { outOfSight: true } : {}),
+    }),
   ].join("\n\n");
 
   const includedIds = new Set(
-    assembled.includedBlocks.filter((block) => block.source === "conversation").map((block) => block.id)
+    assembled.includedBlocks
+      .filter((block) => block.source === "conversation")
+      .map((block) => block.id),
   );
 
   const history = allTurns
@@ -993,18 +1075,14 @@ export function buildPass1Messages(
   for (const turn of history) {
     messages.push({
       role: turn.role === "character" ? "assistant" : "user",
-      content: turn.content
+      content: turn.content,
     });
   }
   const focusName = options.characterName?.trim() || characterId;
-  const names = [
-    focusName,
-    characterId,
-    ...(options.characterNames ?? [])
-  ];
+  const names = [focusName, characterId, ...(options.characterNames ?? [])];
   messages.push({
     role: "user",
-    content: formatPass1UserContent(currentPlayerMessage, names, options.pronoun, focusName)
+    content: formatPass1UserContent(currentPlayerMessage, names, options.pronoun, focusName),
   });
   return messages;
 }

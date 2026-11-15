@@ -24,13 +24,13 @@ export interface BudgetConfig {
 
 export const DEFAULT_BUDGET: BudgetConfig = {
   targetTokens: 3500,
-  hardCeilingTokens: 8000
+  hardCeilingTokens: 8000,
 };
 
 export class RequiredContentExceedsHardCeilingError extends Error {
   constructor(requiredTokens: number, hardCeilingTokens: number) {
     super(
-      `Required context blocks alone total ${requiredTokens} tokens, which exceeds the hard ceiling of ${hardCeilingTokens}. This cannot be fixed by trimming optional content — reduce required content (system rules / state summary).`
+      `Required context blocks alone total ${requiredTokens} tokens, which exceeds the hard ceiling of ${hardCeilingTokens}. This cannot be fixed by trimming optional content — reduce required content (system rules / state summary).`,
     );
     this.name = "RequiredContentExceedsHardCeilingError";
   }
@@ -59,7 +59,7 @@ export interface AssembledBudget {
  */
 export function applyBudget(
   blocks: ContextBlock[],
-  config: BudgetConfig = DEFAULT_BUDGET
+  config: BudgetConfig = DEFAULT_BUDGET,
 ): AssembledBudget {
   const required = blocks.filter((b) => b.required);
   const optional = [...blocks.filter((b) => !b.required)].sort((a, b) => a.priority - b.priority);
@@ -87,6 +87,6 @@ export function applyBudget(
     includedBlocks: included,
     droppedBlocks: dropped,
     totalTokens: total,
-    overTarget: total > config.targetTokens
+    overTarget: total > config.targetTokens,
   };
 }

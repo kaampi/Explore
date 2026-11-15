@@ -17,7 +17,7 @@ import type { MutationProposalInput, Pass2LiveSnapshot, ProposalExtractor } from
 
 const RawProposalSchema = z.object({
   path: z.string(),
-  value: z.union([z.string(), z.number()])
+  value: z.union([z.string(), z.number()]),
 });
 const RawProposalArraySchema = z.array(RawProposalSchema);
 
@@ -46,8 +46,7 @@ export function extractJsonCandidate(text: string): string | undefined {
 }
 
 export type ParseResult =
-  | { success: true; proposals: MutationProposalInput[] }
-  | { success: false; error: string };
+  { success: true; proposals: MutationProposalInput[] } | { success: false; error: string };
 
 export function parseProposals(rawText: string): ParseResult {
   const candidate = extractJsonCandidate(rawText);
@@ -64,7 +63,10 @@ export function parseProposals(rawText: string): ParseResult {
 
   const parsed = RawProposalArraySchema.safeParse(json);
   if (!parsed.success) {
-    return { success: false, error: `Did not match expected proposal shape: ${parsed.error.message}` };
+    return {
+      success: false,
+      error: `Did not match expected proposal shape: ${parsed.error.message}`,
+    };
   }
 
   return {
@@ -72,8 +74,8 @@ export function parseProposals(rawText: string): ParseResult {
     proposals: parsed.data.map((p) => ({
       path: p.path,
       value: p.value,
-      source: "ai_approved_state_mutation"
-    }))
+      source: "ai_approved_state_mutation",
+    })),
   };
 }
 
@@ -81,7 +83,7 @@ export function buildExtractionMessages(
   dialogueText: string,
   characterId: string,
   live?: Pass2LiveSnapshot,
-  playerMessage?: string
+  playerMessage?: string,
 ): ChatMessage[] {
   const current: string[] = [];
   if (live?.mood !== undefined) current.push(`mood="${live.mood}"`);
@@ -137,7 +139,7 @@ export function buildExtractionMessages(
         `- party.offer (string) — id or given name of someone who volunteered in the REPLY to travel with the player. One person per object, or comma-separated. Max 2. Do not propose partyIds. The player still taps Prospects.`,
         ...(live?.stats ?? []).map(
           (stat) =>
-            `- characters.${characterId}.stats.${stat.id} (number ${stat.min}–${stat.max}, at most ±${stat.maxShift} from ${stat.value})`
+            `- characters.${characterId}.stats.${stat.id} (number ${stat.min}–${stat.max}, at most ±${stat.maxShift} from ${stat.value})`,
         ),
         current.length > 0
           ? `Current live values (propose small absolute shifts from these, typically ±2–15 for numbers — never jump to 0 or 100): ${current.join(", ")}.`
@@ -164,12 +166,12 @@ export function buildExtractionMessages(
           : undefined,
         "If the reply agrees to go with the player (we're with you, where you go we go, I'll come, we've got your back), propose party.offer for those people. Player wishes are not facts. \"Come with me\" / they lead is not an offer.",
         "Do not propose a field that did not actually move this turn.",
-        `If nothing warrants a change, respond with exactly: []`
+        `If nothing warrants a change, respond with exactly: []`,
       ]
         .filter((line): line is string => line !== undefined)
-        .join("\n")
+        .join("\n"),
     },
-    { role: "user", content: userContent }
+    { role: "user", content: userContent },
   ];
 }
 
@@ -189,7 +191,7 @@ export interface LLMProposalExtractorOptions {
  */
 export function createLLMProposalExtractor(
   llmAdapter: LLMAdapter,
-  options: LLMProposalExtractorOptions = {}
+  options: LLMProposalExtractorOptions = {},
 ): ProposalExtractor {
   const maxAttempts = options.maxAttempts ?? 3;
   const baseDelayMs = options.baseDelayMs ?? 200;
@@ -198,7 +200,7 @@ export function createLLMProposalExtractor(
     fullText: string,
     characterId: string,
     live?: Pass2LiveSnapshot,
-    playerMessage?: string
+    playerMessage?: string,
   ): Promise<MutationProposalInput[]> => {
     try {
       return await retryWithBackoff(
@@ -219,7 +221,7 @@ export function createLLMProposalExtractor(
           }
           return result.proposals;
         },
-        { maxAttempts, baseDelayMs, sleepImpl: options.sleepImpl }
+        { maxAttempts, baseDelayMs, sleepImpl: options.sleepImpl },
       );
     } catch (err) {
       // Tolerant degradation (§33.3): never propagate a Pass 2 failure

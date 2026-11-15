@@ -10,30 +10,41 @@ it("offers built-in anatomy on a fresh installation alongside saved custom plans
   const repo = new IndexedDBRepository(new IDBFactory(), "anatomy-options");
   const initial = await repo.listAnatomyTemplates();
   expect(initial).toHaveLength(11);
-  expect(initial.some(template => template.id === "builtin-humanoid")).toBe(true);
+  expect(initial.some((template) => template.id === "builtin-humanoid")).toBe(true);
   const custom = { ...initial[0]!, id: "custom-body", name: "My body plan" };
   await repo.saveAnatomyTemplate(custom);
   const options = await repo.listAnatomyTemplates();
   expect(options).toHaveLength(12);
-  const pinned = pinSessionAnatomy({ characters: { hero: { anatomyTemplateId: "builtin-humanoid" } } } as unknown as Session, options);
+  const pinned = pinSessionAnatomy(
+    { characters: { hero: { anatomyTemplateId: "builtin-humanoid" } } } as unknown as Session,
+    options,
+  );
   expect(pinned.anatomyTemplates?.["builtin-humanoid"]?.parts.length).toBeGreaterThan(0);
 });
 
 describe("built-in body plan functions", () => {
-  it.each(BUILTIN_ANATOMY_TEMPLATES)("provides valid movement and sensory functions for $name", template => {
-    expect(AnatomyTemplateSchema.safeParse(template).success).toBe(true);
-    expect(template.version).toBe(2);
-    expect(template.parts.some(part => part.capabilities.includes("locomote"))).toBe(true);
-    expect(template.parts.some(part => part.capabilities.includes("sense"))).toBe(true);
-    expect(new Set(template.parts.map(part => part.id)).size).toBe(template.parts.length);
-  });
+  it.each(BUILTIN_ANATOMY_TEMPLATES)(
+    "provides valid movement and sensory functions for $name",
+    (template) => {
+      expect(AnatomyTemplateSchema.safeParse(template).success).toBe(true);
+      expect(template.version).toBe(2);
+      expect(template.parts.some((part) => part.capabilities.includes("locomote"))).toBe(true);
+      expect(template.parts.some((part) => part.capabilities.includes("sense"))).toBe(true);
+      expect(new Set(template.parts.map((part) => part.id)).size).toBe(template.parts.length);
+    },
+  );
 
   it("distinguishes grasping limbs from walking limbs and ordinary tails", () => {
-    const functionsFor = (plan: string, part: string) => BUILTIN_ANATOMY_TEMPLATES.find(template => template.id === `builtin-${plan}`)?.parts.find(item => item.id === part)?.capabilities;
+    const functionsFor = (plan: string, part: string) =>
+      BUILTIN_ANATOMY_TEMPLATES.find((template) => template.id === `builtin-${plan}`)?.parts.find(
+        (item) => item.id === part,
+      )?.capabilities;
     expect(functionsFor("humanoid", "left_eye")).toEqual(["sense"]);
     expect(functionsFor("equine", "front_left_hoof")).toEqual(["support", "locomote"]);
     expect(functionsFor("quadruped", "tail")).not.toContain("grasp");
-    expect(functionsFor("cephalopod", "arm_8")).toEqual(expect.arrayContaining(["grasp", "manipulate", "locomote"]));
+    expect(functionsFor("cephalopod", "arm_8")).toEqual(
+      expect.arrayContaining(["grasp", "manipulate", "locomote"]),
+    );
     expect(functionsFor("serpentine", "belly")).toContain("locomote");
     expect(functionsFor("avian", "left_wing")).toEqual(["locomote"]);
     expect(functionsFor("dragon", "horns")).toEqual([]);
@@ -42,22 +53,35 @@ describe("built-in body plan functions", () => {
 
 const anatomy = {
   anatomyTemplates: {
-    alien: { id: "alien", name: "Eight-armed alien", version: 1, parts: [
-      ...Array.from({ length: 8 }, (_, i) => ({ id: `arm_${i + 1}`, label: `Arm ${i + 1}`, capabilities: ["grasp" as const] }))
-    ] }
+    alien: {
+      id: "alien",
+      name: "Eight-armed alien",
+      version: 1,
+      parts: [
+        ...Array.from({ length: 8 }, (_, i) => ({
+          id: `arm_${i + 1}`,
+          label: `Arm ${i + 1}`,
+          capabilities: ["grasp" as const],
+        })),
+      ],
+    },
   },
   characters: {
     alien_a: {
       anatomyTemplateId: "alien",
-      anatomyOverrides: { addedParts: ["tail_1"], removedParts: ["arm_3"] }
-    }
-  }
+      anatomyOverrides: { addedParts: ["tail_1"], removedParts: ["arm_3"] },
+    },
+  },
 } as unknown as Pick<Session, "characters" | "anatomyTemplates">;
 
 describe("anatomical body part validation", () => {
   const relation = (part: string) => ({
-    id: "grip", subject: "alien_a", subjectPart: part,
-    relation: "holding" as const, target: "sword", exclusive: true
+    id: "grip",
+    subject: "alien_a",
+    subjectPart: part,
+    relation: "holding" as const,
+    target: "sword",
+    exclusive: true,
   });
   it("accepts a valid eighth arm", () => {
     expect(validateAnatomicalRelation(anatomy, relation("arm_8"))).toBeUndefined();
@@ -70,7 +94,9 @@ describe("anatomical body part validation", () => {
     expect(validateAnatomicalRelation(anatomy, relation("tail_1"))).toBeUndefined();
   });
   it("keeps older characters without a template compatible", () => {
-    expect(validateAnatomicalRelation({ characters: {}, anatomyTemplates: {} }, relation("arm_99"))).toBeUndefined();
+    expect(
+      validateAnatomicalRelation({ characters: {}, anatomyTemplates: {} }, relation("arm_99")),
+    ).toBeUndefined();
   });
 });
 
@@ -83,26 +109,69 @@ describe("session anatomy pinning", () => {
     const pinned = pinSessionAnatomy(session, [template]);
     expect(pinned.anatomyTemplates?.alien?.parts).toHaveLength(8);
     expect(pinned.anatomyTemplates?.alien).not.toBe(template);
-    expect(validateAnatomicalRelation(pinned, {
-      id: "bad", subject: "alien_a", subjectPart: "arm_9", relation: "holding", target: "sword"
-    })).toContain("arm_9");
+    expect(
+      validateAnatomicalRelation(pinned, {
+        id: "bad",
+        subject: "alien_a",
+        subjectPart: "arm_9",
+        relation: "holding",
+        target: "sword",
+      }),
+    ).toContain("arm_9");
   });
 });
 
 it("rejects a hand when its arm or an ancestor is missing", () => {
-  const template = BUILTIN_ANATOMY_TEMPLATES.find(t => t.id === "builtin-humanoid")!;
+  const template = BUILTIN_ANATOMY_TEMPLATES.find((t) => t.id === "builtin-humanoid")!;
   for (const removed of ["right_arm", "chest"]) {
     const session = {
       anatomyTemplates: { [template.id]: template },
-      characters: { hero: { anatomyTemplateId: template.id, anatomyOverrides: { removedParts: [removed], addedParts: [] } } }
+      characters: {
+        hero: {
+          anatomyTemplateId: template.id,
+          anatomyOverrides: { removedParts: [removed], addedParts: [] },
+        },
+      },
     } as unknown as Session;
-    expect(validateAnatomicalRelation(session, { id: "hold", subject: "hero", subjectPart: "right_hand", relation: "holding", target: "sword" })).toContain("right_hand");
-    if (removed === "right_arm") expect(validateAnatomicalRelation(session, { id: "hold", subject: "hero", subjectPart: "left_hand", relation: "holding", target: "sword" })).toBeUndefined();
+    expect(
+      validateAnatomicalRelation(session, {
+        id: "hold",
+        subject: "hero",
+        subjectPart: "right_hand",
+        relation: "holding",
+        target: "sword",
+      }),
+    ).toContain("right_hand");
+    if (removed === "right_arm")
+      expect(
+        validateAnatomicalRelation(session, {
+          id: "hold",
+          subject: "hero",
+          subjectPart: "left_hand",
+          relation: "holding",
+          target: "sword",
+        }),
+      ).toBeUndefined();
   }
 });
 it("rejects cyclic and dangling attachments while accepting older plans", () => {
   const base = { id: "test", name: "Test", version: 1 };
-  expect(AnatomyTemplateSchema.safeParse({ ...base, parts: [{ id: "a", label: "A" }] }).success).toBe(true);
-  expect(AnatomyTemplateSchema.safeParse({ ...base, parts: [{ id: "a", label: "A", parentId: "missing" }] }).success).toBe(false);
-  expect(AnatomyTemplateSchema.safeParse({ ...base, parts: [{ id: "a", label: "A", parentId: "b" }, { id: "b", label: "B", parentId: "a" }] }).success).toBe(false);
+  expect(
+    AnatomyTemplateSchema.safeParse({ ...base, parts: [{ id: "a", label: "A" }] }).success,
+  ).toBe(true);
+  expect(
+    AnatomyTemplateSchema.safeParse({
+      ...base,
+      parts: [{ id: "a", label: "A", parentId: "missing" }],
+    }).success,
+  ).toBe(false);
+  expect(
+    AnatomyTemplateSchema.safeParse({
+      ...base,
+      parts: [
+        { id: "a", label: "A", parentId: "b" },
+        { id: "b", label: "B", parentId: "a" },
+      ],
+    }).success,
+  ).toBe(false);
 });

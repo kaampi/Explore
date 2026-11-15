@@ -12,13 +12,7 @@ function commitLabel(raw: string, existing: string[]): string | undefined {
   return label;
 }
 
-function AddChip({
-  placeholder,
-  onAdd
-}: {
-  placeholder: string;
-  onAdd: (label: string) => void;
-}) {
+function AddChip({ placeholder, onAdd }: { placeholder: string; onAdd: (label: string) => void }) {
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState("");
 
@@ -32,7 +26,12 @@ function AddChip({
   if (!adding) {
     return (
       <div className="setup-chip">
-        <button type="button" className="setup-chip__pick" aria-label="Add choice" onClick={() => setAdding(true)}>
+        <button
+          type="button"
+          className="setup-chip__pick"
+          aria-label="Add choice"
+          onClick={() => setAdding(true)}
+        >
           +
         </button>
       </div>
@@ -69,7 +68,7 @@ export function PickChips({
   onAdd,
   labelFor,
   addPlaceholder = "Add a choice…",
-  ariaLabel
+  ariaLabel,
 }: {
   choices: string[];
   value?: string | undefined;
@@ -80,9 +79,17 @@ export function PickChips({
   ariaLabel: string;
 }) {
   return (
-    <div className="setup-chips" role="radiogroup" aria-label={ariaLabel} style={{ marginBottom: 0 }}>
+    <div
+      className="setup-chips"
+      role="radiogroup"
+      aria-label={ariaLabel}
+      style={{ marginBottom: 0 }}
+    >
       {choices.filter(Boolean).map((choice, index) => (
-        <div key={`${index}:${choice}`} className={`setup-chip ${value === choice ? "setup-chip--active" : ""}`}>
+        <div
+          key={`${index}:${choice}`}
+          className={`setup-chip ${value === choice ? "setup-chip--active" : ""}`}
+        >
           <button
             type="button"
             className="setup-chip__pick"
@@ -112,7 +119,7 @@ export function EditChips({
   onChange,
   addPlaceholder = "Add a choice…",
   preset,
-  presetLabel
+  presetLabel,
 }: {
   items: string[];
   onChange: (items: string[]) => void;
@@ -122,7 +129,10 @@ export function EditChips({
 }) {
   return (
     <div>
-      <div className="setup-chips" style={{ marginBottom: items.length === 0 && preset?.length ? 6 : 0 }}>
+      <div
+        className="setup-chips"
+        style={{ marginBottom: items.length === 0 && preset?.length ? 6 : 0 }}
+      >
         {items.map((item) => (
           <div key={item} className="setup-chip">
             <span className="setup-chip__pick" style={{ cursor: "default" }}>
@@ -155,4 +165,3 @@ export function EditChips({
     </div>
   );
 }
-

@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
-import { newRulesetTemplate, type LibrarySource, type RulesetTemplate } from "@library/LibrarySchema";
+import {
+  newRulesetTemplate,
+  type LibrarySource,
+  type RulesetTemplate,
+} from "@library/LibrarySchema";
 import { exampleRulesetTemplates, mergeWithExamples } from "@library/exampleTemplates";
 import { withOriginalTimestamps } from "@library/fromForm";
 import { slugifyCharacterId } from "@session/createSession";
@@ -49,7 +53,7 @@ function emptyAttr(): AttrDraft {
     midMeaning: "",
     options: [],
     maxShift: "0",
-    desire: false
+    desire: false,
   };
 }
 
@@ -67,7 +71,7 @@ function attrFromDef(def: AttributeDef): AttrDraft {
     midMeaning: def.midMeaning ?? "",
     options: [...(def.options ?? [])],
     maxShift: String(def.maxShift ?? 0),
-    desire: def.role === "desire"
+    desire: def.role === "desire",
   };
 }
 
@@ -79,9 +83,10 @@ function draftFrom(template: RulesetTemplate): Draft {
   return {
     id: template.id,
     name: template.name,
-    attributes: template.attributes.length > 0 ? template.attributes.map(attrFromDef) : [emptyAttr()],
+    attributes:
+      template.attributes.length > 0 ? template.attributes.map(attrFromDef) : [emptyAttr()],
     source: template.source,
-    createdAt: template.createdAt
+    createdAt: template.createdAt,
   };
 }
 
@@ -111,7 +116,7 @@ function attributesFromDraft(rows: AttrDraft[]): AttributeDef[] {
         lowMeaning: "",
         midMeaning: "",
         options: row.options,
-        maxShift: 0
+        maxShift: 0,
       });
       continue;
     }
@@ -130,7 +135,7 @@ function attributesFromDraft(rows: AttrDraft[]): AttributeDef[] {
       midMeaning: row.midMeaning.trim(),
       options: [],
       maxShift: Number.isFinite(maxShift) ? Math.max(0, Math.min(100, Math.round(maxShift))) : 0,
-      ...(row.desire && !desireTaken ? { role: "desire" as const } : {})
+      ...(row.desire && !desireTaken ? { role: "desire" as const } : {}),
     });
     if (row.desire) desireTaken = true;
   }
@@ -151,7 +156,7 @@ function meaningSaveHint(attributes: AttributeDef[]): string | undefined {
   const bits: string[] = [];
   if (missing.length > 0) {
     bits.push(
-      `No high/low meaning on ${missing.map((attr) => attr.name).join(", ")} — the model will guess from the name.`
+      `No high/low meaning on ${missing.map((attr) => attr.name).join(", ")} — the model will guess from the name.`,
     );
   }
   if (dupes.length > 0) {
@@ -218,10 +223,13 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
         ...(draft.id ? { id: draft.id } : {}),
         name,
         attributes,
-        source: draft.source
+        source: draft.source,
       });
       const previous = library.find((item) => item.id === built.id);
-      const saved = withOriginalTimestamps(built, previous ?? (draft.createdAt ? { createdAt: draft.createdAt } : undefined));
+      const saved = withOriginalTimestamps(
+        built,
+        previous ?? (draft.createdAt ? { createdAt: draft.createdAt } : undefined),
+      );
       await repo.saveRuleset(saved);
       await refresh();
       setSelectedId(saved.id);
@@ -253,7 +261,7 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
         items={items.map((item) => ({
           id: item.id,
           name: item.name,
-          caption: sourceCaption(item.source, savedIds.has(item.id))
+          caption: sourceCaption(item.source, savedIds.has(item.id)),
         }))}
         selectedId={selectedId}
         onSelect={open}
@@ -271,7 +279,9 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
       <section className="studio-sheet studio-sheet--form">
         {!draft && (
           <p className="inspector-empty">
-            A named bundle of attributes. Characters do not own the fields — a campaign picks a set, then fills in values. Write what high and low actually do; that is what the scene follows.
+            A named bundle of attributes. Characters do not own the fields — a campaign picks a set,
+            then fills in values. Write what high and low actually do; that is what the scene
+            follows.
           </p>
         )}
         {draft && (
@@ -289,7 +299,9 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
                 <button
                   type="button"
                   className="setup-text-btn"
-                  onClick={() => setDraft({ ...draft, attributes: [...draft.attributes, emptyAttr()] })}
+                  onClick={() =>
+                    setDraft({ ...draft, attributes: [...draft.attributes, emptyAttr()] })
+                  }
                 >
                   + Add
                 </button>
@@ -298,229 +310,260 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
                 "Name the field, then write high and low. Those sentences are what the model sees — Boldness is not a built-in rule. Mid is optional. Min/max stay on this field (fantasy 1–18, meters 0–100). Move / beat is how far Pass 2 may shift the number (0 = Styrka stays; 15 ≈ a kiss raising Warmth; 3 = a nudge). Closeness signal (at most one) is the field whose live band feeds a kiss/hug when asked. Write for any NPC: {{char}} is their given name, {{they}} / {{them}} / {{their}} / {{themselves}} follow that card's pronoun. Prefer {{char}} as the subject ({{char}} starts…). Do not write She — it will be wrong for a he."
               }
             >
-            {draft.attributes.map((row, index) => (
-              <div className="setup-character" key={row.key}>
-                <div className="setup-character__head">
-                  <span className="setup-character__index">field {index + 1}</span>
-                  {draft.attributes.length > 1 && (
-                    <button
-                      type="button"
-                      className="layer-card__toggle"
-                      onClick={() =>
-                        setDraft({ ...draft, attributes: draft.attributes.filter((item) => item.key !== row.key) })
-                      }
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-                <label className="setup-field">
-                  Name
-                  <input
-                    value={row.name}
-                    onChange={(e) =>
-                      setDraft({
-                        ...draft,
-                        attributes: draft.attributes.map((item) =>
-                          item.key === row.key ? { ...item, name: e.target.value } : item
-                        )
-                      })
-                    }
-                    placeholder="Styrka"
-                  />
-                </label>
-                {row.kind === "text" ? (
+              {draft.attributes.map((row, index) => (
+                <div className="setup-character" key={row.key}>
+                  <div className="setup-character__head">
+                    <span className="setup-character__index">field {index + 1}</span>
+                    {draft.attributes.length > 1 && (
+                      <button
+                        type="button"
+                        className="layer-card__toggle"
+                        onClick={() =>
+                          setDraft({
+                            ...draft,
+                            attributes: draft.attributes.filter((item) => item.key !== row.key),
+                          })
+                        }
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
                   <label className="setup-field">
-                    Meaning
-                    <textarea
-                      value={row.description}
+                    Name
+                    <input
+                      value={row.name}
                       onChange={(e) =>
                         setDraft({
                           ...draft,
                           attributes: draft.attributes.map((item) =>
-                            item.key === row.key ? { ...item, description: e.target.value } : item
-                          )
+                            item.key === row.key ? { ...item, name: e.target.value } : item,
+                          ),
                         })
                       }
-                      placeholder="Honor the live value only. Loyal: …"
+                      placeholder="Styrka"
                     />
                   </label>
-                ) : (
-                  <>
+                  {row.kind === "text" ? (
                     <label className="setup-field">
-                      High meaning
+                      Meaning
                       <textarea
-                        value={row.highMeaning}
+                        value={row.description}
                         onChange={(e) =>
                           setDraft({
                             ...draft,
                             attributes: draft.attributes.map((item) =>
-                              item.key === row.key ? { ...item, highMeaning: e.target.value } : item
-                            )
+                              item.key === row.key
+                                ? { ...item, description: e.target.value }
+                                : item,
+                            ),
                           })
                         }
-                        placeholder="{{char}} starts and stays in contact this beat…"
+                        placeholder="Honor the live value only. Loyal: …"
                       />
                     </label>
-                    <label className="setup-field">
-                      Low meaning
-                      <textarea
-                        value={row.lowMeaning}
-                        onChange={(e) =>
-                          setDraft({
-                            ...draft,
-                            attributes: draft.attributes.map((item) =>
-                              item.key === row.key ? { ...item, lowMeaning: e.target.value } : item
-                            )
-                          })
-                        }
-                        placeholder="{{char}} hangs back, waits for the player to lead…"
-                      />
-                    </label>
-                    <label className="setup-field">
-                      Mid meaning <span className="setup-optional">optional</span>
-                      <textarea
-                        value={row.midMeaning}
-                        onChange={(e) =>
-                          setDraft({
-                            ...draft,
-                            attributes: draft.attributes.map((item) =>
-                              item.key === row.key ? { ...item, midMeaning: e.target.value } : item
-                            )
-                          })
-                        }
-                        placeholder="{{char}} can answer a kiss, but does not take the next step."
-                      />
-                    </label>
-                    {row.description.trim() && !row.highMeaning.trim() && !row.lowMeaning.trim() ? (
-                      <label className="setup-field">
-                        Fallback meaning
-                        <textarea
-                          value={row.description}
-                          onChange={(e) =>
-                            setDraft({
-                              ...draft,
-                              attributes: draft.attributes.map((item) =>
-                                item.key === row.key ? { ...item, description: e.target.value } : item
-                              )
-                            })
-                          }
-                        />
-                      </label>
-                    ) : null}
-                  </>
-                )}
-                <div className="setup-row">
-                  <label className="setup-field">
-                    Kind
-                    <select
-                      value={row.kind}
-                      onChange={(e) =>
-                        setDraft({
-                          ...draft,
-                          attributes: draft.attributes.map((item) =>
-                            item.key === row.key ? { ...item, kind: e.target.value as "number" | "text", desire: false } : item
-                          )
-                        })
-                      }
-                    >
-                      <option value="number">number</option>
-                      <option value="text">text</option>
-                    </select>
-                  </label>
-                  {row.kind === "number" ? (
-                    <div>
-                    <div className="setup-row" style={{ margin: 0, gridTemplateColumns: "1fr 1fr 1fr" }}>
-                      <label className="setup-field">
-                        Min
-                        <input
-                          value={row.min}
-                          onChange={(e) =>
-                            setDraft({
-                              ...draft,
-                              attributes: draft.attributes.map((item) =>
-                                item.key === row.key ? { ...item, min: e.target.value } : item
-                              )
-                            })
-                          }
-                        />
-                      </label>
-                      <label className="setup-field">
-                        Max
-                        <input
-                          value={row.max}
-                          onChange={(e) =>
-                            setDraft({
-                              ...draft,
-                              attributes: draft.attributes.map((item) =>
-                                item.key === row.key ? { ...item, max: e.target.value } : item
-                              )
-                            })
-                          }
-                        />
-                      </label>
-                      <label className="setup-field">
-                        Move / beat <span className="setup-optional">0 = stays</span>
-                        <input
-                          value={row.maxShift}
-                          onChange={(e) =>
-                            setDraft({
-                              ...draft,
-                              attributes: draft.attributes.map((item) =>
-                                item.key === row.key ? { ...item, maxShift: e.target.value } : item
-                              )
-                            })
-                          }
-                          placeholder="0"
-                        />
-                      </label>
-                    </div>
-                    <label
-                      className="setup-check"
-                      title="Warm beat: if they ask for a kiss or hug, narration does it. At most one field per rule-set. Unchecked on every field = trust alone."
-                    >
-                      <input
-                        type="checkbox"
-                        checked={row.desire}
-                        onChange={(e) => {
-                          const on = e.target.checked;
-                          setDraft({
-                            ...draft,
-                            attributes: draft.attributes.map((item) => ({
-                              ...item,
-                              desire: on && item.key === row.key && item.kind === "number"
-                            }))
-                          });
-                        }}
-                      />
-                      Closeness signal
-                    </label>
-                    </div>
                   ) : (
-                    <div className="setup-field">
-                      Choices <span className="setup-optional">Adventure picks</span>
-                      <EditChips
-                        items={row.options}
-                        preset={TRAIT_PRESET_EXAMPLE}
-                        onChange={(options) =>
+                    <>
+                      <label className="setup-field">
+                        High meaning
+                        <textarea
+                          value={row.highMeaning}
+                          onChange={(e) =>
+                            setDraft({
+                              ...draft,
+                              attributes: draft.attributes.map((item) =>
+                                item.key === row.key
+                                  ? { ...item, highMeaning: e.target.value }
+                                  : item,
+                              ),
+                            })
+                          }
+                          placeholder="{{char}} starts and stays in contact this beat…"
+                        />
+                      </label>
+                      <label className="setup-field">
+                        Low meaning
+                        <textarea
+                          value={row.lowMeaning}
+                          onChange={(e) =>
+                            setDraft({
+                              ...draft,
+                              attributes: draft.attributes.map((item) =>
+                                item.key === row.key
+                                  ? { ...item, lowMeaning: e.target.value }
+                                  : item,
+                              ),
+                            })
+                          }
+                          placeholder="{{char}} hangs back, waits for the player to lead…"
+                        />
+                      </label>
+                      <label className="setup-field">
+                        Mid meaning <span className="setup-optional">optional</span>
+                        <textarea
+                          value={row.midMeaning}
+                          onChange={(e) =>
+                            setDraft({
+                              ...draft,
+                              attributes: draft.attributes.map((item) =>
+                                item.key === row.key
+                                  ? { ...item, midMeaning: e.target.value }
+                                  : item,
+                              ),
+                            })
+                          }
+                          placeholder="{{char}} can answer a kiss, but does not take the next step."
+                        />
+                      </label>
+                      {row.description.trim() &&
+                      !row.highMeaning.trim() &&
+                      !row.lowMeaning.trim() ? (
+                        <label className="setup-field">
+                          Fallback meaning
+                          <textarea
+                            value={row.description}
+                            onChange={(e) =>
+                              setDraft({
+                                ...draft,
+                                attributes: draft.attributes.map((item) =>
+                                  item.key === row.key
+                                    ? { ...item, description: e.target.value }
+                                    : item,
+                                ),
+                              })
+                            }
+                          />
+                        </label>
+                      ) : null}
+                    </>
+                  )}
+                  <div className="setup-row">
+                    <label className="setup-field">
+                      Kind
+                      <select
+                        value={row.kind}
+                        onChange={(e) =>
                           setDraft({
                             ...draft,
                             attributes: draft.attributes.map((item) =>
-                              item.key === row.key ? { ...item, options } : item
-                            )
+                              item.key === row.key
+                                ? {
+                                    ...item,
+                                    kind: e.target.value as "number" | "text",
+                                    desire: false,
+                                  }
+                                : item,
+                            ),
                           })
                         }
-                      />
-                    </div>
-                  )}
+                      >
+                        <option value="number">number</option>
+                        <option value="text">text</option>
+                      </select>
+                    </label>
+                    {row.kind === "number" ? (
+                      <div>
+                        <div
+                          className="setup-row"
+                          style={{ margin: 0, gridTemplateColumns: "1fr 1fr 1fr" }}
+                        >
+                          <label className="setup-field">
+                            Min
+                            <input
+                              value={row.min}
+                              onChange={(e) =>
+                                setDraft({
+                                  ...draft,
+                                  attributes: draft.attributes.map((item) =>
+                                    item.key === row.key ? { ...item, min: e.target.value } : item,
+                                  ),
+                                })
+                              }
+                            />
+                          </label>
+                          <label className="setup-field">
+                            Max
+                            <input
+                              value={row.max}
+                              onChange={(e) =>
+                                setDraft({
+                                  ...draft,
+                                  attributes: draft.attributes.map((item) =>
+                                    item.key === row.key ? { ...item, max: e.target.value } : item,
+                                  ),
+                                })
+                              }
+                            />
+                          </label>
+                          <label className="setup-field">
+                            Move / beat <span className="setup-optional">0 = stays</span>
+                            <input
+                              value={row.maxShift}
+                              onChange={(e) =>
+                                setDraft({
+                                  ...draft,
+                                  attributes: draft.attributes.map((item) =>
+                                    item.key === row.key
+                                      ? { ...item, maxShift: e.target.value }
+                                      : item,
+                                  ),
+                                })
+                              }
+                              placeholder="0"
+                            />
+                          </label>
+                        </div>
+                        <label
+                          className="setup-check"
+                          title="Warm beat: if they ask for a kiss or hug, narration does it. At most one field per rule-set. Unchecked on every field = trust alone."
+                        >
+                          <input
+                            type="checkbox"
+                            checked={row.desire}
+                            onChange={(e) => {
+                              const on = e.target.checked;
+                              setDraft({
+                                ...draft,
+                                attributes: draft.attributes.map((item) => ({
+                                  ...item,
+                                  desire: on && item.key === row.key && item.kind === "number",
+                                })),
+                              });
+                            }}
+                          />
+                          Closeness signal
+                        </label>
+                      </div>
+                    ) : (
+                      <div className="setup-field">
+                        Choices <span className="setup-optional">Adventure picks</span>
+                        <EditChips
+                          items={row.options}
+                          preset={TRAIT_PRESET_EXAMPLE}
+                          onChange={(options) =>
+                            setDraft({
+                              ...draft,
+                              attributes: draft.attributes.map((item) =>
+                                item.key === row.key ? { ...item, options } : item,
+                              ),
+                            })
+                          }
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
             </FormSection>
             {notice && <p className="setup-notice">{notice}</p>}
             {error && <p className="setup-error">{error}</p>}
             <div className="studio-sheet__actions">
-              <button type="button" className="setup-start" disabled={busy} onClick={() => void save()}>
+              <button
+                type="button"
+                className="setup-start"
+                disabled={busy}
+                onClick={() => void save()}
+              >
                 Save
               </button>
               {saved && (

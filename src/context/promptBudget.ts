@@ -8,7 +8,7 @@ import {
   assembleContext,
   buildPass1WritingInstructions,
   metersFromSession,
-  parseConversationTurns
+  parseConversationTurns,
 } from "./ContextEngine";
 import { estimateTokens } from "./tokenEstimate";
 import type { ContextBlockSource } from "./ContextBlock";
@@ -38,10 +38,19 @@ const SOURCE_LABEL: Record<ContextBlockSource, string> = {
   state_summary: "state",
   active_layer: "layers",
   memory: "memory",
-  conversation: "chat"
+  conversation: "chat",
 };
 
-const PART_ORDER = ["rules", "narrator", "story", "state", "layers", "memory", "pass 1", "chat"] as const;
+const PART_ORDER = [
+  "rules",
+  "narrator",
+  "story",
+  "state",
+  "layers",
+  "memory",
+  "pass 1",
+  "chat",
+] as const;
 
 /**
  * Live size of the prompt that would go to the model this turn, plus the
@@ -66,7 +75,7 @@ export function inspectPromptBudget(session: Session): PromptBudgetSnapshot {
     ? {
         ...intro,
         title: maskUnheardGivenNames(session, intro.title),
-        body: maskUnheardGivenNames(session, intro.body)
+        body: maskUnheardGivenNames(session, intro.body),
       }
     : undefined;
   const writing = focusId
@@ -85,11 +94,13 @@ export function inspectPromptBudget(session: Session): PromptBudgetSnapshot {
         ...(introForModel ? { hereIntro: introForModel } : {}),
         ...(character?.clothing ? { clothing: character.clothing.value } : {}),
         ...(character?.holding ? { holding: character.holding.value } : {}),
-        ...(namedRoomsInCanon(session).length > 0 ? { namedRooms: namedRoomsInCanon(session) } : {}),
+        ...(namedRoomsInCanon(session).length > 0
+          ? { namedRooms: namedRoomsInCanon(session) }
+          : {}),
         ...(venueBuildingName(session.scene?.location)
           ? { venueName: venueBuildingName(session.scene?.location) }
           : {}),
-        meters: metersFromSession(session, focusId)
+        meters: metersFromSession(session, focusId),
       })
     : "";
   const writingTokens = estimateTokens(writing);
@@ -97,7 +108,9 @@ export function inspectPromptBudget(session: Session): PromptBudgetSnapshot {
 
   const { turns } = parseConversationTurns(session, undefined);
   const kept = new Set(
-    assembled.includedBlocks.filter((block) => block.source === "conversation").map((block) => block.id)
+    assembled.includedBlocks
+      .filter((block) => block.source === "conversation")
+      .map((block) => block.id),
   );
   const chatTokens = turns
     .filter((turn) => kept.has(`conversation-${turn.turn}`))
@@ -107,7 +120,7 @@ export function inspectPromptBudget(session: Session): PromptBudgetSnapshot {
   const parts = PART_ORDER.filter((id) => (bySource.get(id) ?? 0) > 0).map((id) => ({
     id,
     label: id,
-    tokens: bySource.get(id) ?? 0
+    tokens: bySource.get(id) ?? 0,
   }));
 
   const promptTokens = parts.reduce((sum, part) => sum + part.tokens, 0);
@@ -120,6 +133,6 @@ export function inspectPromptBudget(session: Session): PromptBudgetSnapshot {
     overTarget: promptTokens > DEFAULT_BUDGET.targetTokens,
     droppedBlocks: assembled.droppedBlocks.length,
     injectionFindings: assembled.injectionFindings.length,
-    parts
+    parts,
   };
 }

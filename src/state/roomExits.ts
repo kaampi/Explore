@@ -5,7 +5,7 @@ import {
   roomIsReachable,
   sideRoomStage,
   venueBuildingName,
-  venueFloorToken
+  venueFloorToken,
 } from "./playerDestination";
 import { foldPlace } from "./roomMatch";
 import { roomGateAllowsEntry, roomIsVisible } from "./roomGate";
@@ -29,7 +29,7 @@ export function mapExits(session: Session): MapExit[] {
       label: name,
       dest: venueFloorToken(session),
       enabled: true,
-      kind: "landmark"
+      kind: "landmark",
     });
   }
   for (const room of session.scene?.rooms ?? []) {
@@ -43,7 +43,7 @@ export function mapExits(session: Session): MapExit[] {
       label,
       dest: label,
       enabled: roomGateAllowsEntry(session, room),
-      kind: "room"
+      kind: "room",
     });
   }
   return out;

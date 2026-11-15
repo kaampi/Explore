@@ -1,11 +1,8 @@
-import {
-  REPLY_LENGTH_PRESETS,
-  effectiveMaxReplyTokens
-} from "@state/StateSchema";
+import { REPLY_LENGTH_PRESETS, effectiveMaxReplyTokens } from "@state/StateSchema";
 
 export function ReplyLengthPicker({
   tokens,
-  onChange
+  onChange,
 }: {
   tokens: number | undefined;
   onChange: (tokens: number) => void;
@@ -19,7 +16,7 @@ export function ReplyLengthPicker({
   return (
     <label
       className="chip"
-        title="Target length (~400–500 characters at beat). The model should finish the beat; the token stop has headroom so sentences are not clipped. Pass 2 is uncapped."
+      title="Target length (~400–500 characters at beat). The model should finish the beat; the token stop has headroom so sentences are not clipped. Pass 2 is uncapped."
     >
       reply:
       <select

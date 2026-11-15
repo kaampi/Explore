@@ -2,7 +2,11 @@ import { useEffect, useState } from "react";
 import type { Faction } from "@library/factions";
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 
-export function FactionField({ repo, value = [], onChange }: {
+export function FactionField({
+  repo,
+  value = [],
+  onChange,
+}: {
   repo: IndexedDBRepository;
   value?: string[] | undefined;
   onChange: (ids: string[]) => void;
@@ -21,32 +25,43 @@ export function FactionField({ repo, value = [], onChange }: {
       }
     }
     void load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [repo]);
 
   if (failed) return <p role="status">Could not load factions.</p>;
   if (!factions) return null;
-  const missing = value.filter(id => !factions.some(faction => faction.id === id));
+  const missing = value.filter((id) => !factions.some((faction) => faction.id === id));
 
   return (
     <fieldset className="faction-membership">
       <legend>Factions</legend>
       {!factions.length && <p>Create factions in Library → Factions.</p>}
-      {factions.map(faction => (
+      {factions.map((faction) => (
         <label key={faction.id}>
           <input
             type="checkbox"
             checked={value.includes(faction.id)}
-            onChange={event => onChange(event.target.checked
-              ? [...value, faction.id]
-              : value.filter(id => id !== faction.id))}
-          /> {faction.name}
+            onChange={(event) =>
+              onChange(
+                event.target.checked
+                  ? [...value, faction.id]
+                  : value.filter((id) => id !== faction.id),
+              )
+            }
+          />{" "}
+          {faction.name}
         </label>
       ))}
-      {missing.map(id => (
+      {missing.map((id) => (
         <label key={id}>
-          <input type="checkbox" checked onChange={() => onChange(value.filter(item => item !== id))} />
-          {" "}Unavailable faction ({id})
+          <input
+            type="checkbox"
+            checked
+            onChange={() => onChange(value.filter((item) => item !== id))}
+          />{" "}
+          Unavailable faction ({id})
         </label>
       ))}
     </fieldset>

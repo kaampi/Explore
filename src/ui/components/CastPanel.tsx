@@ -16,14 +16,14 @@ const PLAYER_LAYER_LABEL: Record<LayerType, string> = {
   core: "personality",
   relationship: "relationship",
   environment: "place",
-  state_trigger: "state"
+  state_trigger: "state",
 };
 
 function displayName(
   id: string,
   storedName: string | undefined,
   familyName?: string,
-  middleName?: string
+  middleName?: string,
 ): string {
   if (storedName !== undefined && storedName.trim() !== "") {
     return displayCharacterName(id, storedName, familyName, middleName);
@@ -36,7 +36,8 @@ function isPendingAi(layer: Layer): boolean {
 }
 
 function LockMark({ lock }: { lock: string }) {
-  if (lock === "player_locked") return <Dot kind="locked" title="Locked by you — the AI cannot change this" />;
+  if (lock === "player_locked")
+    return <Dot kind="locked" title="Locked by you — the AI cannot change this" />;
   if (lock === "system_locked") return <Dot kind="locked" title="Locked by the system" />;
   return null;
 }
@@ -46,7 +47,7 @@ function Fact({
   value,
   lock,
   note,
-  onUnlock
+  onUnlock,
 }: {
   label: string;
   value: string;
@@ -95,7 +96,7 @@ function TraitCard({
   onToggle,
   onRemove,
   onKeywords,
-  pending
+  pending,
 }: {
   layer: Layer;
   session: Session;
@@ -126,7 +127,11 @@ function TraitCard({
   return (
     <div
       className="layer-card"
-      style={pending ? { borderColor: "color-mix(in srgb, var(--accent-ai) 45%, var(--border))" } : undefined}
+      style={
+        pending
+          ? { borderColor: "color-mix(in srgb, var(--accent-ai) 45%, var(--border))" }
+          : undefined
+      }
     >
       <div className="layer-card__head">
         <Dot
@@ -173,7 +178,9 @@ function TraitCard({
         <input
           className="layer-card__keywords"
           placeholder={
-            layer.once ? "Already in play (brooch, …)" : "Wake on words (empty = always in the prompt)"
+            layer.once
+              ? "Already in play (brooch, …)"
+              : "Wake on words (empty = always in the prompt)"
           }
           value={keywordDraft}
           onChange={(e) => setKeywordDraft(e.target.value)}
@@ -190,14 +197,22 @@ function TraitCard({
         <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
           <button
             className="layer-card__toggle"
-            style={{ flex: 1, border: "1px solid var(--accent-active)", color: "var(--accent-active)" }}
+            style={{
+              flex: 1,
+              border: "1px solid var(--accent-active)",
+              color: "var(--accent-active)",
+            }}
             onClick={() => onToggle(layer.id, true)}
           >
             Approve
           </button>
           <button
             className="layer-card__toggle"
-            style={{ flex: 1, border: "1px solid var(--accent-danger)", color: "var(--accent-danger)" }}
+            style={{
+              flex: 1,
+              border: "1px solid var(--accent-danger)",
+              color: "var(--accent-danger)",
+            }}
             onClick={() => onRemove(layer.id)}
           >
             Reject
@@ -212,10 +227,14 @@ function AddTraitForm({
   types,
   onAdd,
   onCancel,
-  placeholder
+  placeholder,
 }: {
   types: Array<"core" | "relationship" | "environment">;
-  onAdd: (type: "core" | "relationship" | "environment", content: string, keywords: string[]) => void;
+  onAdd: (
+    type: "core" | "relationship" | "environment",
+    content: string,
+    keywords: string[],
+  ) => void;
   onCancel: () => void;
   placeholder: string;
 }) {
@@ -234,7 +253,11 @@ function AddTraitForm({
           ))}
         </select>
       )}
-      <textarea placeholder={placeholder} value={content} onChange={(e) => setContent(e.target.value)} />
+      <textarea
+        placeholder={placeholder}
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+      />
       <input
         className="layer-card__keywords"
         placeholder="Wake on words (optional)"
@@ -249,7 +272,12 @@ function AddTraitForm({
       >
         Add
       </button>
-      <button type="button" className="layer-card__toggle" style={{ width: "100%", marginTop: 6 }} onClick={onCancel}>
+      <button
+        type="button"
+        className="layer-card__toggle"
+        style={{ width: "100%", marginTop: 6 }}
+        onClick={onCancel}
+      >
         Cancel
       </button>
     </div>
@@ -258,7 +286,7 @@ function AddTraitForm({
 
 function AddOnceBeatForm({
   onAdd,
-  onCancel
+  onCancel,
 }: {
   onAdd: (content: string, keywords: string[]) => void;
   onCancel: () => void;
@@ -287,7 +315,12 @@ function AddOnceBeatForm({
       >
         Add once beat
       </button>
-      <button type="button" className="layer-card__toggle" style={{ width: "100%", marginTop: 6 }} onClick={onCancel}>
+      <button
+        type="button"
+        className="layer-card__toggle"
+        style={{ width: "100%", marginTop: 6 }}
+        onClick={onCancel}
+      >
         Cancel
       </button>
     </div>
@@ -302,7 +335,7 @@ function CharacterSheet({
   addPlayerLayer,
   setLayerKeywords,
   compactLayers,
-  compacting
+  compacting,
 }: {
   characterId: string;
   session: Session;
@@ -316,7 +349,9 @@ function CharacterSheet({
     trigger?: string;
   }) => void;
   setLayerKeywords: (id: string, keywords: string[]) => void;
-  compactLayers: (scope: "core" | "relationship" | "environment") => Promise<{ ok: boolean; reason?: string }>;
+  compactLayers: (
+    scope: "core" | "relationship" | "environment",
+  ) => Promise<{ ok: boolean; reason?: string }>;
   compacting: boolean;
 }) {
   const { setFieldLock } = useEngine();
@@ -349,9 +384,15 @@ function CharacterSheet({
       </button>
       <div className="sheet-head">
         {portraitSrc(character.portraitDataUrl) ? (
-          <img className="sheet-head__portrait" src={portraitSrc(character.portraitDataUrl)} alt="" />
+          <img
+            className="sheet-head__portrait"
+            src={portraitSrc(character.portraitDataUrl)}
+            alt=""
+          />
         ) : null}
-        <h2 className="sheet-name">{displayName(characterId, character.name, character.familyName, character.middleName)}</h2>
+        <h2 className="sheet-name">
+          {displayName(characterId, character.name, character.familyName, character.middleName)}
+        </h2>
       </div>
 
       {character.appearance?.trim() ? (
@@ -376,7 +417,9 @@ function CharacterSheet({
           onUnlock={() => setFieldLock(`characters.${characterId}.mood`, "unlocked")}
         />
         {character.pronoun && <Fact label="pronoun" value={character.pronoun} />}
-        {character.pose && <Fact label="pose" value={String(character.pose.value)} lock={character.pose.lock} />}
+        {character.pose && (
+          <Fact label="pose" value={String(character.pose.value)} lock={character.pose.lock} />
+        )}
         {character.clothing?.value.trim() ? (
           <Fact
             label="wearing"
@@ -393,8 +436,18 @@ function CharacterSheet({
             onUnlock={() => setFieldLock(`characters.${characterId}.holding`, "unlocked")}
           />
         ) : null}
-        <Fact label="position" value={String(character.position.value)} lock={character.position.lock} />
-        {character.energy && <Fact label="energy" value={String(character.energy.value)} lock={character.energy.lock} />}
+        <Fact
+          label="position"
+          value={String(character.position.value)}
+          lock={character.position.lock}
+        />
+        {character.energy && (
+          <Fact
+            label="energy"
+            value={String(character.energy.value)}
+            lock={character.energy.lock}
+          />
+        )}
       </section>
 
       {character.stats && Object.keys(character.stats).length > 0 && (
@@ -403,21 +456,21 @@ function CharacterSheet({
           {Object.entries(character.stats).map(([statId, field]) => {
             const def = session.ruleset?.attributes.find((item) => item.id === statId);
             return (
-            <Fact
-              key={statId}
-              label={def?.name ?? statId}
-              value={String(field.value)}
-              lock={field.lock}
-              note={
-                def
-                  ? liveTraitNote(
-                      def,
-                      field.value,
-                      traitVoice({ char: character.name, pronoun: character.pronoun })
-                    )
-                  : undefined
-              }
-            />
+              <Fact
+                key={statId}
+                label={def?.name ?? statId}
+                value={String(field.value)}
+                lock={field.lock}
+                note={
+                  def
+                    ? liveTraitNote(
+                        def,
+                        field.value,
+                        traitVoice({ char: character.name, pronoun: character.pronoun }),
+                      )
+                    : undefined
+                }
+              />
             );
           })}
         </section>
@@ -448,7 +501,13 @@ function CharacterSheet({
         </div>
         {core.length === 0 && <p className="inspector-empty">No personality notes yet.</p>}
         {core.map((layer) => (
-          <TraitCard key={layer.id} layer={layer} session={session} onToggle={toggleLayer} onKeywords={setLayerKeywords} />
+          <TraitCard
+            key={layer.id}
+            layer={layer}
+            session={session}
+            onToggle={toggleLayer}
+            onKeywords={setLayerKeywords}
+          />
         ))}
       </section>
 
@@ -468,7 +527,13 @@ function CharacterSheet({
         </div>
         {relating.length === 0 && <p className="inspector-empty">No relationship notes yet.</p>}
         {relating.map((layer) => (
-          <TraitCard key={layer.id} layer={layer} session={session} onToggle={toggleLayer} onKeywords={setLayerKeywords} />
+          <TraitCard
+            key={layer.id}
+            layer={layer}
+            session={session}
+            onToggle={toggleLayer}
+            onKeywords={setLayerKeywords}
+          />
         ))}
       </section>
 
@@ -476,7 +541,13 @@ function CharacterSheet({
         <p className="panel-heading">States</p>
         {states.length === 0 && <p className="inspector-empty">No temporary states.</p>}
         {states.map((layer) => (
-          <TraitCard key={layer.id} layer={layer} session={session} onToggle={toggleLayer} onKeywords={setLayerKeywords} />
+          <TraitCard
+            key={layer.id}
+            layer={layer}
+            session={session}
+            onToggle={toggleLayer}
+            onKeywords={setLayerKeywords}
+          />
         ))}
       </section>
 
@@ -496,7 +567,8 @@ function CharacterSheet({
           style={{ width: "100%", border: "1px dashed var(--border)", padding: "8px 0" }}
           onClick={() => setShowForm(true)}
         >
-          + Add to {displayName(characterId, character.name, character.familyName, character.middleName)}
+          + Add to{" "}
+          {displayName(characterId, character.name, character.familyName, character.middleName)}
         </button>
       )}
     </div>
@@ -504,8 +576,17 @@ function CharacterSheet({
 }
 
 export function CastPanel() {
-  const { useSession, toggleLayer, addPlayerLayer, setLayerKeywords, removeLayer, compactLayers, compacting, setHandoff, setOutgoingHandoff } =
-    useEngine();
+  const {
+    useSession,
+    toggleLayer,
+    addPlayerLayer,
+    setLayerKeywords,
+    removeLayer,
+    compactLayers,
+    compacting,
+    setHandoff,
+    setOutgoingHandoff,
+  } = useEngine();
   const session = useSession();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showPlaceForm, setShowPlaceForm] = useState(false);
@@ -519,7 +600,8 @@ export function CastPanel() {
 
   const pendingReview = session.layers.filter(isPendingAi);
   const placeLayers = session.layers.filter(
-    (layer) => !isPendingAi(layer) && !layer.once && displayLayerType(layer, characterIds) === "environment"
+    (layer) =>
+      !isPendingAi(layer) && !layer.once && displayLayerType(layer, characterIds) === "environment",
   );
   const onceBeats = session.layers.filter((layer) => !isPendingAi(layer) && layer.once);
   const env = session.scene?.environment;
@@ -533,7 +615,7 @@ export function CastPanel() {
     : [
         env?.lighting,
         env?.noise,
-        env?.music === true ? "music" : env?.music === false ? "no music" : undefined
+        env?.music === true ? "music" : env?.music === false ? "no music" : undefined,
       ].filter((bit): bit is string => Boolean(bit));
 
   return (
@@ -591,9 +673,14 @@ export function CastPanel() {
             </>
           ) : null}
 
-          {session.player?.name?.trim() || session.player?.appearance?.trim() || session.player?.portraitDataUrl ? (
+          {session.player?.name?.trim() ||
+          session.player?.appearance?.trim() ||
+          session.player?.portraitDataUrl ? (
             <>
-              <p className="panel-heading" style={{ marginTop: session.campaignIntro?.trim() ? 22 : undefined }}>
+              <p
+                className="panel-heading"
+                style={{ marginTop: session.campaignIntro?.trim() ? 22 : undefined }}
+              >
                 You
               </p>
               <div className="place-card">
@@ -624,7 +711,7 @@ export function CastPanel() {
                     session.player?.appearance?.trim() ||
                     session.player?.portraitDataUrl
                       ? 22
-                      : undefined
+                      : undefined,
                 }}
               >
                 Why you are here
@@ -642,7 +729,8 @@ export function CastPanel() {
                 For the next scene
               </p>
               <p className="form-section__lede">
-                Chat will not come with. Write the next agreement here before you leave. Empty = your last line is the seed.
+                Chat will not come with. Write the next agreement here before you leave. Empty =
+                your last line is the seed.
               </p>
               <textarea
                 className="setup-field__story"
@@ -665,11 +753,16 @@ export function CastPanel() {
 
           {session.story?.premise.trim() ? (
             <>
-              <p className="panel-heading" style={session.voice?.instruction.trim() ? { marginTop: 22 } : undefined}>
+              <p
+                className="panel-heading"
+                style={session.voice?.instruction.trim() ? { marginTop: 22 } : undefined}
+              >
                 Ground story
               </p>
               <div className="place-card">
-                <div className="place-card__name">{session.story.title.trim() || "Ground story"}</div>
+                <div className="place-card__name">
+                  {session.story.title.trim() || "Ground story"}
+                </div>
                 <div className="story-card__body">{session.story.premise}</div>
               </div>
             </>
@@ -677,7 +770,11 @@ export function CastPanel() {
 
           <p
             className="panel-heading"
-            style={session.story?.premise.trim() || session.voice?.instruction.trim() ? { marginTop: 22 } : undefined}
+            style={
+              session.story?.premise.trim() || session.voice?.instruction.trim()
+                ? { marginTop: 22 }
+                : undefined
+            }
           >
             Characters
           </p>
@@ -689,7 +786,7 @@ export function CastPanel() {
               String(character.mood.value),
               character.clothing?.value.trim() || null,
               character.holding?.value.trim() ? `holds ${character.holding.value.trim()}` : null,
-              character.pose ? String(character.pose.value) : null
+              character.pose ? String(character.pose.value) : null,
             ]
               .filter(Boolean)
               .join(" · ");
@@ -701,7 +798,9 @@ export function CastPanel() {
                 onClick={() => setSelectedId(id)}
               >
                 {portrait ? <img className="cast-row__portrait" src={portrait} alt="" /> : null}
-                <span className="cast-row__name">{displayName(id, character.name, character.familyName, character.middleName)}</span>
+                <span className="cast-row__name">
+                  {displayName(id, character.name, character.familyName, character.middleName)}
+                </span>
                 <span className="cast-row__meta">{summary}</span>
                 <span className="cast-row__chevron" aria-hidden="true">
                   →
@@ -724,9 +823,14 @@ export function CastPanel() {
             )}
           </div>
           <div className={backdrop.thumbDataUrl ? "place-card place-card--thumb" : "place-card"}>
-          {backdrop.thumbDataUrl ? (
-            <img className="place-card__thumb" key={here ?? "venue"} src={backdrop.thumbDataUrl} alt="" />
-          ) : null}
+            {backdrop.thumbDataUrl ? (
+              <img
+                className="place-card__thumb"
+                key={here ?? "venue"}
+                src={backdrop.thumbDataUrl}
+                alt=""
+              />
+            ) : null}
             <div>
               <div className="place-card__name">{here ?? "Unknown place"}</div>
               {staged && venue ? (
@@ -752,10 +856,22 @@ export function CastPanel() {
             </div>
           )}
           {placeLayers.map((layer) => (
-            <TraitCard key={layer.id} layer={layer} session={session} onToggle={toggleLayer} onKeywords={setLayerKeywords} />
+            <TraitCard
+              key={layer.id}
+              layer={layer}
+              session={session}
+              onToggle={toggleLayer}
+              onKeywords={setLayerKeywords}
+            />
           ))}
           {onceBeats.map((layer) => (
-            <TraitCard key={layer.id} layer={layer} session={session} onToggle={toggleLayer} onKeywords={setLayerKeywords} />
+            <TraitCard
+              key={layer.id}
+              layer={layer}
+              session={session}
+              onToggle={toggleLayer}
+              onKeywords={setLayerKeywords}
+            />
           ))}
           {showOnceForm ? (
             <AddOnceBeatForm
@@ -765,7 +881,7 @@ export function CastPanel() {
                   content,
                   keywords,
                   once: true,
-                  trigger: "return_to_bar"
+                  trigger: "return_to_bar",
                 });
                 setShowOnceForm(false);
               }}

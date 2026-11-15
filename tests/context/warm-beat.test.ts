@@ -12,8 +12,8 @@ function makeSession(overrides: Partial<Session> = {}): Session {
     characters: {
       emma: {
         position: { value: "bar", lock: "unlocked" },
-        mood: { value: "reserved", lock: "unlocked" }
-      }
+        mood: { value: "reserved", lock: "unlocked" },
+      },
     },
     scene: { location: "downtown bar", environment: { lighting: "dim" } },
     relationships: {},
@@ -27,7 +27,7 @@ function makeSession(overrides: Partial<Session> = {}): Session {
     partyIds: [],
     partyHoldIds: [],
     partyPendingIds: [],
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -35,9 +35,9 @@ describe("isWarmBeat", () => {
   it("gates on trust alone when no desire field is marked", () => {
     expect(isWarmBeat({ trust: 89 })).toBe(true);
     expect(isWarmBeat({ trust: 40 })).toBe(false);
-    expect(isWarmBeat({ trust: 89, stats: [{ id: "boldness", label: "Boldness", value: 18 }] })).toBe(
-      true
-    );
+    expect(
+      isWarmBeat({ trust: 89, stats: [{ id: "boldness", label: "Boldness", value: 18 }] }),
+    ).toBe(true);
   });
 
   it("uses the marked field's band, not a raw 0–100 threshold", () => {
@@ -57,15 +57,15 @@ describe("metersFromSession desire band", () => {
         emma: {
           position: { value: "bar", lock: "unlocked" },
           mood: { value: "reserved", lock: "unlocked" },
-          stats: { desire: { value: 100, lock: "unlocked" } }
-        }
+          stats: { desire: { value: 100, lock: "unlocked" } },
+        },
       },
       relationships: {
         emma: {
           trust: { value: 89, lock: "unlocked" },
           familiarity: { value: 79, lock: "unlocked" },
-          tension: { value: 5, lock: "unlocked" }
-        }
+          tension: { value: 5, lock: "unlocked" },
+        },
       },
       ruleset: {
         name: "Närhet",
@@ -82,10 +82,10 @@ describe("metersFromSession desire band", () => {
             midMeaning: "",
             options: [],
             maxShift: 15,
-            role: "desire"
-          }
-        ]
-      }
+            role: "desire",
+          },
+        ],
+      },
     });
     expect(metersFromSession(session, "emma").desireBand).toBe("high");
     expect(isWarmBeat(metersFromSession(session, "emma"))).toBe(true);
@@ -97,15 +97,15 @@ describe("metersFromSession desire band", () => {
         emma: {
           position: { value: "bar", lock: "unlocked" },
           mood: { value: "reserved", lock: "unlocked" },
-          stats: { passion: { value: 14, lock: "unlocked" } }
-        }
+          stats: { passion: { value: 14, lock: "unlocked" } },
+        },
       },
       relationships: {
         emma: {
           trust: { value: 55, lock: "unlocked" },
           familiarity: { value: 20, lock: "unlocked" },
-          tension: { value: 5, lock: "unlocked" }
-        }
+          tension: { value: 5, lock: "unlocked" },
+        },
       },
       ruleset: {
         name: "Fantasy",
@@ -122,17 +122,19 @@ describe("metersFromSession desire band", () => {
             midMeaning: "",
             options: [],
             maxShift: 1,
-            role: "desire"
-          }
-        ]
-      }
+            role: "desire",
+          },
+        ],
+      },
     });
     const meters = metersFromSession(session, "emma");
     expect(meters.desireBand).toBe("high");
     expect(isWarmBeat(meters)).toBe(true);
-    expect(assembleContext(session).includedBlocks.some((block) => block.id === "closeness-this-beat-emma")).toBe(
-      true
-    );
+    expect(
+      assembleContext(session).includedBlocks.some(
+        (block) => block.id === "closeness-this-beat-emma",
+      ),
+    ).toBe(true);
   });
 
   it("does not use an unmarked 1–18 high as desire", () => {
@@ -141,15 +143,15 @@ describe("metersFromSession desire band", () => {
         emma: {
           position: { value: "bar", lock: "unlocked" },
           mood: { value: "reserved", lock: "unlocked" },
-          stats: { boldness: { value: 18, lock: "unlocked" } }
-        }
+          stats: { boldness: { value: 18, lock: "unlocked" } },
+        },
       },
       relationships: {
         emma: {
           trust: { value: 40, lock: "unlocked" },
           familiarity: { value: 10, lock: "unlocked" },
-          tension: { value: 5, lock: "unlocked" }
-        }
+          tension: { value: 5, lock: "unlocked" },
+        },
       },
       ruleset: {
         name: "Fantasy",
@@ -165,14 +167,13 @@ describe("metersFromSession desire band", () => {
             lowMeaning: "",
             midMeaning: "",
             options: [],
-            maxShift: 0
-          }
-        ]
-      }
+            maxShift: 0,
+          },
+        ],
+      },
     });
     const meters = metersFromSession(session, "emma");
     expect(meters.desireBand).toBeUndefined();
     expect(isWarmBeat(meters)).toBe(false);
   });
 });
-

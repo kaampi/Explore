@@ -11,5 +11,5 @@ createRoot(container).render(
     <StudioErrorBoundary fallbackTitle="The app hit an error. Try again, or tell Mats what you clicked.">
       <App />
     </StudioErrorBoundary>
-  </React.StrictMode>
+  </React.StrictMode>,
 );

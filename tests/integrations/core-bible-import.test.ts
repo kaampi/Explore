@@ -6,12 +6,26 @@ import { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 import { newCharacterTemplate } from "@library/LibrarySchema";
 
 const source = { workspaceId: "shared-workspace", projectId: "book-one", revision: 3 };
-const entity = CoreBibleSchema.parse([{ kind: "characters", label: "Characters", entities: [{
-  entity_ref: "emma", name: "Emma", pronoun: "she/her", approximateAge: 28,
-  looks: "Dark coat", personality: "Curious", referenceImages: ["data:image/png;base64,AA=="],
-  facts: [{ predicate: "core.identity", label: "Identity", value: "Bartender" }],
-  brainstorm: "Never copy this", hidden_from_ai: true,
-}] }])[0]!.entities[0]!;
+const entity = CoreBibleSchema.parse([
+  {
+    kind: "characters",
+    label: "Characters",
+    entities: [
+      {
+        entity_ref: "emma",
+        name: "Emma",
+        pronoun: "she/her",
+        approximateAge: 28,
+        looks: "Dark coat",
+        personality: "Curious",
+        referenceImages: ["data:image/png;base64,AA=="],
+        facts: [{ predicate: "core.identity", label: "Identity", value: "Bartender" }],
+        brainstorm: "Never copy this",
+        hidden_from_ai: true,
+      },
+    ],
+  },
+])[0]!.entities[0]!;
 
 describe("copying a shared kaampi Write character", () => {
   it("creates a separate kaampi Explore card with approved facts and provenance without replacing a local namesake", async () => {
@@ -25,7 +39,14 @@ describe("copying a shared kaampi Write character", () => {
     expect(card.appearance).toBe("Dark coat");
     expect(card.pronoun).toBe("she/her");
     expect(card.approximateAge).toBe(28);
-    expect(card.lore).toEqual([{ id: "core-fact-core.identity", title: "Identity", content: "Emma: Identity: Bartender", keywords: [] }]);
+    expect(card.lore).toEqual([
+      {
+        id: "core-fact-core.identity",
+        title: "Identity",
+        content: "Emma: Identity: Bartender",
+        keywords: [],
+      },
+    ]);
     expect(JSON.stringify(card)).not.toContain("Never copy this");
     await repo.saveCharacter(card);
     expect((await repo.loadCharacter(original.id)).personality).toBe("Local version");
@@ -34,7 +55,15 @@ describe("copying a shared kaampi Write character", () => {
   });
 
   it("omits unsupported portrait and profile fields instead of importing invalid data", () => {
-    const card = copyCoreCharacter({ ...entity, pronoun: "x".repeat(40), approximateAge: 1000, referenceImages: ["https://example.test/portrait.png"] }, source);
+    const card = copyCoreCharacter(
+      {
+        ...entity,
+        pronoun: "x".repeat(40),
+        approximateAge: 1000,
+        referenceImages: ["https://example.test/portrait.png"],
+      },
+      source,
+    );
     expect(card.pronoun).toBeUndefined();
     expect(card.approximateAge).toBeUndefined();
     expect(card.portraitDataUrl).toBeUndefined();

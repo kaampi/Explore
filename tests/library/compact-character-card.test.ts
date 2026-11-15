@@ -3,7 +3,7 @@ import {
   compactCharacterMessages,
   extractCompactSource,
   parseCompactCardJson,
-  sanitizeCompactFields
+  sanitizeCompactFields,
 } from "@library/compactCharacterCard";
 
 describe("compactCharacterCard", () => {
@@ -18,7 +18,9 @@ describe("compactCharacterCard", () => {
 
   it("rejects empty or non-JSON replies", () => {
     expect(() => parseCompactCardJson("Sure, here is a shorter Raven.")).toThrow(/JSON/);
-    expect(() => parseCompactCardJson(`{"appearance":"","mood":"","personality":""}`)).toThrow(/empty/);
+    expect(() => parseCompactCardJson(`{"appearance":"","mood":"","personality":""}`)).toThrow(
+      /empty/,
+    );
   });
 
   it("asks the model to drop kinks, family NPCs, and a reserved default", () => {
@@ -26,7 +28,7 @@ describe("compactCharacterCard", () => {
       name: "Rachel",
       appearance: "Violet eyes.",
       mood: "deeply introspective",
-      personality: "Loyal. Her kinks: edging."
+      personality: "Loyal. Her kinks: edging.",
     });
     expect(messages[0]?.content).toMatch(/Never default to reserved/i);
     expect(messages[0]?.content).toMatch(/other people/i);
@@ -71,7 +73,7 @@ Behaviour: suspicious of strangers. If attracted, jumps in for a kiss.
       appearance: "green eyes",
       mood: "reserved",
       personality: "direct",
-      rawText: `[Appearance: green eyes.]\n[World: Novacore.]\n[Personality: direct and opportunistic.]`
+      rawText: `[Appearance: green eyes.]\n[World: Novacore.]\n[Personality: direct and opportunistic.]`,
     });
     const user = messages[1]?.content ?? "";
     expect(user).toMatch(/green eyes/);
@@ -85,7 +87,7 @@ Behaviour: suspicious of strangers. If attracted, jumps in for a kiss.
         "An athletic woman with tousled red-coppery hair tied back with a piece of scavenged wire, slightly tanned skin covered with freckles, piercing green eyes, and slightly smaller than average breasts, giving off a practical and slightly run-down look.",
       mood: "reserved",
       personality:
-        "Brave and opportunistic, Vikky is a rebel who gives every day her best shot to scrape by and make money. She's direct, telling you what's on her mind immediately. Trustworthy and caring, she has a soft spot for those outside the system. Vikky can be quite promiscuous and not romantic, being bisexual. She's fiercely protective of her sisters and will defend them at all costs."
+        "Brave and opportunistic, Vikky is a rebel who gives every day her best shot to scrape by and make money. She's direct, telling you what's on her mind immediately. Trustworthy and caring, she has a soft spot for those outside the system. Vikky can be quite promiscuous and not romantic, being bisexual. She's fiercely protective of her sisters and will defend them at all costs.",
     });
     expect(cleaned.appearance).toMatch(/red-coppery hair/i);
     expect(cleaned.appearance).toMatch(/green eyes/i);
@@ -105,7 +107,7 @@ Behaviour: suspicious of strangers. If attracted, jumps in for a kiss.
         "An athletic woman with tousled red-coppery hair tied back with a piece of scavenged wire. Her skin is slightly tanned, covered with freckles. She has piercing green eyes. Her breasts are slightly smaller than average. Her overall look is practical, slightly run down and unadorned.",
       mood: "direct",
       personality:
-        "Vikky is trustworthy, caring and just slightly cheeky. Vikky is trustworthy, caring and just slightly cheeky."
+        "Vikky is trustworthy, caring and just slightly cheeky. Vikky is trustworthy, caring and just slightly cheeky.",
     });
     expect(cleaned.appearance).toMatch(/red-coppery hair/i);
     expect(cleaned.appearance).toMatch(/green eyes/i);
@@ -120,8 +122,7 @@ Behaviour: suspicious of strangers. If attracted, jumps in for a kiss.
     const cleaned = sanitizeCompactFields({
       appearance: "Pale, dark hair.",
       mood: "alluring",
-      personality:
-        "She lures sailors with her voice. She is promiscuous. Her kinks: edging."
+      personality: "She lures sailors with her voice. She is promiscuous. Her kinks: edging.",
     });
     expect(cleaned.personality).toMatch(/lures sailors/i);
     expect(cleaned.personality).not.toMatch(/promiscuous/i);
@@ -133,7 +134,7 @@ Behaviour: suspicious of strangers. If attracted, jumps in for a kiss.
       appearance:
         "An athletic petite woman with tousled red-coppery hair. Wears a tight tactical compression top, black utility pants with straps and pouches, and a broken military dog tag around her neck. She has piercing green eyes.",
       mood: "direct",
-      personality: "Direct and wary."
+      personality: "Direct and wary.",
     });
     expect(cleaned.appearance).toMatch(/athletic petite/i);
     expect(cleaned.appearance).toMatch(/green eyes/i);
@@ -146,7 +147,7 @@ Behaviour: suspicious of strangers. If attracted, jumps in for a kiss.
     const cleaned = sanitizeCompactFields({
       appearance: "Athletic woman in her late 20s, with an angular face and piercing blue eyes.",
       mood: "Skeptical, disillusioned, Imported,",
-      personality: "Wary of power."
+      personality: "Wary of power.",
     });
     expect(cleaned.appearance).toMatch(/angular face/i);
     expect(cleaned.appearance).not.toMatch(/late 20s/i);

@@ -5,13 +5,17 @@ export const DEFAULT_STRATA_URL = "http://127.0.0.1:8080/v1";
 export async function listOpenAIModels(baseUrl: string, signal?: AbortSignal): Promise<string[]> {
   const response = await fetch(baseUrl.replace(/\/$/, "") + "/models", { signal: signal ?? null });
   if (!response.ok) throw new Error("Model discovery failed: HTTP " + response.status);
-  const data = await response.json() as { data?: Array<{ id?: string }> };
+  const data = (await response.json()) as { data?: Array<{ id?: string }> };
   return (data.data ?? []).map((item) => item.id).filter((id): id is string => Boolean(id));
 }
 
 export class OpenAICompatibleProvider implements LLMProvider {
   readonly name: string;
-  readonly capabilities: ProviderCapabilities = { streaming: true, cancellation: true, structuredOutput: false };
+  readonly capabilities: ProviderCapabilities = {
+    streaming: true,
+    cancellation: true,
+    structuredOutput: false,
+  };
   constructor(private readonly config: { model: string; baseUrl: string; name?: string }) {
     this.name = config.name ?? "openai-compatible:" + config.model;
   }
@@ -26,10 +30,13 @@ export class OpenAICompatibleProvider implements LLMProvider {
         stream: true,
         ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
         ...(request.maxTokens !== undefined ? { max_tokens: request.maxTokens } : {}),
-        ...(request.seed != null ? { seed: request.seed } : {})
-      })
+        ...(request.seed != null ? { seed: request.seed } : {}),
+      }),
     });
-    if (!response.ok) throw new Error("AI request failed: HTTP " + response.status + " " + (await response.text()).slice(0, 250));
+    if (!response.ok)
+      throw new Error(
+        "AI request failed: HTTP " + response.status + " " + (await response.text()).slice(0, 250),
+      );
     if (!response.body) throw new Error("AI server returned no stream.");
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -45,19 +52,30 @@ export class OpenAICompatibleProvider implements LLMProvider {
         for (const line of lines) {
           if (!line.startsWith("data:")) continue;
           const data = line.slice(5).trim();
-          if (data === "[DONE]") { finished = true; break; }
+          if (data === "[DONE]") {
+            finished = true;
+            break;
+          }
           if (!data) continue;
-          const event = JSON.parse(data) as { choices?: Array<{ delta?: { content?: string }; finish_reason?: string | null }>; error?: { message?: string } };
+          const event = JSON.parse(data) as {
+            choices?: Array<{ delta?: { content?: string }; finish_reason?: string | null }>;
+            error?: { message?: string };
+          };
           if (event.error) throw new Error(event.error.message ?? "AI stream error");
           const choice = event.choices?.[0];
           if (choice?.delta?.content) yield { type: "text_delta", text: choice.delta.content };
           if (choice?.finish_reason) {
-            yield { type: "done", finishReason: choice.finish_reason === "length" ? "length" : "stop" };
+            yield {
+              type: "done",
+              finishReason: choice.finish_reason === "length" ? "length" : "stop",
+            };
             return;
           }
         }
       }
       yield { type: "done", finishReason: "stop" };
-    } finally { reader.releaseLock(); }
+    } finally {
+      reader.releaseLock();
+    }
   }
 }

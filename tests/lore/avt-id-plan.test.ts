@@ -3,7 +3,8 @@ import { inspectAvtStructure } from "../../src/lore/avtInspect";
 import { planAvtIds } from "../../src/lore/avtIdPlan";
 
 const archive = () => ({
-  version: "1.11.0", exportedAt: 100,
+  version: "1.11.0",
+  exportedAt: 100,
   story: { id: "old-story", title: "The Coast" },
   entries: [{ id: "old-entry", text: "Hello" }],
   characters: [{ id: "old-character", name: "Mira" }],
@@ -36,6 +37,8 @@ describe("Aventuras archive inspection and ID planning", () => {
     expect(() => planAvtIds(raw)).toThrow(/Duplicate source ID/);
   });
   it("rejects archives without story entries", () => {
-    expect(() => inspectAvtStructure({ version: "1.0.0", story: { id: "x" }, entries: [] })).toThrow();
+    expect(() =>
+      inspectAvtStructure({ version: "1.0.0", story: { id: "x" }, entries: [] }),
+    ).toThrow();
   });
 });
