@@ -176,7 +176,14 @@ export const EncounterActionSchema = z.discriminatedUnion("kind", [
     .strict(),
   z.object({ kind: z.literal("interaction"), interactionId: id }).strict(),
   z.object({ kind: z.literal("look") }).strict(),
-  z.object({ kind: z.literal("say"), text: z.string().trim().min(1).max(1000) }).strict(),
+  z
+    .object({
+      kind: z.literal("say"),
+      text: z.string().trim().min(1).max(1000),
+      /** Set only after a spoken line was matched to an authored conversation. The words stay the label. */
+      interactionId: id.optional(),
+    })
+    .strict(),
 ]);
 export type EncounterAction = z.infer<typeof EncounterActionSchema>;
 export const EncounterRequestSchema = z

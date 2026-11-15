@@ -37,7 +37,7 @@ function oneTypo(a: string, b: string) {
 function containsName(text: string, actor: Actor) {
   return ` ${normalize(text)} `.includes(` ${normalize(actor.name)} `);
 }
-function present(d: EncounterDefinition, s: EncounterState, actor: Actor) {
+export function present(d: EncounterDefinition, s: EncounterState, actor: Actor) {
   const player = s.actors[d.playerId]!;
   return (
     actor.id !== d.playerId &&
@@ -134,4 +134,25 @@ export function greetingTarget(
   return /^(?:hi|hello|hey|hej|hejsan|halla|good morning|good evening)$/.test(withoutName)
     ? target
     : undefined;
+}
+
+/**
+ * Who a spoken line is for. A name in the line wins, but only if that person is here.
+ * Otherwise the one person present, otherwise whoever spoke last if they are still here.
+ * No answer means the line is not addressed to anyone.
+ */
+export function speechAddressee(
+  d: EncounterDefinition,
+  s: EncounterState,
+  text: string,
+  lastSpeakerId?: string,
+): Actor | undefined {
+  const here = Object.values(s.actors).filter((actor) => present(d, s, actor));
+  const named = Object.values(s.actors).filter(
+    (actor) => actor.id !== d.playerId && containsName(text, actor),
+  );
+  if (named.length > 1) return undefined;
+  if (named.length === 1) return here.find((actor) => actor.id === named[0]!.id);
+  if (here.length === 1) return here[0];
+  return here.find((actor) => actor.id === lastSpeakerId);
 }

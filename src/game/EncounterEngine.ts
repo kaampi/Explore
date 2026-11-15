@@ -14,7 +14,7 @@ import { canMove, connected, distance, findPath, lineOfSight } from "./geometry"
 import { encounterRules, type RulesAdapter } from "./rules";
 import { describeEvents, actionLabel } from "./narration";
 import { interactionBlock as opportunityBlock, performInteraction } from "./interactions";
-import { greetingTarget, spokenInteraction } from "./dialogue";
+import { greetingTarget, present, spokenInteraction } from "./dialogue";
 
 export const weaponReady = (actor: Actor) =>
   actor.weaponReady ?? actor.disposition !== "surrendered";
@@ -553,11 +553,36 @@ export function finishEncounterTurn(
     if (s.phase === "combat") out.events.push({ kind: "turn-ready" });
   }
 }
+/**
+ * A spoken line that was matched to an authored conversation (by code or by the AI) may only run
+ * conversations that need no roll and do nothing but set a flag. Anything else must be
+ * confirmed as its own action.
+ */
+function explicitSpokenBlock(
+  d: EncounterDefinition,
+  s: EncounterState,
+  action: Extract<EncounterAction, { kind: "say" }>,
+): string | undefined {
+  const interaction = d.interactions.find((i) => i.id === action.interactionId);
+  if (!interaction) return "Unknown conversation.";
+  const npc = interaction.counterpartyId ? s.actors[interaction.counterpartyId] : undefined;
+  if (!npc || !present(d, s, npc)) return "That person is not here to answer.";
+  if (
+    interaction.check ||
+    interaction.success.effects.concat(interaction.failure.effects).some((e) => e.kind !== "flag")
+  )
+    return "That conversation needs to be confirmed as its own action.";
+}
 export function actionBlock(
   d: EncounterDefinition,
   s: EncounterState,
   action: EncounterAction,
 ): string | undefined {
+  if (action.kind === "say" && action.interactionId) {
+    const own = explicitSpokenBlock(d, s, action);
+    if (own) return own;
+    return actionBlock(d, s, { kind: "interaction", interactionId: action.interactionId });
+  }
   const spoken = action.kind === "say" ? spokenInteraction(d, s, action.text) : undefined;
   if (spoken) return actionBlock(d, s, { kind: "interaction", interactionId: spoken.id });
   const actor = s.actors[d.playerId]!;
@@ -615,7 +640,13 @@ export function resolveEncounterAction(
   const blocked = actionBlock(d, s, request.action);
   if (blocked) throw new Error(blocked);
   const spoken =
-    request.action.kind === "say" ? spokenInteraction(d, s, request.action.text) : undefined;
+    request.action.kind === "say"
+      ? request.action.interactionId
+        ? d.interactions.find(
+            (i) => i.id === (request.action as { interactionId?: string }).interactionId,
+          )
+        : spokenInteraction(d, s, request.action.text)
+      : undefined;
   const out = output(),
     action: EncounterAction = spoken
       ? { kind: "interaction", interactionId: spoken.id }
