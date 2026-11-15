@@ -17,7 +17,8 @@ import { useEngine } from "../EngineStore";
 import { MessageMenu } from "./MessageMenu";
 import type { EncounterAction, EncounterRequest } from "../../game/EncounterSchema";
 import { actionBlock, attackTarget, combatOver, hostile } from "../../game/EncounterEngine";
-import { encounterCommands, proposeEncounterText } from "../../game/intention";
+import { proposeEncounterText } from "../../game/intention";
+import { publicCommands } from "../../game/catalog";
 import { actionLabel } from "../../game/narration";
 import { greetingTarget, spokenInteraction } from "../../game/dialogue";
 import { encounterRules } from "../../game/rules";
@@ -70,14 +71,7 @@ export function EncounterPanel({
       ? "Your turn"
       : `${s.actors[playback.actorId]?.name ?? playback.actorId}’s turn`;
   const busy = saving || playback.active || saveFailed,
-    commands = encounterCommands(game).filter((action) => {
-      if (action.kind !== "interact") return true;
-      const door = s.barriers[action.barrierId];
-      return (
-        !door?.shared ||
-        (!door.open && (door.locked ? action.operation === "unlock" : action.operation === "open"))
-      );
-    });
+    commands = publicCommands(game).map((command) => command.action);
   const visibleTurns = session.conversation.filter(
     (_turn, index) =>
       index === 0 ||
@@ -537,20 +531,7 @@ export function EncounterPanel({
         <section>
           <h3>People & opportunities</h3>
           <div className="gate-command-list">
-            {commands
-              .filter(
-                (a) =>
-                  a.kind === "look" ||
-                  (a.kind === "interaction" &&
-                    (!session.adventure ||
-                      d.interactions.some(
-                        (i) =>
-                          i.id === a.interactionId &&
-                          i.requiresFlags.every((flag) => s.flags.includes(flag)) &&
-                          i.excludesFlags.every((flag) => !s.flags.includes(flag)),
-                      ))),
-              )
-              .map(button)}
+            {commands.filter((a) => a.kind === "look" || a.kind === "interaction").map(button)}
           </div>
           {d.interactions.some((i) =>
             i.success.effects.some((e) => e.kind === "transfer-resource"),
