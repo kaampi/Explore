@@ -273,6 +273,15 @@ export function HomeScreen({
           if (view === "rulesets") setRulesTest(true);
           else onStudio(view);
         }}
+        adventures={[...campaigns]
+          .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+          .map((item) => ({ id: item.id, name: item.name, scenes: item.scenes.length }))}
+        onPlayAdventure={(id) => {
+          const chosen = campaigns.find((item) => item.id === id);
+          if (!chosen) return;
+          setCampaign(chosen);
+          setError(null);
+        }}
         disabled={busy || !ready}
       />
       {!ready ? (

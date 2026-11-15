@@ -1,13 +1,25 @@
 import type { StudioView } from "../studio/types";
+export type StartAdventure = { id: string; name: string; scenes: number };
+
+/** How many saved adventures the card lists before pointing to the builder. */
+export const SHOWN_ADVENTURES = 3;
+
 export function PlayStartPaths({
   onFree,
   onStudio,
+  onPlayAdventure,
+  adventures,
   disabled,
 }: {
   onFree: () => void;
   onStudio: (view: StudioView) => void;
+  onPlayAdventure: (id: string) => void;
+  /** Saved adventures, newest first. */
+  adventures: StartAdventure[];
   disabled: boolean;
 }) {
+  const shown = adventures.slice(0, SHOWN_ADVENTURES);
+  const hidden = adventures.length - shown.length;
   return (
     <section className="sb-start-paths" aria-label="Choose how to begin">
       <button
@@ -58,13 +70,7 @@ export function PlayStartPaths({
           shape what happens.
         </p>
       </button>
-      <button
-        type="button"
-        aria-label="Adventure"
-        disabled={disabled}
-        onClick={() => onStudio("campaigns")}
-        className="sb-start-path sb-start-path--adventure"
-      >
+      <div className="sb-start-path sb-start-path--adventure" role="group" aria-label="Adventure">
         <div className="sb-start-path__top">
           <span>
             03 · STEP INTO A STORY <small>Play freely or bring rules</small>
@@ -80,7 +86,41 @@ export function PlayStartPaths({
           Places to discover. People with something to hide. Enter a prepared adventure and make it
           your own.
         </p>
-      </button>
+        {shown.length > 0 ? (
+          <ul className="sb-start-path__adventures" aria-label="Your adventures">
+            {shown.map((adventure) => (
+              <li key={adventure.id}>
+                <button
+                  type="button"
+                  disabled={disabled || adventure.scenes === 0}
+                  onClick={() => onPlayAdventure(adventure.id)}
+                >
+                  <strong>{adventure.name || "Untitled adventure"}</strong>
+                  <small>
+                    {adventure.scenes === 0
+                      ? "No scenes yet"
+                      : `${adventure.scenes} ${adventure.scenes === 1 ? "scene" : "scenes"}`}
+                  </small>
+                  <span aria-hidden="true">Play →</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="sb-start-path__empty">No adventures yet. Build your first one.</p>
+        )}
+        {hidden > 0 && (
+          <p className="sb-start-path__more">{hidden} more in the Adventure Builder.</p>
+        )}
+        <button
+          type="button"
+          className="sb-link sb-start-path__builder"
+          disabled={disabled}
+          onClick={() => onStudio("campaigns")}
+        >
+          Open the Adventure Builder →
+        </button>
+      </div>
     </section>
   );
 }

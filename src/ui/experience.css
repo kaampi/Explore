@@ -2185,15 +2185,15 @@
 .sb-header-preferences {
   justify-self: end;
 }
-.sb-home .sb-start-paths > button.sb-start-path {
+.sb-home .sb-start-paths > .sb-start-path {
   background: color-mix(in srgb, var(--panel, #faf7f0) 90%, var(--path-ink, #65806b));
   transition: background-color 0.16s ease;
 }
-.sb-home .sb-start-paths > button.sb-start-path:hover:not(:disabled),
-.sb-home .sb-start-paths > button.sb-start-path:focus-visible {
+.sb-home .sb-start-paths > .sb-start-path:hover:not(:disabled),
+.sb-home .sb-start-paths > .sb-start-path:focus-visible {
   background: color-mix(in srgb, var(--panel, #faf7f0) 50%, white);
 }
-.sb-start-paths > button.sb-start-path {
+.sb-start-paths > .sb-start-path {
   border: 0;
   border-radius: 0;
   border-bottom: 0;
@@ -2204,17 +2204,17 @@
   color: var(--text);
   background: var(--panel, #faf7f0);
 }
-.sb-start-paths > button.sb-start-path + button.sb-start-path {
+.sb-start-paths > .sb-start-path + .sb-start-path {
   border-left: 1px solid var(--border);
 }
-.sb-start-paths > button.sb-start-path:hover:not(:disabled) {
+.sb-start-paths > .sb-start-path:hover:not(:disabled) {
   background: color-mix(in srgb, var(--panel, #faf7f0) 87%, white);
 }
-.sb-start-paths > button.sb-start-path:focus-visible {
+.sb-start-paths > .sb-start-path:focus-visible {
   outline: 2px solid var(--path-ink);
   outline-offset: -4px;
 }
-.sb-start-paths > button.sb-start-path:disabled {
+.sb-start-paths > .sb-start-path:disabled {
   opacity: 0.55;
   cursor: wait;
 }
@@ -2241,17 +2241,17 @@
   letter-spacing: -0.5px;
   margin: 18px 0 13px;
 }
-.sb-start-paths > button.sb-start-path > p {
+.sb-start-paths > .sb-start-path > p {
   margin-bottom: 0;
 }
 @media (max-width: 720px) {
-  .sb-start-paths > button.sb-start-path + button.sb-start-path {
+  .sb-start-paths > .sb-start-path + .sb-start-path {
     border-left: 0;
     border-top: 1px solid var(--border);
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .sb-start-paths > button.sb-start-path {
+  .sb-start-paths > .sb-start-path {
     transition: none;
   }
 }
@@ -3336,4 +3336,63 @@
 }
 .adventure-goal small {
   line-height: 1.5;
+}
+
+.sb-start-paths > div.sb-start-path {
+  cursor: default;
+}
+.sb-start-path__adventures {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.sb-start-path__adventures button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "name play"
+    "meta play";
+  align-items: center;
+  column-gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg, transparent);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.sb-start-path__adventures button:hover:not(:disabled),
+.sb-start-path__adventures button:focus-visible {
+  border-color: var(--path-ink);
+}
+.sb-start-path__adventures button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.sb-start-path__adventures strong {
+  grid-area: name;
+  overflow-wrap: anywhere;
+}
+.sb-start-path__adventures small {
+  grid-area: meta;
+  opacity: 0.75;
+}
+.sb-start-path__adventures span {
+  grid-area: play;
+  color: var(--path-ink);
+  font-weight: 600;
+}
+.sb-start-path__empty,
+.sb-start-path__more {
+  font-size: 13px;
+  opacity: 0.8;
+}
+.sb-start-path__builder {
+  align-self: flex-start;
+  margin-top: 14px;
 }
