@@ -1,3 +1,4 @@
+import { planNewPlace } from "../../library/campaignPlace";
 import { installInnExample } from "../../scenarios/innVisit";
 import { EmmaInnExampleDialog } from "./EmmaInnExampleDialog";
 import { chooseAdventureMap } from "../../library/adventureMap";
@@ -453,6 +454,21 @@ export function CampaignStudio({
     setDraft(null);
     setNotice(null);
     setFreshNight(false);
+  }
+
+  /** Make a place in the adventure's world, and a world first if there is none. */
+  async function createPlace(name: string) {
+    if (!draft) return undefined;
+    try {
+      const plan = planNewPlace(draft, visiblePlaces, name);
+      if (plan.realm) await repo.saveRealm(plan.realm);
+      await repo.savePlace(plan.place);
+      await refresh();
+      return { place: plan.place, campaign: plan.campaign };
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Could not create the place.");
+      return undefined;
+    }
   }
 
   async function persistExamplesUsed(next: CampaignTemplate) {
@@ -1471,6 +1487,7 @@ export function CampaignStudio({
                 worlds={visibleRealms}
                 repo={repo}
                 onRefresh={refresh}
+                onCreatePlace={createPlace}
                 characters={campaignPeople}
                 objects={campaignObjects}
                 busy={busy}

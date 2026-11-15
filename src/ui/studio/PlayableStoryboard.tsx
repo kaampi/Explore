@@ -47,6 +47,7 @@ export function PlayableStoryboard({
   onSave,
   expanded = false,
   mapPlaces,
+  onCreatePlace,
 }: {
   campaign: CampaignTemplate;
   places: PlaceTemplate[];
@@ -58,10 +59,16 @@ export function PlayableStoryboard({
   onSave?: () => void;
   expanded?: boolean;
   mapPlaces?: AdventureMapPlace[] | undefined;
+  /** Makes a place (and a world if there is none). Returns the place and the adventure to continue with. */
+  onCreatePlace?: (
+    name: string,
+  ) => Promise<{ place: PlaceTemplate; campaign: CampaignTemplate } | undefined>;
 }) {
   const [sceneId, setSceneId] = useState(campaign.scenes[0]?.id ?? ""),
     [linkId, setLinkId] = useState("");
   const [newActionId, setNewActionId] = useState("");
+  const [newPlaceName, setNewPlaceName] = useState("");
+  const [creatingPlace, setCreatingPlace] = useState(false);
   const [actionFocus, setActionFocus] = useState<ActionField>("label");
   const [connectionFromId, setConnectionFromId] = useState<string | null>(null);
   const [connectionSourceId, setConnectionSourceId] = useState("");
@@ -123,6 +130,41 @@ export function PlayableStoryboard({
   }, [focus]);
   function patchScene(next: CampaignScene) {
     onChange({ ...campaign, scenes: campaign.scenes.map((s) => (s.id === next.id ? next : s)) });
+  }
+  /** Point a scene at a place. A one-place scene takes the place's name. */
+  function scenePointedAt(current: CampaignScene, placeId: string, placeName: string | undefined) {
+    const encounter = current.encounter;
+    return {
+      ...current,
+      placeId,
+      ...(encounter && placeName && encounter.definition.places.length === 1
+        ? {
+            encounter: {
+              ...encounter,
+              definition: {
+                ...encounter.definition,
+                places: [{ ...encounter.definition.places[0]!, name: placeName }],
+              },
+            },
+          }
+        : {}),
+    };
+  }
+  async function createPlaceForScene(current: CampaignScene) {
+    if (!onCreatePlace || creatingPlace || !newPlaceName.trim()) return;
+    setCreatingPlace(true);
+    try {
+      const made = await onCreatePlace(newPlaceName);
+      if (!made) return;
+      const next = scenePointedAt(current, made.place.id, made.place.name);
+      onChange({
+        ...made.campaign,
+        scenes: made.campaign.scenes.map((item) => (item.id === next.id ? next : item)),
+      });
+      setNewPlaceName("");
+    } finally {
+      setCreatingPlace(false);
+    }
   }
   function selectScene(id: string, additive = false) {
     setConnectionFromId(null);
@@ -610,23 +652,9 @@ export function PlayableStoryboard({
                 value={scene.placeId}
                 onChange={(event) => {
                   const placeId = event.target.value;
-                  const placeName = places.find((place) => place.id === placeId)?.name;
-                  const encounter = scene.encounter;
-                  patchScene({
-                    ...scene,
-                    placeId,
-                    ...(encounter && placeName && encounter.definition.places.length === 1
-                      ? {
-                          encounter: {
-                            ...encounter,
-                            definition: {
-                              ...encounter.definition,
-                              places: [{ ...encounter.definition.places[0]!, name: placeName }],
-                            },
-                          },
-                        }
-                      : {}),
-                  });
+                  patchScene(
+                    scenePointedAt(scene, placeId, places.find((p) => p.id === placeId)?.name),
+                  );
                 }}
               >
                 <option value="">Choose a place</option>
@@ -637,6 +665,28 @@ export function PlayableStoryboard({
                 ))}
               </select>
             </label>
+          )}
+          {!mapPlaces && onCreatePlace && (
+            <div className="storyboard-create-place">
+              <label>
+                {places.length === 0 ? "Name your first place" : "Create a place"}
+                <input
+                  aria-label="New place name"
+                  value={newPlaceName}
+                  maxLength={120}
+                  disabled={busy || creatingPlace}
+                  placeholder="For example: The village square"
+                  onChange={(event) => setNewPlaceName(event.target.value)}
+                />
+              </label>
+              <button
+                type="button"
+                disabled={busy || creatingPlace || !newPlaceName.trim()}
+                onClick={() => void createPlaceForScene(scene)}
+              >
+                Create a place
+              </button>
+            </div>
           )}
         </div>
         {scene.encounter && (

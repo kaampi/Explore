@@ -4,7 +4,13 @@ import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import { PlayableStoryboard } from "../../src/ui/studio/PlayableStoryboard";
 import { connectedAdventureExample } from "../../src/library/playableCampaign";
-import { parseCampaignTemplate } from "../../src/library/LibrarySchema";
+import {
+  emptyCampaignScene,
+  newCampaignTemplate,
+  parseCampaignTemplate,
+  type PlaceTemplate,
+} from "../../src/library/LibrarySchema";
+import { planNewPlace } from "../../src/library/campaignPlace";
 import { startPlayableCampaign } from "../../src/session/adventureStart";
 import { adventureOptions } from "../../src/game/AdventureEngine";
 async function click(host: HTMLElement, text: string) {
@@ -246,6 +252,60 @@ it("leads from a missing arrival in review to the right scene and preserves the 
     expect(play).toHaveBeenCalledWith(
       expect.objectContaining({ id: built.campaign.scenes[0]!.id }),
     );
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});
+
+it("creates a place from the scene panel in an adventure that has none, and points the scene at it", async () => {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  const scene = { ...emptyCampaignScene(), name: "Arrival" };
+  const start = newCampaignTemplate({ name: "Fresh start", scenes: [scene] });
+  let snapshot = start;
+  let created: PlaceTemplate | undefined;
+  function Harness() {
+    const [campaign, setCampaign] = useState(start);
+    const [known, setKnown] = useState<PlaceTemplate[]>([]);
+    snapshot = campaign;
+    return (
+      <PlayableStoryboard
+        campaign={campaign}
+        places={known}
+        characters={[]}
+        objects={[]}
+        busy={false}
+        onChange={setCampaign}
+        onPlay={() => {}}
+        onCreatePlace={async (name) => {
+          const plan = planNewPlace(campaign, known, name);
+          created = plan.place;
+          setKnown([...known, plan.place]);
+          return { place: plan.place, campaign: plan.campaign };
+        }}
+      />
+    );
+  }
+  try {
+    await act(async () => root.render(<Harness />));
+    expect(host.textContent).toContain("Name your first place");
+    const field = host.querySelector<HTMLInputElement>('input[aria-label="New place name"]')!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
+        field,
+        "The village square",
+      );
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await click(host, "Create a place");
+    expect(created?.name).toBe("The village square");
+    expect(snapshot.scenes[0]!.placeId).toBe(created!.id);
+    expect(snapshot.realmId).toBe(created!.realmId);
+    const select = host.querySelector<HTMLSelectElement>('select[aria-label="Place"]')!;
+    expect(select.value).toBe(created!.id);
   } finally {
     await act(async () => root.unmount());
     host.remove();
