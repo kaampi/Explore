@@ -108,11 +108,10 @@ describe("adventureSteps", () => {
 
   it("counts a single built scene as connected, since it needs no route", () => {
     const built = connectedAdventureExample();
-    const single = {
-      ...built.campaign,
-      scenes: [built.campaign.scenes[0]!],
-      sceneLinks: [],
-    };
+    const only = structuredClone(built.campaign.scenes[0]!);
+    for (const action of only.encounter!.definition.interactions) action.requiresFlags = [];
+    const single = { ...built.campaign, scenes: [only], sceneLinks: [] };
+    delete single.goal;
 
     expect(
       stepsFor(single, built.places as never[]).find((s) => s.id === "connections")?.done,

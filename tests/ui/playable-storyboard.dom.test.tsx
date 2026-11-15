@@ -311,3 +311,45 @@ it("creates a place from the scene panel in an adventure that has none, and poin
     host.remove();
   }
 });
+
+it("lists a scene the player cannot reach and opens Connections when it is chosen", async () => {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  const built = connectedAdventureExample(),
+    host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  const cut = {
+    ...built.campaign,
+    sceneLinks: built.campaign.sceneLinks.filter(
+      (link) => link.toSceneId !== built.campaign.scenes[1]!.id,
+    ),
+  };
+  function Harness() {
+    const [campaign, setCampaign] = useState(cut);
+    return (
+      <PlayableStoryboard
+        campaign={campaign}
+        places={built.places}
+        characters={built.characters}
+        objects={built.objects}
+        busy={false}
+        onChange={setCampaign}
+        onPlay={() => {}}
+      />
+    );
+  }
+  try {
+    await act(async () => root.render(<Harness />));
+    await workflow(host, "Test");
+    expect(host.querySelector(".storyboard-review")!.textContent).toContain("cannot reach");
+    await click(host, "cannot reach");
+    expect(
+      host
+        .querySelector('.storyboard-workflow [aria-label="Connections"]')!
+        .getAttribute("aria-current"),
+    ).toBe("step");
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});

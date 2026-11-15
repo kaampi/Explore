@@ -1,7 +1,8 @@
 import type { CampaignTemplate, PlaceTemplate } from "../../library/LibrarySchema";
 import { mapPlaceForScene, type AdventureMapPlace } from "../../library/adventureMap";
+import { adventureFacts } from "../../library/playableCampaign";
 
-export type SceneField = "name" | "place" | "playable" | "arrival" | "action";
+export type SceneField = "name" | "place" | "playable" | "arrival" | "action" | "reach";
 export type ActionField = "label" | "success" | "failure";
 export type StoryboardIssue = { message: string } & (
   | { kind: "scene"; id: string; field: SceneField; action?: { id: string; field: ActionField } }
@@ -83,6 +84,7 @@ export function storyboardIssues(
       });
     }
   }
+  issues.push(...reachabilityIssues(campaign, facts));
   if (campaign.goal && !campaign.goal.title.trim())
     issues.push({ kind: "objective", message: "Name the adventure objective." });
   if (campaign.goal?.requiresFlags.some((flag) => !facts.has(flag))) {
@@ -91,5 +93,117 @@ export function storyboardIssues(
       message: "Replace the missing discovery in the adventure objective.",
     });
   }
+  return issues;
+}
+
+type Reach = { scenes: Set<string>; flags: Set<string> };
+
+/**
+ * What a player can reach from the first scene, step by step. A route works once its
+ * discoveries can be made, an action works once its own conditions can be met, and a
+ * scene counts once a working route leads to it. A failure outcome only exists for an
+ * action that rolls. This follows the same rules as play, but does not run the engine.
+ */
+export function reachableFromStart(campaign: CampaignTemplate): Reach {
+  const first = campaign.scenes[0];
+  const scenes = new Set<string>();
+  const flags = new Set<string>(campaign.storyFlags);
+  if (!first) return { scenes, flags };
+  const enter = (sceneId: string) => {
+    scenes.add(sceneId);
+    const scene = campaign.scenes.find((item) => item.id === sceneId);
+    for (const flag of scene?.encounter?.state.flags ?? []) flags.add(flag);
+  };
+  enter(first.id);
+  const has = (needed: readonly string[]) => needed.every((flag) => flags.has(flag));
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const scene of campaign.scenes) {
+      if (!scenes.has(scene.id)) continue;
+      for (const action of scene.encounter?.definition.interactions ?? []) {
+        if (!has(action.requiresFlags)) continue;
+        const outcomes = action.check ? [action.success, action.failure] : [action.success];
+        for (const outcome of outcomes)
+          for (const effect of outcome.effects)
+            if (effect.kind === "flag" && !flags.has(effect.flag)) {
+              flags.add(effect.flag);
+              changed = true;
+            }
+      }
+    }
+    for (const link of campaign.sceneLinks) {
+      if (!scenes.has(link.fromSceneId)) continue;
+      if (link.requiresFlags.some((flag) => link.requiresAbsentFlags.includes(flag))) continue;
+      if (!has(link.requiresFlags)) continue;
+      if (link.requiresAbsentFlags.some((flag) => campaign.storyFlags.includes(flag))) continue;
+      if (!campaign.scenes.some((item) => item.id === link.toSceneId)) continue;
+      for (const flag of link.setsFlags)
+        if (!flags.has(flag)) {
+          flags.add(flag);
+          changed = true;
+        }
+      if (!scenes.has(link.toSceneId)) {
+        enter(link.toSceneId);
+        changed = true;
+      }
+    }
+  }
+  return { scenes, flags };
+}
+
+function reachabilityIssues(
+  campaign: CampaignTemplate,
+  facts: ReadonlySet<string>,
+): StoryboardIssue[] {
+  const first = campaign.scenes[0];
+  if (!first) return [];
+  const issues: StoryboardIssue[] = [];
+  const reach = reachableFromStart(campaign);
+  const labels = new Map(adventureFacts(campaign).map((fact) => [fact.id, fact.label]));
+  const discovery = (flag: string) => (labels.has(flag) ? `“${labels.get(flag)}”` : `“${flag}”`);
+  const openingName = first.name.trim() || "Untitled scene";
+  for (const scene of campaign.scenes) {
+    const name = scene.name.trim() || "Untitled scene";
+    if (!reach.scenes.has(scene.id)) {
+      issues.push({
+        kind: "scene",
+        id: scene.id,
+        field: "reach",
+        message: `The player cannot reach “${name}” from “${openingName}”. Connect it, or check the conditions on the routes leading to it.`,
+      });
+      continue;
+    }
+    for (const action of scene.encounter?.definition.interactions ?? []) {
+      const missing = action.requiresFlags.find((flag) => !reach.flags.has(flag));
+      if (!missing) continue;
+      const actionName = action.label.trim() || "Untitled action";
+      issues.push({
+        kind: "scene",
+        id: scene.id,
+        field: "action",
+        action: { id: action.id, field: "label" },
+        message: `“${actionName}” in “${name}” needs ${discovery(missing)}, which nothing the player can reach creates, so it never appears.`,
+      });
+    }
+  }
+  for (const link of campaign.sceneLinks) {
+    if (!reach.scenes.has(link.fromSceneId)) continue;
+    const missing = link.requiresFlags.find((flag) => !reach.flags.has(flag));
+    if (!missing) continue;
+    issues.push({
+      kind: "link",
+      id: link.id,
+      message: `“${link.label || "Continue"}” needs ${discovery(missing)}, which nothing the player can reach creates.`,
+    });
+  }
+  const unreachableGoal = campaign.goal?.requiresFlags.find(
+    (flag) => facts.has(flag) && !reach.flags.has(flag),
+  );
+  if (unreachableGoal)
+    issues.push({
+      kind: "objective",
+      message: `The objective needs ${discovery(unreachableGoal)}, which nothing the player can reach creates.`,
+    });
   return issues;
 }

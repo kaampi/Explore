@@ -240,7 +240,10 @@ export function PlayableStoryboard({
     if (issue.kind === "scene") {
       selectScene(issue.id);
       setTestSceneId(testScene?.id ?? "");
-      if (issue.action) {
+      if (issue.field === "reach") {
+        setConnectionSourceId(issue.id);
+        setStep("connections");
+      } else if (issue.action) {
         setNewActionId(issue.action.id);
         setActionFocus(issue.action.field);
       } else setFocus(issue.field);
