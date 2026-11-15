@@ -294,6 +294,7 @@ export function sessionFromCampaignScene(
           args.places,
           sessionId,
           args.realms,
+          { characters: args.characters, voices: args.voices },
         ),
       };
     } catch (error) {

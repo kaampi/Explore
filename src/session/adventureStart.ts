@@ -4,20 +4,61 @@ import { applyAdventurePresentation } from "./adventurePresentation";
 import type {
   CampaignTemplate,
   CampaignScene,
+  CharacterTemplate,
   PlaceTemplate,
   RealmTemplate,
+  VoiceTemplate,
 } from "../library/LibrarySchema";
 import { adventureMapPlaces, bindSceneMapPlace, mapPlaceForScene } from "../library/adventureMap";
-import { AdventureRunSchema } from "../game/AdventureSchema";
+import { AdventureRunSchema, type AdventureNarration, type Persona } from "../game/AdventureSchema";
 import { unifyAdventureEquipment } from "../game/AdventureEngine";
 import { createSessionFromSetup } from "./createSession";
 import { parseSession } from "../state/StateSchema";
+const clip = (text: string | undefined, max: number) => (text ?? "").trim().slice(0, max);
+
+function personaFrom(person: CharacterTemplate): Persona {
+  return {
+    name: person.name,
+    ...(person.pronoun ? { pronoun: person.pronoun } : {}),
+    personality: clip(person.personality, 600),
+    speech: clip(person.speech, 600),
+    mood: clip(person.mood, 600),
+    appearance: clip(person.appearance, 600),
+  };
+}
+
+/** Who the story AI may speak as, from the people placed in any scene of the adventure. */
+function castFor(
+  campaign: CampaignTemplate,
+  characters: CharacterTemplate[],
+): Record<string, Persona> {
+  const cast: Record<string, Persona> = {};
+  for (const scene of campaign.scenes) {
+    for (const pick of scene.people) {
+      const person = characters.find((c) => c.id === pick.characterId);
+      if (person) cast[`npc:${person.id}`] = personaFrom(person);
+    }
+  }
+  return cast;
+}
+
+function narrationFor(campaign: CampaignTemplate, voices: VoiceTemplate[]): AdventureNarration {
+  const voice = voices.find((v) => v.id === campaign.voiceId)?.instruction;
+  const background = clip(campaign.startPrompt, 4000);
+  return {
+    ...(voice ? { voice: clip(voice, 2000) } : {}),
+    ...(background ? { background } : {}),
+    freeReplies: true,
+  };
+}
+
 export function startPlayableCampaign(
   campaign: CampaignTemplate,
   scene: CampaignScene,
   places: PlaceTemplate[],
   id: string,
   worlds: RealmTemplate[] = [],
+  sources: { characters?: CharacterTemplate[]; voices?: VoiceTemplate[] } = {},
 ) {
   const world = campaign.mapWorldId ? worlds.find((w) => w.id === campaign.mapWorldId) : undefined;
   if (campaign.mapWorldId && !world?.worldMap)
@@ -59,6 +100,8 @@ export function startPlayableCampaign(
         scenes,
         links: campaign.sceneLinks,
         goal: campaign.goal,
+        cast: castFor(campaign, sources.characters ?? []),
+        narration: narrationFor(campaign, sources.voices ?? []),
         exampleId: campaign.exampleId,
         exampleVersion: campaign.exampleVersion,
         ...(world?.worldMap
