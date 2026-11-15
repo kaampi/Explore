@@ -12,7 +12,8 @@ import { StateEngine } from "../../src/state/StateEngine";
 import { EventLog } from "../../src/events/EventLog";
 import { ActionSaveError } from "../../src/persistence/ActionSaveError";
 import type { EncounterRequest } from "../../src/game/EncounterSchema";
-import type { Session } from "../../src/state/StateSchema";
+import { parseSession, type Session } from "../../src/state/StateSchema";
+import { publicCommands } from "../../src/game/catalog";
 import type { EngineContextValue } from "../../src/ui/EngineStore";
 import {
   lastSpeakerId,
@@ -454,5 +455,190 @@ it("plays the mapped inn through direct buttons, keeps resolved passages quiet, 
     expect(ui.host.textContent).toContain("Go to store room →");
   } finally {
     await ui.close();
+  }
+});
+
+// --- AI wording in engine scenes -------------------------------------------------------------
+const REPLY = "Edda shrugs. “It will rain by dusk.”";
+
+/** Answers the meaning check with "no match" and the reply with REPLY. Counts both. */
+function fakeModel(options: { hangOnReply?: boolean; fail?: boolean } = {}) {
+  const calls = { interpret: 0, reply: 0 };
+  const provider: Provider = {
+    async *streamCompletion(request) {
+      if (options.fail) throw new Error("model is down");
+      const isInterpret = request.temperature === 0;
+      if (isInterpret) {
+        calls.interpret++;
+        yield { type: "text_delta", text: '{"action":null}' };
+        yield { type: "done", finishReason: "stop" };
+        return;
+      }
+      calls.reply++;
+      if (options.hangOnReply) {
+        await new Promise<void>((resolve) =>
+          request.signal?.addEventListener("abort", () => resolve()),
+        );
+        yield { type: "done", finishReason: "cancelled" };
+        return;
+      }
+      yield { type: "text_delta", text: REPLY };
+      yield { type: "done", finishReason: "stop" };
+    },
+  };
+  return { provider, calls };
+}
+
+function messengerSeed(id: string) {
+  const built = connectedAdventureExample();
+  return startPlayableCampaign(
+    built.campaign,
+    built.campaign.scenes[0]!,
+    built.places,
+    id,
+    [built.realm],
+    { characters: built.characters },
+  );
+}
+
+function narratorTurns(session: Session) {
+  return session.conversation.filter(
+    (turn) => (turn as { toldBy?: string }).toldBy === "narrator",
+  ) as { content: string; engineText?: string; ai?: unknown }[];
+}
+
+it("draws its buttons from the same list the AI is limited to", async () => {
+  const seed = messengerSeed("same-list");
+  const ui = mount(seed);
+  try {
+    await ui.render();
+    const shown = Array.from(ui.host.querySelectorAll(".gate-command-list button"))
+      .map((b) => b.textContent)
+      .sort();
+    const offered = publicCommands(ui.engine.getSession().encounter!)
+      .map((command) => command.label)
+      .sort();
+    expect(shown).toEqual(offered);
+  } finally {
+    await ui.close();
+  }
+});
+
+it("lets the character answer a free line, keeping the engine's text as the record", async () => {
+  const model = fakeModel();
+  const ui = mount(messengerSeed("free-reply"), false, () => 0.34, model.provider);
+  try {
+    await ui.render();
+    await type(ui.host, 0, "Lovely weather today.");
+    await click(ui.host, "Say");
+    expect(ui.host.querySelector(".chat-log")!.textContent).toContain(REPLY);
+    const names = Array.from(ui.host.querySelectorAll(".message__attribution")).map(
+      (n) => n.textContent,
+    );
+    expect(names.at(-1)).toBe("Edda");
+    const session = ui.engine.getSession();
+    const turn = narratorTurns(session).at(-1)!;
+    expect(turn.content).toBe(REPLY);
+    expect(turn.engineText).toContain("Lovely weather today.");
+    expect(session.encounter!.history).toHaveLength(1);
+    expect(session.encounter!.state.attempts).toEqual([]);
+    expect(session.encounter!.state.flags).toEqual([]);
+    expect(model.calls.reply).toBe(1);
+    expect(ui.host.textContent).not.toContain("no prepared reply");
+  } finally {
+    await ui.close();
+  }
+});
+
+it("shows the engine's own text and a short note when the model fails", async () => {
+  const model = fakeModel({ fail: true });
+  const ui = mount(messengerSeed("model-down"), false, () => 0.34, model.provider);
+  try {
+    await ui.render();
+    await type(ui.host, 0, "Lovely weather today.");
+    await click(ui.host, "Say");
+    const session = ui.engine.getSession();
+    const turn = narratorTurns(session).at(-1)!;
+    expect(turn.ai).toBeUndefined();
+    expect(turn.content).toContain("Lovely weather today.");
+    expect(session.encounter!.history).toHaveLength(1);
+    expect(ui.host.textContent).toContain("The reply could not be written");
+  } finally {
+    await ui.close();
+  }
+});
+
+it("works exactly as before when no model is connected", async () => {
+  const ui = mount(messengerSeed("no-model"));
+  try {
+    await ui.render();
+    await type(ui.host, 0, "Lovely weather today.");
+    await click(ui.host, "Say");
+    expect(ui.host.textContent).toContain("This scene has no prepared reply for that topic yet");
+    expect(ui.engine.getSession().encounter!.history).toHaveLength(1);
+  } finally {
+    await ui.close();
+  }
+});
+
+it("sends nothing when the player cancels while the meaning is being worked out", async () => {
+  const hanging: Provider = {
+    async *streamCompletion(request) {
+      await new Promise<void>((resolve) =>
+        request.signal?.addEventListener("abort", () => resolve()),
+      );
+      yield { type: "done", finishReason: "cancelled" };
+    },
+  };
+  const ui = mount(messengerSeed("cancel-first"), false, () => 0.34, hanging);
+  try {
+    await ui.render();
+    await type(ui.host, 0, "Lovely weather today.");
+    await click(ui.host, "Say");
+    expect(ui.host.textContent).toContain("Working out what you mean");
+    await click(ui.host, "Cancel");
+    expect(ui.engine.getSession().encounter!.history).toHaveLength(0);
+    expect(ui.host.textContent).not.toContain("Working out what you mean");
+  } finally {
+    await ui.close();
+  }
+});
+
+it("keeps the engine's text when the player cancels while the reply is written", async () => {
+  const model = fakeModel({ hangOnReply: true });
+  const ui = mount(messengerSeed("cancel-reply"), false, () => 0.34, model.provider);
+  try {
+    await ui.render();
+    await type(ui.host, 0, "Lovely weather today.");
+    await click(ui.host, "Say");
+    expect(ui.host.textContent).toContain("Writing the reply");
+    await click(ui.host, "Cancel");
+    const session = ui.engine.getSession();
+    expect(narratorTurns(session).at(-1)!.ai).toBeUndefined();
+    expect(session.encounter!.history).toHaveLength(1);
+  } finally {
+    await ui.close();
+  }
+});
+
+it("shows the same reply after the saved game is loaded again", async () => {
+  const model = fakeModel();
+  const first = mount(messengerSeed("reload"), false, () => 0.34, model.provider);
+  let saved: Session;
+  try {
+    await first.render();
+    await type(first.host, 0, "Lovely weather today.");
+    await click(first.host, "Say");
+    saved = structuredClone(first.saved.at(-1)!);
+  } finally {
+    await first.close();
+  }
+  const second = mount(parseSession(JSON.parse(JSON.stringify(saved))));
+  try {
+    await second.render();
+    expect(second.host.querySelector(".chat-log")!.textContent).toContain(REPLY);
+    expect(narratorTurns(second.engine.getSession()).at(-1)!.content).toBe(REPLY);
+  } finally {
+    await second.close();
   }
 });
