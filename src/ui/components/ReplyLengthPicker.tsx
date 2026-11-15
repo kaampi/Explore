@@ -16,7 +16,7 @@ export function ReplyLengthPicker({
   return (
     <label
       className="chip"
-      title="Target length (~400–500 characters at beat). The model should finish the beat; the token stop has headroom so sentences are not clipped. Pass 2 is uncapped."
+      title="Target length (~400–500 characters at beat). The AI should finish the beat. The limit has some headroom, so the last sentence is not cut off."
     >
       reply:
       <select

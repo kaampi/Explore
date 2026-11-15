@@ -211,7 +211,7 @@ export function createLLMProposalExtractor(
             if (chunk.type === "text_delta") {
               collected += chunk.text;
             } else if (chunk.type === "error") {
-              throw new Error(`Provider error during Pass 2 extraction: ${chunk.message}`);
+              throw new Error(`Provider error while updating the story state: ${chunk.message}`);
             }
           }
 

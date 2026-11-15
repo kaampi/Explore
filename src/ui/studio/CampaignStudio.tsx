@@ -1062,8 +1062,8 @@ export function CampaignStudio({
               }}
             />
             <p className="form-section__lede">
-              Who you play tonight. Not a person on the Characters shelf. Emma sees this; the
-              portrait is UI only.
+              Who you play tonight. Not a person on the Characters shelf. The people you meet see
+              this. Your portrait is only for you; it is never sent to the AI.
             </p>
             <label className="setup-field setup-field--row">
               <span className="setup-field__label">Given name</span>
@@ -1143,7 +1143,10 @@ export function CampaignStudio({
                 placeholder="Tall, dark hair, a scar at the jaw…"
               />
             </FormSection>
-            <FormSection title="Who they are" lede="A few lines Pass 1 may use. Empty is fine.">
+            <FormSection
+              title="Who they are"
+              lede="A few lines the story AI may use. Empty is fine."
+            >
               <textarea
                 className="setup-field__story"
                 value={(draft.player ?? emptyCampaignPlayer()).personality}

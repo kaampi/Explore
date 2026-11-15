@@ -25,7 +25,7 @@ function PromptBudgetSection() {
   return (
     <div
       className="inspector-section"
-      title="Heuristic size (~4 characters per token), same as the budget trimmer. Pass 1 is writing rules; chat is dialogue that still fits."
+      title="Rough size (about 4 characters per token), the same estimate used when trimming. “rules” are the writing instructions; “chat” is the conversation that still fits."
     >
       <p className="panel-heading">Prompt</p>
       <div className="inspector-row">
@@ -42,7 +42,7 @@ function PromptBudgetSection() {
         />
       </div>
       <div className="inspector-row">
-        <span className="inspector-row__key">ceiling</span>
+        <span className="inspector-row__key">hard limit</span>
         <span className="inspector-row__value">{budget.hardCeilingTokens}</span>
       </div>
       {budget.parts.map((part) => (
@@ -380,14 +380,14 @@ export function InspectorPanel() {
       <div className="inspector-section">
         <div className="inspector-row" style={{ justifyContent: "space-between", marginBottom: 8 }}>
           <p className="panel-heading" style={{ margin: 0 }}>
-            {beat ? "This beat" : "Mutation chain"}
+            {beat ? "This beat" : "Recent changes"}
           </p>
           {beat ? (
             <button
               type="button"
               className="message__act"
               onClick={() => setInspectTurn(null)}
-              title="Show the recent mutation chain"
+              title="Show the recent changes to the story state"
             >
               all events
             </button>
@@ -416,12 +416,12 @@ export function InspectorPanel() {
               <span className="inspector-row__value">{beat.player.content.slice(0, 80)}</span>
             </div>
             <div className="inspector-row">
-              <span className="inspector-row__key">Pass 1</span>
+              <span className="inspector-row__key">reply</span>
               <span className="inspector-row__value">{beat.reply.content.slice(0, 80)}</span>
             </div>
             {committedPayload ? (
               <div className="inspector-row">
-                <span className="inspector-row__key">Pass 2</span>
+                <span className="inspector-row__key">changes</span>
                 <span className="inspector-row__value">
                   {committedPayload.mutationsApplied ?? 0} applied
                   {committedPayload.mutationsRejected

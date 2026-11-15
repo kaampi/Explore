@@ -717,7 +717,8 @@ export function CastPanel() {
                 Why you are here
               </p>
               <p className="form-section__lede">
-                The agreement from the last scene. Pass 1 honors this. Empty = a new meeting.
+                The agreement from the last scene. The story AI treats it as true. Empty = a new
+                meeting.
               </p>
               <textarea
                 className="setup-field__story"

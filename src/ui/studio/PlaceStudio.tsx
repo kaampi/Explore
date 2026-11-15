@@ -976,7 +976,7 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
             </FormSection>
             <FormSection
               title="For the model"
-              lede="Two or three facts for Pass 1. Empty = the intro is sent instead."
+              lede="Two or three facts for the story AI. Empty = the intro is sent instead."
             >
               <textarea
                 className="setup-field__story"

@@ -26,3 +26,7 @@ Do not rename these. Renaming them would break saved data, storage keys, and the
 - A string the player or author can read follows the table above. A string only code reads does not.
 - When a new visible string would use an old word, use the new word instead.
 - Update DOM tests that look up text when a visible string changes.
+
+## Words the interface does not use
+
+Do not write the names of the AI's internal steps in visible text, such as "Pass 1" and "Pass 2". Say what they do instead: "the story AI", "changes to the story state". A test (`tests/ui/no-internal-jargon.test.ts`) fails if they come back.

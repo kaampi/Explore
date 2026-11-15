@@ -26,7 +26,10 @@ export function StatusBar() {
         {phaseLabel}
       </span>
 
-      <span className="chip" title="Estimated Pass 1 prompt tokens vs. the 3,500 target">
+      <span
+        className="chip"
+        title="Estimated size of the next prompt, in tokens, against the 3,500 target"
+      >
         ctx {budget.promptTokens} / {budget.targetTokens}
         {budget.overTarget ? " (over target)" : ""}
       </span>
