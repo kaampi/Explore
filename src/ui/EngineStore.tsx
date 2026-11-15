@@ -290,6 +290,7 @@ export function EngineProvider({
   }, [sessionListeners, stateEngine]);
 
   const useSession = useCallback((): Session => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- useSession/useEventLog are hooks, created once here and called by consumers.
     return useSyncExternalStore(
       (onStoreChange) => {
         sessionListeners.add(onStoreChange);
@@ -304,6 +305,7 @@ export function EngineProvider({
     sharedEventLog.all(),
   );
   const useEventLog = useCallback((): readonly StateEvent[] => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- useSession/useEventLog are hooks, created once here and called by consumers.
     return useSyncExternalStore(
       (onStoreChange) => {
         sessionListeners.add(onStoreChange);
