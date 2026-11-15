@@ -2,9 +2,11 @@ import { sceneFormat } from "../../library/sceneFormat";
 import { planNewPlace } from "../../library/campaignPlace";
 import { installInnExample } from "../../scenarios/innVisit";
 import { EmmaInnExampleDialog } from "./EmmaInnExampleDialog";
-import { chooseAdventureMap } from "../../library/adventureMap";
+import { adventureMapPlaces, chooseAdventureMap } from "../../library/adventureMap";
 import { StoryboardEditor } from "./StoryboardEditor";
-import { connectedAdventureExample } from "../../library/playableCampaign";
+import { adventureFacts, connectedAdventureExample } from "../../library/playableCampaign";
+import { adventureSteps, type AdventureStepId } from "./adventureSteps";
+import { storyboardIssues } from "./storyboardReadiness";
 import { pinSessionAnatomy } from "@state/anatomy";
 import { useEffect, useRef, useState } from "react";
 import type { IndexedDBRepository, StudioResume } from "@persistence/IndexedDBRepository";
@@ -88,15 +90,6 @@ import {
 } from "@library/exampleTemplates";
 
 type Tab = "general" | "you" | "characters" | "objects" | "scenes" | "storyboard";
-
-const TABS: { id: Tab; label: string }[] = [
-  { id: "general", label: "General" },
-  { id: "you", label: "You" },
-  { id: "characters", label: "Characters" },
-  { id: "objects", label: "Objects" },
-  { id: "scenes", label: "Scenes" },
-  { id: "storyboard", label: "Storyboard" },
-];
 
 function Chip({
   active,
@@ -225,6 +218,7 @@ export function CampaignStudio({
   const [draft, setDraft] = useState<CampaignTemplate | null>(null);
   const [tab, setTab] = useState<Tab>("general");
   const [storyboardOpen, setStoryboardOpen] = useState(false);
+  const [storyboardStep, setStoryboardStep] = useState<"scenes" | "connections" | "test">("scenes");
   const [emmaExampleOpen, setEmmaExampleOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -728,6 +722,39 @@ export function CampaignStudio({
     { realmId: liveRealmId || undefined, placeIds: draft.placeIds },
     visiblePlaces,
   );
+
+  const stepPlaces = draft.mapWorldId ? visiblePlaces : campaignPlaces;
+  const stepWorld = visibleRealms.find((item) => item.id === draft.mapWorldId);
+  const stepMapPlaces = draft.mapWorldId ? adventureMapPlaces(stepWorld, stepPlaces) : undefined;
+  const steps = adventureSteps(
+    draft,
+    storyboardIssues(
+      draft,
+      stepPlaces,
+      new Set(adventureFacts(draft).map((fact) => fact.id)),
+      stepMapPlaces,
+    ),
+  );
+  const activeStep: AdventureStepId =
+    tab === "general"
+      ? "world"
+      : tab === "you"
+        ? "you"
+        : tab === "characters" || tab === "objects"
+          ? "cast"
+          : tab === "storyboard"
+            ? storyboardStep
+            : "scenes";
+  function goToStep(id: AdventureStepId) {
+    if (id === "connections" || id === "test") {
+      setStoryboardStep(id);
+      setTab("storyboard");
+      setStoryboardOpen(true);
+      return;
+    }
+    setStoryboardStep("scenes");
+    setTab(id === "world" ? "general" : id === "cast" ? "characters" : id);
+  }
   const campaignPeople = visibleCharacters.filter((item) =>
     draft.people.some((member) => member.characterId === item.id),
   );
@@ -768,18 +795,32 @@ export function CampaignStudio({
       <nav className="campaign-nav" aria-label="Adventure parts">
         <p className="campaign-nav__kicker">Adventure</p>
         <p className="campaign-nav__name">{draft.name.trim() || "New adventure"}</p>
-        {TABS.map((item) => (
+        {steps.map((step, index) => (
           <button
-            key={item.id}
+            key={step.id}
             type="button"
-            className={tab === item.id ? "campaign-nav__btn is-on" : "campaign-nav__btn"}
-            aria-current={tab === item.id ? "page" : undefined}
-            onClick={() => {
-              setTab(item.id);
-              if (item.id === "storyboard") setStoryboardOpen(true);
-            }}
+            data-step={step.id}
+            className={
+              activeStep === step.id
+                ? "campaign-nav__btn campaign-nav__step is-on"
+                : "campaign-nav__btn campaign-nav__step"
+            }
+            aria-current={activeStep === step.id ? "step" : undefined}
+            onClick={() => goToStep(step.id)}
           >
-            {item.label}
+            <span
+              className={step.done ? "campaign-nav__mark is-done" : "campaign-nav__mark"}
+              aria-hidden="true"
+            >
+              {step.done ? "✓" : index + 1}
+            </span>
+            <span className="campaign-nav__step-text">
+              <strong>{step.label}</strong>
+              <small>
+                {step.done ? "Done · " : ""}
+                {step.note}
+              </small>
+            </span>
           </button>
         ))}
         <button
@@ -800,6 +841,25 @@ export function CampaignStudio({
           placeholder="New adventure"
           onChange={(name) => setDraft({ ...draft, name })}
         />
+
+        {tab === "characters" || tab === "objects" ? (
+          <div className="campaign-cast-switch" role="group" aria-label="Cast and things">
+            <button
+              type="button"
+              aria-pressed={tab === "characters"}
+              onClick={() => setTab("characters")}
+            >
+              People
+            </button>
+            <button
+              type="button"
+              aria-pressed={tab === "objects"}
+              onClick={() => setTab("objects")}
+            >
+              Things
+            </button>
+          </div>
+        ) : null}
 
         {tab === "characters" || tab === "objects" ? (
           <LensBar
@@ -1479,6 +1539,7 @@ export function CampaignStudio({
                 repo={repo}
                 onRefresh={refresh}
                 onCreatePlace={createPlace}
+                initialStep={storyboardStep}
                 characters={campaignPeople}
                 objects={campaignObjects}
                 busy={busy}
@@ -1489,7 +1550,10 @@ export function CampaignStudio({
                 }}
                 onPlay={(scene) => void startScene(scene)}
                 onSave={() => void save()}
-                onClose={() => setStoryboardOpen(false)}
+                onClose={() => {
+                  setStoryboardOpen(false);
+                  setStoryboardStep("scenes");
+                }}
                 error={error}
                 notice={notice}
               />

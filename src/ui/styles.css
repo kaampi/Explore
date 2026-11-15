@@ -3569,3 +3569,59 @@ textarea.setup-field__story {
     height: 200px;
   }
 }
+
+.campaign-nav__step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.campaign-nav__step-text strong,
+.campaign-nav__step-text small {
+  display: block;
+}
+
+.campaign-nav__step-text strong {
+  font-size: 14px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.campaign-nav__step-text small {
+  margin-top: 3px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted, var(--text));
+  overflow-wrap: anywhere;
+}
+
+.campaign-nav__mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.campaign-nav__mark.is-done {
+  background: var(--accent-active);
+  border-color: var(--accent-active);
+  color: var(--panel, #fff);
+}
+
+.campaign-cast-switch {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.campaign-cast-switch button[aria-pressed="true"] {
+  border-color: var(--accent-active);
+  color: var(--accent-active);
+}

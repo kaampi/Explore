@@ -48,6 +48,7 @@ export function PlayableStoryboard({
   expanded = false,
   mapPlaces,
   onCreatePlace,
+  initialStep = "scenes",
 }: {
   campaign: CampaignTemplate;
   places: PlaceTemplate[];
@@ -59,6 +60,8 @@ export function PlayableStoryboard({
   onSave?: () => void;
   expanded?: boolean;
   mapPlaces?: AdventureMapPlace[] | undefined;
+  /** Which step to show first. */
+  initialStep?: "scenes" | "connections" | "test";
   /** Makes a place (and a world if there is none). Returns the place and the adventure to continue with. */
   onCreatePlace?: (
     name: string,
@@ -74,7 +77,7 @@ export function PlayableStoryboard({
   const [connectionSourceId, setConnectionSourceId] = useState("");
   const [sectionId, setSectionId] = useState("");
   const [markedScenes, setMarkedScenes] = useState<ReadonlySet<string>>(new Set());
-  const [step, setStep] = useState<"scenes" | "connections" | "test">("scenes");
+  const [step, setStep] = useState<"scenes" | "connections" | "test">(initialStep);
   const [testSceneId, setTestSceneId] = useState(campaign.scenes[0]?.id ?? "");
   const [focus, setFocus] = useState<SceneField | "objective" | null>(null);
   const inspector = useRef<HTMLElement>(null);
