@@ -23,7 +23,7 @@ async function read<T>(path: string): Promise<T> {
   }
   const response = await fetch(path, { credentials: "omit", cache: "no-store" });
   const data: unknown = await response.json();
-  if (!response.ok) throw new Error((data as { error?: string }).error ?? "Could not reach Core.");
+  if (!response.ok) throw new Error((data as { error?: string }).error ?? "Could not reach kaampi Codex.");
   return data as T;
 }
 
@@ -40,7 +40,7 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
   async function refresh() {
     setBusy(true); setError(""); setSelected(null); setImportNotice("");
     try { setEntries(await read<Entry[]>("/api/core/manuscripts")); }
-    catch (reason) { setEntries(null); setError(reason instanceof Error ? reason.message : "Could not reach Core."); }
+    catch (reason) { setEntries(null); setError(reason instanceof Error ? reason.message : "Could not reach kaampi Codex."); }
     finally { setBusy(false); }
   }
   async function open(entry: Entry) {
@@ -73,7 +73,7 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
       }
       const local = copyCoreCharacter(entity, origin);
       await repo.saveCharacter(local);
-      setImportNotice(`${local.name} was copied to your Sandbox character library. Storybook was not changed.`);
+      setImportNotice(`${local.name} was copied to your kaampi Explore character library. kaampi Write was not changed.`);
     } catch (reason) { setImportNotice(reason instanceof Error ? reason.message : "Could not copy this character."); }
     finally { setImporting(false); }
   }
@@ -89,28 +89,28 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
       });
       await repo.saveCharacter(updated);
       setReview(null);
-      setImportNotice(`${updated.name} was updated in your Sandbox library.`);
+      setImportNotice(`${updated.name} was updated in your kaampi Explore library.`);
     } catch (reason) { setImportNotice(reason instanceof Error ? reason.message : "Could not update this character."); }
     finally { setImporting(false); }
   }
-  return <section className="sb-home-section sb-core-shelf" aria-label="Manuscripts shared with Sandbox">
-    <div className="sb-section-heading"><h2>Manuscripts from Storybook</h2><button type="button" className="sb-link" disabled={busy} onClick={() => void refresh()}>{entries ? "Refresh" : "Find shared manuscripts"}</button></div>
-    <p className="sb-section-description">Only manuscripts explicitly shared with Sandbox appear here. Reading one does not change your local sessions or Storybook's manuscript.</p>
+  return <section className="sb-home-section sb-core-shelf" aria-label="Manuscripts shared with kaampi Explore">
+    <div className="sb-section-heading"><h2>Manuscripts from kaampi Write</h2><button type="button" className="sb-link" disabled={busy} onClick={() => void refresh()}>{entries ? "Refresh" : "Find shared manuscripts"}</button></div>
+    <p className="sb-section-description">Only manuscripts explicitly shared with kaampi Explore appear here. Reading one does not change your local sessions or kaampi Write's manuscript.</p>
     {error && <p role="alert">{error}</p>}
-    {busy && <p role="status">Reading from Core…</p>}
-    {entries?.length === 0 && <p>No manuscripts are currently shared with Sandbox.</p>}
+    {busy && <p role="status">Reading from kaampi Codex…</p>}
+    {entries?.length === 0 && <p>No manuscripts are currently shared with kaampi Explore.</p>}
     {entries && entries.length > 0 && <ul className="sb-core-list">{entries.map(entry => <li key={entry.workspaceId}><button type="button" disabled={busy} onClick={() => void open(entry)}><strong>{entry.title}</strong><small>{entry.language || "Language not specified"} · Revision {entry.revision}</small></button></li>)}</ul>}
     {selected && <Modal title={selected.manuscript.title} onClose={() => { setSelected(null); setReview(null); }} wide>
       <div className="sb-core-preview">
-        <p className="sb-section-description">Read-only Storybook manuscript · {selected.language || "Language not specified"} · Revision {selected.revision}</p>
+        <p className="sb-section-description">Read-only kaampi Write manuscript · {selected.language || "Language not specified"} · Revision {selected.revision}</p>
         <h3>Synopsis</h3><p>{selected.manuscript.synopsis || "No synopsis yet."}</p>
         {selected.manuscript.chapters.map(chapter => <section key={chapter.id}><h3>{chapter.title || "Untitled chapter"}</h3><p className="sb-core-prose">{chapter.prose}</p></section>)}
         <h3>Story Bible</h3>
-        <p className="sb-section-description">Only Storybook's approved, visible information is shared. This is a read-only view; copying a character makes an independent Sandbox card.</p>
+        <p className="sb-section-description">Only kaampi Write's approved, visible information is shared. This is a read-only view; copying a character makes an independent kaampi Explore card.</p>
         {selected.manuscript.bible.length === 0 && <p>No shared Story Bible entries in this manuscript.</p>}
         {selected.manuscript.bible.map((section, index) => <section key={`${section.kind}-${index}`}><h4>{section.label}</h4>
           <div className="sb-core-entities">{section.entities.map(entity => <article key={entity.entity_ref} className="sb-core-entity">
-            <div className="sb-section-heading"><h5>{entity.name}</h5>{section.kind === "characters" && <button type="button" className="sb-link" disabled={importing || !!review} onClick={() => void copy(entity)}>Copy to Sandbox library / Review updates</button>}</div>
+            <div className="sb-section-heading"><h5>{entity.name}</h5>{section.kind === "characters" && <button type="button" className="sb-link" disabled={importing || !!review} onClick={() => void copy(entity)}>Copy to kaampi Explore library / Review updates</button>}</div>
             {portraitSrc(entity.referenceImages[0]) && <img src={portraitSrc(entity.referenceImages[0])} alt="" className="sb-core-portrait" />}
             {entity.pronoun && <p>Pronoun: {entity.pronoun}</p>}
             {entity.approximateAge && <p>Approximate age: {entity.approximateAge}</p>}

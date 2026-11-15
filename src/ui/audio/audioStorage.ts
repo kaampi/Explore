@@ -30,7 +30,7 @@ async function database(): Promise<IDBDatabase> {
       resolve(request.result);
     };
     request.onerror = () => reject(request.error ?? new Error("Audio storage is unavailable."));
-    request.onblocked = () => reject(new Error("Close other Sandbox tabs and try again."));
+    request.onblocked = () => reject(new Error("Close other kaampi Explore tabs and try again."));
   });
 }
 async function transaction<T>(stores: string[], mode: IDBTransactionMode, run: (tx: IDBTransaction, result: (value: T) => void) => void): Promise<T> {

@@ -105,7 +105,7 @@ function BrandHeader() {
   return (
     <div className="campaign-brand">
       <img className="campaign-brand__quill" src={quill} alt="" />
-      <h1 className="campaign-brand__title">Campaign Builder</h1>
+      <h1 className="campaign-brand__title">Adventure Builder</h1>
     </div>
   );
 }
@@ -126,7 +126,7 @@ function sanitizeCampaign(draft: CampaignTemplate) {
   const voiceId = draft.voiceId;
   return {
     ...draft,
-    name: draft.name.trim() || "New campaign",
+    name: draft.name.trim() || "New adventure",
     scenes: draft.scenes.map((scene) => ({
       ...scene,
       name: scene.name.trim() || "Opening",
@@ -288,7 +288,7 @@ export function CampaignStudio({
   function createNew() {
     setDraft({
       ...newCampaignTemplate({
-        name: "New campaign",
+        name: "New adventure",
         scenes: [emptyCampaignScene()]
       }),
       name: ""
@@ -357,7 +357,7 @@ export function CampaignStudio({
     if (!draft) return;
     const name = draft.name.trim();
     if (!name) {
-      setError("Name the campaign.");
+      setError("Name the adventure.");
       return;
     }
     setBusy(true);
@@ -382,7 +382,7 @@ export function CampaignStudio({
 
   async function remove() {
     if (!draft || !savedIds.has(draft.id)) return;
-    if (!confirmRemove(draft.name.trim() || "this campaign")) return;
+    if (!confirmRemove(draft.name.trim() || "this adventure")) return;
     await repo.deleteCampaign(draft.id);
     const landed = await repo.loadStudioResume();
     if (landed?.campaignId === draft.id) await repo.clearStudioResume();
@@ -430,7 +430,7 @@ export function CampaignStudio({
       const realmId = inferCampaignRealmId(draft, visiblePlaces);
       const named = sanitizeCampaign({
         ...draft,
-        name: draft.name.trim() || "New campaign",
+        name: draft.name.trim() || "New adventure",
         ...(realmId ? { realmId } : {})
       });
       const saved = withOriginalTimestamps(
@@ -549,11 +549,11 @@ export function CampaignStudio({
         <div className="setup-card campaign-builder">
           <BrandHeader />
           <p className="setup-lede">
-            A campaign is who and where belong together. A scene is tonight — then you press Start.
+            An adventure is who and where belong together. A scene is tonight — then you press Start.
           </p>
           {campaigns.length > 0 ? (
             <>
-              <p className="panel-heading">Your campaigns</p>
+              <p className="panel-heading">Your adventures</p>
               <div className="setup-chips" role="list" style={{ marginBottom: 22 }}>
                 {campaigns.map((item) => (
                   <Chip key={item.id} active={false} label={item.name} onPick={() => open(item.id)} />
@@ -568,15 +568,15 @@ export function CampaignStudio({
           {error && <p className="setup-error">{error}</p>}
           <div className="setup-actions">
             <button type="button" className="setup-start" onClick={createNew}>
-              New campaign
+              New adventure
             </button>
             <button type="button" className="setup-text-btn" disabled={busy} onClick={()=>void loadConnectedExample()}>Connected adventure example</button><button type="button" className="setup-text-btn" disabled={busy} onClick={()=>void loadInnExample()}>Inn & rooms example</button>
             <button type="button" className="setup-text-btn" disabled={busy} onClick={() => { setError(null); setEmmaExampleOpen(true); }}>Emma och Einar</button>
             <button type="button" className="setup-text-btn" onClick={() => void loadExampleCampaign()}>
-              Load the example campaign
+              Load the example adventure
             </button>
             <button type="button" className="setup-text-btn" onClick={onOneOff}>
-              One-off scene
+              Quick scene
             </button>
           </div>
           {emmaExampleOpen && <EmmaInnExampleDialog characters={characters} worlds={realms} places={places}
@@ -624,9 +624,9 @@ export function CampaignStudio({
 
   return (
     <div className={`studio-split campaign-workspace${tab==='storyboard'?' campaign-workspace--flow':''}`}>
-      <nav className="campaign-nav" aria-label="Campaign parts">
-        <p className="campaign-nav__kicker">Campaign</p>
-        <p className="campaign-nav__name">{draft.name.trim() || "New campaign"}</p>
+      <nav className="campaign-nav" aria-label="Adventure parts">
+        <p className="campaign-nav__kicker">Adventure</p>
+        <p className="campaign-nav__name">{draft.name.trim() || "New adventure"}</p>
         {TABS.map((item) => (
           <button
             key={item.id}
@@ -646,14 +646,14 @@ export function CampaignStudio({
             setFreshNight(false);
           }}
         >
-          All campaigns
+          All adventures
         </button>
       </nav>
       <section className="studio-sheet studio-sheet--form campaign-workspace__sheet">
         <SheetNameField
-          ariaLabel="Campaign name"
+          ariaLabel="Adventure name"
           value={draft.name}
-          placeholder="New campaign"
+          placeholder="New adventure"
           onChange={(name) => setDraft({ ...draft, name })}
         />
 
@@ -921,7 +921,7 @@ export function CampaignStudio({
               }
               lede={
                 ruleset
-                  ? "Same rule-set as the rest of the campaign."
+                  ? "Same rule-set as the rest of the adventure."
                   : "Pick a rule-set on General if you want numbers."
               }
             >
@@ -985,7 +985,7 @@ export function CampaignStudio({
         {tab === "characters" && (
           <section className="setup-section">
             <FormSection
-              title="People in this campaign"
+              title="People in this adventure"
               action={
                 <button type="button" className="setup-text-btn" onClick={() => onOpenShelf("characters")}>
                   Edit characters
@@ -1017,8 +1017,8 @@ export function CampaignStudio({
             </p>
             <ShuttleList
               leftHeading="All characters"
-              rightHeading="In this campaign"
-              leftEmpty={shelfEmpty("Everyone is already in the campaign.")}
+              rightHeading="In this adventure"
+              leftEmpty={shelfEmpty("Everyone is already in the adventure.")}
               rightEmpty="None yet. Pick someone on the left, then Add."
               left={visibleCharacters
                 .filter(
@@ -1117,7 +1117,7 @@ export function CampaignStudio({
         {tab === "objects" && (
           <section className="setup-section">
             <FormSection
-              title="Things in this campaign"
+              title="Things in this adventure"
               action={
                 <button type="button" className="setup-text-btn" onClick={() => onOpenShelf("objects")}>
                   Edit objects
@@ -1127,8 +1127,8 @@ export function CampaignStudio({
             >
             <ShuttleList
               leftHeading="All objects"
-              rightHeading="In this campaign"
-              leftEmpty={shelfEmpty("Everything is already in the campaign.")}
+              rightHeading="In this adventure"
+              leftEmpty={shelfEmpty("Everything is already in the adventure.")}
               rightEmpty="None yet. Pick something on the left, then Add."
               left={visibleObjects
                 .filter((item) => !draft.objectIds.includes(item.id) && matchesTagFilter(item, pickFilter))
@@ -1150,7 +1150,7 @@ export function CampaignStudio({
               {draft.scenes.map(scene=><div key={scene.id} className="setup-section"><h3>{scene.name||'New scene'}</h3><p>{scene.encounter?.definition.description||'Not yet playable.'}</p><button type="button" disabled={busy||!scene.encounter||!scene.placeId} onClick={()=>void startScene(scene)}>Test this scene →</button></div>)}
             </>:<>
             <div className="setup-section__head">
-              <p className="panel-heading">Scenes in this campaign</p>
+              <p className="panel-heading">Scenes in this adventure</p>
               <button
                 type="button"
                 className="setup-text-btn"
@@ -1215,7 +1215,7 @@ export function CampaignStudio({
 
         {tab === "storyboard" && (
           <section className="setup-section">
-            <h2>Your adventure, connected</h2><p className="form-section__lede">Build scenes and choices in a spacious editor. Your campaign details and draft stay here when you close it.</p><button type="button" className="setup-start" onClick={()=>setStoryboardOpen(true)}>Open Storyboard Editor →</button>{storyboardOpen&&<StoryboardEditor campaign={draft} places={draft.mapWorldId?visiblePlaces:campaignPlaces} worlds={visibleRealms} repo={repo} onRefresh={refresh} characters={campaignPeople} objects={campaignObjects} busy={busy} onChange={next=>{setDraft(next);setNotice(null);setError(null);}} onPlay={scene=>void startScene(scene)} onSave={()=>void save()} onClose={()=>setStoryboardOpen(false)} error={error} notice={notice}/>}
+            <h2>Your adventure, connected</h2><p className="form-section__lede">Build scenes and choices in a spacious editor. Your adventure details and draft stay here when you close it.</p><button type="button" className="setup-start" onClick={()=>setStoryboardOpen(true)}>Open Storyboard Editor →</button>{storyboardOpen&&<StoryboardEditor campaign={draft} places={draft.mapWorldId?visiblePlaces:campaignPlaces} worlds={visibleRealms} repo={repo} onRefresh={refresh} characters={campaignPeople} objects={campaignObjects} busy={busy} onChange={next=>{setDraft(next);setNotice(null);setError(null);}} onPlay={scene=>void startScene(scene)} onSave={()=>void save()} onClose={()=>setStoryboardOpen(false)} error={error} notice={notice}/>}
           </section>
         )}
 
@@ -1223,7 +1223,7 @@ export function CampaignStudio({
         {error && <p className="setup-error">{error}</p>}
         <div className="studio-sheet__actions">
           <button type="button" className="setup-start" disabled={busy} onClick={() => void save()}>
-            Save campaign
+            Save adventure
           </button>
           {savedIds.has(draft.id) ? (
             <button type="button" className="setup-example" disabled={busy} onClick={() => void remove()}>

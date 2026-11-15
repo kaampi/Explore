@@ -116,7 +116,7 @@ export function applyCoreCharacterChanges(
   approvedKeys: readonly string[],
   source: CoreCharacterSource,
 ): CharacterTemplate {
-  if (!sameCoreCharacter(character, source) || incoming.entity_ref !== source.entityRef) throw new Error("Core identity mismatch.");
+  if (!sameCoreCharacter(character, source) || incoming.entity_ref !== source.entityRef) throw new Error("kaampi Codex identity mismatch.");
   if (source.revision < character.coreOrigin!.revision) throw new Error("This manuscript version is older than the local copy.");
   const selected = new Set(approvedKeys);
   const next = snapshotCoreCharacter(incoming);

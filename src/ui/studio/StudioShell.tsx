@@ -28,7 +28,7 @@ const NAV: { id: StudioView; label: string; group: "library" | "play" }[] = [
   { id: "voices", label: "Voices", group: "library" },
   { id: "stories", label: "Stories", group: "library" },
   { id: "rulesets", label: "Rule-sets", group: "library" },
-  { id: "campaigns", label: "Campaigns", group: "play" }
+  { id: "campaigns", label: "Adventures", group: "play" }
 ];
 
 export function StudioShell({

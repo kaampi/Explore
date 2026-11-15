@@ -229,7 +229,7 @@ export function PlayableStoryboard({campaign,places,characters,objects,busy,onCh
          return item.id === actId ? { ...item, collapsed: false } : item;
        }) });
      }}>
-       <option value="">Campaign</option>
+       <option value="">Adventure</option>
        {acts.map(act => <option key={act.id} value={act.id}>{storyboardSectionTitle(act)}</option>)}
      </select>
    </label>}
@@ -246,7 +246,7 @@ export function PlayableStoryboard({campaign,places,characters,objects,busy,onCh
  const sceneSectionField = scene && sections.length > 0 && <label>Belongs to
    <select value={hierarchy.byId.has(scene.storyboardSectionId ?? '') ? scene.storyboardSectionId : ''}
      onChange={event => moveSceneToSection(scene, event.target.value)}>
-     <option value="">Campaign</option>
+     <option value="">Adventure</option>
      {sections.map(item => {
        const parentId = hierarchy.parentAct(item);
        const parent = parentId ? hierarchy.byId.get(parentId) : undefined;

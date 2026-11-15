@@ -21,7 +21,7 @@ export function LoreEditor({
           + Add
         </button>
       }
-      lede="This campaign only. Quiet until chat hits the wake words. Empty wake words means always in the prompt."
+      lede="This adventure only. Quiet until chat hits the wake words. Empty wake words means always in the prompt."
     >
       {entries.length === 0 && <p className="inspector-empty">No lore entries yet.</p>}
       {entries.map((entry) => (

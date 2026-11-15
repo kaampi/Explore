@@ -37,13 +37,13 @@ describe("shared manuscript Story Bible UI", () => {
     expect(container.textContent).toContain("Bartender");
     expect(container.textContent).toContain("All prose");
     expect(await repo.listCharacters()).toEqual([]);
-    const copyButton = Array.from(container.querySelectorAll("button")).find(element => element.textContent?.includes("Copy to Sandbox library"));
+    const copyButton = Array.from(container.querySelectorAll("button")).find(element => element.textContent?.includes("Copy to kaampi Explore library"));
     if (!copyButton) throw new Error("Missing copy button");
     await act(async () => {
       copyButton.click();
       for (let i = 0; i < 30 && (await repo.listCharacters()).length === 0; i++) await new Promise(resolve => setTimeout(resolve, 10));
     });
-    expect(container.textContent).toContain("was copied to your Sandbox character library");
+    expect(container.textContent).toContain("was copied to your kaampi Explore character library");
     expect((await repo.listCharacters()).map(person => person.name)).toEqual(["Emma"]);
     await act(async () => { copyButton.click(); await new Promise(resolve => setTimeout(resolve, 30)); });
     expect((await repo.listCharacters()).length).toBe(1);

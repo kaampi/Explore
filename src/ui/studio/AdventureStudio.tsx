@@ -355,10 +355,10 @@ export function AdventureStudio({
   return (
     <div className="setup-screen studio-adventure">
       <div className="setup-card studio-sheet--form">
-        <p className="setup-kicker">One-off scene</p>
+        <p className="setup-kicker">Quick scene</p>
         <h1 className="setup-title">Assemble a scene</h1>
         <p className="setup-lede">
-          No campaign — just tonight. Pick a place and a character. Stats need a rule-set. Then Start scene.
+          No adventure — just tonight. Pick a place and a character. Stats need a rule-set. Then Start scene.
         </p>
 
         <section className="setup-section">

@@ -13,8 +13,8 @@ const entity = CoreBibleSchema.parse([{ kind: "characters", label: "Characters",
   brainstorm: "Never copy this", hidden_from_ai: true,
 }] }])[0]!.entities[0]!;
 
-describe("copying a shared Storybook character", () => {
-  it("creates a separate Sandbox card with approved facts and provenance without replacing a local namesake", async () => {
+describe("copying a shared kaampi Write character", () => {
+  it("creates a separate kaampi Explore card with approved facts and provenance without replacing a local namesake", async () => {
     const repo = new IndexedDBRepository(new IDBFactory(), "core-character-import");
     const original = newCharacterTemplate({ name: "Emma", personality: "Local version" });
     await repo.saveCharacter(original);

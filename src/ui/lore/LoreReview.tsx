@@ -11,7 +11,7 @@ export function LoreReview({ book, onChange, disabled = false }: {
     <p>Unsupported entries remain dormant. Importing does not establish kaampi Write facts.</p>
     <button type="button" className="sb-button" disabled={disabled}
       onClick={() => onChange({ ...book, entries: book.entries.map(e => ({ ...e, approved: e.mode !== "dormant" && e.reasons.length === 0 })) })}>
-      Use supported entries with Sandbox rules
+      Use supported entries with kaampi Explore rules
     </button>
     <button type="button" className="sb-button" disabled={disabled}
       onClick={() => onChange({ ...book, entries: book.entries.map(e => ({ ...e, approved: false })) })}>Deselect all</button>

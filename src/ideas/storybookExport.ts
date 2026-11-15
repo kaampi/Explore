@@ -23,7 +23,7 @@ export function exportIdeas(input: Idea[], now = new Date().toISOString(), noteb
         note: "kaampi Explore ideas. Import as a separate notebook, then open Brainstorm. These are suggestions, not established story facts.",
         book: {
             id: `sandbox-ideas-${notebookId}`,
-            title: ideas.length === 1 ? `Sandbox ideas — ${ideas[0]!.title}` : "Sandbox ideas",
+            title: ideas.length === 1 ? `kaampi Explore ideas — ${ideas[0]!.title}` : "kaampi Explore ideas",
             voice: "",
             brainstorm: notes.map(note => note.text).join("\n\n"),
             brainstorm_notes: notes,

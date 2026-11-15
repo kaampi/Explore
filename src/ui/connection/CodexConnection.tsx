@@ -47,7 +47,7 @@ export function CodexConnection() {
       </>}
       {desktop && !status.paired && !attempt && <details>
         <summary>Connect manually with an Explore key</summary>
-        <p>Use the connection key issued for Explore (sandbox) by Codex. Each app needs its own key.</p>
+        <p>Use the connection key issued for kaampi Explore by Codex. Each app needs its own key.</p>
         <label>Explore connection key<input type="password" autoComplete="off" value={manualKey} disabled={busy} onChange={event => setManualKey(event.target.value)} /></label>
         <button type="button" className="sb-button" disabled={busy || !manualKey.trim()} onClick={() => void run(async () => {
           await invoke("core_pair", { token: manualKey.trim() });

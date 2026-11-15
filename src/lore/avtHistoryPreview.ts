@@ -34,6 +34,6 @@ export function previewAvtHistory(raw: unknown, makeId?: () => string): AvtHisto
       branchTargetId: branch ? plan.idMap.get(branch) ?? null : null,
     });
   }
-  if (lines.some(line => line.role === "other")) warnings.push("Some entry types are not mapped to a Sandbox conversation role; keep them as read-only history.");
+  if (lines.some(line => line.role === "other")) warnings.push("Some entry types are not mapped to a kaampi Explore conversation role; keep them as read-only history.");
   return { title: overview.title, lines, warnings, idPlan: plan };
 }

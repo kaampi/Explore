@@ -176,7 +176,7 @@ describe("external world import journeys", () => {
     await upload(cards, "Star travellers.json");
     expect(container.textContent).toContain("AI Dungeon Story Cards");
     expect(container.querySelector<HTMLInputElement>('.sb-world-import-choice input')?.checked).toBe(false);
-    await click(button("Use supported entries with Sandbox rules"));
+    await click(button("Use supported entries with kaampi Explore rules"));
     await click(container.querySelector<HTMLInputElement>('.sb-world-import-choice input')!);
     await click(button("Save world & lore"));
     await waitFor(() => container.textContent?.includes("World saved with 1 characters and 1 places") ?? false);
@@ -203,7 +203,7 @@ describe("external world import journeys", () => {
   it("imports the real OnlyWorlds fixture and uses its new character's world lore during a direct chat", async () => {
     await mount(); await openImports();
     await upload(onlyFixture, "OnlyWorlds.json");
-    await click(button("Use supported entries with Sandbox rules"));
+    await click(button("Use supported entries with kaampi Explore rules"));
     await click(container.querySelector<HTMLInputElement>('.sb-world-import-choice input')!);
     await click(button("Save world & lore"));
     await waitFor(() => container.textContent?.includes("World saved with 2 characters and 2 places") ?? false);
@@ -227,7 +227,7 @@ describe("external world import journeys", () => {
     const map = { info: { description: "Azgaar's Fantasy Map Generator output", mapId: 123, mapName: "Coast" }, pack: { burgs: [0, { i: 1, name: "Port Dawn", note: "A sheltered port." }] } };
     await upload(map, "Coast-Minimal.json");
     expect(container.textContent).toContain("Azgaar Full / Minimal JSON");
-    await click(button("Use supported entries with Sandbox rules"));
+    await click(button("Use supported entries with kaampi Explore rules"));
     await click(button("Save lorebook"));
     await waitFor(() => !container.querySelector('.sb-lore-review'));
     const repo = new IndexedDBRepository();
@@ -241,7 +241,7 @@ describe("external world import journeys", () => {
 
   it("keeps a world review on storage failure, retries safely and lets an import be cancelled", async () => {
     await mount(); await openImports(); await upload(cards, "cards.json");
-    await click(button("Use supported entries with Sandbox rules"));
+    await click(button("Use supported entries with kaampi Explore rules"));
     await click(container.querySelector<HTMLInputElement>('.sb-world-import-choice input')!);
     const spy = vi.spyOn(IndexedDBRepository.prototype, "saveWorldImport").mockRejectedValueOnce(new Error("Storage unavailable"));
     await click(button("Save world & lore"));

@@ -94,7 +94,7 @@ export function ActionCheckDialog({ session, onClose, onContinue }: {
       </div>
 
         <>
-          {stats.length === 0 && <p className="action-check__hint">Add numeric values on your campaign's <strong>You</strong> sheet to use checks. The live scene uses the values copied when it started.</p>}
+          {stats.length === 0 && <p className="action-check__hint">Add numeric values on your adventure's <strong>You</strong> sheet to use checks. The live scene uses the values copied when it started.</p>}
           {ids.length === 0 && <p className="action-check__hint">A character must be in the same place as you.</p>}
           <div className="action-check__fields">
             <label>With whom?<select value={targetId} onChange={(e) => setTargetId(e.target.value)}>

@@ -72,7 +72,7 @@ export function LoreStudio({ repo }: { repo: IndexedDBRepository }) {
       const session = buildAvtPlayableSession(migrationReview, avtSelected, crypto.randomUUID());
       await repo.createConversation(session);
       setAvtPreview(null); setMigrationReview(null); setAvtSelected([]);
-      setMessage("Created a new playable Sandbox conversation from approved identities. Imported history, descriptions and world-state were not activated.");
+      setMessage("Created a new playable kaampi Explore conversation from approved identities. Imported history, descriptions and world-state were not activated.");
     } catch (err) { setError(err instanceof Error ? err.message : "Could not create the new session."); }
     finally { pending.current = false; setBusy(false); }
   }
@@ -150,7 +150,7 @@ export function LoreStudio({ repo }: { repo: IndexedDBRepository }) {
           <h4>{candidate.kind}: {candidate.name || "(unnamed)"}</h4>
           {candidate.description && <p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{candidate.description}</p>}
           <p>{candidate.eligible ? "Available for explicit selection" : candidate.reasons.join("; ")}</p>
-          {candidate.eligible && <label><input type="checkbox" disabled={busy} checked={avtSelected.some(c => c.kind === candidate.kind && c.sourceId === candidate.sourceId)} onChange={event => setAvtSelected(current => event.target.checked ? [...current, { kind: candidate.kind, sourceId: candidate.sourceId }] : current.filter(c => !(c.kind === candidate.kind && c.sourceId === candidate.sourceId)))} /> Include in new Sandbox session</label>}
+          {candidate.eligible && <label><input type="checkbox" disabled={busy} checked={avtSelected.some(c => c.kind === candidate.kind && c.sourceId === candidate.sourceId)} onChange={event => setAvtSelected(current => event.target.checked ? [...current, { kind: candidate.kind, sourceId: candidate.sourceId }] : current.filter(c => !(c.kind === candidate.kind && c.sourceId === candidate.sourceId)))} /> Include in new kaampi Explore session</label>}
         </article>)}
         {migrationReview.candidates.length > 40 && <p>Showing first 40 candidates only.</p>}
         {migrationReview.warnings.map((warning, index) => <p className="sb-muted" key={index}>{warning}</p>)}
@@ -173,7 +173,7 @@ export function LoreStudio({ repo }: { repo: IndexedDBRepository }) {
         <label className="sb-field">Use in new conversations<select disabled={busy} value={draft.binding.kind}
           onChange={e => setDraft({ ...draft, binding: { kind: e.target.value as Lorebook["binding"]["kind"], targetId: "" } })}>
           <option value="none">Keep in library, unlinked</option><option value="character">With a character</option>
-          <option value="campaign">In a campaign</option><option value="realm">In a world</option><option value="all">All new conversations</option>
+          <option value="campaign">In an adventure</option><option value="realm">In a world</option><option value="all">All new conversations</option>
         </select></label>
         {["character", "campaign", "realm"].includes(draft.binding.kind) && <label className="sb-field">Link to<select disabled={busy} value={draft.binding.targetId}
           onChange={e => setDraft({ ...draft, binding: { ...draft.binding, targetId: e.target.value } })}>

@@ -195,7 +195,7 @@ describe("lorebook import journeys", () => {
     const checks = Array.from(container.querySelectorAll<HTMLInputElement>('.sb-lore-entries input'));
     expect(checks[0]?.checked).toBe(false);
     expect(checks[1]?.disabled).toBe(true);
-    await click(button("Use supported entries with Sandbox rules"));
+    await click(button("Use supported entries with kaampi Explore rules"));
     const select = container.querySelector<HTMLSelectElement>('.sb-lore-studio select')!;
     await act(async () => { select.value = "all"; select.dispatchEvent(new Event("change", { bubbles: true })); });
     await click(button("Save lorebook"));
@@ -246,7 +246,7 @@ describe("lorebook import journeys", () => {
     const raw = { spec: "chara_card_v2", data: { name: "Ari", description: "A traveller", personality: "Curious", character_book: { entries: [supportedEntry] } } };
     await upload(jsonFile(raw, "Ari.json"), 'input[accept*=".png"]');
     await waitFor(() => !!container.querySelector('.sb-embedded-lore'));
-    await click(button("Use supported entries with Sandbox rules"));
+    await click(button("Use supported entries with kaampi Explore rules"));
     const failed = vi.spyOn(IndexedDBRepository.prototype, "saveCharacterWithLorebook").mockRejectedValueOnce(new Error("Storage unavailable"));
     await click(button("Import"));
     await waitFor(() => container.textContent?.includes("Storage unavailable") ?? false);

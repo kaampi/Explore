@@ -15,8 +15,8 @@ export class CoreReadError extends Error {
 }
 
 async function boundedJson(response: Response, max: number): Promise<unknown> {
-  if (Number(response.headers.get("content-length")) > max) { await response.body?.cancel(); throw new CoreReadError(502, "Core response is too large."); }
-  if (!response.body) throw new CoreReadError(502, "Core returned no data.");
+  if (Number(response.headers.get("content-length")) > max) { await response.body?.cancel(); throw new CoreReadError(502, "kaampi Codex response is too large."); }
+  if (!response.body) throw new CoreReadError(502, "kaampi Codex returned no data.");
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
   let size = 0;
@@ -25,7 +25,7 @@ async function boundedJson(response: Response, max: number): Promise<unknown> {
       const part = await reader.read();
       if (part.done) break;
       size += part.value.byteLength;
-      if (size > max) throw new CoreReadError(502, "Core response is too large.");
+      if (size > max) throw new CoreReadError(502, "kaampi Codex response is too large.");
       chunks.push(part.value);
     }
   } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
@@ -34,7 +34,7 @@ async function boundedJson(response: Response, max: number): Promise<unknown> {
     let offset = 0;
     for (const part of chunks) { bytes.set(part, offset); offset += part.byteLength; }
     return JSON.parse(new TextDecoder().decode(bytes));
-  } catch { throw new CoreReadError(502, "Core returned invalid data."); }
+  } catch { throw new CoreReadError(502, "kaampi Codex returned invalid data."); }
 }
 
 function catalogItem(value: unknown): value is CatalogItem {
@@ -50,22 +50,22 @@ function catalogItem(value: unknown): value is CatalogItem {
 export function createCoreManuscriptReader(token: string | undefined, fetcher: typeof fetch = fetch, nativeRead?: (path: string) => Promise<unknown>) {
   const read = async (path: string, max: number) => {
     if (nativeRead) return nativeRead(path);
-    if (!token || !/^[0-9a-f]{64}$/.test(token)) throw new CoreReadError(503, "Configure the Sandbox Core credential in the local server.");
+    if (!token || !/^[0-9a-f]{64}$/.test(token)) throw new CoreReadError(503, "Configure the kaampi Codex credential in the local server.");
     let response: Response;
     try {
       response = await fetcher(CORE_URL + path, {
         method: "GET", redirect: "error", credentials: "omit", signal: AbortSignal.timeout(8000),
         headers: { authorization: `Bearer ${token}`, accept: "application/json" },
       });
-    } catch { throw new CoreReadError(503, "Core is unavailable on this computer."); }
-    if (response.status === 401) throw new CoreReadError(503, "The Sandbox Core credential is invalid.");
-    if (response.status === 403 || response.status === 404) throw new CoreReadError(404, "This manuscript is not shared with Sandbox.");
-    if (!response.ok) throw new CoreReadError(502, "Core could not return the manuscript.");
+    } catch { throw new CoreReadError(503, "kaampi Codex is unavailable on this computer."); }
+    if (response.status === 401) throw new CoreReadError(503, "The kaampi Codex credential is invalid.");
+    if (response.status === 403 || response.status === 404) throw new CoreReadError(404, "This manuscript is not shared with kaampi Explore.");
+    if (!response.ok) throw new CoreReadError(502, "kaampi Codex could not return the manuscript.");
     return boundedJson(response, max);
   };
   const catalog = async (): Promise<CatalogItem[]> => {
     const result = await read("/v1/shared-manuscripts", MAX_CATALOG_BYTES);
-    if (!Array.isArray(result) || !result.every(catalogItem)) throw new CoreReadError(502, "Core returned an invalid manuscript catalog.");
+    if (!Array.isArray(result) || !result.every(catalogItem)) throw new CoreReadError(502, "kaampi Codex returned an invalid manuscript catalog.");
     return result;
   };
   return {
@@ -73,9 +73,9 @@ export function createCoreManuscriptReader(token: string | undefined, fetcher: t
     async manuscript(workspaceId: string) {
       if (!workspaceIdPattern.test(workspaceId)) throw new CoreReadError(404, "Manuscript not found.");
       const selected = (await catalog()).find(item => item.workspaceId === workspaceId);
-      if (!selected) throw new CoreReadError(404, "This manuscript is not shared with Sandbox.");
+      if (!selected) throw new CoreReadError(404, "This manuscript is not shared with kaampi Explore.");
       const result = await read(`/v1/records/${selected.recordId}`, MAX_RECORD_BYTES);
-      if (!result || typeof result !== "object") throw new CoreReadError(502, "Core returned an invalid manuscript.");
+      if (!result || typeof result !== "object") throw new CoreReadError(502, "kaampi Codex returned an invalid manuscript.");
       const record = result as { workspaceId?: unknown; revision?: unknown; body?: unknown };
       const body = record.body as { kind?: unknown; format?: unknown; sourceApp?: unknown; sourceBookId?: unknown; title?: unknown; synopsis?: unknown; chapters?: unknown; bible?: unknown } | null;
       const bible = CoreBibleSchema.safeParse(body?.bible);
@@ -84,7 +84,7 @@ export function createCoreManuscriptReader(token: string | undefined, fetcher: t
         body.sourceBookId !== selected.projectId || typeof body.title !== "string" ||
         typeof body.synopsis !== "string" || !Array.isArray(body.chapters) || !bible.success ||
         !body.chapters.every(chapter => chapter && typeof chapter.id === "string" && typeof chapter.title === "string" && typeof chapter.prose === "string"))
-        throw new CoreReadError(502, "Core returned an invalid manuscript.");
+        throw new CoreReadError(502, "kaampi Codex returned an invalid manuscript.");
       return { ...selected, manuscript: { title: body.title, synopsis: body.synopsis,
         chapters: body.chapters.map(chapter => ({ id: chapter.id, title: chapter.title, prose: chapter.prose })), bible: bible.data } };
     },

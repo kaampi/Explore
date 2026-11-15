@@ -25,7 +25,7 @@ export function rollPlayerCheck(session: Session, input: {
   }
   if (!charactersHere(session).includes(input.targetId)) throw new Error("The other character must be here.");
   const stat = playerCheckStats(session).find((item) => item.id === input.attributeId);
-  if (!stat) throw new Error("Set a numeric stat on the campaign's You sheet first.");
+  if (!stat) throw new Error("Set a numeric stat on the adventure's You sheet first.");
   return resolveCheck({ ...input, attributeName: stat.name, value: stat.value, min: stat.min, max: stat.max }, rng);
 }
 

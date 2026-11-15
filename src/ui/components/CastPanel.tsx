@@ -583,9 +583,9 @@ export function CastPanel() {
         <>
           {session.campaignIntro?.trim() ? (
             <>
-              <p className="panel-heading">Campaign</p>
+              <p className="panel-heading">Adventure</p>
               <div className="place-card">
-                <div className="place-card__name">{session.story?.title.trim() || "Campaign"}</div>
+                <div className="place-card__name">{session.story?.title.trim() || "Adventure"}</div>
                 <div className="place-card__intro">{session.campaignIntro}</div>
               </div>
             </>
