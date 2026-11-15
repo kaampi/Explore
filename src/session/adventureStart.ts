@@ -18,7 +18,7 @@ const clip = (text: string | undefined, max: number) => (text ?? "").trim().slic
 
 function personaFrom(person: CharacterTemplate): Persona {
   return {
-    name: person.name,
+    name: clip(person.name, 120) || "Someone",
     ...(person.pronoun ? { pronoun: person.pronoun } : {}),
     personality: clip(person.personality, 600),
     speech: clip(person.speech, 600),

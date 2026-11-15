@@ -169,27 +169,62 @@ export async function interpretDo(
   return chooseOne(provider, buildInterpretDoMessages(session, text, options), options, signal);
 }
 
-/** Remove what the model must not write: quotes of the player's line and lines spoken as the player. */
+const MIN_ECHO_LENGTH = 20;
+const QUOTE_PAIRS: Array<[string, string]> = [
+  ["“", "”"],
+  ['"', '"'],
+  ["«", "»"],
+];
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Take the player's own line out of the reply. A long line is removed wherever it appears.
+ * A short line is removed only when it stands alone inside quotation marks, so "no" is not
+ * cut out of "does not know".
+ */
+function removeEchoedLine(text: string, playerLine: string): string {
+  const line = playerLine.trim();
+  if (!line) return text;
+  if (line.length >= MIN_ECHO_LENGTH) return text.split(line).join("");
+  let result = text;
+  for (const [open, close] of QUOTE_PAIRS) {
+    const quoted = new RegExp(
+      `${escapeRegExp(open)}${escapeRegExp(line)}${escapeRegExp(close)}`,
+      "gi",
+    );
+    result = result.replace(quoted, "");
+  }
+  return result;
+}
+
+const SENTENCE_END = /[.!?…”"»)]$/;
+
+/** A reply that stops mid-sentence is cut back to the last whole sentence. */
+function endAtSentence(text: string): string {
+  if (SENTENCE_END.test(text)) return text;
+  const lastEnd = Math.max(
+    text.lastIndexOf("."),
+    text.lastIndexOf("!"),
+    text.lastIndexOf("?"),
+    text.lastIndexOf("…"),
+    text.lastIndexOf("”"),
+  );
+  return lastEnd > 0 ? text.slice(0, lastEnd + 1) : text;
+}
+
+/** Remove what the model must not write: the player's own line, and lines spoken as the player. */
 export function cleanReply(raw: string, playerLine: string, playerName: string): string {
-  const quoted = playerLine.trim();
   const lines = raw
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) => line && !line.toLowerCase().startsWith(`${playerName.toLowerCase()}:`));
-  let text = lines.join(" ");
-  if (quoted) text = text.split(quoted).join("");
+  let text = removeEchoedLine(lines.join(" "), playerLine);
   text = text.replace(/\s+/g, " ").trim();
-  if (text.length > MAX_TEXT_CHARS) {
-    const cut = text.slice(0, MAX_TEXT_CHARS);
-    const lastEnd = Math.max(
-      cut.lastIndexOf("."),
-      cut.lastIndexOf("!"),
-      cut.lastIndexOf("?"),
-      cut.lastIndexOf("”"),
-    );
-    text = lastEnd > 0 ? cut.slice(0, lastEnd + 1) : cut;
-  }
-  return text;
+  if (text.length > MAX_TEXT_CHARS) text = text.slice(0, MAX_TEXT_CHARS);
+  return endAtSentence(text).trim();
 }
 
 export async function freeReply(
@@ -197,12 +232,18 @@ export async function freeReply(
   addresseeId: string,
   playerLine: string,
   provider: Provider,
-  options: TextOptions = {},
+  options: TextOptions & { excludeActionId?: string | undefined } = {},
 ): Promise<CallResult> {
   const game = session.encounter;
   if (!aiAllowed(game)) return { status: "failed" };
   const topics = openTopics(game, addresseeId).map((command) => command.label);
-  const messages = buildFreeReplyMessages(session, addresseeId, playerLine, topics);
+  const messages = buildFreeReplyMessages(
+    session,
+    addresseeId,
+    playerLine,
+    topics,
+    options.excludeActionId,
+  );
   const result = await callProvider(
     provider,
     {
@@ -366,6 +407,7 @@ export async function replyToRecordedLine(args: {
     {
       signal: args.signal,
       onDelta: args.onDelta,
+      excludeActionId: args.actionId,
     },
   );
   if (result.status === "cancelled") return "cancelled";

@@ -152,6 +152,22 @@ describe("attachEncounterNarration", () => {
     ).toThrow(/not part of this scene/i);
   });
 
+  it("refuses the player as the speaker", () => {
+    const engine = messengerEngine();
+    const { entry, sceneId } = act(engine, { kind: "say", text: "Lovely weather today." });
+
+    expect(() =>
+      engine.attachEncounterNarration({
+        actionId: entry.id,
+        sceneId,
+        text: "I say what I like.",
+        kind: "free-reply",
+        speakerId: engine.getSession().encounter!.definition.playerId,
+        model: "mock",
+      }),
+    ).toThrow(/player cannot be the speaker/i);
+  });
+
   it("refuses to re-word what looking around shows", () => {
     const engine = messengerEngine();
     const { entry, sceneId } = act(engine, { kind: "look" });

@@ -42,6 +42,15 @@ describe("adventure cast and narration", () => {
     expect(run.cast[`npc:${edda.id}`]!.personality).toHaveLength(600);
   });
 
+  it("still starts when a name is longer than 120 characters", () => {
+    const built = connectedAdventureExample();
+    const edda = { ...built.characters[0]!, name: "E".repeat(300) };
+
+    const { run } = start(built, { characters: [edda] });
+
+    expect(run.cast[`npc:${edda.id}`]!.name).toHaveLength(120);
+  });
+
   it("carries the narrator voice and background story", () => {
     const built = connectedAdventureExample();
     built.campaign.startPrompt = "A quiet village before a storm.";

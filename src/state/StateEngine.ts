@@ -206,6 +206,8 @@ export class StateEngine {
     const entry = adventureHistoryEntry(this.session, turn, index);
     if (!entry) throw new Error("The settled action for this turn could not be found.");
     if (input.kind === "free-reply") {
+      if (input.speakerId === this.session.encounter?.definition.playerId)
+        throw new Error("The player cannot be the speaker of a free reply.");
       if (!isFreeReplyEntry(entry.events, entry.combat))
         throw new Error("Only a line with no prepared answer can get a free reply.");
       const known =

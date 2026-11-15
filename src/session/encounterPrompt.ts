@@ -14,15 +14,20 @@ export const ENCOUNTER_PROMPT_TOKEN_TARGET = 1500;
 const MAX_RECENT_TURNS = 6;
 const MAX_KNOWN_FACTS = 12;
 
-type Trim = { turns: number; facts: number; appearance: boolean };
+/** `story` is the most characters kept of the narrator voice and of the background, each. */
+type Trim = { turns: number; facts: number; appearance: boolean; story: number };
+
+const FULL_STORY = 6000;
 
 const TRIM_STEPS: Trim[] = [
-  { turns: MAX_RECENT_TURNS, facts: MAX_KNOWN_FACTS, appearance: true },
-  { turns: 4, facts: MAX_KNOWN_FACTS, appearance: true },
-  { turns: 2, facts: MAX_KNOWN_FACTS, appearance: true },
-  { turns: 2, facts: 6, appearance: true },
-  { turns: 0, facts: 6, appearance: true },
-  { turns: 0, facts: 6, appearance: false },
+  { turns: MAX_RECENT_TURNS, facts: MAX_KNOWN_FACTS, appearance: true, story: FULL_STORY },
+  { turns: 4, facts: MAX_KNOWN_FACTS, appearance: true, story: FULL_STORY },
+  { turns: 2, facts: MAX_KNOWN_FACTS, appearance: true, story: FULL_STORY },
+  { turns: 2, facts: 6, appearance: true, story: FULL_STORY },
+  { turns: 0, facts: 6, appearance: true, story: FULL_STORY },
+  { turns: 0, facts: 6, appearance: false, story: FULL_STORY },
+  { turns: 0, facts: 6, appearance: false, story: 800 },
+  { turns: 0, facts: 3, appearance: false, story: 300 },
 ];
 
 const FREE_REPLY_RULES = [
@@ -138,25 +143,46 @@ export function knownFacts(session: Session, limit: number): string[] {
   return facts;
 }
 
-/** The last few turns of this scene, oldest first, as plain lines. */
-function recentTurnLines(session: Session, game: EncounterGame, count: number): string[] {
+/** Who is speaking on a recorded turn: the player, a named character, or the narrator. */
+function turnSpeaker(session: Session, game: EncounterGame, turn: Turn & TurnExtras): string {
+  if (turn.role === "player") return game.state.actors[game.definition.playerId]!.name;
+  const named = turn.speakerId ? game.state.actors[turn.speakerId]?.name : undefined;
+  return named ?? turn.speakerName ?? "Narrator";
+}
+
+type TurnExtras = { actionId?: string; speakerId?: string; speakerName?: string };
+
+/**
+ * The last few turns of this scene, oldest first. The turns for the line being answered are
+ * left out because that line is sent on its own.
+ */
+function recentTurnLines(
+  session: Session,
+  game: EncounterGame,
+  count: number,
+  excludeActionId?: string,
+): string[] {
   if (count <= 0) return [];
-  const playerName = game.state.actors[game.definition.playerId]!.name;
   const sceneId = game.definition.id;
-  const inScene = conversationTurns(session).filter(
-    (turn) => !turn.actionSceneId || turn.actionSceneId === sceneId,
-  );
+  const inScene = conversationTurns(session)
+    .map((turn) => turn as Turn & TurnExtras)
+    .filter((turn) => !turn.actionSceneId || turn.actionSceneId === sceneId)
+    .filter((turn) => !excludeActionId || turn.actionId !== excludeActionId);
   return inScene.slice(-count).map((turn) => {
-    const who = turn.role === "player" ? playerName : "Narrator";
-    return `${who}: ${String(turn.content ?? "")}`;
+    return `${turnSpeaker(session, game, turn)}: ${String(turn.content ?? "")}`;
   });
+}
+
+/** Player text must not be able to close the untrusted section early. */
+function neutraliseMarkers(text: string): string {
+  return text.replace(/\[\s*(BEGIN|END)\s+UNTRUSTED/gi, "($1 UNTRUSTED");
 }
 
 function untrusted(label: string, text: string): string {
   const wrapped = wrapUntrustedContent({
     id: label,
     source: "conversation",
-    content: text,
+    content: neutraliseMarkers(text),
     priority: 5,
     required: false,
   });
@@ -174,8 +200,8 @@ function trustedBlock(session: Session, game: EncounterGame, trim: Trim, persona
   const facts = knownFacts(session, trim.facts);
   return join([
     "TRUSTED",
-    narration?.voice && `Narrator voice: ${narration.voice}`,
-    narration?.background && `Background: ${narration.background}`,
+    narration?.voice && `Narrator voice: ${narration.voice.slice(0, trim.story)}`,
+    narration?.background && `Background: ${narration.background.slice(0, trim.story)}`,
     `Scene: ${d.title}`,
     encounterDescription(d, s),
     `The player is ${player.name}, at ${placeName(game, player.position)}.`,
@@ -211,6 +237,7 @@ export function buildFreeReplyMessages(
   addresseeId: string,
   playerLine: string,
   availableTopics: string[],
+  excludeActionId?: string,
 ): ChatMessage[] {
   const game = session.encounter!;
   const persona = personaFor(session, addresseeId);
@@ -219,7 +246,7 @@ export function buildFreeReplyMessages(
       availableTopics.length > 0
         ? `Topics the player can still raise with ${persona.name} (hint at, never answer): ${availableTopics.join("; ")}.`
         : "";
-    const recent = recentTurnLines(session, game, trim.turns);
+    const recent = recentTurnLines(session, game, trim.turns, excludeActionId);
     return [
       {
         role: "system",
