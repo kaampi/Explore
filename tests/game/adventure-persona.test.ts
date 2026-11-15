@@ -45,7 +45,11 @@ describe("adventure cast and narration", () => {
   it("carries the narrator voice and background story", () => {
     const built = connectedAdventureExample();
     built.campaign.startPrompt = "A quiet village before a storm.";
-    const voice = newVoiceTemplate({ name: "Plain", instruction: "Tell it plainly." });
+    const voice = newVoiceTemplate({
+      name: "Plain",
+      instruction: "Tell it plainly.",
+      source: "player",
+    });
     built.campaign.voiceId = voice.id;
     const session = startPlayableCampaign(
       built.campaign,

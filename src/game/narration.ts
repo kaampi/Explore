@@ -76,3 +76,17 @@ export function describeEvents(
     })
     .join(" ");
 }
+
+const NARRATABLE_EVENT_KINDS = new Set(["move", "unlock", "open", "blocked"]);
+/**
+ * Only plain movement and door results may be re-worded by the AI, and never in combat.
+ * Conversation, looking and combat events always show the engine's own text.
+ */
+export function canNarrateOutcome(events: EncounterEvent[], combat: boolean | undefined): boolean {
+  if (combat || events.length === 0) return false;
+  return events.every((event) => NARRATABLE_EVENT_KINDS.has(event.kind));
+}
+/** A free reply answers a spoken line that matched nothing prepared: the only event is the line itself. */
+export function isFreeReplyEntry(events: EncounterEvent[], combat: boolean | undefined): boolean {
+  return !combat && events.length === 1 && events[0]!.kind === "say";
+}

@@ -1,6 +1,7 @@
 import { encounterDescription } from "../game/sceneDescription";
 import { applyAdventurePresentation } from "../session/adventurePresentation";
-import { advanceAdventure } from "../game/AdventureEngine";
+import { advanceAdventure, adventureHistoryEntry } from "../game/AdventureEngine";
+import { canNarrateOutcome, isFreeReplyEntry } from "../game/narration";
 import type { AdventureTransition } from "../game/AdventureSchema";
 import {
   initializeSpatialReferences,
@@ -169,6 +170,57 @@ export class StateEngine {
       payload: entry,
     });
     this.session.events.push(event);
+  }
+  /**
+   * Put AI wording on a turn the engine has already settled. This is presentation only: it
+   * changes the words shown on that one turn and nothing else. The state version, scene
+   * revision, flags and history are left exactly as they were.
+   *
+   * Returns false when there is nothing to do: the turn is gone, or it already has AI text.
+   */
+  attachEncounterNarration(input: {
+    actionId: string;
+    sceneId: string;
+    text: string;
+    kind: "free-reply" | "narrated-outcome";
+    speakerId?: string;
+    model: string;
+  }): boolean {
+    const text = input.text.trim();
+    if (!text || text.length > 2000) throw new Error("The wording is empty or too long.");
+    const index = this.session.conversation.findIndex(
+      (value) =>
+        typeof value === "object" &&
+        value !== null &&
+        (value as { toldBy?: unknown }).toldBy === "narrator" &&
+        (value as { actionId?: unknown }).actionId === input.actionId &&
+        (value as { actionSceneId?: unknown }).actionSceneId === input.sceneId,
+    );
+    if (index < 0) return false;
+    const turn = this.session.conversation[index] as Record<string, unknown> & {
+      actionId: string;
+      actionSceneId: string;
+      content: string;
+    };
+    if (turn.ai) return false;
+    const entry = adventureHistoryEntry(this.session, turn, index);
+    if (!entry) throw new Error("The settled action for this turn could not be found.");
+    if (input.kind === "free-reply") {
+      if (!isFreeReplyEntry(entry.events, entry.combat))
+        throw new Error("Only a line with no prepared answer can get a free reply.");
+      const known =
+        this.session.encounter?.state.actors[input.speakerId ?? ""] ??
+        this.session.adventure?.actors[input.speakerId ?? ""];
+      if (!known) throw new Error("The speaker is not part of this scene.");
+      turn.speakerId = input.speakerId;
+      turn.speakerName = known.name;
+    } else if (!canNarrateOutcome(entry.events, entry.combat)) {
+      throw new Error("This kind of result is always shown in the engine's own words.");
+    }
+    turn.engineText = turn.content;
+    turn.content = text;
+    turn.ai = { kind: input.kind, model: input.model, at: new Date().toISOString() };
+    return true;
   }
   transitionAdventure(request: AdventureTransition): void {
     const next = advanceAdventure(this.session, request),
