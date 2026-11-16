@@ -13,6 +13,7 @@ import {
   reachablePositions,
   removePosition,
   renamePosition,
+  setPersonPosition,
   setPositionDetail,
   setSight,
 } from "../../src/library/sceneParts";
@@ -291,5 +292,21 @@ describe("any sequence of position changes", () => {
       }),
       { numRuns: 60 },
     );
+  });
+});
+
+describe("where a person stands", () => {
+  it("can be set to any position in the scene", () => {
+    const { scene } = setup();
+    const added = addPosition(scene, { name: "Porch", from: "here", distance: "close" });
+    const edda = Object.values(added.scene.encounter!.state.actors).find((a) => a.name === "Edda")!;
+
+    const next = setPersonPosition(added.scene, edda.id.slice(4), added.positionId);
+
+    expect(next.encounter!.state.actors[edda.id]!.position).toBe(added.positionId);
+    expect(() => setPersonPosition(added.scene, edda.id.slice(4), "nowhere")).toThrow(
+      /not in this scene/,
+    );
+    expect(() => setPersonPosition(added.scene, "nobody", "here")).toThrow(/not in this scene/);
   });
 });

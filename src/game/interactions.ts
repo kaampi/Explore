@@ -12,6 +12,9 @@ function applyEffects(
   effects: Interaction["success"]["effects"],
 ) {
   for (const effect of effects) {
+    // Starting a fight happens after the effects, in the engine, and rolls dice there. Never here:
+    // this also runs on copies to test both outcomes.
+    if (effect.kind === "start-combat") continue;
     if (effect.kind === "flag") {
       if (!s.flags.includes(effect.flag)) s.flags.push(effect.flag);
       continue;
@@ -123,4 +126,5 @@ export function performInteraction(
     interactionId: id,
     text: outcome.text,
   });
+  return outcome;
 }

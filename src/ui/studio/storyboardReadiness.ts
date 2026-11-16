@@ -57,6 +57,20 @@ export function storyboardIssues(
           "parts",
           `“${actor.name}” in “${name}” is hostile but has no weapon. Give them one, or make them neutral.`,
         );
+    const fightStarters = scene.encounter.definition.interactions.filter((action) =>
+      [...action.success.effects, ...action.failure.effects].some(
+        (effect) => effect.kind === "start-combat",
+      ),
+    );
+    const anyoneHostile = Object.values(scene.encounter.state.actors).some(
+      (actor) =>
+        actor.id !== scene.encounter!.definition.playerId && isHostile(scene.encounter!, actor),
+    );
+    if (fightStarters.length > 0 && !anyoneHostile)
+      add(
+        "parts",
+        `“${fightStarters[0]!.label.trim() || "An action"}” in “${name}” starts a fight, but no one in the scene is hostile.`,
+      );
     for (const door of Object.values(scene.encounter.state.barriers))
       if (door.locked && !door.keyId)
         add("parts", `“${door.name}” in “${name}” is locked, but nothing opens it. Choose a key.`);

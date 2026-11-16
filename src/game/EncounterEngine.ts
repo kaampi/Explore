@@ -105,10 +105,21 @@ export function validateEncounter(game: EncounterGame) {
         if (!d.items.some((i) => i.id === effect.itemId)) throw Error("Unknown loose item.");
       } else if (
         effect.kind !== "flag" &&
+        effect.kind !== "start-combat" &&
         (!s.actors[effect.from] || !s.actors[effect.to] || effect.from === effect.to)
       )
         throw new Error("Invalid exchange reference.");
   }
+  const startsAFight = d.interactions.some((interaction) =>
+    [...interaction.success.effects, ...interaction.failure.effects].some(
+      (effect) => effect.kind === "start-combat",
+    ),
+  );
+  if (
+    startsAFight &&
+    !Object.values(s.actors).some((other) => other.id !== d.playerId && hostile(d, player, other))
+  )
+    throw new Error("A fight can only break out where someone is hostile to the player.");
   if (
     s.initiative &&
     (!unique(s.initiative.order) ||
@@ -689,8 +700,14 @@ export function resolveEncounterAction(
           : { kind: "say", actorId: actor.id, text: action.text },
       );
     }
-    if (action.kind === "interaction")
-      performInteraction(d, s, action.interactionId, out, rng, adapters);
+    if (action.kind === "interaction") {
+      const outcome = performInteraction(d, s, action.interactionId, out, rng, adapters);
+      const fightBreaksOut = outcome.effects.some((effect) => effect.kind === "start-combat");
+      const someoneToFight = Object.values(s.actors).some(
+        (other) => active(other) && hostile(d, actor, other),
+      );
+      if (fightBreaksOut && someoneToFight) startEncounterCombat(d, s, out, rng, adapters);
+    }
     if (action.kind === "look") out.events.push({ kind: "look", actorId: actor.id });
     if (
       action.kind !== "end-turn" &&

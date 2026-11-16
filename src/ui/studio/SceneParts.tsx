@@ -22,6 +22,7 @@ import {
   removePerson,
   setAmmunition,
   setAttitude,
+  setPersonPosition,
   setTactics,
   setToughness,
   toughnessOf,
@@ -180,6 +181,24 @@ export function SceneParts({
                 Remove
               </button>
               <span className="storyboard-scene-parts__attach">
+                {positions.length > 1 && (
+                  <select
+                    aria-label={`Position of ${actor.name}`}
+                    value={actor.position}
+                    disabled={busy}
+                    onChange={(event) =>
+                      attempt(() =>
+                        setPersonPosition(scene, characterOf(actor.id), event.target.value),
+                      )
+                    }
+                  >
+                    {positions.map((position) => (
+                      <option key={position.id} value={position.id}>
+                        Stands at {position.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 <select
                   aria-label={`Attitude of ${actor.name}`}
                   value={isHostile(game, actor) ? "hostile" : "neutral"}

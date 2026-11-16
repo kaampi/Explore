@@ -765,3 +765,49 @@ export function setTactics(
   actor.tactics = next;
   return finish(current, game);
 }
+
+/** Whether an outcome of an action makes a fight break out. */
+export function fightBreaksOut(
+  scene: CampaignScene,
+  actionId: string,
+  outcome: "success" | "failure",
+): boolean {
+  const action = scene.encounter?.definition.interactions.find((item) => item.id === actionId);
+  return Boolean(action?.[outcome].effects.some((effect) => effect.kind === "start-combat"));
+}
+
+/**
+ * Make a fight break out when an action ends one way or the other. It only does anything if
+ * someone hostile is still fighting fit at that moment, and a scene with no hostile person is
+ * refused.
+ */
+export function setFightBreaksOut(
+  scene: CampaignScene,
+  actionId: string,
+  outcome: "success" | "failure",
+  on: boolean,
+): CampaignScene {
+  const current = requireGame(scene);
+  const game = structuredClone(current.encounter);
+  const action = game.definition.interactions.find((item) => item.id === actionId);
+  if (!action) throw new Error("That action is not in this scene.");
+  if (outcome === "failure" && !action.check)
+    throw new Error("Only an action that rolls can fail.");
+  const kept = action[outcome].effects.filter((effect) => effect.kind !== "start-combat");
+  action[outcome].effects = on ? [...kept, { kind: "start-combat" }] : kept;
+  return finish(current, game);
+}
+
+/** Where a person stands when the scene starts. */
+export function setPersonPosition(
+  scene: CampaignScene,
+  characterId: string,
+  positionId: string,
+): CampaignScene {
+  const current = requireGame(scene);
+  const game = structuredClone(current.encounter);
+  const actor = requireNpc(game, characterId);
+  requirePosition(game, positionId);
+  actor.position = positionId;
+  return finish(current, game);
+}

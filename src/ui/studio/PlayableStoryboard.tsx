@@ -39,6 +39,7 @@ import {
 import { sceneFormat } from "../../library/sceneFormat";
 import { SceneParts } from "./SceneParts";
 import { ScenePositions } from "./ScenePositions";
+import { fightBreaksOut, setFightBreaksOut } from "../../library/sceneParts";
 import {
   INSPECTOR_MAX,
   INSPECTOR_MIN,
@@ -1301,6 +1302,15 @@ function SceneActions({
   busy: boolean;
 }) {
   const actionFields = useRef<HTMLDivElement>(null);
+  const [fightMessage, setFightMessage] = useState("");
+  function toggleFight(actionId: string, outcome: "success" | "failure", on: boolean) {
+    try {
+      onChange(setFightBreaksOut(scene, actionId, outcome, on));
+      setFightMessage("");
+    } catch (reason) {
+      setFightMessage(reason instanceof Error ? reason.message : "Could not change the action.");
+    }
+  }
   useEffect(() => {
     if (!focusActionId) return;
     const card = Array.from(
@@ -1378,6 +1388,20 @@ function SceneActions({
           <label className="playable-check">
             <input
               type="checkbox"
+              aria-label="A fight breaks out on success"
+              checked={fightBreaksOut(scene, action.id, "success")}
+              onChange={(event) => toggleFight(action.id, "success", event.target.checked)}
+            />
+            A fight breaks out
+          </label>
+          {fightMessage && (
+            <p role="alert" className="storyboard-scene-parts__error">
+              {fightMessage}
+            </p>
+          )}
+          <label className="playable-check">
+            <input
+              type="checkbox"
               checked={!!action.check}
               onChange={(event) =>
                 patch(action.id, {
@@ -1431,6 +1455,15 @@ function SceneActions({
                     patch(action.id, { failure: { ...action.failure, text: event.target.value } })
                   }
                 />
+              </label>
+              <label className="playable-check">
+                <input
+                  type="checkbox"
+                  aria-label="A fight breaks out on failure"
+                  checked={fightBreaksOut(scene, action.id, "failure")}
+                  onChange={(event) => toggleFight(action.id, "failure", event.target.checked)}
+                />
+                A fight breaks out
               </label>
             </>
           )}

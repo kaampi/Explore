@@ -886,3 +886,68 @@ it("makes a person hostile from the scene panel and shows their toughness", asyn
     host.remove();
   }
 });
+
+it("lets an action start a fight only when someone in the scene is hostile", async () => {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  const built = connectedAdventureExample(),
+    host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  let snapshot = built.campaign;
+  function Harness() {
+    const [campaign, setCampaign] = useState(built.campaign);
+    snapshot = campaign;
+    return (
+      <PlayableStoryboard
+        campaign={campaign}
+        places={built.places}
+        characters={built.characters}
+        objects={built.objects}
+        busy={false}
+        onChange={setCampaign}
+        onPlay={() => {}}
+      />
+    );
+  }
+  const startsFight = () =>
+    snapshot.scenes[0]!.encounter!.definition.interactions[0]!.success.effects.some(
+      (effect) => effect.kind === "start-combat",
+    );
+  try {
+    await act(async () => root.render(<Harness />));
+    const box = () =>
+      host.querySelector<HTMLInputElement>('input[aria-label="A fight breaks out on success"]')!;
+    await act(async () => box().click());
+    expect(startsFight()).toBe(false);
+    expect(host.querySelector('[role="alert"]')!.textContent).toContain("someone is hostile");
+    const attitude = host.querySelector<HTMLSelectElement>(
+      'select[aria-label="Attitude of Edda"]',
+    )!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")!.set!.call(
+        attitude,
+        "hostile",
+      );
+      attitude.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await act(async () => box().click());
+    expect(startsFight()).toBe(true);
+    expect(box().checked).toBe(true);
+    const neutral = host.querySelector<HTMLSelectElement>('select[aria-label="Attitude of Edda"]')!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")!.set!.call(
+        neutral,
+        "neutral",
+      );
+      neutral.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(host.querySelector('[role="alert"]')!.textContent).toContain("someone is hostile");
+    expect(
+      Object.values(snapshot.scenes[0]!.encounter!.state.actors).find((a) => a.name === "Edda")!
+        .team,
+    ).toBe("opponents");
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});

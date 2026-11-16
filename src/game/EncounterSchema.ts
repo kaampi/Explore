@@ -59,9 +59,11 @@ export const BarrierSchema = z.object({
   shared: z.boolean().optional(),
 });
 const LinkSchema = z.object({ from: id, to: id, barrierId: id.optional() });
-const EffectSchema = z.discriminatedUnion("kind", [
+export const EffectSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("take-item"), itemId: id }).strict(),
   z.object({ kind: z.literal("flag"), flag: id }).strict(),
+  /** A fight breaks out: combat starts if someone hostile is still active. */
+  z.object({ kind: z.literal("start-combat") }).strict(),
   z.object({ kind: z.literal("transfer-item"), itemId: id, from: id, to: id }).strict(),
   z
     .object({
