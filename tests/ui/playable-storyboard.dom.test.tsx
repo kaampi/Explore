@@ -688,3 +688,85 @@ it("will not add a locked door without a key and says why", async () => {
     host.remove();
   }
 });
+
+it("adds a position from the scene panel, joined to the one it is next to, and removes it again", async () => {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  const built = connectedAdventureExample(),
+    host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  let snapshot = built.campaign;
+  function Harness() {
+    const [campaign, setCampaign] = useState(built.campaign);
+    snapshot = campaign;
+    return (
+      <PlayableStoryboard
+        campaign={campaign}
+        places={built.places}
+        characters={built.characters}
+        objects={built.objects}
+        busy={false}
+        onChange={setCampaign}
+        onPlay={() => {}}
+      />
+    );
+  }
+  try {
+    await act(async () => root.render(<Harness />));
+    const name = host.querySelector<HTMLInputElement>('input[aria-label="New position name"]')!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
+        name,
+        "The porch",
+      );
+      name.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await click(host, "Add position");
+    const game = snapshot.scenes[0]!.encounter!;
+    expect(game.definition.places.map((p) => p.name)).toContain("The porch");
+    expect(game.definition.connections).toHaveLength(1);
+    const positions = host.querySelector('[aria-label="Positions"]')!;
+    expect(positions.textContent).toContain("↔");
+    await act(async () =>
+      host
+        .querySelector<HTMLButtonElement>('button[aria-label="Remove position The porch"]')!
+        .click(),
+    );
+    expect(snapshot.scenes[0]!.encounter!.definition.places).toHaveLength(1);
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});
+
+it("says why the only position cannot be removed", async () => {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  const built = connectedAdventureExample(),
+    host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  function Harness() {
+    const [campaign, setCampaign] = useState(built.campaign);
+    return (
+      <PlayableStoryboard
+        campaign={campaign}
+        places={built.places}
+        characters={built.characters}
+        objects={built.objects}
+        busy={false}
+        onChange={setCampaign}
+        onPlay={() => {}}
+      />
+    );
+  }
+  try {
+    await act(async () => root.render(<Harness />));
+    const remove = host.querySelector<HTMLButtonElement>(
+      '[aria-label="Positions"] button.playable-remove',
+    )!;
+    expect(remove.disabled).toBe(true);
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});

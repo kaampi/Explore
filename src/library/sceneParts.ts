@@ -396,3 +396,192 @@ export function removeDoor(
     ),
   };
 }
+
+/** How far a new position is from the one it is joined to. The numbers are metres. */
+export const POSITION_DISTANCES = { close: 2, away: 8, far: 20 } as const;
+export type PositionDistance = keyof typeof POSITION_DISTANCES;
+
+/** How much a position protects against being hit. */
+export const COVER_LEVELS = { none: 0, some: 15, good: 30 } as const;
+export type CoverLevel = keyof typeof COVER_LEVELS;
+
+const GOLDEN_ANGLE = 137.5 * (Math.PI / 180);
+
+function samePair(link: { from: string; to: string }, a: string, b: string) {
+  return (link.from === a && link.to === b) || (link.from === b && link.to === a);
+}
+
+function requirePosition(game: EncounterGame, id: string) {
+  const place = game.definition.places.find((item) => item.id === id);
+  if (!place) throw new Error("That position is not in this scene.");
+  return place;
+}
+
+/**
+ * Add a position, a given distance from one that exists, and join the two so the player can
+ * walk between them and see across. Where it lies is worked out from the distance.
+ */
+export function addPosition(
+  scene: CampaignScene,
+  position: { name: string; from: string; distance: PositionDistance },
+  id: string = crypto.randomUUID(),
+): { scene: CampaignScene; positionId: string } {
+  const current = requireGame(scene);
+  const game = structuredClone(current.encounter);
+  const name = position.name.trim();
+  if (!name) throw new Error("Name the position.");
+  if (game.definition.places.some((place) => place.name.toLowerCase() === name.toLowerCase()))
+    throw new Error(`There is already a position called “${name}”.`);
+  const origin = requirePosition(game, position.from);
+  const metres = POSITION_DISTANCES[position.distance];
+  const angle = game.definition.places.length * GOLDEN_ANGLE;
+  game.definition.places.push({
+    id,
+    name,
+    x: Math.round((origin.x + metres * Math.cos(angle)) * 10) / 10,
+    y: Math.round((origin.y + metres * Math.sin(angle)) * 10) / 10,
+    elevation: origin.elevation,
+    cover: 0,
+  });
+  game.definition.connections.push({ from: origin.id, to: id });
+  game.definition.sightLines.push({ from: origin.id, to: id });
+  return { scene: finish(current, game), positionId: id };
+}
+
+export function renamePosition(scene: CampaignScene, id: string, name: string): CampaignScene {
+  const current = requireGame(scene);
+  const game = structuredClone(current.encounter);
+  const place = requirePosition(game, id);
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error("Name the position.");
+  if (
+    game.definition.places.some(
+      (other) => other.id !== id && other.name.toLowerCase() === trimmed.toLowerCase(),
+    )
+  )
+    throw new Error(`There is already a position called “${trimmed}”.`);
+  place.name = trimmed;
+  return finish(current, game);
+}
+
+/** What stops a position from being removed: someone or something is there, or points there. */
+function positionUsedBy(game: EncounterGame, id: string): string | undefined {
+  const person = Object.values(game.state.actors).find((actor) => actor.position === id);
+  if (person) return `${person.name} is there.`;
+  const itemId = Object.entries(game.state.itemLocations).find(([, where]) => where === id)?.[0];
+  if (itemId)
+    return `${game.definition.items.find((item) => item.id === itemId)?.name ?? "A thing"} lies there.`;
+  const door = Object.values(game.state.barriers).find((barrier) => barrier.position === id);
+  if (door) return `“${door.name}” stands there.`;
+  const action = game.definition.interactions.find((item) => item.position === id);
+  if (action) return `“${action.label.trim() || "An untitled action"}” happens there.`;
+  return undefined;
+}
+
+export function removePosition(scene: CampaignScene, id: string): CampaignScene {
+  const current = requireGame(scene);
+  const game = structuredClone(current.encounter);
+  const place = requirePosition(game, id);
+  if (game.definition.places.length === 1) throw new Error("A scene needs at least one position.");
+  const used = positionUsedBy(game, id);
+  if (used) throw new Error(`“${place.name}” cannot be removed. ${used}`);
+  game.definition.places = game.definition.places.filter((item) => item.id !== id);
+  game.definition.connections = game.definition.connections.filter(
+    (link) => link.from !== id && link.to !== id,
+  );
+  game.definition.sightLines = game.definition.sightLines.filter(
+    (link) => link.from !== id && link.to !== id,
+  );
+  return finish(current, game);
+}
+
+/** Let the player walk between two positions, and see across. */
+export function connectPositions(scene: CampaignScene, from: string, to: string): CampaignScene {
+  const current = requireGame(scene);
+  const game = structuredClone(current.encounter);
+  requirePosition(game, from);
+  requirePosition(game, to);
+  if (from === to) throw new Error("Choose two different positions.");
+  if (game.definition.connections.some((link) => samePair(link, from, to)))
+    throw new Error("Those positions are already connected.");
+  game.definition.connections.push({ from, to });
+  if (!game.definition.sightLines.some((link) => samePair(link, from, to)))
+    game.definition.sightLines.push({ from, to });
+  return finish(current, game);
+}
+
+/** Take away the way between two positions, and the view across with it. */
+export function disconnectPositions(scene: CampaignScene, from: string, to: string): CampaignScene {
+  const current = requireGame(scene);
+  const game = structuredClone(current.encounter);
+  if (!game.definition.connections.some((link) => samePair(link, from, to)))
+    throw new Error("Those positions are not connected.");
+  game.definition.connections = game.definition.connections.filter(
+    (link) => !samePair(link, from, to),
+  );
+  game.definition.sightLines = game.definition.sightLines.filter(
+    (link) => !samePair(link, from, to),
+  );
+  return finish(current, game);
+}
+
+/** Let the player see between two positions without a way between them, for example up to a wall. */
+export function setSight(
+  scene: CampaignScene,
+  from: string,
+  to: string,
+  visible: boolean,
+): CampaignScene {
+  const current = requireGame(scene);
+  const game = structuredClone(current.encounter);
+  requirePosition(game, from);
+  requirePosition(game, to);
+  if (from === to) throw new Error("Choose two different positions.");
+  const has = game.definition.sightLines.some((link) => samePair(link, from, to));
+  if (visible && !has) game.definition.sightLines.push({ from, to });
+  if (!visible) {
+    if (game.definition.connections.some((link) => samePair(link, from, to)))
+      throw new Error("They are connected. Take away the way between them to hide the view.");
+    game.definition.sightLines = game.definition.sightLines.filter(
+      (link) => !samePair(link, from, to),
+    );
+  }
+  return finish(current, game);
+}
+
+export function setPositionDetail(
+  scene: CampaignScene,
+  id: string,
+  detail: { cover?: CoverLevel; elevation?: number },
+): CampaignScene {
+  const current = requireGame(scene);
+  const game = structuredClone(current.encounter);
+  const place = requirePosition(game, id);
+  if (detail.cover !== undefined) place.cover = COVER_LEVELS[detail.cover];
+  if (detail.elevation !== undefined) {
+    if (!Number.isFinite(detail.elevation) || Math.abs(detail.elevation) > 1000)
+      throw new Error("Give the height in metres.");
+    place.elevation = detail.elevation;
+  }
+  return finish(current, game);
+}
+
+/** The positions the player can walk to from where they start, ignoring doors. */
+export function reachablePositions(scene: CampaignScene): Set<string> {
+  const game = scene.encounter;
+  if (!game) return new Set();
+  const start = game.state.actors[game.definition.playerId]?.position;
+  const seen = new Set<string>(start ? [start] : []);
+  const queue = start ? [start] : [];
+  while (queue.length > 0) {
+    const here = queue.shift()!;
+    for (const link of game.definition.connections) {
+      const next = link.from === here ? link.to : link.to === here ? link.from : undefined;
+      if (next && !seen.has(next)) {
+        seen.add(next);
+        queue.push(next);
+      }
+    }
+  }
+  return seen;
+}

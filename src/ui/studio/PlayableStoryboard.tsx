@@ -38,6 +38,7 @@ import {
 } from "./storyboardReadiness";
 import { sceneFormat } from "../../library/sceneFormat";
 import { SceneParts } from "./SceneParts";
+import { ScenePositions } from "./ScenePositions";
 import {
   INSPECTOR_MAX,
   INSPECTOR_MIN,
@@ -763,6 +764,12 @@ export function PlayableStoryboard({
       </div>
       {scene.encounter ? (
         <>
+          <ScenePositions
+            key={`positions-${scene.id}`}
+            scene={scene}
+            busy={busy}
+            onChange={patchScene}
+          />
           <SceneParts
             key={`parts-${scene.id}`}
             campaign={campaign}

@@ -2,6 +2,7 @@ import type { CampaignScene, CampaignTemplate, PlaceTemplate } from "../../libra
 import { mapPlaceForScene, type AdventureMapPlace } from "../../library/adventureMap";
 import { adventureFacts } from "../../library/playableCampaign";
 import { sceneFormat } from "../../library/sceneFormat";
+import { reachablePositions } from "../../library/sceneParts";
 
 export type SceneField = "name" | "place" | "playable" | "arrival" | "action" | "reach" | "parts";
 export type ActionField = "label" | "success" | "failure";
@@ -132,6 +133,24 @@ function missingCardIssues(
         message: `${name} in “${sceneName}” has no card in your library any more. The scene keeps its last details.`,
       });
     }
+  }
+  return issues;
+}
+
+/** A position the player can never walk to is probably a connection that was forgotten. */
+function unreachablePositionIssues(campaign: CampaignTemplate): StoryboardIssue[] {
+  const issues: StoryboardIssue[] = [];
+  for (const scene of campaign.scenes) {
+    if (sceneFormat(scene) !== "playable") continue;
+    const reachable = reachablePositions(scene);
+    for (const place of scene.encounter!.definition.places)
+      if (!reachable.has(place.id))
+        issues.push({
+          kind: "scene",
+          id: scene.id,
+          field: "parts",
+          message: `“${place.name}” in “${scene.name.trim() || "Untitled scene"}” cannot be reached from where the player starts. Connect it.`,
+        });
   }
   return issues;
 }
@@ -278,6 +297,7 @@ export function storyboardWarnings(
   const issues: StoryboardIssue[] = [
     ...(library ? missingCardIssues(campaign, library) : []),
     ...missingKeyIssues(campaign),
+    ...unreachablePositionIssues(campaign),
   ];
   const reach = reachableFromStart(campaign);
   const labels = new Map(adventureFacts(campaign).map((fact) => [fact.id, fact.label]));
