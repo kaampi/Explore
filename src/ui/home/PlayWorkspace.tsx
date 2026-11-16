@@ -2,7 +2,7 @@ import { PlayerInventory } from "../components/PlayerInventory";
 import { ChatBackdrop } from "../components/ChatBackdrop";
 import { sceneBackdrop } from "../../state/sceneBackdrop";
 import { EncounterPanel } from "../components/EncounterPanel";
-import { GateScenePanel } from "../components/GateScenePanel";
+import { LegacyGatePanel } from "../components/LegacyGatePanel";
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 import { useEffect, useState } from "react";
 import type { Session } from "@state/StateSchema";
@@ -33,9 +33,12 @@ export function PlayWorkspace({
   title,
   repo,
   onIdeas,
+  onStartGatehouse,
 }: {
   repo: IndexedDBRepository;
   onIdeas: () => void;
+  /** Starts the new gatehouse adventure, offered on a conversation from the old test. */
+  onStartGatehouse?: (() => void | Promise<void>) | undefined;
   title?: string | undefined;
   onHome: (session: Session) => void;
   onAppearance: () => void;
@@ -201,7 +204,12 @@ export function PlayWorkspace({
           {session.encounter ? (
             <EncounterPanel onHome={onHome} mapView={mapView} backdrop={encounterBackdrop} />
           ) : session.gateEncounter ? (
-            <GateScenePanel onHome={onHome} repo={repo} mapView={mapView} />
+            <LegacyGatePanel
+              session={session}
+              repo={repo}
+              onHome={onHome}
+              onStartNew={onStartGatehouse ?? (() => onHome(session))}
+            />
           ) : (
             <>
               <ChatPanel

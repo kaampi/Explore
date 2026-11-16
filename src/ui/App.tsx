@@ -21,6 +21,7 @@ import {
   type InterfaceLanguage,
 } from "./i18n/LanguageProvider";
 import { getRepository, loadExistingSession, UI_SESSION_ID } from "./persistence";
+import { startGatehouseExample } from "../scenarios/gatehouse";
 import type { ConversationCatalog } from "@persistence/ConversationSchema";
 import type { StudioResume } from "@persistence/IndexedDBRepository";
 import type { Session } from "@state/StateSchema";
@@ -423,6 +424,11 @@ function SandboxApp() {
         <PlayWorkspace
           repo={repo}
           onIdeas={() => navigate("ideas")}
+          onStartGatehouse={async () => {
+            report(
+              startScene(await startGatehouseExample(repo, UI_SESSION_ID, session.runtime.model)),
+            );
+          }}
           title={catalog.entries.find((entry) => entry.id === session.id)?.title}
           onHome={(current) => {
             setLive(current);

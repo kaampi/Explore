@@ -1,7 +1,7 @@
 import { AdventureRunSchema } from "../game/AdventureSchema";
 import { CheckResultSchema } from "../checks/CheckEngine";
 import { ObjectLocationSchema } from "@library/objectLocation";
-import { GateEncounterSchema } from "../checks/gateEncounter";
+import { GateEncounterSchema } from "./legacyGate";
 import { EncounterGameSchema } from "../game/EncounterSchema";
 import { CombatArtworkSchema } from "./combatArtwork";
 import { RoutePlanSchema } from "@library/routePlan";

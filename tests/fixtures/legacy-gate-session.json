@@ -1,0 +1,193 @@
+{
+  "schemaVersion": 2,
+  "id": "legacy-gate",
+  "runtime": { "model": "mock", "temperature": 0.8, "seed": null, "provider": "ollama" },
+  "stateVersion": 0,
+  "characters": {
+    "mona-sanchez": {
+      "sourceLibraryId": "example-mona-sanchez",
+      "name": "Mona",
+      "familyName": "Sanchez",
+      "position": { "value": "The city gate", "lock": "unlocked" },
+      "mood": { "value": "watchful", "lock": "unlocked" },
+      "clothing": { "value": "", "lock": "unlocked" },
+      "holding": { "value": "", "lock": "unlocked" },
+      "stats": { "persuasion": { "value": 50, "lock": "unlocked" } }
+    }
+  },
+  "scene": {
+    "location": "The city gate",
+    "environment": { "music": false },
+    "note": "A fixed gatehouse test: Mona at the gate, an archer six metres above the road, ivy on the west wall and a wagon for cover. An iron key is on Mona\u2019s belt. The simulation owns all secrets and consequences.",
+    "brief": "Outside the closed city gate at dusk; Mona guards entry.",
+    "placeId": "7bb3c832-eed1-4ba8-a5aa-e6432172b8eb"
+  },
+  "openedRoomIds": [],
+  "storyFlags": [],
+  "partyIds": [],
+  "partyHoldIds": [],
+  "partyPendingIds": [],
+  "ruleset": {
+    "name": "Gate test \u00b7 d100",
+    "attributes": [
+      {
+        "id": "persuasion",
+        "name": "Persuasion",
+        "kind": "number",
+        "min": 0,
+        "max": 100,
+        "description": "Ability to present a convincing request.",
+        "highMeaning": "Expresses a clear, convincing argument.",
+        "lowMeaning": "Struggles to persuade.",
+        "midMeaning": "An ordinary conversationalist.",
+        "options": [],
+        "maxShift": 0
+      },
+      {
+        "id": "strength",
+        "name": "Strength",
+        "kind": "number",
+        "min": 0,
+        "max": 100,
+        "description": "Ability to present a convincing request.",
+        "highMeaning": "Expresses a clear, convincing argument.",
+        "lowMeaning": "Struggles to persuade.",
+        "midMeaning": "An ordinary conversationalist.",
+        "options": [],
+        "maxShift": 0
+      },
+      {
+        "id": "dexterity",
+        "name": "Dexterity",
+        "kind": "number",
+        "min": 0,
+        "max": 100,
+        "description": "Ability to present a convincing request.",
+        "highMeaning": "Expresses a clear, convincing argument.",
+        "lowMeaning": "Struggles to persuade.",
+        "midMeaning": "An ordinary conversationalist.",
+        "options": [],
+        "maxShift": 0
+      },
+      {
+        "id": "melee",
+        "name": "Melee",
+        "kind": "number",
+        "min": 0,
+        "max": 100,
+        "description": "Ability to present a convincing request.",
+        "highMeaning": "Expresses a clear, convincing argument.",
+        "lowMeaning": "Struggles to persuade.",
+        "midMeaning": "An ordinary conversationalist.",
+        "options": [],
+        "maxShift": 0
+      },
+      {
+        "id": "archery",
+        "name": "Archery",
+        "kind": "number",
+        "min": 0,
+        "max": 100,
+        "description": "Ability to present a convincing request.",
+        "highMeaning": "Expresses a clear, convincing argument.",
+        "lowMeaning": "Struggles to persuade.",
+        "midMeaning": "An ordinary conversationalist.",
+        "options": [],
+        "maxShift": 0
+      }
+    ]
+  },
+  "player": {
+    "position": { "value": "The city gate", "lock": "unlocked" },
+    "status": { "value": "awake", "lock": "unlocked" },
+    "stats": {
+      "persuasion": "60",
+      "strength": "55",
+      "dexterity": "60",
+      "melee": "65",
+      "archery": "55"
+    },
+    "name": "Traveller"
+  },
+  "objects": [
+    {
+      "id": "gatehouse-port",
+      "name": "City gate",
+      "note": "Iron-bound gate with an external keyhole.",
+      "tags": ["gate"],
+      "openable": true,
+      "isOpen": false,
+      "lockable": true,
+      "portable": false
+    }
+  ],
+  "relationships": {
+    "mona-sanchez": {
+      "trust": { "value": 0, "lock": "unlocked" },
+      "familiarity": { "value": 0, "lock": "unlocked" },
+      "tension": { "value": 0, "lock": "unlocked" }
+    }
+  },
+  "layers": [
+    {
+      "id": "layer-core-mona-sanchez",
+      "type": "core",
+      "priority": 0,
+      "content": "A professional gate guard. Cautious but fair. The gate is closed after dusk. A convincing explanation may earn entry; refusal leaves the traveller safely outside. Respect the engine-resolved check. Do not reroll or invent a fight.",
+      "active": true,
+      "aiGenerated": false
+    },
+    {
+      "id": "layer-place",
+      "type": "environment",
+      "priority": 10,
+      "content": "Outside the closed city gate at dusk; Mona guards entry.",
+      "active": true,
+      "aiGenerated": false
+    }
+  ],
+  "memory": { "episodic": [], "semantic": [], "relational": [] },
+  "conversation": [
+    {
+      "turn": 0,
+      "role": "character",
+      "speaker": "mona-sanchez",
+      "content": "Mona rests her hand on the locked city gate. \u201cThe city is closed for the night. What brings you here?\u201d An archer watches from the battlements above. A wagon stands beside the road; ivy covers the west wall."
+    }
+  ],
+  "events": [],
+  "snapshots": [],
+  "diagnostics": [],
+  "scenario": "gate-test",
+  "gateEncounter": {
+    "version": 1,
+    "revision": 0,
+    "phase": "exploration",
+    "position": "gate",
+    "hp": 20,
+    "monaHp": 16,
+    "archerHp": 10,
+    "monaPosition": "gate",
+    "archerPosition": "wall",
+    "monaDefending": false,
+    "archerDefending": false,
+    "monaDisposition": "active",
+    "archerDisposition": "active",
+    "archerArrows": 6,
+    "gateLocked": true,
+    "gateOpen": false,
+    "admitted": false,
+    "suspicious": 0,
+    "posternFound": false,
+    "keyOwner": "mona",
+    "arrows": 4,
+    "wagonTipped": false,
+    "actionUsed": false,
+    "moveUsed": false,
+    "defending": false,
+    "round": 0,
+    "attempts": [],
+    "flags": [],
+    "history": []
+  }
+}
