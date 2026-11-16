@@ -7,6 +7,7 @@ import { adventureHistoryEntry } from "../game/AdventureEngine";
 import { encounterDescription } from "../game/sceneDescription";
 import { wrapUntrustedContent } from "../context/InstructionHierarchy";
 import { estimateTokens } from "../context/tokenEstimate";
+import { itemRevealed } from "../game/itemVisibility";
 
 /** Target size of one prompt. Older turns, then extra known facts, then looks are trimmed first. */
 export const ENCOUNTER_PROMPT_TOKEN_TARGET = 1500;
@@ -194,7 +195,7 @@ function trustedBlock(session: Session, game: EncounterGame, trim: Trim, persona
   const player = s.actors[d.playerId]!;
   const narration = session.adventure?.narration;
   const itemsHere = Object.entries(s.itemLocations)
-    .filter(([, placeId]) => placeId === player.position)
+    .filter(([itemId, placeId]) => placeId === player.position && itemRevealed(d, s, itemId))
     .map(([itemId]) => itemName(game, itemId));
   const carried = player.inventory.map((itemId) => itemName(game, itemId));
   const facts = knownFacts(session, trim.facts);

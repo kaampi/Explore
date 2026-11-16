@@ -5,6 +5,7 @@ import type {
   Interaction,
 } from "./EncounterSchema";
 import { encounterRules, type RulesAdapter } from "./rules";
+import { itemRevealed } from "./itemVisibility";
 
 function applyEffects(
   d: EncounterDefinition,
@@ -21,6 +22,8 @@ function applyEffects(
     }
     if (effect.kind === "take-item") {
       const player = s.actors[d.playerId]!;
+      if (!itemRevealed(d, s, effect.itemId) && d.items.some((i) => i.id === effect.itemId))
+        throw Error("The conditions for this opportunity are not met.");
       if (
         !d.items.some((i) => i.id === effect.itemId) ||
         s.itemLocations[effect.itemId] !== player.position

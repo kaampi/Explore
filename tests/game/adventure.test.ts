@@ -170,8 +170,8 @@ it("does not resurrect an item from a newly visited scene or reset a shared NPC"
     npc = Object.values(first.state.actors).find((a) => a.control === "npc")!;
   npc.hp = 5;
   npc.inventory = ["seal"];
-  first.definition.items.push({ id: "seal", name: "Old seal" });
-  second.definition.items.push({ id: "seal", name: "Old seal" });
+  first.definition.items.push({ id: "seal", name: "Old seal", requiresFlags: [] });
+  second.definition.items.push({ id: "seal", name: "Old seal", requiresFlags: [] });
   second.state.actors[npc.id] = { ...structuredClone(npc), hp: 12 };
   first.definition.interactions[0]!.success.effects.push({
     kind: "transfer-item",

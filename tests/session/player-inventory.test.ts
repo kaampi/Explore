@@ -153,6 +153,7 @@ it("retains richer carried-item metadata when the next scene declares only its n
     scene.encounter!.definition.items = scene.encounter!.definition.items.map((i) => ({
       id: i.id,
       name: i.name,
+      requiresFlags: [],
     }));
   const session = startPlayableCampaign(
     built.campaign,

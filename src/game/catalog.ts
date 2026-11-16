@@ -2,6 +2,7 @@ import type { EncounterAction, EncounterGame } from "./EncounterSchema";
 import { actionBlock } from "./EncounterEngine";
 import { encounterCommands } from "./intention";
 import { actionLabel } from "./narration";
+import { itemRevealed } from "./itemVisibility";
 
 export type PublicCommand = {
   /** Short number such as "a3". Valid only for the list it came from. */
@@ -18,7 +19,10 @@ function interactionIsSecret(game: EncounterGame, interactionId: string): boolea
   if (!interaction) return true;
   const missingRequired = interaction.requiresFlags.some((flag) => !s.flags.includes(flag));
   const excluded = interaction.excludesFlags.some((flag) => s.flags.includes(flag));
-  return missingRequired || excluded;
+  const takesHiddenItem = [...interaction.success.effects, ...interaction.failure.effects].some(
+    (effect) => effect.kind === "take-item" && !itemRevealed(game.definition, s, effect.itemId),
+  );
+  return missingRequired || excluded || takesHiddenItem;
 }
 
 function isHiddenSharedDoorAction(game: EncounterGame, action: EncounterAction): boolean {

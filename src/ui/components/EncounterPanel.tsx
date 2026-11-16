@@ -1,4 +1,5 @@
 import { PlayerInventory } from "./PlayerInventory";
+import { itemRevealed } from "../../game/itemVisibility";
 import {
   adventureHistoryEntry,
   adventureOptions,
@@ -635,12 +636,17 @@ export function EncounterPanel({
             )}
           </section>
         )}
-        {Object.keys(s.itemLocations).some((id) => s.itemLocations[id] === player.position) && (
+        {Object.keys(s.itemLocations).some(
+          (id) => s.itemLocations[id] === player.position && itemRevealed(d, s, id),
+        ) && (
           <section>
             <h3>Objects here</h3>
             <p>
               {d.items
-                .filter((item) => s.itemLocations[item.id] === player.position)
+                .filter(
+                  (item) =>
+                    s.itemLocations[item.id] === player.position && itemRevealed(d, s, item.id),
+                )
                 .map((item) => item.name)
                 .join(", ")}
             </p>

@@ -146,6 +146,7 @@ export const EncounterDefinitionSchema = z.object({
         description: z.string().optional(),
         readableContent: z.string().optional(),
         imageDataUrl: z.string().optional(),
+        requiresFlags: z.array(id).default([]),
       }),
     )
     .default([]),

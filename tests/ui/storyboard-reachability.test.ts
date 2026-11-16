@@ -211,7 +211,7 @@ describe("an item that starts in two scenes", () => {
     const key = built.objects[0]!;
     for (const scene of campaign.scenes) {
       const game = scene.encounter!;
-      game.definition.items.push({ id: key.id, name: key.name });
+      game.definition.items.push({ id: key.id, name: key.name, requiresFlags: [] });
       game.state.itemLocations[key.id] = game.definition.places[0]!.id;
     }
 
@@ -231,7 +231,7 @@ describe("an item that starts in two scenes", () => {
     const campaign = structuredClone(built.campaign);
     for (const scene of campaign.scenes) {
       const game = scene.encounter!;
-      game.definition.items.push({ id: "lamp", name: "Lamp" });
+      game.definition.items.push({ id: "lamp", name: "Lamp", requiresFlags: [] });
       game.state.actors.player!.inventory.push("lamp");
     }
 

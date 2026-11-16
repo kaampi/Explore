@@ -212,6 +212,7 @@ export function placeItem(
       id: object.id,
       name: object.name,
       description: object.note,
+      requiresFlags: [],
       ...(object.readableContent ? { readableContent: object.readableContent } : {}),
       ...(object.imageDataUrl ? { imageDataUrl: object.imageDataUrl } : {}),
     });

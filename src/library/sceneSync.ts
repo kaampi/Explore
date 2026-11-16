@@ -158,6 +158,7 @@ function syncItems(game: EncounterGame, library: SceneLibrary) {
       id: item.id,
       name: card.name,
       description: card.note,
+      requiresFlags: item.requiresFlags,
       ...(card.readableContent ? { readableContent: card.readableContent } : {}),
       ...(card.imageDataUrl ? { imageDataUrl: card.imageDataUrl } : {}),
     };
@@ -222,6 +223,7 @@ function syncStartItems(
         id: card.id,
         name: card.name,
         description: card.note,
+        requiresFlags: [],
         ...(card.readableContent ? { readableContent: card.readableContent } : {}),
         ...(card.imageDataUrl ? { imageDataUrl: card.imageDataUrl } : {}),
       });
