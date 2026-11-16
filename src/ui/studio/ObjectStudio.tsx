@@ -30,6 +30,12 @@ type Draft = {
   weight: string;
   difficulty: string;
   checkAttribute: string;
+  isWeapon: boolean;
+  weaponSkill: string;
+  weaponKind: "melee" | "ranged";
+  weaponDamage: string;
+  weaponRange: string;
+  weaponAmmunition: boolean;
   source: LibrarySource;
   createdAt?: string;
   imageDataUrl: string;
@@ -65,6 +71,12 @@ function emptyDraft(): Draft {
     weight: "",
     difficulty: "",
     checkAttribute: "",
+    isWeapon: false,
+    weaponSkill: "Melee",
+    weaponKind: "melee",
+    weaponDamage: "3",
+    weaponRange: "",
+    weaponAmmunition: false,
     source: "player",
   };
 }
@@ -96,6 +108,12 @@ function draftFrom(template: ObjectTemplate): Draft {
     weight: template.weight !== undefined ? String(template.weight) : "",
     difficulty: template.difficulty !== undefined ? String(template.difficulty) : "",
     checkAttribute: template.checkAttribute ?? "",
+    isWeapon: Boolean(template.weapon),
+    weaponSkill: template.weapon?.skill ?? "Melee",
+    weaponKind: template.weapon?.kind ?? "melee",
+    weaponDamage: template.weapon ? String(template.weapon.damage) : "3",
+    weaponRange: template.weapon?.range !== undefined ? String(template.weapon.range) : "",
+    weaponAmmunition: template.weapon?.usesAmmunition ?? false,
     source: template.source,
     createdAt: template.createdAt,
   };
@@ -168,6 +186,22 @@ export function ObjectStudio({ repo }: { repo: IndexedDBRepository }) {
       setError("Weight and difficulty must be empty or a number 0 or more.");
       return;
     }
+    const damage = Number(draft.weaponDamage);
+    const range = parseOptionalNumber(draft.weaponRange);
+    if (draft.isWeapon) {
+      if (!draft.weaponSkill.trim()) {
+        setError("Name the skill the weapon uses, for example Melee.");
+        return;
+      }
+      if (!Number.isInteger(damage) || damage < 0 || damage > 50) {
+        setError("Weapon damage is a whole number from 0 to 50.");
+        return;
+      }
+      if (Number.isNaN(range) || range === 0) {
+        setError("Weapon range is empty or a number above 0, in metres.");
+        return;
+      }
+    }
     if (
       (draft.locationKind === "place" && !draft.placeId) ||
       (draft.locationKind === "character" && !draft.characterId)
@@ -215,6 +249,17 @@ export function ObjectStudio({ repo }: { repo: IndexedDBRepository }) {
         ...(weight !== undefined ? { weight } : {}),
         ...(difficulty !== undefined ? { difficulty } : {}),
         ...(draft.checkAttribute.trim() ? { checkAttribute: draft.checkAttribute.trim() } : {}),
+        ...(draft.isWeapon
+          ? {
+              weapon: {
+                skill: draft.weaponSkill.trim(),
+                kind: draft.weaponKind,
+                damage,
+                ...(range !== undefined ? { range } : {}),
+                usesAmmunition: draft.weaponAmmunition,
+              },
+            }
+          : {}),
         source: draft.source,
       });
       const previous = library.find((item) => item.id === built.id);
@@ -556,6 +601,71 @@ export function ObjectStudio({ repo }: { repo: IndexedDBRepository }) {
                 onChange={(e) => setDraft({ ...draft, readableContent: e.target.value })}
                 placeholder="The text of a letter, a recipe, inscriptions or information in a book…"
               />
+            </FormSection>
+            <FormSection
+              title="Weapon"
+              lede="Lets a person carry this as a weapon in a fight. The skill is the name of a value, like Melee. A person without that value is treated as 40."
+            >
+              <label className="setup-field setup-field--row">
+                <input
+                  type="checkbox"
+                  checked={draft.isWeapon}
+                  onChange={(e) => setDraft({ ...draft, isWeapon: e.target.checked })}
+                />{" "}
+                Can be used as a weapon
+              </label>
+              {draft.isWeapon && (
+                <div className="setup-row">
+                  <label className="setup-field">
+                    Skill
+                    <input
+                      aria-label="Weapon skill"
+                      value={draft.weaponSkill}
+                      onChange={(e) => setDraft({ ...draft, weaponSkill: e.target.value })}
+                      placeholder="Melee"
+                    />
+                  </label>
+                  <label className="setup-field">
+                    Kind
+                    <select
+                      aria-label="Weapon kind"
+                      value={draft.weaponKind}
+                      onChange={(e) =>
+                        setDraft({ ...draft, weaponKind: e.target.value as "melee" | "ranged" })
+                      }
+                    >
+                      <option value="melee">Close combat</option>
+                      <option value="ranged">From a distance</option>
+                    </select>
+                  </label>
+                  <label className="setup-field">
+                    Damage
+                    <input
+                      aria-label="Weapon damage"
+                      value={draft.weaponDamage}
+                      onChange={(e) => setDraft({ ...draft, weaponDamage: e.target.value })}
+                      inputMode="numeric"
+                    />
+                  </label>
+                  <label className="setup-field">
+                    Range <span className="setup-optional">metres, optional</span>
+                    <input
+                      aria-label="Weapon range"
+                      value={draft.weaponRange}
+                      onChange={(e) => setDraft({ ...draft, weaponRange: e.target.value })}
+                      inputMode="decimal"
+                    />
+                  </label>
+                  <label className="setup-field setup-field--row">
+                    <input
+                      type="checkbox"
+                      checked={draft.weaponAmmunition}
+                      onChange={(e) => setDraft({ ...draft, weaponAmmunition: e.target.checked })}
+                    />{" "}
+                    Uses ammunition
+                  </label>
+                </div>
+              )}
             </FormSection>
             <details>
               <summary>Advanced checks</summary>

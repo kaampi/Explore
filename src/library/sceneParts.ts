@@ -46,8 +46,12 @@ export function itemsHere(scene: CampaignScene): { itemId: string; where: ItemPl
     itemId,
     where: { position } as ItemPlace,
   }));
+  const known = new Set(game.definition.items.map((item) => item.id));
   const carried = Object.values(game.state.actors).flatMap((actor) =>
-    actor.inventory.map((itemId) => ({ itemId, where: { heldBy: actor.id } as ItemPlace })),
+    [...actor.inventory, ...actor.weapons.filter((id) => known.has(id))].map((itemId) => ({
+      itemId,
+      where: { heldBy: actor.id } as ItemPlace,
+    })),
   );
   return [...placed, ...carried];
 }
@@ -144,10 +148,44 @@ export function removePerson(scene: CampaignScene, characterId: string): Campaig
   return { ...next, people: scene.people.filter((pick) => pick.characterId !== characterId) };
 }
 
+/** Rounds a carrier gets with a new weapon that uses ammunition. */
+export const STARTING_AMMUNITION = 6;
+
+/** The weapon record the engine reads, made from a thing's card. */
+export function weaponRecord(
+  object: ObjectTemplate,
+): EncounterGame["definition"]["weapons"][number] {
+  const weapon = object.weapon!;
+  return {
+    id: object.id,
+    name: object.name,
+    skill: weapon.skill,
+    kind: weapon.kind,
+    damage: weapon.damage,
+    ...(weapon.range !== undefined ? { range: weapon.range } : {}),
+    usesAmmunition: weapon.usesAmmunition,
+  };
+}
+
+function upsertWeapon(game: EncounterGame, object: ObjectTemplate) {
+  const record = weaponRecord(object);
+  const others = game.definition.weapons.filter((existing) => existing.id !== object.id);
+  game.definition.weapons = [...others, record];
+}
+
 function withoutItem(game: EncounterGame, itemId: string) {
   delete game.state.itemLocations[itemId];
-  for (const actor of Object.values(game.state.actors))
+  for (const actor of Object.values(game.state.actors)) {
     actor.inventory = actor.inventory.filter((held) => held !== itemId);
+    actor.weapons = actor.weapons.filter((held) => held !== itemId);
+    delete actor.ammunition[itemId];
+  }
+  const stillCarried = Object.values(game.state.actors).some((actor) =>
+    actor.weapons.includes(itemId),
+  );
+  const cameFromACard = game.definition.items.some((item) => item.id === itemId);
+  if (!stillCarried && cameFromACard)
+    game.definition.weapons = game.definition.weapons.filter((weapon) => weapon.id !== itemId);
 }
 
 /** Put an item from Things in the scene. An item is in one place at a time. */
@@ -174,7 +212,11 @@ export function placeItem(
   } else {
     const holder = game.state.actors[where.heldBy];
     if (!holder) throw new Error("That person is not in this scene.");
-    holder.inventory.push(object.id);
+    if (object.weapon) {
+      upsertWeapon(game, object);
+      holder.weapons.push(object.id);
+      if (object.weapon.usesAmmunition) holder.ammunition[object.id] = STARTING_AMMUNITION;
+    } else holder.inventory.push(object.id);
   }
   const next = finish(current, game);
   return {
@@ -584,4 +626,23 @@ export function reachablePositions(scene: CampaignScene): Set<string> {
     }
   }
   return seen;
+}
+
+/** Change how much ammunition a person carries for a weapon they hold. */
+export function setAmmunition(
+  scene: CampaignScene,
+  actorId: string,
+  weaponId: string,
+  rounds: number,
+): CampaignScene {
+  const current = requireGame(scene);
+  const game = structuredClone(current.encounter);
+  const actor = game.state.actors[actorId];
+  if (!actor?.weapons.includes(weaponId)) throw new Error("They are not carrying that weapon.");
+  if (!game.definition.weapons.find((weapon) => weapon.id === weaponId)?.usesAmmunition)
+    throw new Error("That weapon does not use ammunition.");
+  if (!Number.isInteger(rounds) || rounds < 0 || rounds > 999)
+    throw new Error("Give a whole number of rounds, 0 or more.");
+  actor.ammunition[weaponId] = rounds;
+  return finish(current, game);
 }

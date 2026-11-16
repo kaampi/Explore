@@ -8,6 +8,7 @@ import {
   emptyCampaignScene,
   newCampaignTemplate,
   newCharacterTemplate,
+  newObjectTemplate,
   parseCampaignTemplate,
   type PlaceTemplate,
 } from "../../src/library/LibrarySchema";
@@ -765,6 +766,68 @@ it("says why the only position cannot be removed", async () => {
       '[aria-label="Positions"] button.playable-remove',
     )!;
     expect(remove.disabled).toBe(true);
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});
+
+it("places a weapon in someone's hands and lets the rounds be set", async () => {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  const built = connectedAdventureExample(),
+    host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  const bow = newObjectTemplate({
+    name: "Hunting bow",
+    note: "",
+    source: "player",
+    tags: [],
+    weapon: { skill: "Archery", kind: "ranged", damage: 3, range: 20, usesAmmunition: true },
+  });
+  let snapshot = built.campaign;
+  function Harness() {
+    const [campaign, setCampaign] = useState(built.campaign);
+    snapshot = campaign;
+    return (
+      <PlayableStoryboard
+        campaign={campaign}
+        places={built.places}
+        characters={built.characters}
+        objects={[...built.objects, bow]}
+        busy={false}
+        onChange={setCampaign}
+        onPlay={() => {}}
+      />
+    );
+  }
+  const choose = async (label: string, value: string) => {
+    const select = host.querySelector<HTMLSelectElement>(`select[aria-label="${label}"]`)!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")!.set!.call(
+        select,
+        value,
+      );
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+  };
+  try {
+    await act(async () => root.render(<Harness />));
+    await choose("Thing to place", bow.id);
+    await choose("Where to place it", "held:player");
+    await click(host, "Place thing");
+    const player = snapshot.scenes[0]!.encounter!.state.actors.player!;
+    expect(player.weapons).toContain(bow.id);
+    const rounds = host.querySelector<HTMLInputElement>(
+      'input[aria-label="Rounds of Hunting bow"]',
+    )!;
+    expect(rounds.value).toBe("6");
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(rounds, "9");
+      rounds.dispatchEvent(new Event("input", { bubbles: true }));
+      rounds.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+    });
+    expect(snapshot.scenes[0]!.encounter!.state.actors.player!.ammunition[bow.id]).toBe(9);
   } finally {
     await act(async () => root.unmount());
     host.remove();

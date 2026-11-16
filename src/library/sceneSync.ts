@@ -8,6 +8,7 @@ import type {
 import type { EncounterGame } from "../game/EncounterSchema";
 import { validateEncounter } from "../game/EncounterEngine";
 import { sceneFormat } from "./sceneFormat";
+import { STARTING_AMMUNITION, weaponRecord } from "./sceneParts";
 
 /** The cards a scene's details come from. */
 export type SceneLibrary = {
@@ -63,6 +64,52 @@ function syncItems(game: EncounterGame, library: SceneLibrary) {
   });
 }
 
+/** The value used for a weapon's skill when the person has no value of their own. */
+export const DEFAULT_WEAPON_SKILL = 40;
+
+function tacticsUse(actor: EncounterGame["state"]["actors"][string], weaponId: string) {
+  return actor.tactics?.preferredWeapon === weaponId || actor.tactics?.fallbackWeapon === weaponId;
+}
+
+/**
+ * A thing with a weapon on its card is carried as a weapon, not in the pack, and its record
+ * follows the card. Weapons that do not come from a card are left as they are.
+ */
+function syncWeapons(game: EncounterGame, library: SceneLibrary) {
+  const cards = new Map(library.objects.map((object) => [object.id, object]));
+  const actors = Object.values(game.state.actors);
+  for (const actor of actors) {
+    for (const itemId of [...actor.inventory]) {
+      const card = cards.get(itemId);
+      if (!card?.weapon) continue;
+      actor.inventory = actor.inventory.filter((held) => held !== itemId);
+      actor.weapons.push(itemId);
+      if (card.weapon.usesAmmunition) actor.ammunition[itemId] ??= STARTING_AMMUNITION;
+    }
+    for (const weaponId of [...actor.weapons]) {
+      const card = cards.get(weaponId);
+      if (!card || card.weapon || tacticsUse(actor, weaponId)) continue;
+      // The card is no longer a weapon: it goes back in the pack.
+      actor.weapons = actor.weapons.filter((held) => held !== weaponId);
+      delete actor.ammunition[weaponId];
+      actor.inventory.push(weaponId);
+    }
+  }
+  const carried = new Set(actors.flatMap((actor) => actor.weapons));
+  const records = new Map(game.definition.weapons.map((record) => [record.id, record]));
+  for (const [id, card] of cards) {
+    if (card.weapon && (carried.has(id) || records.has(id))) records.set(id, weaponRecord(card));
+    else if (!card.weapon && records.has(id) && !carried.has(id)) records.delete(id);
+  }
+  game.definition.weapons = [...records.values()];
+  for (const actor of actors)
+    for (const weaponId of actor.weapons) {
+      const card = cards.get(weaponId);
+      if (card?.weapon && actor.stats[card.weapon.skill] === undefined)
+        actor.stats[card.weapon.skill] = DEFAULT_WEAPON_SKILL;
+    }
+}
+
 /** A scene kept in the library is always at its start: nothing has been played in it. */
 function resetPlayState(game: EncounterGame) {
   game.history = [];
@@ -90,6 +137,7 @@ export function syncScene(
   syncPlayer(campaign, game);
   syncPeople(campaign, game, library);
   syncItems(game, library);
+  syncWeapons(game, library);
   resetPlayState(game);
   validateEncounter(game);
   return { ...scene, encounter: game };

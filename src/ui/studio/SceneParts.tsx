@@ -20,6 +20,7 @@ import {
   removeDoor,
   removeItem,
   removePerson,
+  setAmmunition,
   type ItemPlace,
 } from "../../library/sceneParts";
 
@@ -224,6 +225,29 @@ export function SceneParts({
               <span>
                 {itemName(entry.itemId)} · {describeWhere(entry.where)}
               </span>
+              {"heldBy" in entry.where &&
+                game.definition.weapons.find((weapon) => weapon.id === entry.itemId)
+                  ?.usesAmmunition && (
+                  <label className="storyboard-scene-parts__rounds">
+                    Rounds{" "}
+                    <input
+                      type="number"
+                      min={0}
+                      max={999}
+                      aria-label={`Rounds of ${itemName(entry.itemId)}`}
+                      defaultValue={
+                        game.state.actors[entry.where.heldBy]?.ammunition[entry.itemId] ?? 0
+                      }
+                      disabled={busy}
+                      onBlur={(event) => {
+                        const holder = (entry.where as { heldBy: string }).heldBy;
+                        attempt(() =>
+                          setAmmunition(scene, holder, entry.itemId, Number(event.target.value)),
+                        );
+                      }}
+                    />
+                  </label>
+                )}
               {"position" in entry.where && !pickUpAction(scene, entry.itemId) && (
                 <button
                   type="button"

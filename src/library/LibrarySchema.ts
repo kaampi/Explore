@@ -194,6 +194,16 @@ export type RulesetTemplate = z.infer<typeof RulesetTemplateSchema>;
  * A named thing that can be placed in a scene. Tags are this shelf only
  * (relic, key). storyId / placeId are optional homes — not locks.
  */
+/** What a thing does when it is carried as a weapon. The skill is the name of a value, such as "Melee". */
+export const ObjectWeaponSchema = z.object({
+  skill: z.string().trim().min(1).max(60),
+  kind: z.enum(["melee", "ranged"]),
+  damage: z.number().int().min(0).max(50),
+  range: z.number().positive().optional(),
+  usesAmmunition: z.boolean().default(false),
+});
+export type ObjectWeapon = z.infer<typeof ObjectWeaponSchema>;
+
 export const ObjectTemplateSchema = z.object({
   factionIds: z.array(z.string().min(1)).optional(),
   id: z.string().min(1),
@@ -213,6 +223,8 @@ export const ObjectTemplateSchema = z.object({
   weight: z.number().nonnegative().optional(),
   difficulty: z.number().nonnegative().optional(),
   checkAttribute: z.string().min(1).optional(),
+  /** Set when the thing can be used as a weapon. */
+  weapon: ObjectWeaponSchema.optional(),
   source: LibrarySourceSchema.default("player"),
   createdAt: z.string(),
   updatedAt: z.string(),

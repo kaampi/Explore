@@ -137,6 +137,43 @@ function missingCardIssues(
   return issues;
 }
 
+/**
+ * A weapon from a thing's card uses a skill. A person with no value for it is treated as 40,
+ * which is worth knowing about before a fight.
+ */
+function missingSkillIssues(campaign: CampaignTemplate): StoryboardIssue[] {
+  const issues: StoryboardIssue[] = [];
+  const hasValue = (sheet: Record<string, string> | undefined, skill: string) => {
+    const text = sheet?.[skill];
+    return text !== undefined && text.trim() !== "" && Number.isFinite(Number(text));
+  };
+  for (const scene of campaign.scenes) {
+    if (sceneFormat(scene) !== "playable") continue;
+    const game = scene.encounter!;
+    const cardIds = new Set(game.definition.items.map((item) => item.id));
+    for (const actor of Object.values(game.state.actors)) {
+      const sheet =
+        actor.id === game.definition.playerId
+          ? campaign.player?.stats
+          : actor.id.startsWith("npc:")
+            ? campaign.people.find((person) => person.characterId === actor.id.slice(4))?.stats
+            : undefined;
+      if (!sheet && actor.id !== game.definition.playerId && !actor.id.startsWith("npc:")) continue;
+      for (const weaponId of actor.weapons) {
+        const weapon = game.definition.weapons.find((item) => item.id === weaponId);
+        if (!weapon || !cardIds.has(weaponId) || hasValue(sheet, weapon.skill)) continue;
+        issues.push({
+          kind: "scene",
+          id: scene.id,
+          field: "parts",
+          message: `${actor.name} has no value for “${weapon.skill}”, so 40 is used for ${weapon.name} in “${scene.name.trim() || "Untitled scene"}”.`,
+        });
+      }
+    }
+  }
+  return issues;
+}
+
 /** A position the player can never walk to is probably a connection that was forgotten. */
 function unreachablePositionIssues(campaign: CampaignTemplate): StoryboardIssue[] {
   const issues: StoryboardIssue[] = [];
@@ -298,6 +335,7 @@ export function storyboardWarnings(
     ...(library ? missingCardIssues(campaign, library) : []),
     ...missingKeyIssues(campaign),
     ...unreachablePositionIssues(campaign),
+    ...missingSkillIssues(campaign),
   ];
   const reach = reachableFromStart(campaign);
   const labels = new Map(adventureFacts(campaign).map((fact) => [fact.id, fact.label]));
