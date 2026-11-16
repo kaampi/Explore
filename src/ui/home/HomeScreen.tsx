@@ -1,7 +1,7 @@
 import { pinSessionFactions } from "@state/anatomy";
 import { startInnExample } from "../../scenarios/innVisit";
+import { startGatehouseExample } from "../../scenarios/gatehouse";
 import { loadingBayScenario } from "./encounterScenario";
-import { gateEncounterScenario } from "./gateScenario";
 import { PlayStartPaths } from "./PlayStartPaths";
 import { CheckUpdates } from "./CheckUpdates";
 import { useEffect, useState } from "react";
@@ -479,7 +479,7 @@ export function HomeScreen({
                 description:
                   "Mona guards a locked city gate. Persuade her, find another way in, or face the guards.",
                 label: "Try the gate scenario",
-                create: gateEncounterScenario,
+                create: (id: string, model?: string) => startGatehouseExample(repo, id, model),
               },
               {
                 title: "The Copper Lantern",
