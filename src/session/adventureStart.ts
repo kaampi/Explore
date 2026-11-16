@@ -1,3 +1,5 @@
+import { BASIC_RULESET } from "../library/basicRuleset";
+import type { EncounterGame } from "../game/EncounterSchema";
 import { copyPictureFields } from "../state/placePictures";
 import { encounterDescription } from "../game/sceneDescription";
 import { applyAdventurePresentation } from "./adventurePresentation";
@@ -7,6 +9,7 @@ import type {
   CharacterTemplate,
   PlaceTemplate,
   RealmTemplate,
+  RulesetTemplate,
   VoiceTemplate,
 } from "../library/LibrarySchema";
 import { adventureMapPlaces, bindSceneMapPlace, mapPlaceForScene } from "../library/adventureMap";
@@ -52,13 +55,34 @@ function narrationFor(campaign: CampaignTemplate, voices: VoiceTemplate[]): Adve
   };
 }
 
+/**
+ * The rule-set the game is played with, copied into the game so later changes in the library
+ * only reach new games. A scene with no scales plays as it always has.
+ */
+function sessionRuleset(
+  campaign: CampaignTemplate,
+  game: EncounterGame,
+  rulesets: RulesetTemplate[],
+) {
+  const chosen = rulesets.find((set) => set.id === campaign.rulesetId);
+  if (chosen && chosen.attributes.some((attribute) => attribute.kind === "number"))
+    return { name: chosen.name, attributes: chosen.attributes };
+  if (game.definition.rules.attributes.length > 0)
+    return { name: BASIC_RULESET.name, attributes: BASIC_RULESET.attributes };
+  return { name: "Adventure · d100", attributes: [] };
+}
+
 export function startPlayableCampaign(
   campaign: CampaignTemplate,
   scene: CampaignScene,
   places: PlaceTemplate[],
   id: string,
   worlds: RealmTemplate[] = [],
-  sources: { characters?: CharacterTemplate[]; voices?: VoiceTemplate[] } = {},
+  sources: {
+    characters?: CharacterTemplate[];
+    voices?: VoiceTemplate[];
+    rulesets?: RulesetTemplate[];
+  } = {},
 ) {
   const world = campaign.mapWorldId ? worlds.find((w) => w.id === campaign.mapWorldId) : undefined;
   if (campaign.mapWorldId && !world?.worldMap)
@@ -137,7 +161,7 @@ export function startPlayableCampaign(
       characters: [],
       campaignId: campaign.id,
       sceneId: scene.id,
-      ruleset: { name: "Adventure · d100", attributes: [] },
+      ruleset: sessionRuleset(campaign, game, sources.rulesets ?? []),
       ...(campaign.model ? { model: campaign.model } : {}),
       playerIdentity: {
         name: campaign.player?.name || "Traveller",

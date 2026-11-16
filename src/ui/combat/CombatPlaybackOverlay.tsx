@@ -7,10 +7,13 @@ import { DiceSound } from "../diceSound";
 export function CombatPlaybackOverlay({
   playback,
   names,
+  statNames,
   soundOn = false,
 }: {
   playback: CombatPlayback;
   names: Record<string, string>;
+  /** Display names for skill ids. A skill with no name here is shown by its id. */
+  statNames?: Record<string, string> | undefined;
   soundOn?: boolean;
 }) {
   const name = names[playback.actorId] ?? playback.actorId,
@@ -29,6 +32,7 @@ export function CombatPlaybackOverlay({
       name={name}
       player={player}
       soundOn={soundOn}
+      statNames={statNames}
     />
   );
 }
@@ -37,11 +41,13 @@ function BeatRoll({
   name,
   player,
   soundOn,
+  statNames,
 }: {
   playback: CombatPlayback;
   name: string;
   player: boolean;
   soundOn: boolean;
+  statNames?: Record<string, string> | undefined;
 }) {
   const [sound, setSound] = useState<DiceSound | null>(null),
     check = playback.beat!.check!;
@@ -68,7 +74,7 @@ function BeatRoll({
               roll={check.roll}
               target={check.target}
               degree={check.degree}
-              detail={`${player ? "Your roll" : name} · ${check.stat}`}
+              detail={`${player ? "Your roll" : name} · ${statNames?.[check.stat] ?? check.stat}`}
               rolledBy={player ? undefined : name}
               closing={closing}
               onConfirm={close}

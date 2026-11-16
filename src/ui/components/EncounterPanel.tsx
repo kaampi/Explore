@@ -19,7 +19,7 @@ import type { EncounterAction, EncounterRequest } from "../../game/EncounterSche
 import { actionBlock, attackTarget, combatOver, hostile } from "../../game/EncounterEngine";
 import { publicCommands } from "../../game/catalog";
 import type { DoPlan, SayPlan } from "../../session/encounterAI";
-import { actionLabel } from "../../game/narration";
+import { actionLabel, statName } from "../../game/narration";
 import { greetingTarget, spokenInteraction } from "../../game/dialogue";
 import { encounterRules } from "../../game/rules";
 import { ActionSaveError } from "../../persistence/ActionSaveError";
@@ -425,7 +425,8 @@ export function EncounterPanel({
                             {s.actors[check.actorId]?.name ??
                               session.adventure?.actors[check.actorId]?.name ??
                               check.actorId}{" "}
-                            · {check.stat}: {check.roll} / {check.target} · {check.degree}
+                            · {statName(d, check.stat)}: {check.roll} / {check.target} ·{" "}
+                            {check.degree}
                             {check.damage ? ` · ${check.damage} damage` : ""}
                           </div>
                         ))}
@@ -552,6 +553,7 @@ export function EncounterPanel({
         <CombatPlaybackOverlay
           playback={playback}
           names={Object.fromEntries(Object.values(s.actors).map((a) => [a.id, a.name]))}
+          statNames={Object.fromEntries(d.rules.attributes.map((a) => [a.id, a.name]))}
         />
       </div>
       <aside className="sb-game-toolbox gate-scene-toolbox" aria-label="Encounter game tools">

@@ -1,3 +1,4 @@
+import { statName } from "../../game/narration";
 import type { GateEncounter } from "../../checks/gateEncounter";
 import type { EncounterGame } from "../../game/EncounterSchema";
 import { POSITION_NAMES } from "../../scenarios/gateWorld";
@@ -74,7 +75,11 @@ export function encounterCombatLog(game: EncounterGame): CombatLogItem[] {
   return game.history.filter(isCombatRecord).map((entry) => ({
     id: entry.id,
     title: entry.label === "End turn" ? "Opponents’ turn" : entry.label,
-    checks: entry.checks.map((check) => ({ ...check, actor: who(check.actorId) })),
+    checks: entry.checks.map((check) => ({
+      ...check,
+      actor: who(check.actorId),
+      stat: statName(game.definition, check.stat),
+    })),
     notes: [
       ...turnNotes(entry.turns, who, where),
       ...entry.events

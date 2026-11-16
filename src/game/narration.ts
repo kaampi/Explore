@@ -90,3 +90,8 @@ export function canNarrateOutcome(events: EncounterEvent[], combat: boolean | un
 export function isFreeReplyEntry(events: EncounterEvent[], combat: boolean | undefined): boolean {
   return !combat && events.length === 1 && events[0]!.kind === "say";
 }
+
+/** The name to show for a skill. The engine keeps its id; a scene without scales shows it as it is. */
+export function statName(d: EncounterDefinition, id: string): string {
+  return d.rules.attributes.find((attribute) => attribute.id === id)?.name ?? id;
+}

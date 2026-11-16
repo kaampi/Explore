@@ -1,4 +1,7 @@
 import { innVisitExample } from "../../src/scenarios/innVisit";
+import { connectedAdventureExample } from "../../src/library/playableCampaign";
+import { newRulesetTemplate } from "../../src/library/LibrarySchema";
+import { syncAdventure } from "../../src/library/sceneSync";
 import { startPlayableCampaign } from "../../src/session/adventureStart";
 import { StateEngine } from "../../src/state/StateEngine";
 import { EventLog } from "../../src/events/EventLog";
@@ -117,6 +120,51 @@ it("shows the real inn floor map and switches the encounter backdrop when enteri
     await render();
     expect(host.querySelector(".chat-log__backdrop img")!.getAttribute("src")).not.toBe(warm);
     expect(host.querySelector('[aria-label="Your location: Store room"]')).not.toBeNull();
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});
+
+it("keeps the engine panel, not the chat's dice panel, when the adventure has a rule-set", async () => {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  const built = connectedAdventureExample();
+  const set = newRulesetTemplate({
+    name: "Classic",
+    source: "player",
+    attributes: [{ id: "str", name: "Strength", kind: "number", min: 1, max: 18 }] as never,
+  });
+  const campaign = syncAdventure(
+    { ...structuredClone(built.campaign), rulesetId: set.id },
+    { characters: built.characters, objects: built.objects, places: built.places, rulesets: [set] },
+  );
+  session = startPlayableCampaign(
+    campaign,
+    campaign.scenes[0]!,
+    built.places,
+    "with-rules",
+    [built.realm],
+    {
+      characters: built.characters,
+      rulesets: [set],
+    },
+  );
+  const repo = new IndexedDBRepository(new IDBFactory(), "rules-panel"),
+    host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  try {
+    await act(async () => {
+      root.render(
+        <PlayWorkspace repo={repo} onHome={() => {}} onAppearance={() => {}} onIdeas={() => {}} />,
+      );
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 60));
+    });
+    expect(session.ruleset?.name).toBe("Classic");
+    expect(host.textContent).toContain("Say something");
+    expect(host.textContent).not.toContain("Roll the dice");
   } finally {
     await act(async () => root.unmount());
     host.remove();
