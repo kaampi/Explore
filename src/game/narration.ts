@@ -1,5 +1,7 @@
 import { encounterDescription } from "./sceneDescription";
+import { encounterRules } from "./rules";
 import type {
+  Actor,
   EncounterAction,
   EncounterEvent,
   EncounterDefinition,
@@ -94,4 +96,29 @@ export function isFreeReplyEntry(events: EncounterEvent[], combat: boolean | und
 /** The name to show for a skill. The engine keeps its id; a scene without scales shows it as it is. */
 export function statName(d: EncounterDefinition, id: string): string {
   return d.rules.attributes.find((attribute) => attribute.id === id)?.name ?? id;
+}
+
+/**
+ * The player's chance for a roll, in plain words before they commit: the skill by name, their
+ * value on its own scale, how hard it is, and the chance. For example "Strength 14 · Standard · 76 %".
+ */
+export function checkPreview(
+  d: EncounterDefinition,
+  actor: Actor,
+  stat: string,
+  modifier: number,
+): string {
+  const value = actor.stats[stat];
+  const shown =
+    value === undefined ? "—" : Number.isInteger(value) ? String(value) : value.toFixed(1);
+  const level =
+    modifier === 0
+      ? "Standard"
+      : modifier === 20
+        ? "Easy"
+        : modifier === -20
+          ? "Hard"
+          : `${modifier > 0 ? "+" : ""}${modifier}`;
+  const chance = encounterRules(d).skillTarget(actor, stat, modifier, d);
+  return `${statName(d, stat)} ${shown} · ${level} · ${chance} %`;
 }

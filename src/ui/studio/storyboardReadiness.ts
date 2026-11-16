@@ -10,6 +10,7 @@ export type StoryboardIssue = { message: string } & (
   | { kind: "scene"; id: string; field: SceneField; action?: { id: string; field: ActionField } }
   | { kind: "link"; id: string }
   | { kind: "objective" }
+  | { kind: "rules" }
 );
 
 export function storyboardIssues(
@@ -17,10 +18,14 @@ export function storyboardIssues(
   places: PlaceTemplate[],
   facts: ReadonlySet<string>,
   mapPlaces?: AdventureMapPlace[],
-  library?: { objects: { id: string; name: string; weapon?: unknown }[] },
+  library?: {
+    objects: { id: string; name: string; weapon?: unknown }[];
+    rulesets?: { id: string }[] | undefined;
+  },
 ): StoryboardIssue[] {
   const issues: StoryboardIssue[] = [];
   issues.push(...weaponMisuseIssues(campaign, library));
+  issues.push(...ruleIssues(campaign, library?.rulesets));
   const placeIds = new Set(places.map((place) => place.id));
   const sceneIds = new Set(campaign.scenes.map((scene) => scene.id));
   for (const scene of campaign.scenes) {
@@ -130,6 +135,38 @@ export function storyboardIssues(
 }
 
 /**
+ * The adventure's rule-set must exist, and an action may only roll against a skill the scene's
+ * scales know. Scenes with no scales roll against whatever values the player has, as before.
+ */
+function ruleIssues(campaign: CampaignTemplate, rulesets?: { id: string }[]): StoryboardIssue[] {
+  const issues: StoryboardIssue[] = [];
+  if (rulesets && campaign.rulesetId && !rulesets.some((set) => set.id === campaign.rulesetId))
+    issues.push({
+      kind: "rules",
+      message:
+        "The rule-set chosen for this adventure is gone. Choose another one in World, or none to use the basic skills.",
+    });
+  for (const scene of campaign.scenes) {
+    if (sceneFormat(scene) !== "playable") continue;
+    const game = scene.encounter!;
+    const scales = game.definition.rules.attributes;
+    if (scales.length === 0) continue;
+    const sceneName = scene.name.trim() || "Untitled scene";
+    for (const action of game.definition.interactions) {
+      if (!action.check || scales.some((scale) => scale.id === action.check!.stat)) continue;
+      issues.push({
+        kind: "scene",
+        id: scene.id,
+        field: "action",
+        action: { id: action.id, field: "label" },
+        message: `“${action.label.trim() || "An untitled action"}” in “${sceneName}” rolls against “${action.check.stat}”, which is not a skill in the rule-set. Choose another skill.`,
+      });
+    }
+  }
+  return issues;
+}
+
+/**
  * A thing with a weapon on its card is carried among weapons, not in the pack. Doors look for
  * their key in the pack and a handover takes from it, so a weapon cannot be either. This
  * looks at the cards too, so it is caught before the scene is next brought up to date.
@@ -219,6 +256,16 @@ function missingSkillIssues(campaign: CampaignTemplate): StoryboardIssue[] {
     const cardIds = new Set(game.definition.items.map((item) => item.id));
     const scales = game.definition.rules.attributes;
     const reported = new Set<string>();
+    for (const action of game.definition.interactions) {
+      const scale = scales.find((item) => item.id === action.check?.stat);
+      if (!action.check || !scale || hasValue(campaign.player?.stats, scale.id)) continue;
+      issues.push({
+        kind: "scene",
+        id: scene.id,
+        field: "parts",
+        message: `You have no value for “${scale.name}”, so the middle of its scale counts for “${action.label.trim() || "an action"}” in “${sceneName}”.`,
+      });
+    }
     for (const actor of Object.values(game.state.actors)) {
       const isPlayer = actor.id === game.definition.playerId;
       if (!isPlayer && !(actor.id.startsWith("npc:") && isHostile(game, actor))) continue;

@@ -38,6 +38,7 @@ import {
   type StoryboardIssue,
 } from "./storyboardReadiness";
 import { sceneFormat } from "../../library/sceneFormat";
+import { checkPreview, statName } from "../../game/narration";
 import { SceneParts } from "./SceneParts";
 import { ScenePositions } from "./ScenePositions";
 import { fightBreaksOut, isHostile, setFightBreaksOut } from "../../library/sceneParts";
@@ -64,7 +65,7 @@ export function PlayableStoryboard({
   mapPlaces,
   onCreatePlace,
   onOpenLibrary,
-  rulesets = [],
+  rulesets,
   initialStep = "scenes",
 }: {
   campaign: CampaignTemplate;
@@ -125,7 +126,7 @@ export function PlayableStoryboard({
     places,
     new Set(facts.map((fact) => fact.id)),
     mapPlaces,
-    { objects },
+    { objects, rulesets },
   );
   const warnings = storyboardWarnings(campaign, new Set(facts.map((fact) => fact.id)), {
     characters,
@@ -267,6 +268,7 @@ export function PlayableStoryboard({
         setActionFocus(issue.action.field);
       } else setFocus(issue.field);
     } else if (issue.kind === "link") selectLink(issue.id);
+    else if (issue.kind === "rules") showTest();
     else {
       showTest();
       setFocus("objective");
@@ -1442,8 +1444,15 @@ function SceneActions({
                   }
                 >
                   {stats.map((stat) => (
-                    <option key={stat}>{stat}</option>
+                    <option key={stat} value={stat}>
+                      {statName(game.definition, stat)}
+                    </option>
                   ))}
+                  {!stats.includes(action.check.stat) && (
+                    <option value={action.check.stat}>
+                      {action.check.stat} (not in the rule-set)
+                    </option>
+                  )}
                 </select>
               </label>
               <label>
@@ -1462,6 +1471,14 @@ function SceneActions({
                   <option value={-20}>Hard</option>
                 </select>
               </label>
+              <p className="playable-hint" role="status" aria-label="Your chance">
+                {checkPreview(
+                  game.definition,
+                  game.state.actors[game.definition.playerId]!,
+                  action.check.stat,
+                  action.check.modifier,
+                )}
+              </p>
               <label>
                 What happens on failure
                 <textarea

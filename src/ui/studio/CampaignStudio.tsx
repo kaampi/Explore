@@ -762,7 +762,10 @@ export function CampaignStudio({
   const stepFacts = new Set(adventureFacts(draft).map((fact) => fact.id));
   const steps = adventureSteps(
     draft,
-    storyboardIssues(draft, stepPlaces, stepFacts, stepMapPlaces, { objects: visibleObjects }),
+    storyboardIssues(draft, stepPlaces, stepFacts, stepMapPlaces, {
+      objects: visibleObjects,
+      rulesets: visibleRulesets,
+    }),
     storyboardWarnings(draft, stepFacts, {
       characters: visibleCharacters,
       objects: visibleObjects,

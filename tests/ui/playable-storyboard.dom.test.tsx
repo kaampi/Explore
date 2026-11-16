@@ -9,10 +9,12 @@ import {
   newCampaignTemplate,
   newCharacterTemplate,
   newObjectTemplate,
+  newRulesetTemplate,
   parseCampaignTemplate,
   type PlaceTemplate,
 } from "../../src/library/LibrarySchema";
 import { planNewPlace } from "../../src/library/campaignPlace";
+import { syncAdventure } from "../../src/library/sceneSync";
 import { startPlayableCampaign } from "../../src/session/adventureStart";
 import { adventureOptions } from "../../src/game/AdventureEngine";
 async function click(host: HTMLElement, text: string) {
@@ -948,6 +950,79 @@ it("lets an action start a fight only when someone in the scene is hostile", asy
       Object.values(snapshot.scenes[0]!.encounter!.state.actors).find((a) => a.name === "Edda")!
         .team,
     ).toBe("opponents");
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});
+
+it("lists the rule-set's skills by name, stores the id, and shows the player's chance", async () => {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  const built = connectedAdventureExample(),
+    host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  const set = newRulesetTemplate({
+    name: "Classic",
+    source: "player",
+    attributes: [
+      { id: "str", name: "Strength", kind: "number", min: 1, max: 18 },
+      { id: "wit", name: "Wits", kind: "number", min: 1, max: 18 },
+    ] as never,
+  });
+  const start = syncAdventure(
+    {
+      ...structuredClone(built.campaign),
+      rulesetId: set.id,
+      player: { ...built.campaign.player!, stats: { str: "14", wit: "6" } },
+    },
+    { characters: built.characters, objects: built.objects, places: built.places, rulesets: [set] },
+  );
+  let snapshot = start;
+  function Harness() {
+    const [campaign, setCampaign] = useState(start);
+    snapshot = campaign;
+    return (
+      <PlayableStoryboard
+        campaign={campaign}
+        places={built.places}
+        characters={built.characters}
+        objects={built.objects}
+        rulesets={[set]}
+        busy={false}
+        onChange={setCampaign}
+        onPlay={() => {}}
+      />
+    );
+  }
+  const choose = async (label: string, value: string) => {
+    const select = host.querySelector<HTMLSelectElement>(`select[aria-label="${label}"]`)!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")!.set!.call(
+        select,
+        value,
+      );
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+  };
+  try {
+    await act(async () => root.render(<Harness />));
+    const roll = host.querySelector<HTMLInputElement>(
+      'details[data-action-id] input[type="checkbox"]:not([aria-label])',
+    )!;
+    await act(async () => roll.click());
+    const options = Array.from(
+      host.querySelectorAll<HTMLOptionElement>('select[aria-label="Skill"] option'),
+    );
+    expect(options.map((option) => option.textContent)).toEqual(["Strength", "Wits"]);
+    expect(options.map((option) => option.value)).toEqual(["str", "wit"]);
+    await choose("Skill", "wit");
+    expect(snapshot.scenes[0]!.encounter!.definition.interactions[0]!.check?.stat).toBe("wit");
+    const chance = () => host.querySelector('[aria-label="Your chance"]')!.textContent;
+    expect(chance()).toBe("Wits 6 · Standard · 29 %");
+    await choose("Skill", "str");
+    await choose("Difficulty", "20");
+    expect(chance()).toBe("Strength 14 · Easy · 96 %");
   } finally {
     await act(async () => root.unmount());
     host.remove();
