@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 import { newVoiceTemplate, type LibrarySource, type VoiceTemplate } from "@library/LibrarySchema";
 import { exampleVoiceTemplates, mergeWithExamples } from "@library/exampleTemplates";
+import { useTranslate } from "../i18n/LanguageProvider";
 import { withOriginalTimestamps } from "@library/fromForm";
 import { StudioList } from "./StudioList";
 import { FormSection } from "./FormSection";
@@ -31,6 +32,7 @@ function draftFrom(template: VoiceTemplate): Draft {
 }
 
 export function VoiceStudio({ repo }: { repo: IndexedDBRepository }) {
+  const t = useTranslate();
   const [library, setLibrary] = useState<VoiceTemplate[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -159,7 +161,7 @@ export function VoiceStudio({ repo }: { repo: IndexedDBRepository }) {
                 className="setup-field__story"
                 value={draft.instruction}
                 onChange={(e) => setDraft({ ...draft, instruction: e.target.value })}
-                placeholder="Du är Spelledare…"
+                placeholder={t("voiceInstructionPlaceholder")}
               />
             </FormSection>
             {notice && <p className="setup-notice">{notice}</p>}

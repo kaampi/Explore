@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 import { MorphStudio } from "./MorphStudio";
+import { useTranslate } from "../i18n/LanguageProvider";
 import { AddPictureTile } from "./AddPictureTile";
 
 export type CharacterImage = {
@@ -46,6 +47,7 @@ export function CharacterImages({
   portrait: string;
   onPortrait: (src: string) => Promise<void>;
 }) {
+  const t = useTranslate();
   const [profile, setProfile] = useState<StoredMorph>(blank);
   const [open, setOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
@@ -283,10 +285,13 @@ export function CharacterImages({
       </div>
       <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 12 }}>
         <button type="button" onClick={() => setArchiveOpen(true)} style={{ fontSize: 13 }}>
-          Visa bildarkiv{pictures.length ? ` (${pictures.length})` : ""}
+          {t("showPictureArchive")}
+          {pictures.length ? ` (${pictures.length})` : ""}
         </button>
         {pictures.length > 3 && (
-          <span style={{ fontSize: 12, opacity: 0.75 }}>Visar 3 av {pictures.length} bilder</span>
+          <span style={{ fontSize: 12, opacity: 0.75 }}>
+            {t("showingPictures", { count: pictures.length })}
+          </span>
         )}
       </div>
       {status && <p role="status">{status}</p>}
@@ -294,7 +299,7 @@ export function CharacterImages({
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Bildarkiv"
+          aria-label={t("pictureArchive")}
           style={{
             position: "fixed",
             inset: 0,
@@ -328,9 +333,9 @@ export function CharacterImages({
               }}
             >
               <div>
-                <h2 style={{ margin: 0 }}>Bildarkiv</h2>
+                <h2 style={{ margin: 0 }}>{t("pictureArchive")}</h2>
                 <p style={{ fontSize: 13, opacity: 0.8, margin: "5px 0 0" }}>
-                  Dra bilder för att ändra ordning. Den första bilden blir standardporträtt.
+                  {t("pictureArchiveHint")}
                 </p>
               </div>
               <button type="button" onClick={() => setArchiveOpen(false)}>
@@ -424,7 +429,7 @@ export function CharacterImages({
                 onClick={() => picker.current?.click()}
               />
             </div>
-            {!pictures.length && <p>Inga bilder ännu. Klicka på + för att lägga till bilder.</p>}
+            {!pictures.length && <p>{t("noPicturesYet")}</p>}
           </div>
         </div>
       )}

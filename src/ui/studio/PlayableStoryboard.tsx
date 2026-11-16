@@ -1529,7 +1529,7 @@ function SceneActions({
                       .slice(0, 12),
                   })
                 }
-                placeholder="messenger; budbäraren"
+                placeholder="messenger; courier"
                 maxLength={960}
               />
             </label>

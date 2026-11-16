@@ -30,3 +30,7 @@ Do not rename these. Renaming them would break saved data, storage keys, and the
 ## Words the interface does not use
 
 Do not write the names of the AI's internal steps in visible text, such as "Pass 1" and "Pass 2". Say what they do instead: "the story AI", "changes to the story state". A test (`tests/ui/no-internal-jargon.test.ts`) fails if they come back.
+
+## Texts in more than one language
+
+The interface has English, Swedish and Norwegian. A text that should follow the language choice goes in the lists in `src/ui/i18n/LanguageProvider.tsx`, with the same key in all three, and is read with `useTranslate()`. Use `{name}` for a value that is filled in. English is the default, so a view without a language provider still shows English. `tests/ui/i18n.test.ts` checks the lists are complete, and `tests/ui/no-swedish-in-english.test.ts` fails if Swedish text appears in the interface outside the lists and a short list of exceptions.
