@@ -42,7 +42,14 @@ import { sceneFormat } from "../../library/sceneFormat";
 import { checkPreview, statName } from "../../game/narration";
 import { SceneParts } from "./SceneParts";
 import { ScenePositions } from "./ScenePositions";
-import { fightBreaksOut, isHostile, setFightBreaksOut } from "../../library/sceneParts";
+import {
+  doorEffects,
+  doorsHere,
+  fightBreaksOut,
+  isHostile,
+  setDoorEffect,
+  setFightBreaksOut,
+} from "../../library/sceneParts";
 import {
   INSPECTOR_MAX,
   INSPECTOR_MIN,
@@ -1317,6 +1324,14 @@ function SceneActions({
       actor.id !== scene.encounter.definition.playerId &&
       isHostile(scene.encounter, actor),
   );
+  function changeDoor(actionId: string, what: "unlock" | "open", doorId: string) {
+    try {
+      onChange(setDoorEffect(scene, actionId, what, doorId));
+      setFightMessage("");
+    } catch (reason) {
+      setFightMessage(reason instanceof Error ? reason.message : "Could not change the action.");
+    }
+  }
   function toggleFight(actionId: string, outcome: "success" | "failure", on: boolean) {
     try {
       onChange(setFightBreaksOut(scene, actionId, outcome, on));
@@ -1418,6 +1433,29 @@ function SceneActions({
             <p role="alert" className="storyboard-scene-parts__error">
               {fightMessage}
             </p>
+          )}
+          {doorsHere(scene).length > 0 && (
+            <>
+              {(["unlock", "open"] as const).map((what) => (
+                <label key={what}>
+                  {what === "unlock" ? "This unlocks…" : "This opens…"}
+                  <select
+                    aria-label={what === "unlock" ? "This unlocks" : "This opens"}
+                    value={
+                      doorEffects(scene, action.id)[what === "unlock" ? "unlocks" : "opens"] ?? ""
+                    }
+                    onChange={(event) => changeDoor(action.id, what, event.target.value)}
+                  >
+                    <option value="">Nothing</option>
+                    {doorsHere(scene).map((door) => (
+                      <option key={door.id} value={door.id}>
+                        {door.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ))}
+            </>
           )}
           <label className="playable-check">
             <input

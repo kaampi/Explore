@@ -402,7 +402,13 @@ function duplicateItemIssues(campaign: CampaignTemplate): StoryboardIssue[] {
   return issues;
 }
 
-type Reach = { scenes: Set<string>; flags: Set<string>; items: Set<string> };
+type Reach = {
+  scenes: Set<string>;
+  flags: Set<string>;
+  items: Set<string>;
+  /** Doors an action the player can reach unlocks or opens. */
+  doors: Set<string>;
+};
 
 /**
  * What a player can reach from the first scene, step by step. A route works once its
@@ -415,7 +421,8 @@ export function reachableFromStart(campaign: CampaignTemplate): Reach {
   const scenes = new Set<string>();
   const flags = new Set<string>(campaign.storyFlags);
   const items = new Set<string>();
-  if (!first) return { scenes, flags, items };
+  const doors = new Set<string>();
+  if (!first) return { scenes, flags, items, doors };
   const enter = (sceneId: string) => {
     scenes.add(sceneId);
     const scene = campaign.scenes.find((item) => item.id === sceneId);
@@ -432,7 +439,7 @@ export function reachableFromStart(campaign: CampaignTemplate): Reach {
       doorId
     ];
     if (!door || door.blocked) return false;
-    return !door.locked || (!!door.keyId && items.has(door.keyId));
+    return !door.locked || doors.has(doorId) || (!!door.keyId && items.has(door.keyId));
   };
   enter(first.id);
   const has = (needed: readonly string[]) => needed.every((flag) => flags.has(flag));
@@ -447,6 +454,14 @@ export function reachableFromStart(campaign: CampaignTemplate): Reach {
         const outcomes = action.check ? [action.success, action.failure] : [action.success];
         for (const outcome of outcomes)
           for (const effect of outcome.effects) {
+            if (
+              effect.kind === "set-barrier" &&
+              (effect.locked === false || effect.open === true) &&
+              !doors.has(effect.barrierId)
+            ) {
+              doors.add(effect.barrierId);
+              changed = true;
+            }
             if (effect.kind === "flag" && !flags.has(effect.flag)) {
               flags.add(effect.flag);
               changed = true;
@@ -481,7 +496,7 @@ export function reachableFromStart(campaign: CampaignTemplate): Reach {
       }
     }
   }
-  return { scenes, flags, items };
+  return { scenes, flags, items, doors };
 }
 
 /**
@@ -556,7 +571,11 @@ export function storyboardWarnings(
       .map((id) => from?.encounter?.state.barriers[id])
       .find(
         (door) =>
-          door && (door.blocked || (door.locked && !(door.keyId && reach.items.has(door.keyId)))),
+          door &&
+          (door.blocked ||
+            (door.locked &&
+              !reach.doors.has(door.id) &&
+              !(door.keyId && reach.items.has(door.keyId)))),
       );
     if (shut)
       issues.push({

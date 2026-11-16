@@ -969,6 +969,55 @@ export function setFightBreaksOut(
   return finish(current, game);
 }
 
+/** The door an outcome unlocks, and the one it opens (opening also unlocks). */
+export function doorEffects(
+  scene: CampaignScene,
+  actionId: string,
+  outcome: "success" | "failure" = "success",
+): { unlocks?: string; opens?: string } {
+  const action = scene.encounter?.definition.interactions.find((item) => item.id === actionId);
+  const result: { unlocks?: string; opens?: string } = {};
+  for (const effect of action?.[outcome].effects ?? []) {
+    if (effect.kind !== "set-barrier") continue;
+    if (effect.open === true) result.opens = effect.barrierId;
+    else if (effect.locked === false) result.unlocks = effect.barrierId;
+  }
+  return result;
+}
+
+/**
+ * Make an outcome unlock or open a door of the scene, or stop doing so (an empty door id).
+ * Opening a door also unlocks it. Other effects are left alone.
+ */
+export function setDoorEffect(
+  scene: CampaignScene,
+  actionId: string,
+  what: "unlock" | "open",
+  doorId: string,
+  outcome: "success" | "failure" = "success",
+): CampaignScene {
+  const current = requireGame(scene);
+  const game = structuredClone(current.encounter);
+  const action = game.definition.interactions.find((item) => item.id === actionId);
+  if (!action) throw new Error("That action is not in this scene.");
+  if (outcome === "failure" && !action.check)
+    throw new Error("Only an action that rolls can fail.");
+  if (doorId && !game.state.barriers[doorId]) throw new Error("That door is not in this scene.");
+  const isThis = (effect: (typeof action.success.effects)[number]) =>
+    effect.kind === "set-barrier" &&
+    (what === "open" ? effect.open === true : effect.open !== true && effect.locked === false);
+  const kept = action[outcome].effects.filter((effect) => !isThis(effect));
+  action[outcome].effects = doorId
+    ? [
+        ...kept,
+        what === "open"
+          ? { kind: "set-barrier", barrierId: doorId, locked: false, open: true }
+          : { kind: "set-barrier", barrierId: doorId, locked: false },
+      ]
+    : kept;
+  return finish(current, game);
+}
+
 /** Where a person stands when the scene starts. */
 export function setPersonPosition(
   scene: CampaignScene,
