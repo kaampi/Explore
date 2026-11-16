@@ -202,8 +202,9 @@ function missingCardIssues(
 }
 
 /**
- * A weapon from a thing's card uses a skill. A person with no value for it is treated as 40,
- * which is worth knowing about before a fight.
+ * A weapon from a thing's card uses a skill. If the scene's rule-set has no such skill the
+ * holder will rarely hit. If it has one but the player or a hostile person has no value of
+ * their own, the middle of the scale counts. Both are worth knowing before a fight.
  */
 function missingSkillIssues(campaign: CampaignTemplate): StoryboardIssue[] {
   const issues: StoryboardIssue[] = [];
@@ -214,24 +215,44 @@ function missingSkillIssues(campaign: CampaignTemplate): StoryboardIssue[] {
   for (const scene of campaign.scenes) {
     if (sceneFormat(scene) !== "playable") continue;
     const game = scene.encounter!;
+    const sceneName = scene.name.trim() || "Untitled scene";
     const cardIds = new Set(game.definition.items.map((item) => item.id));
+    const scales = game.definition.rules.attributes;
+    const reported = new Set<string>();
     for (const actor of Object.values(game.state.actors)) {
-      const sheet =
-        actor.id === game.definition.playerId
-          ? campaign.player?.stats
-          : actor.id.startsWith("npc:")
-            ? campaign.people.find((person) => person.characterId === actor.id.slice(4))?.stats
-            : undefined;
-      if (!sheet && actor.id !== game.definition.playerId && !actor.id.startsWith("npc:")) continue;
+      const isPlayer = actor.id === game.definition.playerId;
+      if (!isPlayer && !(actor.id.startsWith("npc:") && isHostile(game, actor))) continue;
+      const sheet = isPlayer
+        ? campaign.player?.stats
+        : campaign.people.find((person) => person.characterId === actor.id.slice(4))?.stats;
       for (const weaponId of actor.weapons) {
         const weapon = game.definition.weapons.find((item) => item.id === weaponId);
-        if (!weapon || !cardIds.has(weaponId) || hasValue(sheet, weapon.skill)) continue;
-        issues.push({
-          kind: "scene",
-          id: scene.id,
-          field: "parts",
-          message: `${actor.name} has no value for “${weapon.skill}”, so 40 is used for ${weapon.name} in “${scene.name.trim() || "Untitled scene"}”.`,
-        });
+        if (!weapon || !cardIds.has(weaponId)) continue;
+        const scale = scales.find((item) => item.id === weapon.skill);
+        if (scales.length > 0 && !scale) {
+          if (reported.has(weapon.id)) continue;
+          reported.add(weapon.id);
+          issues.push({
+            kind: "scene",
+            id: scene.id,
+            field: "parts",
+            message: `${weapon.name} in “${sceneName}” uses “${weapon.skill}”, which is not a skill in the rule-set, so whoever holds it will rarely hit.`,
+          });
+        } else if (scale && !hasValue(sheet, scale.id)) {
+          issues.push({
+            kind: "scene",
+            id: scene.id,
+            field: "parts",
+            message: `${actor.name} has no value for “${scale.name}”, so the middle of its scale counts for ${weapon.name} in “${sceneName}”.`,
+          });
+        } else if (scales.length === 0 && actor.stats[weapon.skill] === undefined) {
+          issues.push({
+            kind: "scene",
+            id: scene.id,
+            field: "parts",
+            message: `${actor.name} has no value for “${weapon.skill}”, so ${weapon.name} in “${sceneName}” will rarely hit.`,
+          });
+        }
       }
     }
   }

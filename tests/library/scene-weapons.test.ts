@@ -6,6 +6,7 @@ import {
   newObjectTemplate,
   type ObjectTemplate,
 } from "../../src/library/LibrarySchema";
+import { newRulesetTemplate } from "../../src/library/LibrarySchema";
 import {
   STARTING_AMMUNITION,
   actorIdFor,
@@ -13,8 +14,9 @@ import {
   placeItem,
   removeItem,
   setAmmunition,
+  setAttitude,
 } from "../../src/library/sceneParts";
-import { syncAdventure, syncScene, DEFAULT_WEAPON_SKILL } from "../../src/library/sceneSync";
+import { syncAdventure, syncScene } from "../../src/library/sceneSync";
 import { storyboardWarnings } from "../../src/ui/studio/storyboardReadiness";
 import { IndexedDBRepository } from "../../src/persistence/IndexedDBRepository";
 import { validateEncounter } from "../../src/game/EncounterEngine";
@@ -211,28 +213,14 @@ describe("keeping a weapon in step with its card", () => {
     expect(synced.encounter!.state.actors[eddaId]!.inventory).not.toContain(sword.id);
   });
 
-  it("gives a value of 40 for a skill outside the rule-set, since the set decides the values", () => {
-    const { campaign, eddaId, library } = armed();
-    const id = eddaId.slice(4);
+  it("keeps the skill text of a weapon the rule-set does not know, and adds no value for it", () => {
+    const { campaign, sword, eddaId, library } = armed();
 
-    const without = syncAdventure(campaign, library);
-    expect(without.scenes[0]!.encounter!.state.actors[eddaId]!.stats.Melee).toBe(
-      DEFAULT_WEAPON_SKILL,
-    );
+    const synced = syncAdventure(campaign, library);
 
-    const withValue = syncAdventure(
-      {
-        ...campaign,
-        people: campaign.people.map((p) =>
-          p.characterId === id ? { ...p, stats: { Melee: "65" } } : p,
-        ),
-      },
-      library,
-    );
-    // Melee is not one of the set's values, so the Cast cannot give one.
-    expect(withValue.scenes[0]!.encounter!.state.actors[eddaId]!.stats.Melee).toBe(
-      DEFAULT_WEAPON_SKILL,
-    );
+    const game = synced.scenes[0]!.encounter!;
+    expect(game.definition.weapons.find((w) => w.id === sword.id)?.skill).toBe("Melee");
+    expect(game.state.actors[eddaId]!.stats.Melee).toBeUndefined();
   });
 
   it("is stable when run twice", () => {
@@ -265,37 +253,59 @@ describe("keeping a weapon in step with its card", () => {
   });
 });
 
-describe("a weapon the carrier has no value for", () => {
-  it("warns, naming the person, the skill and the 40", () => {
+describe("a weapon the rule-set does not cover", () => {
+  function hostileHolder() {
     const { built, scene, sword, eddaId } = setup();
-    const campaign = {
-      ...built.campaign,
-      scenes: [placeItem(scene, sword, { heldBy: eddaId }), ...built.campaign.scenes.slice(1)],
-    };
-
-    const warnings = storyboardWarnings(
-      campaign,
-      new Set(adventureFacts(campaign).map((fact) => fact.id)),
+    const armedScene = setAttitude(
+      placeItem(scene, sword, { heldBy: eddaId }),
+      built.characters[0]!.id,
+      "hostile",
     );
+    const campaign = { ...built.campaign, scenes: [armedScene, ...built.campaign.scenes.slice(1)] };
+    return { built, campaign, sword, eddaId };
+  }
+  const warningsFor = (campaign: ReturnType<typeof hostileHolder>["campaign"]) =>
+    storyboardWarnings(campaign, new Set(adventureFacts(campaign).map((fact) => fact.id)));
 
-    const found = warnings.find((w) => w.message.includes("Melee"));
-    expect(found?.message).toContain("Edda");
-    expect(found?.message).toContain("40");
+  it("warns that a weapon's skill is not in the rule-set", () => {
+    const { campaign } = hostileHolder();
+
+    const found = warningsFor(campaign).find((w) => w.message.includes("Melee"));
+
+    expect(found?.message).toContain("Short sword");
+    expect(found?.message).toContain("not a skill in the rule-set");
   });
 
-  it("does not warn once the Cast has a value", () => {
+  it("warns that the middle of the scale counts when the set has the skill but the person has no value", () => {
+    const { built, campaign, sword, eddaId } = hostileHolder();
+    const set = newRulesetTemplate({
+      name: "Fighters",
+      source: "player",
+      attributes: [{ id: "Melee", name: "Melee", kind: "number", min: 1, max: 18 }] as never,
+    });
+    const synced = syncAdventure(
+      { ...campaign, rulesetId: set.id },
+      {
+        characters: built.characters,
+        objects: [...built.objects, sword],
+        places: built.places,
+        rulesets: [set],
+      },
+    );
+
+    const found = warningsFor(synced).find((w) => w.message.includes("middle of its scale"));
+
+    expect(found?.message).toContain("Edda");
+    expect(synced.scenes[0]!.encounter!.state.actors[eddaId]!.stats.Melee).toBe(9.5);
+  });
+
+  it("does not warn about a person who is not the player and not hostile", () => {
     const { built, scene, sword, eddaId } = setup();
     const campaign = {
       ...built.campaign,
-      people: built.campaign.people.map((p) => ({ ...p, stats: { Melee: "70" } })),
       scenes: [placeItem(scene, sword, { heldBy: eddaId }), ...built.campaign.scenes.slice(1)],
     };
 
-    const warnings = storyboardWarnings(
-      campaign,
-      new Set(adventureFacts(campaign).map((fact) => fact.id)),
-    );
-
-    expect(warnings.some((w) => w.message.includes("Melee"))).toBe(false);
+    expect(warningsFor(campaign as never).some((w) => w.message.includes("Melee"))).toBe(false);
   });
 });

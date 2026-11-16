@@ -140,18 +140,68 @@ function syncItems(game: EncounterGame, library: SceneLibrary) {
   });
 }
 
-/** The value used for a weapon's skill when the person has no value of their own. */
-export const DEFAULT_WEAPON_SKILL = 40;
-
 function tacticsUse(actor: EncounterGame["state"]["actors"][string], weaponId: string) {
   return actor.tactics?.preferredWeapon === weaponId || actor.tactics?.fallbackWeapon === weaponId;
+}
+
+/**
+ * A weapon card names its skill as free text. In a scene with scales it means the skill with
+ * that id, or else the skill with that name in any capitals. With no match the text stays,
+ * and the editor warns.
+ */
+export function skillIdFor(text: string, rules?: { scales: { id: string; name: string }[] }) {
+  const scales = rules?.scales ?? [];
+  const byId = scales.find((scale) => scale.id === text);
+  if (byId) return byId.id;
+  const lower = text.trim().toLowerCase();
+  return scales.find((scale) => scale.name.trim().toLowerCase() === lower)?.id ?? text;
+}
+
+/**
+ * Things the adventure says the player starts with go in the pack of every scene, unless the
+ * thing is placed somewhere in the adventure, and never twice.
+ */
+function syncStartItems(
+  campaign: CampaignTemplate,
+  sceneId: string,
+  game: EncounterGame,
+  library: SceneLibrary,
+) {
+  const player = game.state.actors[game.definition.playerId];
+  if (!player) return;
+  const placedIn = (other: EncounterGame, id: string) =>
+    id in other.state.itemLocations ||
+    Object.values(other.state.actors).some(
+      (actor) =>
+        actor.id !== other.definition.playerId &&
+        (actor.inventory.includes(id) || actor.weapons.includes(id)),
+    );
+  const placedElsewhere = (id: string) =>
+    placedIn(game, id) ||
+    campaign.scenes.some(
+      (scene) => scene.id !== sceneId && scene.encounter && placedIn(scene.encounter, id),
+    );
+  for (const card of library.objects) {
+    if (!campaign.objectIds.includes(card.id) || card.startingLocation?.kind !== "player") continue;
+    if (placedElsewhere(card.id)) continue;
+    if (player.inventory.includes(card.id) || player.weapons.includes(card.id)) continue;
+    if (!game.definition.items.some((item) => item.id === card.id))
+      game.definition.items.push({
+        id: card.id,
+        name: card.name,
+        description: card.note,
+        ...(card.readableContent ? { readableContent: card.readableContent } : {}),
+        ...(card.imageDataUrl ? { imageDataUrl: card.imageDataUrl } : {}),
+      });
+    player.inventory.push(card.id);
+  }
 }
 
 /**
  * A thing with a weapon on its card is carried as a weapon, not in the pack, and its record
  * follows the card. Weapons that do not come from a card are left as they are.
  */
-function syncWeapons(game: EncounterGame, library: SceneLibrary) {
+function syncWeapons(game: EncounterGame, library: SceneLibrary, rules?: ActiveRules) {
   const cards = new Map(library.objects.map((object) => [object.id, object]));
   const actors = Object.values(game.state.actors);
   for (const actor of actors) {
@@ -174,7 +224,8 @@ function syncWeapons(game: EncounterGame, library: SceneLibrary) {
   const carried = new Set(actors.flatMap((actor) => actor.weapons));
   const records = new Map(game.definition.weapons.map((record) => [record.id, record]));
   for (const [id, card] of cards) {
-    if (card.weapon && (carried.has(id) || records.has(id))) records.set(id, weaponRecord(card));
+    if (card.weapon && (carried.has(id) || records.has(id)))
+      records.set(id, { ...weaponRecord(card), skill: skillIdFor(card.weapon.skill, rules) });
     else if (!card.weapon && records.has(id) && !carried.has(id)) records.delete(id);
   }
   game.definition.weapons = [...records.values()];
@@ -186,12 +237,6 @@ function syncWeapons(game: EncounterGame, library: SceneLibrary) {
     if (!actor.weapons.includes(actor.tactics.preferredWeapon))
       actor.tactics.preferredWeapon = first;
   }
-  for (const actor of actors)
-    for (const weaponId of actor.weapons) {
-      const card = cards.get(weaponId);
-      if (card?.weapon && actor.stats[card.weapon.skill] === undefined)
-        actor.stats[card.weapon.skill] = DEFAULT_WEAPON_SKILL;
-    }
 }
 
 /** A scene kept in the library is always at its start: nothing has been played in it. */
@@ -223,7 +268,8 @@ export function syncScene(
   syncPlayer(campaign, game, rules);
   syncPeople(campaign, game, library, rules);
   syncItems(game, library);
-  syncWeapons(game, library);
+  syncStartItems(campaign, scene.id, game, library);
+  syncWeapons(game, library, rules);
   resetPlayState(game);
   validateEncounter(game);
   return { ...scene, encounter: game };
