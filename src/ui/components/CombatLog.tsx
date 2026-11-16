@@ -1,7 +1,5 @@
 import { statName } from "../../game/narration";
-import type { GateEncounter } from "../../checks/gateEncounter";
 import type { EncounterGame } from "../../game/EncounterSchema";
-import { POSITION_NAMES } from "../../scenarios/gateWorld";
 
 type HistoryItem = {
   combat?: boolean | undefined;
@@ -45,29 +43,6 @@ function turnNotes(turns: Turn[], who: (id: string) => string, where: (id: strin
             ? [`${who(turn.actorId)} ${turn.action === "unlock" ? "unlocks" : "opens"} a passage.`]
             : []),
   ]);
-}
-export function gateCombatLog(s: GateEncounter): CombatLogItem[] {
-  return s.history.filter(isCombatRecord).map((entry) => ({
-    id: entry.id,
-    title: entry.action === "End turn" ? "Opponents’ turn" : entry.action,
-    checks: entry.checks,
-    notes: [
-      ...(entry.renewedSurrender
-        ? [
-            `You attacked after ${entry.renewedSurrender === "mona" ? "Mona" : "Archer"} surrendered. Hostilities resume.`,
-          ]
-        : []),
-      ...turnNotes(
-        (entry.enemyTurns ?? []).map((turn) => ({ ...turn, actorId: turn.actor })),
-        (id) => (id === "mona" ? "Mona" : "Archer"),
-        (id) => POSITION_NAMES[id as keyof typeof POSITION_NAMES],
-      ),
-      ...(!entry.checks.some((check) => check.actor === "Traveller") &&
-      /^(Sword|Bow) · /.test(entry.action)
-        ? ["Your planned attack was interrupted."]
-        : []),
-    ],
-  }));
 }
 export function encounterCombatLog(game: EncounterGame): CombatLogItem[] {
   const who = (id: string) => game.state.actors[id]?.name ?? id,

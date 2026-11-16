@@ -74,48 +74,6 @@ export function playerInventory(session: Session): InventoryEntry[] {
       })),
     ];
   }
-  if (session.gateEncounter) {
-    const s = session.gateEncounter;
-    return [
-      {
-        key: "weapon:sword",
-        id: "sword",
-        name: "Sword",
-        kind: "weapon",
-        quantity: 1,
-        description: "Your melee weapon.",
-      },
-      {
-        key: "weapon:bow",
-        id: "bow",
-        name: "Bow",
-        kind: "weapon",
-        quantity: 1,
-        description: "Your ranged weapon.",
-      },
-      {
-        key: "item:lockpicks",
-        id: "lockpicks",
-        name: "Lockpicks",
-        kind: "item",
-        quantity: 1,
-        description: "Tools for attempting to pick the gate lock.",
-      },
-      ...(s.keyOwner === "player"
-        ? [
-            {
-              key: "item:iron-key",
-              id: "iron-key",
-              name: "Iron key",
-              kind: "item" as const,
-              quantity: 1,
-              description: "The iron key taken from Mona. It fits the city gate.",
-            },
-          ]
-        : []),
-      { key: "ammunition:bow", id: "bow", name: "Arrows", kind: "ammunition", quantity: s.arrows },
-    ];
-  }
   const objects = session.objects ?? [];
   return objects
     .filter((object) => {

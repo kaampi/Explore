@@ -9,7 +9,6 @@ import {
   locationLabel,
   type SpatialPlace,
 } from "./spatialLocation";
-import { resolveGateAction, POSITION_NAMES, type GateRequest } from "../checks/gateEncounter";
 import { resolveEncounterAction } from "../game/EncounterEngine";
 import type { EncounterRequest } from "../game/EncounterSchema";
 import { CombatFigureImageSchema } from "./combatArtwork";
@@ -109,9 +108,7 @@ export class StateEngine {
   setCombatArtwork(actorId: string, image: string | null): void {
     const participants = this.session.encounter
       ? Object.keys(this.session.encounter.state.actors)
-      : this.session.gateEncounter
-        ? ["player", "mona", "archer"]
-        : [];
+      : [];
     if (!participants.includes(actorId)) throw new Error("Unknown combat participant.");
     const imageDataUrl = image === null ? null : CombatFigureImageSchema.parse(image);
     this.session.combatArtwork ??= {};
@@ -266,72 +263,6 @@ export class StateEngine {
       timestamp: new Date().toISOString(),
       type: "adventure_scene_entered",
       payload: next.run.transitions.at(-1),
-    });
-    this.session.events.push(event);
-  }
-  /** Closed test scene: every consequence and its transcript commit together. */
-  executeGateAction(request: GateRequest, rng: () => number = Math.random): void {
-    if (!this.session.gateEncounter) throw new Error("This is not the gatehouse test.");
-    const next = resolveGateAction(this.session.gateEncounter, request, rng);
-    const entry = next.history.at(-1)!;
-    const base =
-      Math.max(
-        0,
-        ...this.session.conversation.map((value) =>
-          typeof value === "object" && value !== null && "turn" in value
-            ? Number(value.turn) || 0
-            : 0,
-        ),
-      ) + 1;
-    this.session.gateEncounter = next;
-    this.session.stateVersion++;
-    this.session.conversation.push(
-      {
-        turn: base,
-        role: "player",
-        content: entry.intention ? `${entry.intention}\n\nAttempt: ${entry.action}` : entry.action,
-      },
-      {
-        turn: base + 1,
-        role: "character",
-        ...(entry.speaker === "mona"
-          ? { speaker: Object.keys(this.session.characters)[0] }
-          : { toldBy: "narrator" }),
-        content: entry.text,
-      },
-    );
-    this.session.storyFlags = [...new Set([...this.session.storyFlags, ...next.flags])];
-    if (this.session.player)
-      this.session.player.position = {
-        ...this.session.player.position,
-        value: POSITION_NAMES[next.position],
-      };
-    const guard = Object.values(this.session.characters)[0];
-    if (guard) {
-      guard.position = { ...guard.position, value: POSITION_NAMES[next.monaPosition] };
-      guard.mood = {
-        ...guard.mood,
-        value:
-          next.monaHp === 0
-            ? "incapacitated"
-            : next.monaDisposition === "surrendered"
-              ? "surrendered"
-              : next.monaDisposition === "fled"
-                ? "retreated"
-                : next.monaDefending
-                  ? "defensive"
-                  : next.phase === "combat"
-                    ? "hostile"
-                    : guard.mood.value,
-      };
-    }
-    for (const object of this.session.objects ?? [])
-      if (object.id === "gatehouse-port") object.isOpen = next.gateOpen;
-    const event = this.eventLog.append({
-      turn: this.session.stateVersion,
-      timestamp: new Date().toISOString(),
-      type: "gate_action_resolved",
-      payload: entry,
     });
     this.session.events.push(event);
   }

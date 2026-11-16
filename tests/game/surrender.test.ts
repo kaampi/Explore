@@ -6,14 +6,6 @@ import {
   type EncounterAction,
 } from "../../src/game/EncounterSchema";
 import { actionBlock, attackTarget, resolveEncounterAction } from "../../src/game/EncounterEngine";
-import {
-  newGateEncounter,
-  resolveGateAction,
-  gateActionPreview,
-  gateActionBlock,
-  GateEncounterSchema,
-} from "../../src/checks/gateEncounter";
-import { localGatePlan } from "../../src/checks/gateIntent";
 const attack = { kind: "attack", targetId: "officer", weaponId: "shock-baton" } as const;
 function scene() {
   const game = loadingBayGame();
@@ -100,36 +92,6 @@ it("adds a surrendered late entrant once without resetting the current combat or
   expect(
     EncounterGameSchema.parse(JSON.parse(JSON.stringify(next))).state.actors.officer!.weaponReady,
   ).toBe(false);
-});
-it("the gate compatibility scene allows a final attack after every opponent stopped fighting", () => {
-  const initial = newGateEncounter();
-  initial.monaDisposition = "surrendered";
-  initial.monaHp = 4;
-  initial.archerHp = 0;
-  expect(
-    gateActionBlock(initial, { kind: "attack", target: "mona", weapon: "sword" }),
-  ).toBeUndefined();
-  expect(
-    gateActionPreview(initial, { kind: "attack", target: "mona", weapon: "sword" }).target,
-  ).toBe(85);
-  expect(localGatePlan("Jag vill avsluta Mona", initial)).toEqual([
-    { kind: "attack", target: "mona", weapon: "sword" },
-  ]);
-  const next = resolveGateAction(
-    initial,
-    {
-      id: "attack-surrendered",
-      expectedRevision: 0,
-      action: { kind: "attack", target: "mona", weapon: "sword" },
-    },
-    rolls(0.01, 0.99, 0.69),
-  );
-  expect(next.monaHp).toBe(0);
-  expect(next.phase).toBe("exploration");
-  expect(next.history[0]!.renewedSurrender).toBe("mona");
-  expect(next.history[0]!.checks[0]!.target).toBe(85);
-  expect(GateEncounterSchema.parse(JSON.parse(JSON.stringify(next))).monaWeaponReady).toBe(false);
-  expect(initial.monaHp).toBe(4);
 });
 it("renewed surrender before the player’s initiative cannot erase a subsequent actual attack", () => {
   const game = scene();

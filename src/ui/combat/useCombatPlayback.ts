@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { CombatBeatSchema, type CombatBeat } from "../../game/EncounterSchema";
-import { gateCombatState } from "../../scenarios/gateWorld";
 import type { Session } from "../../state/StateSchema";
 export const TURN_PAUSE_MS = 750;
 const ActorsSchema = CombatBeatSchema.shape.actors;
@@ -15,15 +14,11 @@ const QueueSchema = z.object({
   combat: z.boolean(),
 });
 type Queue = z.infer<typeof QueueSchema>;
-const revision = (s: Session) => s.encounter?.state.revision ?? s.gateEncounter?.revision ?? 0;
+const revision = (s: Session) => s.encounter?.state.revision ?? 0;
 const sceneId = (s: Session) => s.adventure?.currentSceneId ?? "";
 const version = (s: Session) => `${sceneId(s)}:${revision(s)}`;
-const inCombat = (s: Session) =>
-  s.encounter?.state.phase === "combat" || s.gateEncounter?.phase === "combat";
-const actors = (s: Session) =>
-  ActorsSchema.parse(
-    s.encounter?.state.actors ?? (s.gateEncounter ? gateCombatState(s.gateEncounter).actors : {}),
-  );
+const inCombat = (s: Session) => s.encounter?.state.phase === "combat";
+const actors = (s: Session) => ActorsSchema.parse(s.encounter?.state.actors ?? {});
 function restore(session: Session): Queue | null {
   try {
     const q = QueueSchema.parse(
@@ -63,7 +58,7 @@ export function useCombatPlayback(session: Session, onFinished: () => boolean) {
       setQueue(null);
       return;
     }
-    const entry = session.encounter?.history.at(-1) ?? session.gateEncounter?.history.at(-1);
+    const entry = session.encounter?.history.at(-1);
     const beats = entry?.presentation ?? [];
     // Old journals have no presentation snapshots; safely show their recorded checks in order.
     const fallback: CombatBeat[] = session.encounter
@@ -74,21 +69,7 @@ export function useCombatPlayback(session: Session, onFinished: () => boolean) {
           text: check.stat,
           actors: actors(session),
         })) ?? [])
-      : (session.gateEncounter?.history.at(-1)?.checks.map((c) => ({
-          actorId: c.actor === "Traveller" ? "player" : c.actor === "Mona" ? "mona" : "archer",
-          round: c.round ?? session.gateEncounter!.round,
-          check: {
-            actorId: c.actor === "Traveller" ? "player" : c.actor === "Mona" ? "mona" : "archer",
-            round: c.round ?? session.gateEncounter!.round,
-            stat: c.stat,
-            roll: c.roll,
-            target: c.target,
-            degree: c.degree,
-            ...(c.damage !== undefined ? { damage: c.damage } : {}),
-          },
-          text: c.stat,
-          actors: actors(session),
-        })) ?? []);
+      : [];
     const frames = beats.length ? beats : fallback,
       combat =
         !!entry?.combat ||

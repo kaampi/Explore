@@ -3,7 +3,8 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import { ActionCheckDialog } from "../../src/ui/components/ActionCheckDialog";
-import { gateScenario } from "../../src/ui/home/gateScenario";
+import legacy from "../fixtures/legacy-gate-session.json";
+import { SessionSchema } from "../../src/state/StateSchema";
 vi.mock("../../src/ui/components/DiceTray", () => ({
   DiceTray: ({ roll }: { roll: number }) => <div data-testid="animated-dice">{roll}</div>,
 }));
@@ -13,6 +14,12 @@ vi.mock("../../src/ui/diceSound", () => ({
     setEnabled() {}
   },
 }));
+/** A chat session with a rule-set and a persuasion value, made from a saved older session. */
+function chatSession() {
+  const saved = structuredClone(legacy) as Record<string, unknown>;
+  delete saved.gateEncounter;
+  return SessionSchema.parse(saved);
+}
 it("closes the preparation dialog and rolls on the chat surface without a second roll", async () => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   const close = vi.fn();
@@ -31,11 +38,7 @@ it("closes the preparation dialog and rolls on the chat surface without a second
   try {
     await act(async () =>
       root.render(
-        <ActionCheckDialog
-          session={gateScenario("surface", "mock")}
-          onClose={() => {}}
-          onContinue={() => {}}
-        />,
+        <ActionCheckDialog session={chatSession()} onClose={() => {}} onContinue={() => {}} />,
       ),
     );
     const before = random.mock.calls.length;

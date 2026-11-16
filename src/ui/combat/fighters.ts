@@ -2,7 +2,6 @@ import archerFighting from "../assets/archer-fighting.png";
 import monaFighting from "../assets/mona-fighting.png";
 import playerSword from "../assets/player-sword.png";
 import type { Session } from "../../state/StateSchema";
-import { POSITION_NAMES } from "../../scenarios/gateWorld";
 import { hostile } from "../../game/EncounterEngine";
 export type Fighter = {
   id: string;
@@ -28,49 +27,12 @@ const condition = (hp: number, disposition: string, defending: boolean, ready?: 
           : defending
             ? ["Defending"]
             : [];
-export function gateFighters(session: Session): { player: Fighter; opponents: Fighter[] } {
-  const s = session.gateEncounter!,
-    mona = Object.values(session.characters)[0];
-  return {
-    player: {
-      id: "player",
-      name: session.player?.name || "Traveller",
-      hp: s.hp,
-      maxHp: 20,
-      position: POSITION_NAMES[s.position],
-      status: s.defending ? ["Defending"] : [],
-      anatomyId: "builtin-humanoid",
-      portrait: session.player?.portraitDataUrl,
-      image: session.combatArtwork?.player?.imageDataUrl ?? playerSword,
-    },
-    opponents: [
-      {
-        id: "mona",
-        name: "Mona",
-        hp: s.monaHp,
-        maxHp: 16,
-        position: POSITION_NAMES[s.monaPosition],
-        status: condition(s.monaHp, s.monaDisposition, s.monaDefending, s.monaWeaponReady),
-        anatomyId: mona?.anatomyTemplateId ?? "builtin-humanoid",
-        parts: mona?.anatomyTemplateId
-          ? session.anatomyTemplates?.[mona.anatomyTemplateId]?.parts.map((p) => p.id)
-          : undefined,
-        portrait: mona?.portraitDataUrl,
-        image: session.combatArtwork?.mona?.imageDataUrl ?? monaFighting,
-      },
-      {
-        id: "archer",
-        name: "Archer",
-        hp: s.archerHp,
-        maxHp: 10,
-        position: POSITION_NAMES[s.archerPosition] + (s.archerPosition === "wall" ? " · +6 m" : ""),
-        status: condition(s.archerHp, s.archerDisposition, s.archerDefending, s.archerWeaponReady),
-        anatomyId: "builtin-humanoid",
-        image: session.combatArtwork?.archer?.imageDataUrl ?? archerFighting,
-      },
-    ],
-  };
-}
+/** Pictures that come with the gatehouse example's people, used until the author draws their own. */
+const EXAMPLE_FIGURES: Record<string, string> = {
+  Mona: monaFighting,
+  "The archer": archerFighting,
+};
+
 export function encounterFighters(session: Session): { player: Fighter; opponents: Fighter[] } {
   const { definition: d, state: s } = session.encounter!,
     player = s.actors[d.playerId]!;
@@ -89,14 +51,17 @@ export function encounterFighters(session: Session): { player: Fighter; opponent
         ? session.anatomyTemplates?.[a.anatomyTemplateId]?.parts.map((p) => p.id)
         : undefined,
       portrait: id === d.playerId ? session.player?.portraitDataUrl : undefined,
-      image: session.combatArtwork?.[id]?.imageDataUrl,
+      image: session.combatArtwork?.[id]?.imageDataUrl ?? EXAMPLE_FIGURES[a.name],
     };
   };
+  const opponents = Object.values(s.actors)
+    .filter((a) => hostile(d, player, a))
+    .map((a) => view(a.id));
+  const fromExample = opponents.some((o) => o.name in EXAMPLE_FIGURES);
+  const you = view(player.id);
   return {
-    player: view(player.id),
-    opponents: Object.values(s.actors)
-      .filter((a) => hostile(d, player, a))
-      .map((a) => view(a.id)),
+    player: fromExample && !you.image ? { ...you, image: playerSword } : you,
+    opponents,
   };
 }
 
@@ -104,7 +69,7 @@ export function projectFighters(
   session: Session,
   snapshot: import("../../game/EncounterSchema").CombatBeat["actors"] | undefined,
 ) {
-  const fighters = session.encounter ? encounterFighters(session) : gateFighters(session);
+  const fighters = encounterFighters(session);
   if (!snapshot) return fighters;
   const view = (fighter: Fighter): Fighter => {
     const a = snapshot[fighter.id];
@@ -116,8 +81,7 @@ export function projectFighters(
       status: condition(a.hp, a.disposition, a.defending, a.weaponReady),
       position: place
         ? place.name + (place.elevation ? ` · +${place.elevation} m` : "")
-        : (POSITION_NAMES[a.position as keyof typeof POSITION_NAMES] ?? a.position) +
-          (fighter.id === "archer" && a.position === "wall" ? " · +6 m" : ""),
+        : a.position,
     };
   };
   return { player: view(fighters.player), opponents: fighters.opponents.map(view) };

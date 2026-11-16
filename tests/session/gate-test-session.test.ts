@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { isGateTestSession, LEGACY_GATE_TEST_RULESET_NAME } from "../../src/session/gateTest";
 import { parseSession } from "../../src/state/StateSchema";
-import { gateScenario } from "../../src/ui/home/gateScenario";
+import legacy from "../fixtures/legacy-gate-session.json";
+
+const gateScenario = (_id: string, _model: string) => parseSession(structuredClone(legacy));
 
 describe("isGateTestSession", () => {
   it("is true for a new gate scenario because it names its scenario", () => {

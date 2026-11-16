@@ -2,8 +2,6 @@ import type { AdventureTransition } from "../game/AdventureSchema";
 import type { EncounterRequest } from "../game/EncounterSchema";
 import { ActionSaveError } from "../persistence/ActionSaveError";
 import type { CheckResult } from "../checks/CheckEngine";
-import type { GateRequest } from "../checks/gateEncounter";
-import { interpretGateIntent, type GateIntent } from "../checks/gateIntent";
 import {
   lastSpeakerId,
   narrateRecordedTurn,
@@ -83,9 +81,6 @@ export interface EngineContextValue {
   setCombatArtwork: (actorId: string, image: string | null) => Promise<void>;
   executeEncounterAction: (request: EncounterRequest) => Promise<void>;
   saveEncounter: () => Promise<void>;
-  executeGateAction: (request: GateRequest) => Promise<void>;
-  saveGateScene: () => Promise<void>;
-  interpretGateText: (text: string, signal?: AbortSignal) => Promise<GateIntent>;
   /** How to treat a spoken line in an engine scene. Never changes the scene by itself. */
   planEncounterSay: (text: string, signal?: AbortSignal) => Promise<SayPlan>;
   /** What a described action may mean. Only ever a proposal for the player to review. */
@@ -894,23 +889,6 @@ export function EngineProvider({
       } catch (error) {
         throw new ActionSaveError(error);
       }
-    },
-    executeGateAction: async (request) => {
-      stateEngine.executeGateAction(request);
-      eventLogSnapshotRef.current = sharedEventLog.all();
-      notifySession();
-      await repo.saveSession(stateEngine.getSession());
-    },
-    saveGateScene: () => repo.saveSession(stateEngine.getSession()),
-    interpretGateText: (text, signal) => {
-      const current = stateEngine.getSession().gateEncounter;
-      if (!current) return Promise.resolve({ status: "unknown" as const, revision: 0 });
-      return interpretGateIntent(
-        text,
-        current,
-        discovery?.state === "available" ? pass1Adapter : undefined,
-        signal,
-      );
     },
     planEncounterSay: (text, signal) =>
       planSay(

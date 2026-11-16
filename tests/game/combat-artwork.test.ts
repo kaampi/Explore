@@ -3,21 +3,29 @@ import { IDBFactory } from "fake-indexeddb";
 import { IndexedDBRepository } from "../../src/persistence/IndexedDBRepository";
 import { StateEngine } from "../../src/state/StateEngine";
 import { EventLog } from "../../src/events/EventLog";
-import { gateEncounterScenario } from "../../src/ui/home/gateScenario";
+import { gatehouseExample } from "../../src/scenarios/gatehouse";
+import { startPlayableCampaign } from "../../src/session/adventureStart";
 import { loadingBayScenario } from "../../src/ui/home/encounterScenario";
 import { parseSession } from "../../src/state/StateSchema";
+function gatehouseSession(id: string) {
+  const built = gatehouseExample();
+  return startPlayableCampaign(
+    built.campaign,
+    built.campaign.scenes[0]!,
+    built.places,
+    id,
+    [built.realm],
+    { characters: built.characters },
+  );
+}
 const png = "data:image/png;base64,iVBORw0KGgo=";
 it("persists artwork across reload without changing checks, turns, positions, health or ammunition", async () => {
-  for (const seed of [
-    gateEncounterScenario("gate-art", "mock"),
-    loadingBayScenario("depot-art", "mock"),
-  ]) {
+  for (const seed of [gatehouseSession("gate-art"), loadingBayScenario("depot-art", "mock")]) {
     const engine = new StateEngine(seed, new EventLog()),
       before = engine.getSession(),
-      id = before.encounter ? "courier" : "player";
+      id = before.encounter!.definition.playerId;
     engine.setCombatArtwork(id, png);
     const after = engine.getSession();
-    expect(after.gateEncounter).toEqual(before.gateEncounter);
     expect(after.encounter).toEqual(before.encounter);
     expect(after.conversation).toEqual(before.conversation);
     expect(after.events).toEqual(before.events);
@@ -31,7 +39,7 @@ it("persists artwork across reload without changing checks, turns, positions, he
   }
 });
 it("rejects unknown actors and executable image formats without partially changing state", () => {
-  const engine = new StateEngine(gateEncounterScenario("invalid-art", "mock"), new EventLog()),
+  const engine = new StateEngine(gatehouseSession("invalid-art"), new EventLog()),
     before = engine.getSession();
   expect(() => engine.setCombatArtwork("unknown", png)).toThrow("Unknown");
   expect(() => engine.setCombatArtwork("player", "data:image/svg+xml;base64,PHN2Zz4=")).toThrow();
