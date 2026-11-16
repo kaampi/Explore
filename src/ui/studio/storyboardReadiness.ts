@@ -46,6 +46,9 @@ export function storyboardIssues(
         : scene.encounter.definition.description;
     if (!arrival.trim() || arrival === "Describe what the player sees on arrival.")
       add("arrival", `Describe the arrival in “${name}”.`);
+    for (const door of Object.values(scene.encounter.state.barriers))
+      if (door.locked && !door.keyId)
+        add("parts", `“${door.name}” in “${name}” is locked, but nothing opens it. Choose a key.`);
     for (const action of scene.encounter.definition.interactions) {
       const actionName = action.label.trim() || "Untitled action";
       if (!action.label.trim())
@@ -133,6 +136,26 @@ function missingCardIssues(
   return issues;
 }
 
+/** A key that is nowhere in the adventure cannot be found, so its door stays shut. */
+function missingKeyIssues(campaign: CampaignTemplate): StoryboardIssue[] {
+  const known = new Set<string>(campaign.objectIds);
+  for (const scene of campaign.scenes)
+    for (const item of scene.encounter?.definition.items ?? []) known.add(item.id);
+  const issues: StoryboardIssue[] = [];
+  for (const scene of campaign.scenes) {
+    if (sceneFormat(scene) !== "playable") continue;
+    for (const door of Object.values(scene.encounter!.state.barriers))
+      if (door.locked && door.keyId && !known.has(door.keyId))
+        issues.push({
+          kind: "scene",
+          id: scene.id,
+          field: "parts",
+          message: `The key to “${door.name}” in “${scene.name.trim() || "Untitled scene"}” is not in this adventure.`,
+        });
+  }
+  return issues;
+}
+
 /** An item starts in one place in the whole adventure, not once per scene. */
 function duplicateItemIssues(campaign: CampaignTemplate): StoryboardIssue[] {
   const issues: StoryboardIssue[] = [];
@@ -162,7 +185,7 @@ function duplicateItemIssues(campaign: CampaignTemplate): StoryboardIssue[] {
   return issues;
 }
 
-type Reach = { scenes: Set<string>; flags: Set<string> };
+type Reach = { scenes: Set<string>; flags: Set<string>; items: Set<string> };
 
 /**
  * What a player can reach from the first scene, step by step. A route works once its
@@ -174,11 +197,23 @@ export function reachableFromStart(campaign: CampaignTemplate): Reach {
   const first = campaign.scenes.find((scene) => sceneFormat(scene) !== "earlier");
   const scenes = new Set<string>();
   const flags = new Set<string>(campaign.storyFlags);
-  if (!first) return { scenes, flags };
+  const items = new Set<string>();
+  if (!first) return { scenes, flags, items };
   const enter = (sceneId: string) => {
     scenes.add(sceneId);
     const scene = campaign.scenes.find((item) => item.id === sceneId);
     for (const flag of scene?.encounter?.state.flags ?? []) flags.add(flag);
+    const game = scene?.encounter;
+    for (const itemId of game?.state.actors[game.definition.playerId]?.inventory ?? [])
+      items.add(itemId);
+  };
+  /** A door lets the player through when it can be opened: not barricaded, and unlocked or its key can be had. */
+  const doorCanOpen = (sceneId: string, doorId: string) => {
+    const door = campaign.scenes.find((item) => item.id === sceneId)?.encounter?.state.barriers[
+      doorId
+    ];
+    if (!door || door.blocked) return false;
+    return !door.locked || (!!door.keyId && items.has(door.keyId));
   };
   enter(first.id);
   const has = (needed: readonly string[]) => needed.every((flag) => flags.has(flag));
@@ -191,17 +226,28 @@ export function reachableFromStart(campaign: CampaignTemplate): Reach {
         if (!has(action.requiresFlags)) continue;
         const outcomes = action.check ? [action.success, action.failure] : [action.success];
         for (const outcome of outcomes)
-          for (const effect of outcome.effects)
+          for (const effect of outcome.effects) {
             if (effect.kind === "flag" && !flags.has(effect.flag)) {
               flags.add(effect.flag);
               changed = true;
             }
+            const gets =
+              effect.kind === "take-item" ||
+              (effect.kind === "transfer-item" &&
+                effect.to === scene.encounter?.definition.playerId);
+            if (gets && !items.has(effect.itemId)) {
+              items.add(effect.itemId);
+              changed = true;
+            }
+          }
       }
     }
     for (const link of campaign.sceneLinks) {
       if (!scenes.has(link.fromSceneId)) continue;
       if (link.requiresFlags.some((flag) => link.requiresAbsentFlags.includes(flag))) continue;
       if (!has(link.requiresFlags)) continue;
+      if ((link.requiresOpenBarriers ?? []).some((id) => !doorCanOpen(link.fromSceneId, id)))
+        continue;
       if (link.requiresAbsentFlags.some((flag) => campaign.storyFlags.includes(flag))) continue;
       if (!campaign.scenes.some((item) => item.id === link.toSceneId)) continue;
       for (const flag of link.setsFlags)
@@ -215,7 +261,7 @@ export function reachableFromStart(campaign: CampaignTemplate): Reach {
       }
     }
   }
-  return { scenes, flags };
+  return { scenes, flags, items };
 }
 
 /**
@@ -229,7 +275,10 @@ export function storyboardWarnings(
 ): StoryboardIssue[] {
   const first = campaign.scenes.find((scene) => sceneFormat(scene) !== "earlier");
   if (!first) return [];
-  const issues: StoryboardIssue[] = library ? missingCardIssues(campaign, library) : [];
+  const issues: StoryboardIssue[] = [
+    ...(library ? missingCardIssues(campaign, library) : []),
+    ...missingKeyIssues(campaign),
+  ];
   const reach = reachableFromStart(campaign);
   const labels = new Map(adventureFacts(campaign).map((fact) => [fact.id, fact.label]));
   const discovery = (flag: string) => (labels.has(flag) ? `“${labels.get(flag)}”` : `“${flag}”`);
@@ -261,6 +310,19 @@ export function storyboardWarnings(
   }
   for (const link of campaign.sceneLinks) {
     if (!reach.scenes.has(link.fromSceneId)) continue;
+    const from = campaign.scenes.find((item) => item.id === link.fromSceneId);
+    const shut = (link.requiresOpenBarriers ?? [])
+      .map((id) => from?.encounter?.state.barriers[id])
+      .find(
+        (door) =>
+          door && (door.blocked || (door.locked && !(door.keyId && reach.items.has(door.keyId)))),
+      );
+    if (shut)
+      issues.push({
+        kind: "link",
+        id: link.id,
+        message: `“${link.label || "Continue"}” needs “${shut.name}” open, but the player cannot get the key that opens it.`,
+      });
     const missing = link.requiresFlags.find((flag) => !reach.flags.has(flag));
     if (!missing) continue;
     issues.push({

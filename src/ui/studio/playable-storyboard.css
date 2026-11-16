@@ -814,3 +814,11 @@
   color: var(--danger, #b3402a);
   font-size: 13px;
 }
+.storyboard-scene-parts li {
+  flex-wrap: wrap;
+}
+.storyboard-scene-parts__attach {
+  display: flex;
+  flex-basis: 100%;
+  gap: 6px;
+}

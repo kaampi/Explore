@@ -765,6 +765,8 @@ export function PlayableStoryboard({
         <>
           <SceneParts
             key={`parts-${scene.id}`}
+            campaign={campaign}
+            onChangeCampaign={onChange}
             scene={scene}
             people={characters}
             things={objects}

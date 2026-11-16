@@ -1,4 +1,9 @@
-import type { CampaignScene, CharacterTemplate, ObjectTemplate } from "./LibrarySchema";
+import type {
+  CampaignScene,
+  CampaignTemplate,
+  CharacterTemplate,
+  ObjectTemplate,
+} from "./LibrarySchema";
 import type { Actor, EncounterGame } from "../game/EncounterSchema";
 import { validateEncounter } from "../game/EncounterEngine";
 import { InteractionSchema } from "../game/EncounterSchema";
@@ -236,4 +241,158 @@ export function addPickUp(scene: CampaignScene, objectId: string): CampaignScene
     }),
   );
   return finish(current, game);
+}
+
+/** A door to add. A locked door needs the thing that opens it. */
+export type NewDoor = {
+  name: string;
+  position: string;
+  locked: boolean;
+  keyId?: string | undefined;
+};
+
+/** The doors of a scene. */
+export function doorsHere(scene: CampaignScene) {
+  return Object.values(scene.encounter?.state.barriers ?? {});
+}
+
+/** Add a door at a position. Say where it sits afterwards, between positions or on a route. */
+export function addDoor(
+  scene: CampaignScene,
+  door: NewDoor,
+  id: string = crypto.randomUUID(),
+): { scene: CampaignScene; doorId: string } {
+  const current = requireGame(scene);
+  const game = structuredClone(current.encounter);
+  const name = door.name.trim();
+  if (!name) throw new Error("Name the door.");
+  if (!game.definition.places.some((place) => place.id === door.position))
+    throw new Error("That position is not in this scene.");
+  if (door.locked && !door.keyId?.trim())
+    throw new Error(
+      "A locked door needs a thing that opens it. Choose a key, or leave it unlocked.",
+    );
+  game.state.barriers[id] = {
+    id,
+    name,
+    open: false,
+    locked: door.locked,
+    blocked: false,
+    position: door.position,
+    ...(door.locked && door.keyId ? { keyId: door.keyId.trim() } : {}),
+  };
+  return { scene: finish(current, game), doorId: id };
+}
+
+function connectionBetween(game: EncounterGame, from: string, to: string) {
+  const same = (link: { from: string; to: string }) =>
+    (link.from === from && link.to === to) || (link.from === to && link.to === from);
+  return game.definition.connections.find(same);
+}
+
+/** Put a door on the way between two positions. */
+export function attachDoorToConnection(
+  scene: CampaignScene,
+  doorId: string,
+  from: string,
+  to: string,
+): CampaignScene {
+  const current = requireGame(scene);
+  const game = structuredClone(current.encounter);
+  if (!game.state.barriers[doorId]) throw new Error("That door is not in this scene.");
+  const connection = connectionBetween(game, from, to);
+  if (!connection) throw new Error("Those positions are not connected.");
+  if (connection.barrierId && connection.barrierId !== doorId)
+    throw new Error("There is already a door on that way.");
+  connection.barrierId = doorId;
+  for (const sight of game.definition.sightLines) {
+    const same =
+      (sight.from === from && sight.to === to) || (sight.from === to && sight.to === from);
+    if (same) sight.barrierId = doorId;
+  }
+  return finish(current, game);
+}
+
+function sceneById(campaign: CampaignTemplate, id: string) {
+  return campaign.scenes.find((scene) => scene.id === id);
+}
+
+/**
+ * Put a door on a route to another scene. The door is shared, so it is the same door on both
+ * sides, with the same key, and the route only opens once the door is open.
+ */
+export function attachDoorToRoute(
+  campaign: CampaignTemplate,
+  sceneId: string,
+  doorId: string,
+  linkId: string,
+): CampaignTemplate {
+  const from = sceneById(campaign, sceneId);
+  const link = campaign.sceneLinks.find((item) => item.id === linkId);
+  if (!from?.encounter) throw new Error("Make the scene playable first.");
+  if (!link || link.fromSceneId !== sceneId) throw new Error("That route does not start here.");
+  const door = from.encounter.state.barriers[doorId];
+  if (!door) throw new Error("That door is not in this scene.");
+  const to = sceneById(campaign, link.toSceneId);
+  if (!to?.encounter) throw new Error(`Make “${to?.name || "the next scene"}” playable first.`);
+  const sourceGame = structuredClone(from.encounter);
+  const targetGame = structuredClone(to.encounter);
+  sourceGame.state.barriers[doorId]!.shared = true;
+  const existing = targetGame.state.barriers[doorId];
+  if (existing && existing.keyId !== door.keyId)
+    throw new Error("The other side already has a door with that name but another key.");
+  const arrival = targetGame.state.actors[targetGame.definition.playerId]!.position;
+  targetGame.state.barriers[doorId] = {
+    ...door,
+    shared: true,
+    position: existing?.position ?? arrival,
+  };
+  validateEncounter(sourceGame);
+  validateEncounter(targetGame);
+  const required = new Set([...(link.requiresOpenBarriers ?? []), doorId]);
+  return {
+    ...campaign,
+    scenes: campaign.scenes.map((scene) => {
+      if (scene.id === from.id) return { ...scene, encounter: sourceGame };
+      if (scene.id === to.id) return { ...scene, encounter: targetGame };
+      return scene;
+    }),
+    sceneLinks: campaign.sceneLinks.map((item) =>
+      item.id === linkId ? { ...item, requiresOpenBarriers: [...required] } : item,
+    ),
+  };
+}
+
+/** Remove a door, and every way it was used: connections, sight lines, routes and shared copies. */
+export function removeDoor(
+  campaign: CampaignTemplate,
+  sceneId: string,
+  doorId: string,
+): CampaignTemplate {
+  const scene = sceneById(campaign, sceneId);
+  const door = scene?.encounter?.state.barriers[doorId];
+  if (!scene?.encounter || !door) return campaign;
+  const scenes = campaign.scenes.map((item) => {
+    if (!item.encounter) return item;
+    const everywhere = door.shared === true && item.encounter.state.barriers[doorId]?.shared;
+    if (item.id !== sceneId && !everywhere) return item;
+    const game = structuredClone(item.encounter);
+    delete game.state.barriers[doorId];
+    for (const link of [...game.definition.connections, ...game.definition.sightLines])
+      if (link.barrierId === doorId) delete link.barrierId;
+    validateEncounter(game);
+    return { ...item, encounter: game };
+  });
+  return {
+    ...campaign,
+    scenes,
+    sceneLinks: campaign.sceneLinks.map((link) =>
+      link.requiresOpenBarriers?.includes(doorId)
+        ? {
+            ...link,
+            requiresOpenBarriers: link.requiresOpenBarriers.filter((id) => id !== doorId),
+          }
+        : link,
+    ),
+  };
 }

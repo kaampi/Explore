@@ -1,13 +1,23 @@
 import { useState } from "react";
-import type { CampaignScene, CharacterTemplate, ObjectTemplate } from "../../library/LibrarySchema";
+import type {
+  CampaignScene,
+  CampaignTemplate,
+  CharacterTemplate,
+  ObjectTemplate,
+} from "../../library/LibrarySchema";
 import {
   actorIdFor,
+  addDoor,
   addPerson,
   addPickUp,
+  attachDoorToConnection,
+  attachDoorToRoute,
+  doorsHere,
   itemsHere,
   pickUpAction,
   peopleHere,
   placeItem,
+  removeDoor,
   removeItem,
   removePerson,
   type ItemPlace,
@@ -15,13 +25,16 @@ import {
 
 /** "Who and what is here": the people and things in one scene. */
 export function SceneParts({
+  campaign,
   scene,
   people,
   things,
   busy,
   onChange,
+  onChangeCampaign,
   onOpenLibrary,
 }: {
+  campaign: CampaignTemplate;
   scene: CampaignScene;
   /** The adventure's Cast. */
   people: CharacterTemplate[];
@@ -29,12 +42,19 @@ export function SceneParts({
   things: ObjectTemplate[];
   busy: boolean;
   onChange: (scene: CampaignScene) => void;
+  /** For changes that reach more than one scene, such as a door on a route. */
+  onChangeCampaign: (campaign: CampaignTemplate) => void;
   onOpenLibrary?: ((what: "people" | "things") => void) | undefined;
 }) {
   const [personId, setPersonId] = useState("");
   const [thingId, setThingId] = useState("");
   const [where, setWhere] = useState("position:");
   const [message, setMessage] = useState("");
+  const [doorName, setDoorName] = useState("");
+  const [doorPosition, setDoorPosition] = useState("");
+  const [doorLocked, setDoorLocked] = useState(false);
+  const [doorKey, setDoorKey] = useState("");
+  const [attachTo, setAttachTo] = useState<Record<string, string>>({});
   const game = scene.encounter;
   if (!game) return null;
 
@@ -52,6 +72,55 @@ export function SceneParts({
       setMessage("");
     } catch (reason) {
       setMessage(reason instanceof Error ? reason.message : "Could not change the scene.");
+    }
+  }
+
+  function attemptCampaign(change: () => CampaignTemplate) {
+    try {
+      onChangeCampaign(change());
+      setMessage("");
+    } catch (reason) {
+      setMessage(reason instanceof Error ? reason.message : "Could not change the scene.");
+    }
+  }
+
+  const doors = doorsHere(scene);
+  const routes = campaign.sceneLinks.filter((link) => link.fromSceneId === scene.id);
+  const sceneName = (id: string) =>
+    campaign.scenes.find((item) => item.id === id)?.name.trim() || "the next scene";
+  const positionName = (id: string) => positions.find((p) => p.id === id)?.name ?? id;
+
+  function doorPlace(doorId: string): string {
+    const connection = game!.definition.connections.find((c) => c.barrierId === doorId);
+    if (connection)
+      return `between ${positionName(connection.from)} and ${positionName(connection.to)}`;
+    const route = campaign.sceneLinks.find(
+      (link) => link.fromSceneId === scene.id && link.requiresOpenBarriers?.includes(doorId),
+    );
+    if (route) return `on the way to ${sceneName(route.toSceneId)}`;
+    return `at ${positionName(game!.state.barriers[doorId]?.position ?? "")}`;
+  }
+
+  function attachOptions() {
+    return [
+      ...game!.definition.connections.map((c) => ({
+        value: `connection:${c.from}:${c.to}`,
+        label: `Between ${positionName(c.from)} and ${positionName(c.to)}`,
+      })),
+      ...routes.map((link) => ({
+        value: `route:${link.id}`,
+        label: `On the way to ${sceneName(link.toSceneId)}`,
+      })),
+    ];
+  }
+
+  function attachDoor(doorId: string) {
+    const choice = attachTo[doorId] ?? "";
+    if (choice.startsWith("route:"))
+      attemptCampaign(() => attachDoorToRoute(campaign, scene.id, doorId, choice.slice(6)));
+    else if (choice.startsWith("connection:")) {
+      const [, from, to] = choice.split(":");
+      attempt(() => attachDoorToConnection(scene, doorId, from!, to!));
     }
   }
 
@@ -237,6 +306,126 @@ export function SceneParts({
             </button>
           </div>
         )}
+      </div>
+      <div className="storyboard-scene-parts__group">
+        <strong>Doors</strong>
+        {doors.length === 0 && <p className="playable-hint">No doors in this scene.</p>}
+        <ul>
+          {doors.map((door) => (
+            <li key={door.id}>
+              <span>
+                {door.name} ·{" "}
+                {door.locked ? `locked with ${itemName(door.keyId ?? "")}` : "not locked"} ·{" "}
+                {doorPlace(door.id)}
+              </span>
+              <button
+                type="button"
+                className="playable-remove"
+                disabled={busy}
+                aria-label={`Remove ${door.name}`}
+                onClick={() => attemptCampaign(() => removeDoor(campaign, scene.id, door.id))}
+              >
+                Remove
+              </button>
+              {attachOptions().length > 0 && (
+                <span className="storyboard-scene-parts__attach">
+                  <select
+                    aria-label={`Where ${door.name} stands`}
+                    value={attachTo[door.id] ?? ""}
+                    disabled={busy}
+                    onChange={(event) =>
+                      setAttachTo((current) => ({ ...current, [door.id]: event.target.value }))
+                    }
+                  >
+                    <option value="">Put it…</option>
+                    {attachOptions().map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    disabled={busy || !attachTo[door.id]}
+                    aria-label={`Put ${door.name} there`}
+                    onClick={() => attachDoor(door.id)}
+                  >
+                    Put here
+                  </button>
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+        <div className="storyboard-scene-parts__add">
+          <input
+            aria-label="Door name"
+            value={doorName}
+            maxLength={120}
+            disabled={busy}
+            placeholder="For example: The cellar door"
+            onChange={(event) => setDoorName(event.target.value)}
+          />
+          <select
+            aria-label="Door position"
+            value={doorPosition || positions[0]!.id}
+            disabled={busy}
+            onChange={(event) => setDoorPosition(event.target.value)}
+          >
+            {positions.map((position) => (
+              <option key={position.id} value={position.id}>
+                At {position.name}
+              </option>
+            ))}
+          </select>
+          <label className="playable-check">
+            <input
+              type="checkbox"
+              checked={doorLocked}
+              disabled={busy}
+              onChange={(event) => setDoorLocked(event.target.checked)}
+            />{" "}
+            Locked
+          </label>
+          {doorLocked && (
+            <select
+              aria-label="Key to the door"
+              value={doorKey}
+              disabled={busy}
+              onChange={(event) => setDoorKey(event.target.value)}
+            >
+              <option value="">Choose the key</option>
+              {things.map((thing) => (
+                <option key={thing.id} value={thing.id}>
+                  {thing.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <button
+            type="button"
+            disabled={busy || !doorName.trim()}
+            onClick={() => {
+              try {
+                const made = addDoor(scene, {
+                  name: doorName,
+                  position: doorPosition || positions[0]!.id,
+                  locked: doorLocked,
+                  keyId: doorKey,
+                });
+                onChange(made.scene);
+                setMessage("");
+                setDoorName("");
+                setDoorLocked(false);
+                setDoorKey("");
+              } catch (reason) {
+                setMessage(reason instanceof Error ? reason.message : "Could not add the door.");
+              }
+            }}
+          >
+            Add door
+          </button>
+        </div>
       </div>
     </section>
   );

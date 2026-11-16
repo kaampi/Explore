@@ -580,3 +580,111 @@ it("explains why a person cannot be removed while an action is about them", asyn
     host.remove();
   }
 });
+
+it("adds a locked door from the scene panel and puts it on the way to the next scene", async () => {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  const built = connectedAdventureExample(),
+    host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  let snapshot = built.campaign;
+  function Harness() {
+    const [campaign, setCampaign] = useState(built.campaign);
+    snapshot = campaign;
+    return (
+      <PlayableStoryboard
+        campaign={campaign}
+        places={built.places}
+        characters={built.characters}
+        objects={built.objects}
+        busy={false}
+        onChange={setCampaign}
+        onPlay={() => {}}
+      />
+    );
+  }
+  const set = async (selector: string, value: string, kind: "input" | "select") => {
+    const element = host.querySelector<HTMLInputElement | HTMLSelectElement>(selector)!;
+    const prototype = kind === "input" ? HTMLInputElement.prototype : HTMLSelectElement.prototype;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(prototype, "value")!.set!.call(element, value);
+      element.dispatchEvent(new Event(kind === "input" ? "input" : "change", { bubbles: true }));
+    });
+  };
+  try {
+    await act(async () => root.render(<Harness />));
+    await set('input[aria-label="Door name"]', "Village gate", "input");
+    await act(async () =>
+      host
+        .querySelector<HTMLInputElement>('.storyboard-scene-parts input[type="checkbox"]')!
+        .click(),
+    );
+    await set('select[aria-label="Key to the door"]', built.objects[0]!.id, "select");
+    await click(host, "Add door");
+    const door = Object.values(snapshot.scenes[0]!.encounter!.state.barriers).find(
+      (barrier) => barrier.name === "Village gate",
+    )!;
+    expect(door).toMatchObject({ locked: true, keyId: built.objects[0]!.id });
+    expect(host.querySelector('[aria-label="Who and what is here"]')!.textContent).toContain(
+      "Village gate · locked with",
+    );
+    await set(
+      'select[aria-label="Where Village gate stands"]',
+      `route:${snapshot.sceneLinks[0]!.id}`,
+      "select",
+    );
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>('button[aria-label="Put Village gate there"]')!.click(),
+    );
+    expect(snapshot.sceneLinks[0]!.requiresOpenBarriers).toEqual([door.id]);
+    expect(snapshot.scenes[1]!.encounter!.state.barriers[door.id]).toMatchObject({ shared: true });
+    expect(host.querySelector('[aria-label="Who and what is here"]')!.textContent).toContain(
+      "on the way to",
+    );
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});
+
+it("will not add a locked door without a key and says why", async () => {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  const built = connectedAdventureExample(),
+    host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  function Harness() {
+    const [campaign, setCampaign] = useState(built.campaign);
+    return (
+      <PlayableStoryboard
+        campaign={campaign}
+        places={built.places}
+        characters={built.characters}
+        objects={built.objects}
+        busy={false}
+        onChange={setCampaign}
+        onPlay={() => {}}
+      />
+    );
+  }
+  try {
+    await act(async () => root.render(<Harness />));
+    const name = host.querySelector<HTMLInputElement>('input[aria-label="Door name"]')!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(name, "Gate");
+      name.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () =>
+      host
+        .querySelector<HTMLInputElement>('.storyboard-scene-parts input[type="checkbox"]')!
+        .click(),
+    );
+    await click(host, "Add door");
+    expect(host.querySelector('[role="alert"]')!.textContent).toContain(
+      "needs a thing that opens it",
+    );
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});
