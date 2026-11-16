@@ -79,7 +79,7 @@ export function storyboardIssues(
         `“${fightStarters[0]!.label.trim() || "An action"}” in “${name}” starts a fight, but no one in the scene is hostile.`,
       );
     for (const door of Object.values(scene.encounter.state.barriers))
-      if (door.locked && !door.keyId)
+      if (door.locked && !door.keyId && campaign.goal && !someActionOpens(campaign, door.id))
         add("parts", `“${door.name}” in “${name}” is locked, but nothing opens it. Choose a key.`);
     for (const action of scene.encounter.definition.interactions) {
       const actionName = action.label.trim() || "Untitled action";
@@ -351,6 +351,23 @@ function heavyPickUpIssues(
       }
   }
   return issues;
+}
+
+/**
+ * Whether an action in the adventure unlocks or opens the door. A locked door nothing can open is
+ * only a fault when the adventure has an aim to reach; free play in a world just has locked doors.
+ */
+function someActionOpens(campaign: CampaignTemplate, doorId: string): boolean {
+  return campaign.scenes.some((scene) =>
+    scene.encounter?.definition.interactions.some((action) =>
+      [...action.success.effects, ...action.failure.effects].some(
+        (effect) =>
+          effect.kind === "set-barrier" &&
+          effect.barrierId === doorId &&
+          (effect.locked === false || effect.open === true),
+      ),
+    ),
+  );
 }
 
 /** A key that is nowhere in the adventure cannot be found, so its door stays shut. */
