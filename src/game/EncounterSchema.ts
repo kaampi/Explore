@@ -16,6 +16,8 @@ export const ActorSchema = z.object({
   ammunition: z.record(z.number().int().nonnegative()).default({}),
   resources: z.record(z.number().finite().nonnegative()).default({}),
   disposition: z.enum(["active", "surrendered", "fled"]).default("active"),
+  /** The author's choice. The engine never reads it; the sync turns it into health. */
+  toughness: z.enum(["weak", "normal", "tough"]).optional(),
   weaponReady: z.boolean().optional(),
   defending: z.boolean().default(false),
   actionsLeft: z.number().int().nonnegative().default(1),
@@ -117,6 +119,19 @@ export const EncounterDefinitionSchema = z.object({
     defensePenalty: z.number().nonnegative().default(20),
     unreadyTargetBonus: z.number().nonnegative().default(20),
     exceptionalDamage: z.number().nonnegative().default(2),
+    /** The scales of the values in `actor.stats`, keyed by attribute id. Empty: every value is out of 100. */
+    attributes: z
+      .array(
+        z.object({
+          id,
+          name: z.string().min(1).max(60),
+          min: z.number().finite(),
+          max: z.number().finite(),
+        }),
+      )
+      .default([]),
+    /** Health the player starts with. Missing: 20. */
+    playerHealth: z.number().int().min(1).max(200).optional(),
   }),
   places: z.array(PlaceSchema).min(1),
   connections: z.array(LinkSchema),

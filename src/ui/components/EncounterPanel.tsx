@@ -257,7 +257,7 @@ export function EncounterPanel({
       return attackTarget(d, s, d.playerId, action.targetId, action.weaponId);
     if (action.kind === "interaction") {
       const check = d.interactions.find((i) => i.id === action.interactionId)?.check;
-      if (check) return encounterRules(d).skillTarget(player, check.stat, check.modifier);
+      if (check) return encounterRules(d).skillTarget(player, check.stat, check.modifier, d);
     }
   }
   function choose(action: EncounterAction) {

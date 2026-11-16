@@ -187,6 +187,14 @@ export function unifyAdventureEquipment(run: AdventureRun) {
     for (const item of scene.game.definition.items)
       items.set(item.id, { ...items.get(item.id), ...item });
   }
+  const scale = (scene: AdventureRun["scenes"][number]) =>
+    JSON.stringify([
+      scene.game.definition.rules.attributes,
+      scene.game.definition.rules.playerHealth,
+    ]);
+  const first = run.scenes[0];
+  if (first && run.scenes.some((scene) => scale(scene) !== scale(first)))
+    throw Error("Every scene in an adventure must use the same attributes and player health.");
   for (const scene of run.scenes) {
     scene.game.definition.weapons = [...weapons.values()];
     scene.game.definition.items = [...items.values()];

@@ -1,3 +1,4 @@
+import { chanceFromValue } from "../game/rules";
 import { z } from "zod";
 
 export const DIFFICULTIES = {
@@ -46,10 +47,7 @@ export function checkTarget(
   }
   return Math.max(
     0,
-    Math.min(
-      100,
-      Math.round(((value - min) / (max - min)) * 100) + DIFFICULTIES[difficulty].modifier,
-    ),
+    Math.min(100, chanceFromValue(value, min, max) + DIFFICULTIES[difficulty].modifier),
   );
 }
 

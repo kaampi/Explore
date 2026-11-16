@@ -110,6 +110,11 @@ export function validateEncounter(game: EncounterGame) {
       )
         throw new Error("Invalid exchange reference.");
   }
+  const attributeIds = d.rules.attributes.map((attribute) => attribute.id);
+  if (new Set(attributeIds).size !== attributeIds.length)
+    throw new Error("Attribute IDs must be unique.");
+  if (d.rules.attributes.some((attribute) => !(attribute.max > attribute.min)))
+    throw new Error("Every attribute needs a scale where the highest value is above the lowest.");
   const startsAFight = d.interactions.some((interaction) =>
     [...interaction.success.effects, ...interaction.failure.effects].some(
       (effect) => effect.kind === "start-combat",

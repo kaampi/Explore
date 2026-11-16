@@ -109,7 +109,7 @@ export function performInteraction(
     const check = rules.check(
       player.id,
       interaction.check.stat,
-      rules.skillTarget(player, interaction.check.stat, interaction.check.modifier),
+      rules.skillTarget(player, interaction.check.stat, interaction.check.modifier, d),
       s.round,
       rng,
     );

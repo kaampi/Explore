@@ -10,7 +10,12 @@ export interface RulesAdapter {
     cover: number,
     definition: EncounterDefinition,
   ): number;
-  skillTarget(actor: Actor, stat: string, modifier: number): number;
+  skillTarget(
+    actor: Actor,
+    stat: string,
+    modifier: number,
+    definition: EncounterDefinition,
+  ): number;
   check(
     actorId: string,
     stat: string,
@@ -20,6 +25,30 @@ export interface RulesAdapter {
   ): ActionCheck;
   damage(check: ActionCheck, weapon: Weapon, definition: EncounterDefinition): number;
 }
+/**
+ * The chance, 0 to 100, that a value on a scale stands for: the middle of the scale is 50, the
+ * ends are 0 and 100, and a value outside the scale counts as its nearest end. A scale that
+ * is not a range, or a value that is not a number, gives 50.
+ * The chat's checks and the engine both use this one conversion.
+ */
+export function chanceFromValue(value: number, min: number, max: number): number {
+  if (![value, min, max].every(Number.isFinite) || max <= min) return 50;
+  const percent = Math.round(((value - min) / (max - min)) * 100);
+  return Math.max(0, Math.min(100, percent));
+}
+
+/**
+ * A person's chance, before cover, defence and difficulty, for a skill. A skill the scene
+ * describes with a scale is read from that scale. Any other skill is read as it stands, a
+ * value already out of 100, which is how scenes without scales have always worked.
+ */
+function skillChance(actor: Actor, skill: string, d: EncounterDefinition): number {
+  const scale = d.rules.attributes.find((attribute) => attribute.id === skill);
+  if (!scale) return actor.stats[skill] ?? 0;
+  const value = actor.stats[skill] ?? (scale.min + scale.max) / 2;
+  return chanceFromValue(value, scale.min, scale.max);
+}
+
 function d100(rng: () => number) {
   const value = rng();
   if (!Number.isFinite(value) || value < 0 || value >= 1) throw new Error("Invalid dice sample.");
@@ -29,14 +58,14 @@ export const percentileRules: RulesAdapter = {
   id: "d100",
   initiative: d100,
   compareInitiative: (a, b) => a - b,
-  skillTarget: (actor, stat, modifier) =>
-    Math.max(0, Math.min(100, (actor.stats[stat] ?? 0) + modifier)),
+  skillTarget: (actor, stat, modifier, d) =>
+    Math.max(0, Math.min(100, skillChance(actor, stat, d) + modifier)),
   attackTarget: (actor, target, weapon, cover, d) =>
     Math.max(
       5,
       Math.min(
         100,
-        (actor.stats[weapon.skill] ?? 0) +
+        skillChance(actor, weapon.skill, d) +
           (target.weaponReady === false || target.disposition === "surrendered"
             ? d.rules.unreadyTargetBonus
             : 0) -
