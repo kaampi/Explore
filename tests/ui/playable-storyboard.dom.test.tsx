@@ -917,9 +917,9 @@ it("lets an action start a fight only when someone in the scene is hostile", asy
     await act(async () => root.render(<Harness />));
     const box = () =>
       host.querySelector<HTMLInputElement>('input[aria-label="A fight breaks out on success"]')!;
-    await act(async () => box().click());
+    expect(box().disabled).toBe(true);
+    expect(host.textContent).toContain("A fight needs someone hostile");
     expect(startsFight()).toBe(false);
-    expect(host.querySelector('[role="alert"]')!.textContent).toContain("someone is hostile");
     const attitude = host.querySelector<HTMLSelectElement>(
       'select[aria-label="Attitude of Edda"]',
     )!;
@@ -930,6 +930,8 @@ it("lets an action start a fight only when someone in the scene is hostile", asy
       );
       attitude.dispatchEvent(new Event("change", { bubbles: true }));
     });
+    expect(box().disabled).toBe(false);
+    expect(host.textContent).not.toContain("A fight needs someone hostile");
     await act(async () => box().click());
     expect(startsFight()).toBe(true);
     expect(box().checked).toBe(true);

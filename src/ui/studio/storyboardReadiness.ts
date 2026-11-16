@@ -17,8 +17,10 @@ export function storyboardIssues(
   places: PlaceTemplate[],
   facts: ReadonlySet<string>,
   mapPlaces?: AdventureMapPlace[],
+  library?: { objects: { id: string; name: string; weapon?: unknown }[] },
 ): StoryboardIssue[] {
   const issues: StoryboardIssue[] = [];
+  issues.push(...weaponMisuseIssues(campaign, library));
   const placeIds = new Set(places.map((place) => place.id));
   const sceneIds = new Set(campaign.scenes.map((scene) => scene.id));
   for (const scene of campaign.scenes) {
@@ -123,6 +125,44 @@ export function storyboardIssues(
       kind: "objective",
       message: "Replace the missing discovery in the adventure objective.",
     });
+  }
+  return issues;
+}
+
+/**
+ * A thing with a weapon on its card is carried among weapons, not in the pack. Doors look for
+ * their key in the pack and a handover takes from it, so a weapon cannot be either. This
+ * looks at the cards too, so it is caught before the scene is next brought up to date.
+ */
+function weaponMisuseIssues(
+  campaign: CampaignTemplate,
+  library?: { objects: { id: string; name: string; weapon?: unknown }[] },
+): StoryboardIssue[] {
+  const issues: StoryboardIssue[] = [];
+  for (const scene of campaign.scenes) {
+    if (sceneFormat(scene) !== "playable") continue;
+    const game = scene.encounter!;
+    const sceneName = scene.name.trim() || "Untitled scene";
+    const isWeapon = (id: string) =>
+      game.definition.weapons.some((weapon) => weapon.id === id) ||
+      Boolean(library?.objects.find((object) => object.id === id)?.weapon);
+    const nameOf = (id: string) =>
+      game.definition.items.find((item) => item.id === id)?.name ??
+      library?.objects.find((object) => object.id === id)?.name ??
+      "A thing";
+    const report = (id: string, use: string) =>
+      issues.push({
+        kind: "scene",
+        id: scene.id,
+        field: "parts",
+        message: `“${nameOf(id)}” in “${sceneName}” is a weapon, so it cannot be ${use}. Use another thing, or take the weapon off its card.`,
+      });
+    for (const door of Object.values(game.state.barriers))
+      if (door.keyId && isWeapon(door.keyId)) report(door.keyId, `the key to “${door.name}”`);
+    for (const action of game.definition.interactions)
+      for (const effect of [...action.success.effects, ...action.failure.effects])
+        if (effect.kind === "transfer-item" && isWeapon(effect.itemId))
+          report(effect.itemId, `handed over in “${action.label.trim() || "an action"}”`);
   }
   return issues;
 }

@@ -39,7 +39,7 @@ import {
 import { sceneFormat } from "../../library/sceneFormat";
 import { SceneParts } from "./SceneParts";
 import { ScenePositions } from "./ScenePositions";
-import { fightBreaksOut, setFightBreaksOut } from "../../library/sceneParts";
+import { fightBreaksOut, isHostile, setFightBreaksOut } from "../../library/sceneParts";
 import {
   INSPECTOR_MAX,
   INSPECTOR_MIN,
@@ -121,6 +121,7 @@ export function PlayableStoryboard({
     places,
     new Set(facts.map((fact) => fact.id)),
     mapPlaces,
+    { objects },
   );
   const warnings = storyboardWarnings(campaign, new Set(facts.map((fact) => fact.id)), {
     characters,
@@ -1303,6 +1304,12 @@ function SceneActions({
 }) {
   const actionFields = useRef<HTMLDivElement>(null);
   const [fightMessage, setFightMessage] = useState("");
+  const someoneHostile = Object.values(scene.encounter?.state.actors ?? {}).some(
+    (actor) =>
+      scene.encounter !== undefined &&
+      actor.id !== scene.encounter.definition.playerId &&
+      isHostile(scene.encounter, actor),
+  );
   function toggleFight(actionId: string, outcome: "success" | "failure", on: boolean) {
     try {
       onChange(setFightBreaksOut(scene, actionId, outcome, on));
@@ -1389,11 +1396,17 @@ function SceneActions({
             <input
               type="checkbox"
               aria-label="A fight breaks out on success"
+              disabled={!someoneHostile && !fightBreaksOut(scene, action.id, "success")}
               checked={fightBreaksOut(scene, action.id, "success")}
               onChange={(event) => toggleFight(action.id, "success", event.target.checked)}
             />
             A fight breaks out
           </label>
+          {!someoneHostile && (
+            <p className="playable-hint">
+              A fight needs someone hostile. Make a person hostile in “Who and what is here”.
+            </p>
+          )}
           {fightMessage && (
             <p role="alert" className="storyboard-scene-parts__error">
               {fightMessage}
@@ -1460,6 +1473,7 @@ function SceneActions({
                 <input
                   type="checkbox"
                   aria-label="A fight breaks out on failure"
+                  disabled={!someoneHostile && !fightBreaksOut(scene, action.id, "failure")}
                   checked={fightBreaksOut(scene, action.id, "failure")}
                   onChange={(event) => toggleFight(action.id, "failure", event.target.checked)}
                 />
