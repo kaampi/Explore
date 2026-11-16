@@ -37,18 +37,24 @@ function oneTypo(a: string, b: string) {
 function containsName(text: string, actor: Actor) {
   return ` ${normalize(text)} `.includes(` ${normalize(actor.name)} `);
 }
+/**
+ * Whether someone is here to be talked to. A hostile person can be spoken to until a fight
+ * starts. Once it has, only a hostile person who has stopped fighting can be.
+ * This is the same rule as for the conversation buttons in `interactionBlock`.
+ */
 export function present(d: EncounterDefinition, s: EncounterState, actor: Actor) {
   const player = s.actors[d.playerId]!;
+  const hostile = d.hostilities.some(
+    ([a, b]) => (a === player.team && b === actor.team) || (b === player.team && a === actor.team),
+  );
+  const fighting = hostile && s.phase === "combat" && actor.disposition === "active";
   return (
     actor.id !== d.playerId &&
     actor.control === "npc" &&
     actor.hp > 0 &&
     actor.disposition !== "fled" &&
     actor.position === player.position &&
-    !d.hostilities.some(
-      ([a, b]) =>
-        (a === player.team && b === actor.team) || (b === player.team && a === actor.team),
-    )
+    !fighting
   );
 }
 /** Speech selects an authored conversation only. It never supplies effects, facts, prices or roll results. */
