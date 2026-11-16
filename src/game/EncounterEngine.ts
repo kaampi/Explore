@@ -106,6 +106,13 @@ export function validateEncounter(game: EncounterGame) {
     for (const effect of [...interaction.success.effects, ...interaction.failure.effects])
       if (effect.kind === "take-item") {
         if (!d.items.some((i) => i.id === effect.itemId)) throw Error("Unknown loose item.");
+      } else if (effect.kind === "set-barrier") {
+        const door = s.barriers[effect.barrierId];
+        if (!door) throw new Error("An action changes a door that is not in this scene.");
+        if (effect.open === true && effect.locked === true)
+          throw new Error(`An action cannot both open and lock ${door.name}.`);
+        if (effect.open === true && effect.locked !== false && door.locked)
+          throw new Error(`An action opens ${door.name} but does not unlock it.`);
       } else if (
         effect.kind !== "flag" &&
         effect.kind !== "start-combat" &&

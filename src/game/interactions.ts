@@ -35,6 +35,17 @@ function applyEffects(
       player.inventory.push(effect.itemId);
       continue;
     }
+    if (effect.kind === "set-barrier") {
+      const door = s.barriers[effect.barrierId];
+      if (!door) throw new Error("That door is not in this scene.");
+      const locked = effect.locked ?? door.locked;
+      const open = effect.open ?? door.open;
+      if (open && locked) throw new Error(`${door.name} cannot be open and locked at once.`);
+      if (open && door.blocked) throw new Error(`${door.name} is blocked and cannot be opened.`);
+      door.locked = locked;
+      door.open = open;
+      continue;
+    }
     const from = s.actors[effect.from],
       to = s.actors[effect.to];
     if (!from || !to) throw new Error("Unknown party in this exchange.");

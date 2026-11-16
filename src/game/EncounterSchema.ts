@@ -67,6 +67,15 @@ export const EffectSchema = z.discriminatedUnion("kind", [
   /** A fight breaks out: combat starts if someone hostile is still active. */
   z.object({ kind: z.literal("start-combat") }).strict(),
   z.object({ kind: z.literal("transfer-item"), itemId: id, from: id, to: id }).strict(),
+  /** Change a door: unlock it, lock it, open it, shut it. A shared door follows into the next scene. */
+  z
+    .object({
+      kind: z.literal("set-barrier"),
+      barrierId: id,
+      locked: z.boolean().optional(),
+      open: z.boolean().optional(),
+    })
+    .strict(),
   z
     .object({
       kind: z.literal("transfer-resource"),
