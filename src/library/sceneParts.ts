@@ -8,7 +8,7 @@ import type { Actor, EncounterGame } from "../game/EncounterSchema";
 import { validateEncounter } from "../game/EncounterEngine";
 import { InteractionSchema } from "../game/EncounterSchema";
 import { levelModifier } from "../game/rules";
-import { skillIdFor } from "./sceneSync";
+import { itemDescription, skillIdFor } from "./sceneSync";
 
 /**
  * Small, pure operations that change the parts of a scene: who is here, what is here.
@@ -211,7 +211,7 @@ export function placeItem(
     game.definition.items.push({
       id: object.id,
       name: object.name,
-      description: object.note,
+      description: itemDescription(object),
       requiresFlags: [],
       ...(object.readableContent ? { readableContent: object.readableContent } : {}),
       ...(object.imageDataUrl ? { imageDataUrl: object.imageDataUrl } : {}),

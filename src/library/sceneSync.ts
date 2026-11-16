@@ -150,6 +150,13 @@ function syncPeople(
   }
 }
 
+/** What a thing's card says about it, with its weight last. */
+export function itemDescription(card: { note: string; weight?: number | undefined }): string {
+  if (card.weight === undefined) return card.note;
+  const weight = `Weight: ${card.weight}`;
+  return card.note.trim() ? `${card.note}\n\n${weight}` : weight;
+}
+
 function syncItems(game: EncounterGame, library: SceneLibrary) {
   game.definition.items = game.definition.items.map((item) => {
     const card = library.objects.find((object) => object.id === item.id);
@@ -157,7 +164,7 @@ function syncItems(game: EncounterGame, library: SceneLibrary) {
     return {
       id: item.id,
       name: card.name,
-      description: card.note,
+      description: itemDescription(card),
       requiresFlags: item.requiresFlags,
       ...(card.readableContent ? { readableContent: card.readableContent } : {}),
       ...(card.imageDataUrl ? { imageDataUrl: card.imageDataUrl } : {}),
@@ -222,7 +229,7 @@ function syncStartItems(
       game.definition.items.push({
         id: card.id,
         name: card.name,
-        description: card.note,
+        description: itemDescription(card),
         requiresFlags: [],
         ...(card.readableContent ? { readableContent: card.readableContent } : {}),
         ...(card.imageDataUrl ? { imageDataUrl: card.imageDataUrl } : {}),

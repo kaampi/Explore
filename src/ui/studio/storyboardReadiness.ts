@@ -324,6 +324,35 @@ function unreachablePositionIssues(campaign: CampaignTemplate): StoryboardIssue[
   return issues;
 }
 
+/** A card that says a thing is too heavy to carry, and an action that lets the player take it. */
+export const HEAVY_WEIGHT = 30;
+function heavyPickUpIssues(
+  campaign: CampaignTemplate,
+  objects: { id: string; portable?: boolean | undefined; weight?: number | undefined }[],
+): StoryboardIssue[] {
+  const issues: StoryboardIssue[] = [];
+  for (const scene of campaign.scenes) {
+    if (sceneFormat(scene) !== "playable") continue;
+    const game = scene.encounter!;
+    for (const action of game.definition.interactions)
+      for (const effect of [...action.success.effects, ...action.failure.effects]) {
+        if (effect.kind !== "take-item") continue;
+        const card = objects.find((object) => object.id === effect.itemId);
+        if (!card || card.portable === true || (card.weight ?? 0) <= HEAVY_WEIGHT) continue;
+        const name =
+          game.definition.items.find((item) => item.id === effect.itemId)?.name ?? "A thing";
+        issues.push({
+          kind: "scene",
+          id: scene.id,
+          field: "action",
+          action: { id: action.id, field: "label" },
+          message: `The card says ${name} is too heavy to carry, but “${action.label.trim() || "an action"}” in “${scene.name.trim() || "Untitled scene"}” lets the player take it.`,
+        });
+      }
+  }
+  return issues;
+}
+
 /** A key that is nowhere in the adventure cannot be found, so its door stays shut. */
 function missingKeyIssues(campaign: CampaignTemplate): StoryboardIssue[] {
   const known = new Set<string>(campaign.objectIds);
@@ -462,12 +491,16 @@ export function reachableFromStart(campaign: CampaignTemplate): Reach {
 export function storyboardWarnings(
   campaign: CampaignTemplate,
   facts: ReadonlySet<string>,
-  library?: { characters: { id: string }[]; objects: { id: string }[] },
+  library?: {
+    characters: { id: string }[];
+    objects: { id: string; portable?: boolean | undefined; weight?: number | undefined }[];
+  },
 ): StoryboardIssue[] {
   const first = campaign.scenes.find((scene) => sceneFormat(scene) !== "earlier");
   if (!first) return [];
   const issues: StoryboardIssue[] = [
     ...(library ? missingCardIssues(campaign, library) : []),
+    ...(library ? heavyPickUpIssues(campaign, library.objects) : []),
     ...missingKeyIssues(campaign),
     ...unreachablePositionIssues(campaign),
     ...missingSkillIssues(campaign),
