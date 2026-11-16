@@ -222,3 +222,32 @@ it("opens the scene list for a saved adventure chosen on the home screen", async
     await ui.close();
   }
 });
+
+it("renders the home screen without React complaining about an unknown prop", async () => {
+  const repo = new IndexedDBRepository(new IDBFactory(), "home-warnings");
+  const complaints: string[] = [];
+  const spy = vi.spyOn(console, "error").mockImplementation((...args) => {
+    complaints.push(args.map(String).join(" "));
+  });
+  const ui = render(
+    <HomeScreen
+      repo={repo}
+      session={null}
+      sessionId="s"
+      onResume={() => {}}
+      onStart={async () => {}}
+      onStudio={() => {}}
+    />,
+  );
+  try {
+    await ui.show();
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    expect(complaints.filter((line) => line.includes("does not recognize"))).toEqual([]);
+    expect(ui.host.querySelector(".sb-hero__image")!.getAttribute("fetchpriority")).toBe("high");
+  } finally {
+    spy.mockRestore();
+    await ui.close();
+  }
+});

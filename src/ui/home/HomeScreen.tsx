@@ -257,7 +257,13 @@ export function HomeScreen({
   return (
     <main className="sb-home sb-home--welcome">
       <section className="sb-hero sb-hero--welcome" aria-label="Welcome to Explore">
-        <img className="sb-hero__image" src={conversationsWorld} alt="" fetchPriority="high" />
+        <img
+          className="sb-hero__image"
+          src={conversationsWorld}
+          alt=""
+          // React 18 does not know the camelCase fetchPriority. The lowercase attribute reaches the browser.
+          {...{ fetchpriority: "high" }}
+        />
         <div className="sb-hero__shade" />
         <div className="sb-hero__content">
           <h1>
