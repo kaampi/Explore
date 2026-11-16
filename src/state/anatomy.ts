@@ -57,3 +57,17 @@ export function isAnatomyPartRemoved(
   }
   return false;
 }
+
+/** Pin the names of the factions the session's characters belong to, so later edits do not change them. */
+export function pinSessionFactions<T extends Session>(
+  session: T,
+  library: ReadonlyArray<{ id: string; name: string }>,
+): T {
+  const factions: Record<string, { name: string }> = {};
+  for (const character of Object.values(session.characters))
+    for (const id of character.factionIds ?? []) {
+      const faction = library.find((item) => item.id === id);
+      if (faction) factions[id] = { name: faction.name };
+    }
+  return Object.keys(factions).length ? { ...session, factions } : session;
+}

@@ -1,3 +1,4 @@
+import { pinSessionFactions } from "@state/anatomy";
 import { startInnExample } from "../../scenarios/innVisit";
 import { loadingBayScenario } from "./encounterScenario";
 import { gateEncounterScenario } from "./gateScenario";
@@ -133,13 +134,16 @@ export function HomeScreen({
       const voice = chatVoices.find((item) => item.id === voiceId);
       const ruleset = chatRulesets.find((item) => item.id === rulesetId);
       await onStart(
-        quickCharacterSession(character, sessionId, {
-          ...(place ? { place } : {}),
-          ...(realm ? { realm } : {}),
-          ...(model ? { model } : {}),
-          ...(voice ? { voice } : {}),
-          ...(ruleset ? { ruleset } : {}),
-        }),
+        pinSessionFactions(
+          quickCharacterSession(character, sessionId, {
+            ...(place ? { place } : {}),
+            ...(realm ? { realm } : {}),
+            ...(model ? { model } : {}),
+            ...(voice ? { voice } : {}),
+            ...(ruleset ? { ruleset } : {}),
+          }),
+          await repo.listFactions(),
+        ),
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not start this conversation.");

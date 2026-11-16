@@ -1,3 +1,4 @@
+import { bodyPlanSummary, factionSummary } from "./bodyPlan";
 import { describePhysicalState } from "../state/physicalContinuity";
 import { formatGameTime, gameTimeOfDay } from "@state/gameClock";
 import type { ChatMessage } from "@llm/types";
@@ -154,6 +155,10 @@ function buildStateSummaryBlock(session: Session): ContextBlock {
     if (typeof character.approximateAge === "number")
       parts.push(`age: about ${character.approximateAge}`);
     if (character.appearance?.trim()) parts.push(`looks: ${character.appearance.trim()}`);
+    const body = bodyPlanSummary(session, character);
+    if (body) parts.push(`body: ${body}`);
+    const factions = factionSummary(session, character);
+    if (factions) parts.push(`factions: ${factions}`);
     if (character.clothing?.value.trim()) parts.push(`wearing: ${character.clothing.value.trim()}`);
     if (character.holding?.value.trim()) parts.push(`holding: ${character.holding.value.trim()}`);
     if (character.pose?.value.trim()) {
@@ -307,7 +312,15 @@ function buildStateSummaryBlock(session: Session): ContextBlock {
     );
   }
 
-  const contentParts = [...sceneParts, "Characters:", ...characterLines];
+  const hasBodyPlan = Object.values(session.characters).some((character) =>
+    bodyPlanSummary(session, character),
+  );
+  const bodyGuidance = hasBodyPlan
+    ? [
+        "A character with a body listed is described by that body. Do not give them limbs or features it does not list, and do not say they use what they do not have.",
+      ]
+    : [];
+  const contentParts = [...sceneParts, ...bodyGuidance, "Characters:", ...characterLines];
   const traitLines = traitMeaningLines(session);
   if (traitLines.length > 0) {
     contentParts.push(

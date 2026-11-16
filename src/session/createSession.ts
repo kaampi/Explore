@@ -30,6 +30,7 @@ export interface CharacterDraft {
   lore?: Array<{ id?: string; title?: string; content: string; keywords?: string[] }>;
   libraryId?: string;
   anatomyTemplateId?: string;
+  factionIds?: string[];
   saveToLibrary?: boolean;
   source?: "player" | "sillytavern" | "example";
   scenario?: string;
@@ -275,6 +276,7 @@ export function createSessionFromSetup(setup: SceneSetup, sessionId: string): Se
     characters[id] = {
       ...(draft.libraryId ? { sourceLibraryId: draft.libraryId } : {}),
       ...(draft.anatomyTemplateId ? { anatomyTemplateId: draft.anatomyTemplateId } : {}),
+      ...(draft.factionIds?.length ? { factionIds: draft.factionIds.slice(0, 8) } : {}),
       name,
       position: {
         value:

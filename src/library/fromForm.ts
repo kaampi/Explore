@@ -29,6 +29,7 @@ export function characterDraftFromTemplate(template: CharacterTemplate): Charact
     position: "",
     libraryId: template.id,
     ...(template.anatomyTemplateId ? { anatomyTemplateId: template.anatomyTemplateId } : {}),
+    ...(template.factionIds?.length ? { factionIds: template.factionIds } : {}),
     saveToLibrary: false,
     source: template.source,
     scenario: template.scenario,

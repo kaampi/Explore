@@ -229,6 +229,8 @@ export const CharacterStateSchema = z.object({
   locationRef: SpatialLocationSchema.optional(),
   positionDetail: z.string().optional(),
   sourceLibraryId: z.string().min(1).optional(),
+  /** Faction ids from the library card. Names are pinned in `session.factions`. */
+  factionIds: z.array(z.string().min(1)).max(8).optional(),
   /** Optional reference to a reusable anatomical template. */
   anatomyTemplateId: z.string().min(1).max(100).optional(),
   /** Per-character parts added to or removed from the selected template. */
@@ -621,6 +623,8 @@ export const SessionSchema = z.object({
     )
     .optional(),
   anatomyTemplates: z.record(z.string(), AnatomyTemplateSchema).optional(),
+  /** Faction names pinned when the game began, by faction id. */
+  factions: z.record(z.string(), z.object({ name: z.string().min(1).max(120) })).optional(),
   /** Canonical physical continuity, independent of chat history. */
   physical: PhysicalStateSchema.optional(),
   scene: WorldStateSchema.optional(),

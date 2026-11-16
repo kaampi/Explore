@@ -11,7 +11,7 @@ import { StoryboardEditor } from "./StoryboardEditor";
 import { adventureFacts, connectedAdventureExample } from "../../library/playableCampaign";
 import { adventureSteps, type AdventureStepId } from "./adventureSteps";
 import { storyboardIssues, storyboardWarnings } from "./storyboardReadiness";
-import { pinSessionAnatomy } from "@state/anatomy";
+import { pinSessionAnatomy, pinSessionFactions } from "@state/anatomy";
 import { useEffect, useRef, useState } from "react";
 import type { IndexedDBRepository, StudioResume } from "@persistence/IndexedDBRepository";
 import type { Session } from "@state/StateSchema";
@@ -582,7 +582,12 @@ export function CampaignStudio({
         setBusy(false);
         return;
       }
-      onStart(pinSessionAnatomy(result.session, await repo.listAnatomyTemplates()));
+      onStart(
+        pinSessionFactions(
+          pinSessionAnatomy(result.session, await repo.listAnatomyTemplates()),
+          await repo.listFactions(),
+        ),
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not start this scene.");
       setBusy(false);

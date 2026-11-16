@@ -1,4 +1,4 @@
-import { pinSessionAnatomy } from "@state/anatomy";
+import { pinSessionAnatomy, pinSessionFactions } from "@state/anatomy";
 import { useEffect, useState } from "react";
 import { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 import type { Session } from "@state/StateSchema";
@@ -253,99 +253,104 @@ export function AdventureStudio({
         place.id === EXAMPLE_PLACE_ID ? withAuroraRoomIntros(place.rooms) : (place.rooms ?? []);
       const parentRealm = visibleRealms.find((item) => item.id === place.realmId);
       const anatomyLibrary = await repo.listAnatomyTemplates();
+      const factionLibrary = await repo.listFactions();
       onStart(
-        pinSessionAnatomy(
-          createSessionFromSetup(
-            {
-              location: place.name,
-              placeId: place.id,
-              ...(parentRealm?.name ? { realm: parentRealm.name } : {}),
-              ...realmPlayFields(parentRealm),
-              lighting: place.lighting,
-              noise: place.noise,
-              music: place.music,
-              placeNote:
-                place.note.trim() || (place.id === EXAMPLE_PLACE_ID ? EXAMPLE_AURORA_NOTE : ""),
-              placeBrief:
-                place.brief?.trim() || (place.id === EXAMPLE_PLACE_ID ? EXAMPLE_AURORA_BRIEF : ""),
-              ...(place.id === EXAMPLE_PLACE_ID ? { placeLore: EXAMPLE_AURORA_LORE } : {}),
-              ...(place.thumbDataUrl ||
-              place.imageDataUrl ||
-              place.gallery?.length ||
-              place.audioDataUrl ||
-              place.audioGallery?.length ||
-              sceneRooms.length > 0
-                ? {
-                    placeVisual: {
-                      ...copyPictureFields(place),
-                      ...copyAudioFields(place),
-                      ...(sceneRooms.length > 0
-                        ? {
-                            rooms: sceneRooms.map((room) => ({
-                              id: room.id,
-                              label: room.label,
-                              keywords: room.keywords,
-                              ...(room.description?.trim()
-                                ? { description: room.description.trim() }
-                                : {}),
-                              ...(room.brief?.trim() ? { brief: room.brief.trim() } : {}),
-                              ...copyPictureFields(room),
-                              ...copyAudioFields(room),
-                            })),
-                          }
-                        : {}),
+        pinSessionFactions(
+          pinSessionAnatomy(
+            createSessionFromSetup(
+              {
+                location: place.name,
+                placeId: place.id,
+                ...(parentRealm?.name ? { realm: parentRealm.name } : {}),
+                ...realmPlayFields(parentRealm),
+                lighting: place.lighting,
+                noise: place.noise,
+                music: place.music,
+                placeNote:
+                  place.note.trim() || (place.id === EXAMPLE_PLACE_ID ? EXAMPLE_AURORA_NOTE : ""),
+                placeBrief:
+                  place.brief?.trim() ||
+                  (place.id === EXAMPLE_PLACE_ID ? EXAMPLE_AURORA_BRIEF : ""),
+                ...(place.id === EXAMPLE_PLACE_ID ? { placeLore: EXAMPLE_AURORA_LORE } : {}),
+                ...(place.thumbDataUrl ||
+                place.imageDataUrl ||
+                place.gallery?.length ||
+                place.audioDataUrl ||
+                place.audioGallery?.length ||
+                sceneRooms.length > 0
+                  ? {
+                      placeVisual: {
+                        ...copyPictureFields(place),
+                        ...copyAudioFields(place),
+                        ...(sceneRooms.length > 0
+                          ? {
+                              rooms: sceneRooms.map((room) => ({
+                                id: room.id,
+                                label: room.label,
+                                keywords: room.keywords,
+                                ...(room.description?.trim()
+                                  ? { description: room.description.trim() }
+                                  : {}),
+                                ...(room.brief?.trim() ? { brief: room.brief.trim() } : {}),
+                                ...copyPictureFields(room),
+                                ...copyAudioFields(room),
+                              })),
+                            }
+                          : {}),
+                      },
+                    }
+                  : {}),
+                ...(story
+                  ? {
+                      storyTitle: story.name,
+                      storyPremise: story.premise,
+                    }
+                  : {}),
+                ...(voice
+                  ? {
+                      voiceTitle: voice.name,
+                      voiceInstruction: voice.instruction,
+                    }
+                  : {}),
+                model,
+                ...(ruleset
+                  ? {
+                      ruleset: { name: ruleset.name, attributes: ruleset.attributes },
+                    }
+                  : {}),
+                characters: cast.flatMap((pick) => {
+                  const template = visibleCharacters.find((item) => item.id === pick.libraryId);
+                  if (!template) return [];
+                  const draft = characterDraftFromTemplate(template);
+                  return [
+                    {
+                      ...draft,
+                      mood: pick.mood,
+                      position: pick.position,
+                      clothing: pick.clothing,
+                      holding: pick.holding,
+                      stats: pick.stats,
+                      trust: pick.trust,
+                      familiarity: pick.familiarity,
+                      tension: pick.tension,
                     },
-                  }
-                : {}),
-              ...(story
-                ? {
-                    storyTitle: story.name,
-                    storyPremise: story.premise,
-                  }
-                : {}),
-              ...(voice
-                ? {
-                    voiceTitle: voice.name,
-                    voiceInstruction: voice.instruction,
-                  }
-                : {}),
-              model,
-              ...(ruleset
-                ? {
-                    ruleset: { name: ruleset.name, attributes: ruleset.attributes },
-                  }
-                : {}),
-              characters: cast.flatMap((pick) => {
-                const template = visibleCharacters.find((item) => item.id === pick.libraryId);
-                if (!template) return [];
-                const draft = characterDraftFromTemplate(template);
-                return [
-                  {
-                    ...draft,
-                    mood: pick.mood,
-                    position: pick.position,
-                    clothing: pick.clothing,
-                    holding: pick.holding,
-                    stats: pick.stats,
-                    trust: pick.trust,
-                    familiarity: pick.familiarity,
-                    tension: pick.tension,
-                  },
-                ];
-              }),
-              objects: pickedObjects.map((item) => ({
-                id: item.id,
-                name: item.name,
-                note: item.note,
-                tags: item.tags,
-                ...(item.weight !== undefined ? { weight: item.weight } : {}),
-                ...(item.difficulty !== undefined ? { difficulty: item.difficulty } : {}),
-                ...(item.checkAttribute ? { checkAttribute: item.checkAttribute } : {}),
-              })),
-            },
-            sessionId,
+                  ];
+                }),
+                objects: pickedObjects.map((item) => ({
+                  id: item.id,
+                  name: item.name,
+                  note: item.note,
+                  tags: item.tags,
+                  ...(item.weight !== undefined ? { weight: item.weight } : {}),
+                  ...(item.difficulty !== undefined ? { difficulty: item.difficulty } : {}),
+                  ...(item.checkAttribute ? { checkAttribute: item.checkAttribute } : {}),
+                })),
+              },
+              sessionId,
+            ),
+            anatomyLibrary,
           ),
-          anatomyLibrary,
+          factionLibrary,
         ),
       );
     } catch (err) {
