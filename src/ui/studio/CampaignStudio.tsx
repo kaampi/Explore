@@ -1561,6 +1561,12 @@ export function CampaignStudio({
                 repo={repo}
                 onRefresh={refresh}
                 onCreatePlace={createPlace}
+                onOpenLibrary={(what) => {
+                  setStoryboardOpen(false);
+                  setStoryboardStep("scenes");
+                  goToStep("cast");
+                  if (what === "things") setTab("objects");
+                }}
                 initialStep={storyboardStep}
                 characters={campaignPeople}
                 objects={campaignObjects}

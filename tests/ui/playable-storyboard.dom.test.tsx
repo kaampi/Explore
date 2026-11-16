@@ -7,6 +7,7 @@ import { connectedAdventureExample } from "../../src/library/playableCampaign";
 import {
   emptyCampaignScene,
   newCampaignTemplate,
+  newCharacterTemplate,
   parseCampaignTemplate,
   type PlaceTemplate,
 } from "../../src/library/LibrarySchema";
@@ -482,6 +483,98 @@ it("labels the place field and its button differently", async () => {
     expect(field).toContain("Name a new place");
     expect(button).toBe("Create a place");
     expect(field).not.toContain("Create a place");
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});
+
+it("adds a person to the scene from Who and what is here, and offers them in actions", async () => {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  const built = connectedAdventureExample(),
+    host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  const orla = newCharacterTemplate({ name: "Orla" });
+  let snapshot = built.campaign;
+  function Harness() {
+    const [campaign, setCampaign] = useState(built.campaign);
+    snapshot = campaign;
+    return (
+      <PlayableStoryboard
+        campaign={campaign}
+        places={built.places}
+        characters={[...built.characters, orla]}
+        objects={built.objects}
+        busy={false}
+        onChange={setCampaign}
+        onPlay={() => {}}
+      />
+    );
+  }
+  const choose = async (label: string, value: string) => {
+    const select = host.querySelector<HTMLSelectElement>(`select[aria-label="${label}"]`)!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")!.set!.call(
+        select,
+        value,
+      );
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+  };
+  try {
+    await act(async () => root.render(<Harness />));
+    const parts = host.querySelector('[aria-label="Who and what is here"]')!;
+    expect(parts.textContent).toContain("Edda");
+    await choose("Person to add", orla.id);
+    await click(host, "Add person");
+    expect(
+      Object.values(snapshot.scenes[0]!.encounter!.state.actors).map((actor) => actor.name),
+    ).toContain("Orla");
+    const concerns = Array.from(
+      host.querySelectorAll<HTMLOptionElement>(
+        'select[aria-label="Who this action concerns"] option',
+      ),
+    ).map((option) => option.textContent);
+    expect(concerns).toContain("Orla");
+    expect(parts.textContent).toContain("Orla");
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});
+
+it("explains why a person cannot be removed while an action is about them", async () => {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  const built = connectedAdventureExample(),
+    host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  function Harness() {
+    const [campaign, setCampaign] = useState(built.campaign);
+    return (
+      <PlayableStoryboard
+        campaign={campaign}
+        places={built.places}
+        characters={built.characters}
+        objects={built.objects}
+        busy={false}
+        onChange={setCampaign}
+        onPlay={() => {}}
+      />
+    );
+  }
+  try {
+    await act(async () => root.render(<Harness />));
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>('button[aria-label="Remove Edda"]')!.click(),
+    );
+    expect(host.querySelector('[role="alert"]')!.textContent).toContain(
+      "Ask Edda about the messenger",
+    );
+    expect(host.querySelector('[aria-label="Who and what is here"]')!.textContent).toContain(
+      "Edda",
+    );
   } finally {
     await act(async () => root.unmount());
     host.remove();

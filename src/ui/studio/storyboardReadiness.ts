@@ -1,9 +1,9 @@
-import type { CampaignTemplate, PlaceTemplate } from "../../library/LibrarySchema";
+import type { CampaignScene, CampaignTemplate, PlaceTemplate } from "../../library/LibrarySchema";
 import { mapPlaceForScene, type AdventureMapPlace } from "../../library/adventureMap";
 import { adventureFacts } from "../../library/playableCampaign";
 import { sceneFormat } from "../../library/sceneFormat";
 
-export type SceneField = "name" | "place" | "playable" | "arrival" | "action" | "reach";
+export type SceneField = "name" | "place" | "playable" | "arrival" | "action" | "reach" | "parts";
 export type ActionField = "label" | "success" | "failure";
 export type StoryboardIssue = { message: string } & (
   | { kind: "scene"; id: string; field: SceneField; action?: { id: string; field: ActionField } }
@@ -67,6 +67,7 @@ export function storyboardIssues(
       }
     }
   }
+  issues.push(...duplicateItemIssues(campaign));
   for (const link of campaign.sceneLinks) {
     if (
       link.fromSceneId === link.toSceneId ||
@@ -94,6 +95,35 @@ export function storyboardIssues(
       kind: "objective",
       message: "Replace the missing discovery in the adventure objective.",
     });
+  }
+  return issues;
+}
+
+/** An item starts in one place in the whole adventure, not once per scene. */
+function duplicateItemIssues(campaign: CampaignTemplate): StoryboardIssue[] {
+  const issues: StoryboardIssue[] = [];
+  const firstSeen = new Map<string, CampaignScene>();
+  for (const scene of campaign.scenes) {
+    const game = scene.encounter;
+    if (!game || sceneFormat(scene) === "earlier") continue;
+    const placed = new Set<string>(Object.keys(game.state.itemLocations));
+    for (const actor of Object.values(game.state.actors))
+      if (actor.id !== game.definition.playerId)
+        for (const itemId of actor.inventory) placed.add(itemId);
+    for (const itemId of placed) {
+      const earlier = firstSeen.get(itemId);
+      if (!earlier) {
+        firstSeen.set(itemId, scene);
+        continue;
+      }
+      const name = game.definition.items.find((item) => item.id === itemId)?.name ?? "An item";
+      issues.push({
+        kind: "scene",
+        id: scene.id,
+        field: "parts",
+        message: `“${name}” is placed in both “${earlier.name.trim() || "Untitled scene"}” and “${scene.name.trim() || "Untitled scene"}”. An item starts in only one place.`,
+      });
+    }
   }
   return issues;
 }

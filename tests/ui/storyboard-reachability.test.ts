@@ -203,3 +203,44 @@ describe("objectives that cannot be reached", () => {
     expect(reachIssues(issuesFor(campaign)).some((i) => i.kind === "objective")).toBe(false);
   });
 });
+
+describe("an item that starts in two scenes", () => {
+  it("is a blocking issue naming both scenes", () => {
+    const built = connectedAdventureExample();
+    const campaign = structuredClone(built.campaign);
+    const key = built.objects[0]!;
+    for (const scene of campaign.scenes) {
+      const game = scene.encounter!;
+      game.definition.items.push({ id: key.id, name: key.name });
+      game.state.itemLocations[key.id] = game.definition.places[0]!.id;
+    }
+
+    const issues = storyboardIssues(
+      campaign,
+      built.places,
+      new Set(adventureFacts(campaign).map((fact) => fact.id)),
+    );
+
+    const duplicate = issues.find((issue) => issue.message.includes("only one place"));
+    expect(duplicate).toMatchObject({ kind: "scene", field: "parts", id: campaign.scenes[1]!.id });
+    expect(duplicate!.message).toContain(key.name);
+  });
+
+  it("does not count the same thing carried by the player in every scene", () => {
+    const built = connectedAdventureExample();
+    const campaign = structuredClone(built.campaign);
+    for (const scene of campaign.scenes) {
+      const game = scene.encounter!;
+      game.definition.items.push({ id: "lamp", name: "Lamp" });
+      game.state.actors.player!.inventory.push("lamp");
+    }
+
+    const issues = storyboardIssues(
+      campaign,
+      built.places,
+      new Set(adventureFacts(campaign).map((fact) => fact.id)),
+    );
+
+    expect(issues.some((issue) => issue.message.includes("only one place"))).toBe(false);
+  });
+});

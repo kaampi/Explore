@@ -37,6 +37,7 @@ import {
   type StoryboardIssue,
 } from "./storyboardReadiness";
 import { sceneFormat } from "../../library/sceneFormat";
+import { SceneParts } from "./SceneParts";
 import {
   INSPECTOR_MAX,
   INSPECTOR_MIN,
@@ -59,6 +60,7 @@ export function PlayableStoryboard({
   expanded = false,
   mapPlaces,
   onCreatePlace,
+  onOpenLibrary,
   initialStep = "scenes",
 }: {
   campaign: CampaignTemplate;
@@ -71,6 +73,8 @@ export function PlayableStoryboard({
   onSave?: () => void;
   expanded?: boolean;
   mapPlaces?: AdventureMapPlace[] | undefined;
+  /** Opens the Cast or Things step, for when there is nothing to choose from. */
+  onOpenLibrary?: ((what: "people" | "things") => void) | undefined;
   /** Which step to show first. */
   initialStep?: "scenes" | "connections" | "test";
   /** Makes a place (and a world if there is none). Returns the place and the adventure to continue with. */
@@ -755,16 +759,27 @@ export function PlayableStoryboard({
         )}
       </div>
       {scene.encounter ? (
-        <SceneActions
-          key={scene.id}
-          scene={scene}
-          facts={facts}
-          focusActionId={newActionId}
-          focusField={actionFocus}
-          onChange={patchScene}
-          onAdd={addAction}
-          busy={busy}
-        />
+        <>
+          <SceneParts
+            key={`parts-${scene.id}`}
+            scene={scene}
+            people={characters}
+            things={objects}
+            busy={busy}
+            onChange={patchScene}
+            onOpenLibrary={onOpenLibrary}
+          />
+          <SceneActions
+            key={scene.id}
+            scene={scene}
+            facts={facts}
+            focusActionId={newActionId}
+            focusField={actionFocus}
+            onChange={patchScene}
+            onAdd={addAction}
+            busy={busy}
+          />
+        </>
       ) : (
         <button
           type="button"

@@ -776,3 +776,41 @@
   background: var(--adventure-accent, var(--accent-active));
   outline: none;
 }
+
+.storyboard-scene-parts {
+  display: grid;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.storyboard-scene-parts h4 {
+  margin: 0;
+}
+.storyboard-scene-parts__group {
+  display: grid;
+  gap: 6px;
+}
+.storyboard-scene-parts ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.storyboard-scene-parts li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+}
+.storyboard-scene-parts__add {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: 1fr;
+}
+.storyboard-scene-parts__error {
+  margin: 0;
+  color: var(--danger, #b3402a);
+  font-size: 13px;
+}
