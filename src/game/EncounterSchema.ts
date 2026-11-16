@@ -91,6 +91,7 @@ export const InteractionSchema = z.object({
   dialogueMode: z.enum(["question", "report"]).optional(),
   requiresFlags: z.array(id).default([]),
   excludesFlags: z.array(id).default([]),
+  requiresItems: z.array(id).default([]),
   once: z.boolean().default(true),
   costsAction: z.boolean().default(true),
   check: z.object({ stat: id, modifier: z.number().finite().default(0) }).optional(),

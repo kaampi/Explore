@@ -394,6 +394,8 @@ export function reachableFromStart(campaign: CampaignTemplate): Reach {
     const game = scene?.encounter;
     for (const itemId of game?.state.actors[game.definition.playerId]?.inventory ?? [])
       items.add(itemId);
+    for (const weaponId of game?.state.actors[game.definition.playerId]?.weapons ?? [])
+      items.add(weaponId);
   };
   /** A door lets the player through when it can be opened: not barricaded, and unlocked or its key can be had. */
   const doorCanOpen = (sceneId: string, doorId: string) => {
@@ -412,6 +414,7 @@ export function reachableFromStart(campaign: CampaignTemplate): Reach {
       if (!scenes.has(scene.id)) continue;
       for (const action of scene.encounter?.definition.interactions ?? []) {
         if (!has(action.requiresFlags)) continue;
+        if (!action.requiresItems.every((id) => items.has(id))) continue;
         const outcomes = action.check ? [action.success, action.failure] : [action.success];
         for (const outcome of outcomes)
           for (const effect of outcome.effects) {
@@ -486,9 +489,24 @@ export function storyboardWarnings(
       continue;
     }
     for (const action of scene.encounter?.definition.interactions ?? []) {
+      const actionName = action.label.trim() || "Untitled action";
+      const lacks = action.requiresItems.find((id) => !reach.items.has(id));
+      if (lacks) {
+        const game = scene.encounter!;
+        const itemName =
+          game.definition.items.find((i) => i.id === lacks)?.name ??
+          game.definition.weapons.find((w) => w.id === lacks)?.name ??
+          lacks;
+        issues.push({
+          kind: "scene",
+          id: scene.id,
+          field: "action",
+          action: { id: action.id, field: "label" },
+          message: `“${actionName}” in “${name}” needs “${itemName}”, which the player cannot get, so it can never be done.`,
+        });
+      }
       const missing = action.requiresFlags.find((flag) => !reach.flags.has(flag));
       if (!missing) continue;
-      const actionName = action.label.trim() || "Untitled action";
       issues.push({
         kind: "scene",
         id: scene.id,

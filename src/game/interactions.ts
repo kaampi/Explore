@@ -84,6 +84,12 @@ export function interactionBlock(
     interaction.excludesFlags.some((flag) => s.flags.includes(flag))
   )
     return "The conditions for this opportunity are not met.";
+  for (const needed of interaction.requiresItems) {
+    if (player.inventory.includes(needed) || player.weapons.includes(needed)) continue;
+    const name =
+      d.items.find((i) => i.id === needed)?.name ?? d.weapons.find((w) => w.id === needed)?.name;
+    return `You need ${name ?? "something you do not have"}.`;
+  }
   if (interaction.check && player.stats[interaction.check.stat] === undefined)
     return "The required skill is missing.";
   // Check BOTH branches before rolling, including cumulative transfers. Invalid offers never consume a roll.

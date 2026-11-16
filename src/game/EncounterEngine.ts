@@ -100,6 +100,9 @@ export function validateEncounter(game: EncounterGame) {
       (interaction.position && !placeIds.has(interaction.position))
     )
       throw new Error("Invalid interaction reference.");
+    for (const needed of interaction.requiresItems)
+      if (!d.items.some((i) => i.id === needed) && !d.weapons.some((w) => w.id === needed))
+        throw new Error("An action needs a thing that is not in this scene.");
     for (const effect of [...interaction.success.effects, ...interaction.failure.effects])
       if (effect.kind === "take-item") {
         if (!d.items.some((i) => i.id === effect.itemId)) throw Error("Unknown loose item.");
