@@ -1,4 +1,7 @@
 import { syncAdventure } from "../../library/sceneSync";
+import { remapAttribute } from "../../library/sceneParts";
+import { RuleSetChange } from "./RuleSetChange";
+import { BASIC_RULESET } from "../../library/basicRuleset";
 import { sceneFormat } from "../../library/sceneFormat";
 import { planNewPlace } from "../../library/campaignPlace";
 import { installInnExample } from "../../scenarios/innVisit";
@@ -427,6 +430,15 @@ export function CampaignStudio({
     setFreshNight(false);
   }
 
+  /** Bring the scenes up to date now, so a new rule-set shows at once. A scene that cannot be is left as it was. */
+  function bringUpToDate(campaign: CampaignTemplate) {
+    try {
+      return syncedDraft(campaign);
+    } catch {
+      return campaign;
+    }
+  }
+
   /** The adventure with every Storyboard scene brought up to date with the cards it uses. */
   function syncedDraft(campaign: CampaignTemplate) {
     return syncAdventure(campaign, {
@@ -750,6 +762,10 @@ export function CampaignStudio({
   }
 
   const ruleset = visibleRulesets.find((item) => item.id === draft.rulesetId) ?? null;
+  const numericSkills = (ruleset?.attributes ?? []).filter((item) => item.kind === "number");
+  const setSkills = (numericSkills.length > 0 ? numericSkills : BASIC_RULESET.attributes).map(
+    (item) => ({ id: item.id, name: item.name }),
+  );
   const liveRealmId = inferCampaignRealmId(draft, visiblePlaces);
   const campaignPlaces = campaignLandmarks(
     { realmId: liveRealmId || undefined, placeIds: draft.placeIds },
@@ -1012,10 +1028,10 @@ export function CampaignStudio({
                     const value = e.target.value;
                     if (!value) {
                       const { rulesetId: _drop, ...rest } = draft;
-                      setDraft(rest);
+                      setDraft(bringUpToDate(rest));
                       return;
                     }
-                    setDraft({ ...draft, rulesetId: value });
+                    setDraft(bringUpToDate({ ...draft, rulesetId: value }));
                   }}
                 >
                   <option value="">None</option>
@@ -1026,6 +1042,11 @@ export function CampaignStudio({
                   ))}
                 </select>
               </FormSection>
+              <RuleSetChange
+                campaign={draft}
+                available={setSkills}
+                onRemap={(from, to) => setDraft(bringUpToDate(remapAttribute(draft, from, to)))}
+              />
               <FormSection
                 title="Narrator"
                 action={

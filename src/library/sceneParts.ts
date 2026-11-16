@@ -826,3 +826,69 @@ export function setPersonPosition(
   actor.position = positionId;
   return finish(current, game);
 }
+
+/** A skill the scenes use, and where. */
+export type SkillUse = { id: string; name: string; uses: string[] };
+
+/** Every skill that actions roll against and weapons use, with what uses it. */
+export function skillsInUse(campaign: CampaignTemplate): SkillUse[] {
+  const found = new Map<string, SkillUse>();
+  const note = (id: string, name: string, use: string) => {
+    const entry = found.get(id) ?? { id, name, uses: [] };
+    entry.uses.push(use);
+    found.set(id, entry);
+  };
+  for (const scene of campaign.scenes) {
+    const game = scene.encounter;
+    if (!game) continue;
+    const sceneName = scene.name.trim() || "Untitled scene";
+    const nameOf = (id: string) =>
+      game.definition.rules.attributes.find((scale) => scale.id === id)?.name ?? id;
+    for (const action of game.definition.interactions)
+      if (action.check)
+        note(
+          action.check.stat,
+          nameOf(action.check.stat),
+          `“${action.label.trim() || "An untitled action"}” in “${sceneName}”`,
+        );
+    const fromCards = new Set(game.definition.items.map((item) => item.id));
+    for (const weapon of game.definition.weapons)
+      if (fromCards.has(weapon.id))
+        note(weapon.skill, nameOf(weapon.skill), `${weapon.name} (weapon) in “${sceneName}”`);
+  }
+  return [...found.values()];
+}
+
+const aliasKey = (text: string) => text.trim().toLowerCase();
+
+/**
+ * Change which skill actions and weapons use: everything that used `fromId` now uses `toId`.
+ * The old id and name are remembered, so a weapon card that still says the old skill finds the
+ * new one the next time the scenes are brought up to date.
+ */
+export function remapAttribute(
+  campaign: CampaignTemplate,
+  fromId: string,
+  toId: string,
+): CampaignTemplate {
+  if (fromId === toId) return campaign;
+  const oldName = skillsInUse(campaign).find((skill) => skill.id === fromId)?.name;
+  const scenes = campaign.scenes.map((scene) => {
+    if (!scene.encounter) return scene;
+    const game = structuredClone(scene.encounter);
+    for (const action of game.definition.interactions)
+      if (action.check?.stat === fromId) action.check.stat = toId;
+    for (const weapon of game.definition.weapons) if (weapon.skill === fromId) weapon.skill = toId;
+    validateEncounter(game);
+    return { ...scene, encounter: game };
+  });
+  const aliases = Object.fromEntries(
+    Object.entries(campaign.skillAliases ?? {}).map(([key, value]) => [
+      key,
+      value === fromId ? toId : value,
+    ]),
+  );
+  aliases[aliasKey(fromId)] = toId;
+  if (oldName) aliases[aliasKey(oldName)] = toId;
+  return { ...campaign, scenes, skillAliases: aliases };
+}

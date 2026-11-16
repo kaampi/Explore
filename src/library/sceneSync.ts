@@ -173,12 +173,20 @@ function tacticsUse(actor: EncounterGame["state"]["actors"][string], weaponId: s
  * that id, or else the skill with that name in any capitals. With no match the text stays,
  * and the editor warns.
  */
-export function skillIdFor(text: string, rules?: { scales: { id: string; name: string }[] }) {
+export function skillIdFor(
+  text: string,
+  rules?: { scales: { id: string; name: string }[] },
+  aliases: Record<string, string> = {},
+) {
   const scales = rules?.scales ?? [];
   const byId = scales.find((scale) => scale.id === text);
   if (byId) return byId.id;
   const lower = text.trim().toLowerCase();
-  return scales.find((scale) => scale.name.trim().toLowerCase() === lower)?.id ?? text;
+  const byName = scales.find((scale) => scale.name.trim().toLowerCase() === lower);
+  if (byName) return byName.id;
+  // The adventure changed rule-set and the author said what the old skill is now.
+  const renamed = aliases[lower];
+  return renamed && scales.some((scale) => scale.id === renamed) ? renamed : text;
 }
 
 /**
@@ -225,7 +233,12 @@ function syncStartItems(
  * A thing with a weapon on its card is carried as a weapon, not in the pack, and its record
  * follows the card. Weapons that do not come from a card are left as they are.
  */
-function syncWeapons(game: EncounterGame, library: SceneLibrary, rules?: ActiveRules) {
+function syncWeapons(
+  game: EncounterGame,
+  library: SceneLibrary,
+  rules?: ActiveRules,
+  aliases: Record<string, string> = {},
+) {
   const cards = new Map(library.objects.map((object) => [object.id, object]));
   const actors = Object.values(game.state.actors);
   for (const actor of actors) {
@@ -249,7 +262,10 @@ function syncWeapons(game: EncounterGame, library: SceneLibrary, rules?: ActiveR
   const records = new Map(game.definition.weapons.map((record) => [record.id, record]));
   for (const [id, card] of cards) {
     if (card.weapon && (carried.has(id) || records.has(id)))
-      records.set(id, { ...weaponRecord(card), skill: skillIdFor(card.weapon.skill, rules) });
+      records.set(id, {
+        ...weaponRecord(card),
+        skill: skillIdFor(card.weapon.skill, rules, aliases),
+      });
     else if (!card.weapon && records.has(id) && !carried.has(id)) records.delete(id);
   }
   game.definition.weapons = [...records.values()];
@@ -293,7 +309,7 @@ export function syncScene(
   syncPeople(campaign, game, library, rules);
   syncItems(game, library);
   syncStartItems(campaign, scene.id, game, library);
-  syncWeapons(game, library, rules);
+  syncWeapons(game, library, rules, campaign.skillAliases);
   resetPlayState(game);
   validateEncounter(game);
   return { ...scene, encounter: game };

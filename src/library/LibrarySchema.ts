@@ -449,6 +449,11 @@ export const CampaignTemplateSchema = z.object({
   startPrompt: z.string().default(""),
   model: z.string().optional(),
   rulesetId: z.string().optional(),
+  /**
+   * When an adventure changes rule-set, what an old skill is now called, so a weapon card that
+   * names the old skill still finds the new one. Keys are lower-case, trimmed ids and names.
+   */
+  skillAliases: z.record(z.string(), z.string()).default(() => ({})),
   voiceId: z.string().optional(),
   /** The map. Every landmark in this realm belongs to the campaign. */
   realmId: z.string().optional(),
