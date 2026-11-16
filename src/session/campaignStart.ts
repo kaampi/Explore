@@ -26,7 +26,7 @@ import { createSessionFromSetup, type SceneSetup } from "@session/createSession"
 import { copyWhatNowSets } from "@state/whatNowGate";
 import { copyAudioFields } from "@state/placeAudio";
 import { copyPictureFields } from "@state/placePictures";
-import type { Session } from "@state/StateSchema";
+import type { AnatomyTemplate, Session } from "@state/StateSchema";
 
 function realmLabel(place: PlaceTemplate, realms: RealmTemplate[] | undefined): string | undefined {
   const named = realms?.find((item) => item.id === place.realmId)?.name.trim();
@@ -280,6 +280,8 @@ export function sessionFromCampaignScene(
     objects: ObjectTemplate[];
     voices: VoiceTemplate[];
     rulesets: RulesetTemplate[];
+    anatomyTemplates?: AnatomyTemplate[];
+    factions?: { id: string; name: string }[];
     handoff?: string;
   },
   sessionId: string,
@@ -294,7 +296,13 @@ export function sessionFromCampaignScene(
           args.places,
           sessionId,
           args.realms,
-          { characters: args.characters, voices: args.voices, rulesets: args.rulesets },
+          {
+            characters: args.characters,
+            voices: args.voices,
+            rulesets: args.rulesets,
+            ...(args.anatomyTemplates ? { anatomyTemplates: args.anatomyTemplates } : {}),
+            ...(args.factions ? { factions: args.factions } : {}),
+          },
         ),
       };
     } catch (error) {

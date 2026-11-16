@@ -24,6 +24,10 @@ export const PersonaSchema = z.object({
   speech: z.string().max(600).default(""),
   mood: z.string().max(600).default(""),
   appearance: z.string().max(600).default(""),
+  /** The body, in a few words, when it is not an ordinary human one. Filled when the game starts. */
+  body: z.string().max(300).optional(),
+  /** The groups they belong to. Filled when the game starts. */
+  factions: z.string().max(300).optional(),
 });
 export type Persona = z.infer<typeof PersonaSchema>;
 export const AdventureNarrationSchema = z.object({

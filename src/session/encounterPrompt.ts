@@ -103,6 +103,8 @@ function personaLines(persona: Persona, withAppearance: boolean): string[] {
     persona.speech && `How they speak: ${persona.speech}`,
     persona.mood && `Usual mood: ${persona.mood}`,
     withAppearance && persona.appearance && `Looks: ${persona.appearance}`,
+    persona.body && `Body: ${persona.body}`,
+    persona.factions && `Belongs to: ${persona.factions}`,
   ].filter((line): line is string => typeof line === "string");
 }
 

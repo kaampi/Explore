@@ -15,11 +15,29 @@ import type {
 import { adventureMapPlaces, bindSceneMapPlace, mapPlaceForScene } from "../library/adventureMap";
 import { AdventureRunSchema, type AdventureNarration, type Persona } from "../game/AdventureSchema";
 import { unifyAdventureEquipment } from "../game/AdventureEngine";
+import { bodyPlanSummary, factionSummary } from "../context/bodyPlan";
+import type { AnatomyTemplate } from "../state/StateSchema";
 import { createSessionFromSetup } from "./createSession";
 import { parseSession } from "../state/StateSchema";
 const clip = (text: string | undefined, max: number) => (text ?? "").trim().slice(0, max);
 
-function personaFrom(person: CharacterTemplate): Persona {
+/** What is needed to put a body and factions into a person's description. */
+export type PersonaSources = {
+  anatomyTemplates?: AnatomyTemplate[];
+  factions?: { id: string; name: string }[];
+};
+
+function personaFrom(person: CharacterTemplate, extra: PersonaSources = {}): Persona {
+  const pinned = Object.fromEntries((extra.anatomyTemplates ?? []).map((t) => [t.id, t]));
+  const body = bodyPlanSummary({ anatomyTemplates: pinned }, person);
+  const factions = factionSummary(
+    {
+      factions: Object.fromEntries(
+        (extra.factions ?? []).map((faction) => [faction.id, { name: faction.name }]),
+      ),
+    },
+    person,
+  );
   return {
     name: clip(person.name, 120) || "Someone",
     ...(person.pronoun ? { pronoun: person.pronoun } : {}),
@@ -27,6 +45,8 @@ function personaFrom(person: CharacterTemplate): Persona {
     speech: clip(person.speech, 600),
     mood: clip(person.mood, 600),
     appearance: clip(person.appearance, 600),
+    ...(body ? { body: clip(body, 300) } : {}),
+    ...(factions ? { factions: clip(factions, 300) } : {}),
   };
 }
 
@@ -34,12 +54,13 @@ function personaFrom(person: CharacterTemplate): Persona {
 function castFor(
   campaign: CampaignTemplate,
   characters: CharacterTemplate[],
+  extra: PersonaSources,
 ): Record<string, Persona> {
   const cast: Record<string, Persona> = {};
   for (const scene of campaign.scenes) {
     for (const pick of scene.people) {
       const person = characters.find((c) => c.id === pick.characterId);
-      if (person) cast[`npc:${person.id}`] = personaFrom(person);
+      if (person) cast[`npc:${person.id}`] = personaFrom(person, extra);
     }
   }
   return cast;
@@ -82,7 +103,7 @@ export function startPlayableCampaign(
     characters?: CharacterTemplate[];
     voices?: VoiceTemplate[];
     rulesets?: RulesetTemplate[];
-  } = {},
+  } & PersonaSources = {},
 ) {
   const world = campaign.mapWorldId ? worlds.find((w) => w.id === campaign.mapWorldId) : undefined;
   if (campaign.mapWorldId && !world?.worldMap)
@@ -124,7 +145,7 @@ export function startPlayableCampaign(
         scenes,
         links: campaign.sceneLinks,
         goal: campaign.goal,
-        cast: castFor(campaign, sources.characters ?? []),
+        cast: castFor(campaign, sources.characters ?? [], sources),
         narration: narrationFor(campaign, sources.voices ?? []),
         exampleId: campaign.exampleId,
         exampleVersion: campaign.exampleVersion,

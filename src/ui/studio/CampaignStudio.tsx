@@ -562,7 +562,12 @@ export function CampaignStudio({
         campaigns.find((item) => item.id === draft.id),
       );
       await repo.saveCampaign(saved);
-      const [startPlaces, startRealms] = await Promise.all([repo.listPlaces(), repo.listRealms()]);
+      const [startPlaces, startRealms, anatomyLibrary, factionLibrary] = await Promise.all([
+        repo.listPlaces(),
+        repo.listRealms(),
+        repo.listAnatomyTemplates(),
+        repo.listFactions(),
+      ]);
       const result = sessionFromCampaignScene(
         {
           campaign: saved,
@@ -573,6 +578,8 @@ export function CampaignStudio({
           objects: visibleObjects,
           voices: visibleVoices,
           rulesets: visibleRulesets,
+          anatomyTemplates: anatomyLibrary,
+          factions: factionLibrary,
           ...(handoffDraft.trim() ? { handoff: handoffDraft.trim() } : {}),
         },
         sessionId,
@@ -583,10 +590,7 @@ export function CampaignStudio({
         return;
       }
       onStart(
-        pinSessionFactions(
-          pinSessionAnatomy(result.session, await repo.listAnatomyTemplates()),
-          await repo.listFactions(),
-        ),
+        pinSessionFactions(pinSessionAnatomy(result.session, anatomyLibrary), factionLibrary),
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not start this scene.");

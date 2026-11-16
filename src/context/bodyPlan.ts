@@ -52,7 +52,14 @@ function weight(part: AnatomyTemplate["parts"][number]): number {
   return 0;
 }
 
-function templateFor(session: Session, character: CharacterState): AnatomyTemplate | undefined {
+/** What a body summary needs to know about a figure: the same on a live character and on a card. */
+export type BodyFigure = Pick<CharacterState, "anatomyTemplateId" | "anatomyOverrides">;
+export type FactionFigure = Pick<CharacterState, "factionIds">;
+
+function templateFor(
+  session: Pick<Session, "anatomyTemplates">,
+  character: BodyFigure,
+): AnatomyTemplate | undefined {
   const id = character.anatomyTemplateId;
   if (!id) return undefined;
   return session.anatomyTemplates?.[id] ?? BUILTIN_ANATOMY_TEMPLATES.find((item) => item.id === id);
@@ -63,7 +70,10 @@ function templateFor(session: Session, character: CharacterState): AnatomyTempla
  * "Arachnid: eight legs, two pedipalps, chelicerae". A human body with nothing changed
  * says nothing, since the model assumes it. Parts taken away or added are always said.
  */
-export function bodyPlanSummary(session: Session, character: CharacterState): string | undefined {
+export function bodyPlanSummary(
+  session: Pick<Session, "anatomyTemplates">,
+  character: BodyFigure,
+): string | undefined {
   const template = templateFor(session, character);
   if (!template) return undefined;
   const removed = character.anatomyOverrides?.removedParts ?? [];
@@ -100,7 +110,10 @@ export function bodyPlanSummary(session: Session, character: CharacterState): st
 }
 
 /** The names of the factions a figure belongs to, as pinned when the game began. */
-export function factionSummary(session: Session, character: CharacterState): string | undefined {
+export function factionSummary(
+  session: Pick<Session, "factions">,
+  character: FactionFigure,
+): string | undefined {
   const names = (character.factionIds ?? [])
     .map((id) => session.factions?.[id]?.name.trim())
     .filter((name): name is string => Boolean(name));
