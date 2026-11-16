@@ -184,6 +184,8 @@ export const RulesetTemplateSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   attributes: z.array(AttributeDefSchema).default(() => []),
+  /** Health the player starts with in an adventure. Missing: 20. */
+  playerHealth: z.number().int().min(1).max(200).optional(),
   source: LibrarySourceSchema.default("player"),
   createdAt: z.string(),
   updatedAt: z.string(),

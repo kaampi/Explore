@@ -26,6 +26,8 @@ import {
   setTactics,
   setToughness,
   toughnessOf,
+  healthFor,
+  DEFAULT_PLAYER_HEALTH,
   isHostile,
   type Attitude,
   type Toughness,
@@ -225,9 +227,16 @@ export function SceneParts({
                   {toughnessOf(actor) === undefined && (
                     <option value="custom">Custom ({actor.maxHp} health)</option>
                   )}
-                  <option value="weak">Weak (6 health)</option>
-                  <option value="normal">Normal (12 health)</option>
-                  <option value="tough">Tough (20 health)</option>
+                  {(["weak", "normal", "tough"] as const).map((level) => (
+                    <option key={level} value={level}>
+                      {level[0]!.toUpperCase() + level.slice(1)} (
+                      {healthFor(
+                        level,
+                        game.definition.rules.playerHealth ?? DEFAULT_PLAYER_HEALTH,
+                      )}{" "}
+                      health)
+                    </option>
+                  ))}
                 </select>
               </span>
               {isHostile(game, actor) && actor.weapons.length > 0 && (

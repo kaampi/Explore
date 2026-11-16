@@ -35,6 +35,7 @@ type Draft = {
   id: string | null;
   name: string;
   attributes: AttrDraft[];
+  playerHealth: string;
   source: LibrarySource;
   createdAt?: string;
 };
@@ -76,7 +77,7 @@ function attrFromDef(def: AttributeDef): AttrDraft {
 }
 
 function emptyDraft(): Draft {
-  return { id: null, name: "", attributes: [emptyAttr()], source: "player" };
+  return { id: null, name: "", attributes: [emptyAttr()], playerHealth: "", source: "player" };
 }
 
 function draftFrom(template: RulesetTemplate): Draft {
@@ -85,6 +86,7 @@ function draftFrom(template: RulesetTemplate): Draft {
     name: template.name,
     attributes:
       template.attributes.length > 0 ? template.attributes.map(attrFromDef) : [emptyAttr()],
+    playerHealth: template.playerHealth !== undefined ? String(template.playerHealth) : "",
     source: template.source,
     createdAt: template.createdAt,
   };
@@ -216,6 +218,15 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
       setError("Add at least one attribute.");
       return;
     }
+    const healthText = draft.playerHealth.trim();
+    const playerHealth = healthText === "" ? undefined : Number(healthText);
+    if (
+      playerHealth !== undefined &&
+      (!Number.isInteger(playerHealth) || playerHealth < 1 || playerHealth > 200)
+    ) {
+      setError("Player health is empty, or a whole number from 1 to 200.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -223,6 +234,7 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
         ...(draft.id ? { id: draft.id } : {}),
         name,
         attributes,
+        ...(playerHealth !== undefined ? { playerHealth } : {}),
         source: draft.source,
       });
       const previous = library.find((item) => item.id === built.id);
@@ -554,6 +566,21 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
                   </div>
                 </div>
               ))}
+            </FormSection>
+            <FormSection
+              title="Health in adventures"
+              lede="How much health the player starts with. Weapon damage uses the same unit, so a high number makes long fights. Other people's toughness is a share of it. Empty means 20."
+            >
+              <label className="setup-field">
+                Player health in adventures <span className="setup-optional">optional</span>
+                <input
+                  aria-label="Player health in adventures"
+                  value={draft.playerHealth}
+                  onChange={(e) => setDraft({ ...draft, playerHealth: e.target.value })}
+                  placeholder="20"
+                  inputMode="numeric"
+                />
+              </label>
             </FormSection>
             {notice && <p className="setup-notice">{notice}</p>}
             {error && <p className="setup-error">{error}</p>}

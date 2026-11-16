@@ -4,7 +4,7 @@ import { newCharacterTemplate, newObjectTemplate } from "../../src/library/Libra
 import {
   HOSTILE_TEAM,
   NEUTRAL_TEAM,
-  TOUGHNESS,
+  healthFor,
   actorIdFor,
   addPerson,
   isHostile,
@@ -101,8 +101,8 @@ describe("toughness", () => {
     const next = setToughness(scene, orla.id, "tough");
 
     expect(next.encounter!.state.actors[id]).toMatchObject({
-      maxHp: TOUGHNESS.tough,
-      hp: TOUGHNESS.tough,
+      maxHp: healthFor("tough", 20),
+      hp: healthFor("tough", 20),
     });
     expect(toughnessOf(next.encounter!.state.actors[id]!)).toBe("tough");
   });

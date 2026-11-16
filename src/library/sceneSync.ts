@@ -11,7 +11,13 @@ import { validateEncounter } from "../game/EncounterEngine";
 import { sceneFormat } from "./sceneFormat";
 import { attributeRange } from "../state/traitBands";
 import { BASIC_RULESET, BASIC_START_VALUE } from "./basicRuleset";
-import { STARTING_AMMUNITION, isHostile, weaponRecord } from "./sceneParts";
+import {
+  DEFAULT_PLAYER_HEALTH,
+  STARTING_AMMUNITION,
+  healthFor,
+  isHostile,
+  weaponRecord,
+} from "./sceneParts";
 
 /** The cards a scene's details come from. */
 export type SceneLibrary = {
@@ -35,7 +41,12 @@ function numericStats(sheet: Record<string, string | number> | undefined): Recor
 
 type Scale = { id: string; name: string; min: number; max: number };
 /** The scales a scene is played with, and the value a person gets for a skill they have none for. */
-type ActiveRules = { scales: Scale[]; startValue: (scale: Scale) => number };
+type ActiveRules = {
+  scales: Scale[];
+  startValue: (scale: Scale) => number;
+  /** Health the set gives the player. Missing: 20. */
+  playerHealth: number | undefined;
+};
 
 const hasNumbers = (sheet: Record<string, string | number> | undefined) =>
   Object.keys(numericStats(sheet)).length > 0;
@@ -69,6 +80,7 @@ function activeRules(
   return {
     scales,
     startValue: usable ? (scale) => (scale.min + scale.max) / 2 : () => BASIC_START_VALUE,
+    playerHealth: usable ? chosen?.playerHealth : undefined,
   };
 }
 
@@ -90,12 +102,24 @@ function statsFor(
 /** Write the scales, and every person's values on them. */
 function syncRules(campaign: CampaignTemplate, game: EncounterGame, rules: ActiveRules) {
   game.definition.rules.attributes = rules.scales;
+  if (rules.playerHealth === undefined) delete game.definition.rules.playerHealth;
+  else game.definition.rules.playerHealth = rules.playerHealth;
+  const health = rules.playerHealth ?? DEFAULT_PLAYER_HEALTH;
   const player = game.state.actors[game.definition.playerId];
-  if (player) player.stats = statsFor(rules, campaign.player?.stats);
+  if (player) {
+    player.stats = statsFor(rules, campaign.player?.stats);
+    player.maxHp = health;
+    player.hp = health;
+  }
   for (const actor of Object.values(game.state.actors)) {
     if (!actor.id.startsWith("npc:")) continue;
     const member = campaign.people.find((person) => person.characterId === actor.id.slice(4));
     actor.stats = statsFor(rules, member?.stats);
+    // Someone with a toughness has that share of the player's health. Anyone else keeps theirs.
+    if (actor.toughness) {
+      actor.maxHp = healthFor(actor.toughness, health);
+      actor.hp = actor.maxHp;
+    }
   }
 }
 

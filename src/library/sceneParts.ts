@@ -660,9 +660,16 @@ export type Attitude = "neutral" | "hostile";
 export const HOSTILE_TEAM = "opponents";
 export const NEUTRAL_TEAM = "residents";
 
-/** Health for each toughness. */
-export const TOUGHNESS = { weak: 6, normal: 12, tough: 20 } as const;
-export type Toughness = keyof typeof TOUGHNESS;
+/** How much of the player's health each toughness is. */
+export const TOUGHNESS_SHARE = { weak: 0.3, normal: 0.6, tough: 1 } as const;
+export type Toughness = keyof typeof TOUGHNESS_SHARE;
+/** The player's health when the rule-set names none. */
+export const DEFAULT_PLAYER_HEALTH = 20;
+
+/** Health for a toughness: its share of the player's health, at least 1. 20 gives 6, 12 and 20. */
+export function healthFor(toughness: Toughness, playerHealth: number): number {
+  return Math.max(1, Math.round(TOUGHNESS_SHARE[toughness] * playerHealth));
+}
 
 function requireNpc(game: EncounterGame, characterId: string) {
   const actor = game.state.actors[actorIdFor(characterId)];
@@ -709,7 +716,7 @@ export function setAttitude(
   return finish(current, game);
 }
 
-/** How tough a person is: their health, and full health at the start. */
+/** How tough a person is. Their health follows, and the sync keeps it in step with the player's. */
 export function setToughness(
   scene: CampaignScene,
   characterId: string,
@@ -718,14 +725,22 @@ export function setToughness(
   const current = requireGame(scene);
   const game = structuredClone(current.encounter);
   const actor = requireNpc(game, characterId);
-  actor.maxHp = TOUGHNESS[toughness];
+  const playerHealth = game.definition.rules.playerHealth ?? DEFAULT_PLAYER_HEALTH;
+  actor.toughness = toughness;
+  actor.maxHp = healthFor(toughness, playerHealth);
   actor.hp = actor.maxHp;
   return finish(current, game);
 }
 
-/** The toughness a person's health matches, if it matches one of the choices. */
+/**
+ * The toughness a person has. A person made before toughness was kept is read from their
+ * health, if it matches one of the choices at the normal player health.
+ */
 export function toughnessOf(actor: Actor): Toughness | undefined {
-  return (Object.keys(TOUGHNESS) as Toughness[]).find((key) => TOUGHNESS[key] === actor.maxHp);
+  if (actor.toughness) return actor.toughness;
+  return (Object.keys(TOUGHNESS_SHARE) as Toughness[]).find(
+    (key) => healthFor(key, DEFAULT_PLAYER_HEALTH) === actor.maxHp,
+  );
 }
 
 /** When a hostile person gives up the fight and where they run to. */
