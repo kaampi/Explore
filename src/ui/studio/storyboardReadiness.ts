@@ -99,6 +99,40 @@ export function storyboardIssues(
   return issues;
 }
 
+/** People and things placed in a scene whose cards are gone. The scene keeps their last details. */
+function missingCardIssues(
+  campaign: CampaignTemplate,
+  library: { characters: { id: string }[]; objects: { id: string }[] },
+): StoryboardIssue[] {
+  const issues: StoryboardIssue[] = [];
+  for (const scene of campaign.scenes) {
+    if (sceneFormat(scene) !== "playable") continue;
+    const game = scene.encounter!;
+    const sceneName = scene.name.trim() || "Untitled scene";
+    for (const pick of scene.people) {
+      if (library.characters.some((card) => card.id === pick.characterId)) continue;
+      const name = game.state.actors[`npc:${pick.characterId}`]?.name ?? "A person";
+      issues.push({
+        kind: "scene",
+        id: scene.id,
+        field: "parts",
+        message: `${name} in “${sceneName}” has no card in your library any more. The scene keeps their last details.`,
+      });
+    }
+    for (const objectId of scene.objectIds) {
+      if (library.objects.some((card) => card.id === objectId)) continue;
+      const name = game.definition.items.find((item) => item.id === objectId)?.name ?? "A thing";
+      issues.push({
+        kind: "scene",
+        id: scene.id,
+        field: "parts",
+        message: `${name} in “${sceneName}” has no card in your library any more. The scene keeps its last details.`,
+      });
+    }
+  }
+  return issues;
+}
+
 /** An item starts in one place in the whole adventure, not once per scene. */
 function duplicateItemIssues(campaign: CampaignTemplate): StoryboardIssue[] {
   const issues: StoryboardIssue[] = [];
@@ -191,10 +225,11 @@ export function reachableFromStart(campaign: CampaignTemplate): Reach {
 export function storyboardWarnings(
   campaign: CampaignTemplate,
   facts: ReadonlySet<string>,
+  library?: { characters: { id: string }[]; objects: { id: string }[] },
 ): StoryboardIssue[] {
   const first = campaign.scenes.find((scene) => sceneFormat(scene) !== "earlier");
   if (!first) return [];
-  const issues: StoryboardIssue[] = [];
+  const issues: StoryboardIssue[] = library ? missingCardIssues(campaign, library) : [];
   const reach = reachableFromStart(campaign);
   const labels = new Map(adventureFacts(campaign).map((fact) => [fact.id, fact.label]));
   const discovery = (flag: string) => (labels.has(flag) ? `“${labels.get(flag)}”` : `“${flag}”`);

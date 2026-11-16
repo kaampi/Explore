@@ -1,3 +1,4 @@
+import { syncAdventure } from "../../library/sceneSync";
 import { sceneFormat } from "../../library/sceneFormat";
 import { planNewPlace } from "../../library/campaignPlace";
 import { installInnExample } from "../../scenarios/innVisit";
@@ -426,6 +427,15 @@ export function CampaignStudio({
     setFreshNight(false);
   }
 
+  /** The adventure with every Storyboard scene brought up to date with the cards it uses. */
+  function syncedDraft(campaign: CampaignTemplate) {
+    return syncAdventure(campaign, {
+      characters: visibleCharacters,
+      objects: visibleObjects,
+      places: visiblePlaces,
+    });
+  }
+
   async function save() {
     if (!draft) return;
     const name = draft.name.trim();
@@ -438,7 +448,7 @@ export function CampaignStudio({
     try {
       const realmId = inferCampaignRealmId(draft, visiblePlaces);
       const built = newCampaignTemplate(
-        sanitizeCampaign({ ...draft, name, ...(realmId ? { realmId } : {}) }),
+        sanitizeCampaign({ ...syncedDraft(draft), name, ...(realmId ? { realmId } : {}) }),
       );
       const previous = campaigns.find((item) => item.id === built.id);
       const saved = withOriginalTimestamps(built, previous);
@@ -530,7 +540,7 @@ export function CampaignStudio({
       setPendingRealms([]);
       const realmId = inferCampaignRealmId(draft, visiblePlaces);
       const named = sanitizeCampaign({
-        ...draft,
+        ...syncedDraft(draft),
         name: draft.name.trim() || "New adventure",
         ...(realmId ? { realmId } : {}),
       });
@@ -752,7 +762,10 @@ export function CampaignStudio({
   const steps = adventureSteps(
     draft,
     storyboardIssues(draft, stepPlaces, stepFacts, stepMapPlaces),
-    storyboardWarnings(draft, stepFacts),
+    storyboardWarnings(draft, stepFacts, {
+      characters: visibleCharacters,
+      objects: visibleObjects,
+    }),
   );
   const activeStep: AdventureStepId =
     tab === "general"

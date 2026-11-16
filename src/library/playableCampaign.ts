@@ -1,3 +1,4 @@
+import { syncScene } from "./sceneSync";
 import {
   EncounterGameSchema,
   InteractionSchema,
@@ -132,7 +133,7 @@ export function makePlayableScene(
     },
     history: [],
   });
-  return { ...scene, encounter: game };
+  return syncScene(campaign, { ...scene, encounter: game }, { characters, objects, places });
 }
 export function adventureFacts(campaign: CampaignTemplate) {
   const facts = new Map<string, string>();

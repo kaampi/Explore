@@ -120,7 +120,10 @@ export function PlayableStoryboard({
     new Set(facts.map((fact) => fact.id)),
     mapPlaces,
   );
-  const warnings = storyboardWarnings(campaign, new Set(facts.map((fact) => fact.id)));
+  const warnings = storyboardWarnings(campaign, new Set(facts.map((fact) => fact.id)), {
+    characters,
+    objects,
+  });
   const unfinishedScenes = new Set(
     issues.flatMap((issue) => (issue.kind === "scene" ? [issue.id] : [])),
   );
