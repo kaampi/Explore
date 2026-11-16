@@ -833,3 +833,56 @@ it("places a weapon in someone's hands and lets the rounds be set", async () => 
     host.remove();
   }
 });
+
+it("makes a person hostile from the scene panel and shows their toughness", async () => {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  const built = connectedAdventureExample(),
+    host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  let snapshot = built.campaign;
+  function Harness() {
+    const [campaign, setCampaign] = useState(built.campaign);
+    snapshot = campaign;
+    return (
+      <PlayableStoryboard
+        campaign={campaign}
+        places={built.places}
+        characters={built.characters}
+        objects={built.objects}
+        busy={false}
+        onChange={setCampaign}
+        onPlay={() => {}}
+      />
+    );
+  }
+  const choose = async (label: string, value: string) => {
+    const select = host.querySelector<HTMLSelectElement>(`select[aria-label="${label}"]`)!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")!.set!.call(
+        select,
+        value,
+      );
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+  };
+  try {
+    await act(async () => root.render(<Harness />));
+    await choose("Attitude of Edda", "hostile");
+    const edda = Object.values(snapshot.scenes[0]!.encounter!.state.actors).find(
+      (a) => a.name === "Edda",
+    )!;
+    expect(edda.team).toBe("opponents");
+    await choose("Toughness of Edda", "tough");
+    expect(
+      Object.values(snapshot.scenes[0]!.encounter!.state.actors).find((a) => a.name === "Edda")!
+        .maxHp,
+    ).toBe(20);
+    expect(host.querySelector('[aria-label="Who and what is here"]')!.textContent).not.toContain(
+      "Retreats at health",
+    );
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});

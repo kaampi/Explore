@@ -8,7 +8,7 @@ import type {
 import type { EncounterGame } from "../game/EncounterSchema";
 import { validateEncounter } from "../game/EncounterEngine";
 import { sceneFormat } from "./sceneFormat";
-import { STARTING_AMMUNITION, weaponRecord } from "./sceneParts";
+import { STARTING_AMMUNITION, isHostile, weaponRecord } from "./sceneParts";
 
 /** The cards a scene's details come from. */
 export type SceneLibrary = {
@@ -102,6 +102,14 @@ function syncWeapons(game: EncounterGame, library: SceneLibrary) {
     else if (!card.weapon && records.has(id) && !carried.has(id)) records.delete(id);
   }
   game.definition.weapons = [...records.values()];
+  for (const actor of actors) {
+    const first = actor.weapons[0];
+    if (!first || actor.id === game.definition.playerId || !isHostile(game, actor)) continue;
+    // A hostile person fights with what they carry. Without tactics they would only defend.
+    actor.tactics ??= { preferredWeapon: first, retreatAt: 0, repositionTo: [] };
+    if (!actor.weapons.includes(actor.tactics.preferredWeapon))
+      actor.tactics.preferredWeapon = first;
+  }
   for (const actor of actors)
     for (const weaponId of actor.weapons) {
       const card = cards.get(weaponId);

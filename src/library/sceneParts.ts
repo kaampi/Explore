@@ -179,6 +179,14 @@ function withoutItem(game: EncounterGame, itemId: string) {
     actor.inventory = actor.inventory.filter((held) => held !== itemId);
     actor.weapons = actor.weapons.filter((held) => held !== itemId);
     delete actor.ammunition[itemId];
+    if (actor.tactics) {
+      const first = actor.weapons[0];
+      if (!first) delete actor.tactics;
+      else {
+        if (actor.tactics.preferredWeapon === itemId) actor.tactics.preferredWeapon = first;
+        if (actor.tactics.fallbackWeapon === itemId) delete actor.tactics.fallbackWeapon;
+      }
+    }
   }
   const stillCarried = Object.values(game.state.actors).some((actor) =>
     actor.weapons.includes(itemId),
@@ -644,5 +652,116 @@ export function setAmmunition(
   if (!Number.isInteger(rounds) || rounds < 0 || rounds > 999)
     throw new Error("Give a whole number of rounds, 0 or more.");
   actor.ammunition[weaponId] = rounds;
+  return finish(current, game);
+}
+
+/** How a person stands towards the player. Hostile people fight; the rest only talk. */
+export type Attitude = "neutral" | "hostile";
+export const HOSTILE_TEAM = "opponents";
+export const NEUTRAL_TEAM = "residents";
+
+/** Health for each toughness. */
+export const TOUGHNESS = { weak: 6, normal: 12, tough: 20 } as const;
+export type Toughness = keyof typeof TOUGHNESS;
+
+function requireNpc(game: EncounterGame, characterId: string) {
+  const actor = game.state.actors[actorIdFor(characterId)];
+  if (!actor) throw new Error("That person is not in this scene.");
+  return actor;
+}
+
+/** Whether a person is an opponent of the player, by the sides the scene says are hostile. */
+export function isHostile(game: EncounterGame, actor: Actor): boolean {
+  const player = game.state.actors[game.definition.playerId]!;
+  return game.definition.hostilities.some(
+    ([a, b]) => (a === player.team && b === actor.team) || (b === player.team && a === actor.team),
+  );
+}
+
+/** Make a person hostile (fights the player) or neutral again. */
+export function setAttitude(
+  scene: CampaignScene,
+  characterId: string,
+  attitude: Attitude,
+): CampaignScene {
+  const current = requireGame(scene);
+  const game = structuredClone(current.encounter);
+  const actor = requireNpc(game, characterId);
+  const playerTeam = game.state.actors[game.definition.playerId]!.team;
+  const pair = (a: string, b: string) => (a === b ? null : ([a, b] as [string, string]));
+  if (attitude === "hostile") {
+    actor.team = HOSTILE_TEAM;
+    if (
+      !game.definition.hostilities.some(([a, b]) =>
+        samePair({ from: a, to: b }, playerTeam, HOSTILE_TEAM),
+      )
+    )
+      game.definition.hostilities.push(pair(playerTeam, HOSTILE_TEAM)!);
+  } else {
+    actor.team = NEUTRAL_TEAM;
+    const anyLeft = Object.values(game.state.actors).some((other) => other.team === HOSTILE_TEAM);
+    if (!anyLeft)
+      game.definition.hostilities = game.definition.hostilities.filter(
+        ([a, b]) => !samePair({ from: a, to: b }, playerTeam, HOSTILE_TEAM),
+      );
+    delete actor.tactics;
+  }
+  return finish(current, game);
+}
+
+/** How tough a person is: their health, and full health at the start. */
+export function setToughness(
+  scene: CampaignScene,
+  characterId: string,
+  toughness: Toughness,
+): CampaignScene {
+  const current = requireGame(scene);
+  const game = structuredClone(current.encounter);
+  const actor = requireNpc(game, characterId);
+  actor.maxHp = TOUGHNESS[toughness];
+  actor.hp = actor.maxHp;
+  return finish(current, game);
+}
+
+/** The toughness a person's health matches, if it matches one of the choices. */
+export function toughnessOf(actor: Actor): Toughness | undefined {
+  return (Object.keys(TOUGHNESS) as Toughness[]).find((key) => TOUGHNESS[key] === actor.maxHp);
+}
+
+/** When a hostile person gives up the fight and where they run to. */
+export function setTactics(
+  scene: CampaignScene,
+  characterId: string,
+  tactics: { retreatAt?: number; escapeTo?: string | null },
+): CampaignScene {
+  const current = requireGame(scene);
+  const game = structuredClone(current.encounter);
+  const actor = requireNpc(game, characterId);
+  const first = actor.weapons[0];
+  if (!first) throw new Error(`Give ${actor.name} a weapon first.`);
+  const existing = actor.tactics ?? { preferredWeapon: first, retreatAt: 0, repositionTo: [] };
+  const next = {
+    ...existing,
+    preferredWeapon: actor.weapons.includes(existing.preferredWeapon)
+      ? existing.preferredWeapon
+      : first,
+  };
+  if (tactics.retreatAt !== undefined) {
+    if (
+      !Number.isFinite(tactics.retreatAt) ||
+      tactics.retreatAt < 0 ||
+      tactics.retreatAt > actor.maxHp
+    )
+      throw new Error(`Retreat at a health from 0 to ${actor.maxHp}.`);
+    next.retreatAt = tactics.retreatAt;
+  }
+  if (tactics.escapeTo !== undefined) {
+    if (tactics.escapeTo === null) delete (next as { escapeTo?: string }).escapeTo;
+    else {
+      requirePosition(game, tactics.escapeTo);
+      next.escapeTo = tactics.escapeTo;
+    }
+  }
+  actor.tactics = next;
   return finish(current, game);
 }

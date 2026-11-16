@@ -2,7 +2,7 @@ import type { CampaignScene, CampaignTemplate, PlaceTemplate } from "../../libra
 import { mapPlaceForScene, type AdventureMapPlace } from "../../library/adventureMap";
 import { adventureFacts } from "../../library/playableCampaign";
 import { sceneFormat } from "../../library/sceneFormat";
-import { reachablePositions } from "../../library/sceneParts";
+import { isHostile, reachablePositions } from "../../library/sceneParts";
 
 export type SceneField = "name" | "place" | "playable" | "arrival" | "action" | "reach" | "parts";
 export type ActionField = "label" | "success" | "failure";
@@ -47,6 +47,16 @@ export function storyboardIssues(
         : scene.encounter.definition.description;
     if (!arrival.trim() || arrival === "Describe what the player sees on arrival.")
       add("arrival", `Describe the arrival in “${name}”.`);
+    for (const actor of Object.values(scene.encounter.state.actors))
+      if (
+        actor.id !== scene.encounter.definition.playerId &&
+        isHostile(scene.encounter, actor) &&
+        actor.weapons.length === 0
+      )
+        add(
+          "parts",
+          `“${actor.name}” in “${name}” is hostile but has no weapon. Give them one, or make them neutral.`,
+        );
     for (const door of Object.values(scene.encounter.state.barriers))
       if (door.locked && !door.keyId)
         add("parts", `“${door.name}” in “${name}” is locked, but nothing opens it. Choose a key.`);

@@ -21,6 +21,13 @@ import {
   removeItem,
   removePerson,
   setAmmunition,
+  setAttitude,
+  setTactics,
+  setToughness,
+  toughnessOf,
+  isHostile,
+  type Attitude,
+  type Toughness,
   type ItemPlace,
 } from "../../library/sceneParts";
 
@@ -66,6 +73,8 @@ export function SceneParts({
   const placed = itemsHere(scene);
   const positions = game.definition.places;
   const player = game.state.actors[game.definition.playerId]!;
+
+  const characterOf = (actorId: string) => actorId.replace(/^npc:/, "");
 
   function attempt(change: () => CampaignScene) {
     try {
@@ -170,6 +179,79 @@ export function SceneParts({
               >
                 Remove
               </button>
+              <span className="storyboard-scene-parts__attach">
+                <select
+                  aria-label={`Attitude of ${actor.name}`}
+                  value={isHostile(game, actor) ? "hostile" : "neutral"}
+                  disabled={busy}
+                  onChange={(event) =>
+                    attempt(() =>
+                      setAttitude(scene, characterOf(actor.id), event.target.value as Attitude),
+                    )
+                  }
+                >
+                  <option value="neutral">Neutral</option>
+                  <option value="hostile">Hostile</option>
+                </select>
+                <select
+                  aria-label={`Toughness of ${actor.name}`}
+                  value={toughnessOf(actor) ?? "custom"}
+                  disabled={busy}
+                  onChange={(event) =>
+                    attempt(() =>
+                      setToughness(scene, characterOf(actor.id), event.target.value as Toughness),
+                    )
+                  }
+                >
+                  {toughnessOf(actor) === undefined && (
+                    <option value="custom">Custom ({actor.maxHp} health)</option>
+                  )}
+                  <option value="weak">Weak (6 health)</option>
+                  <option value="normal">Normal (12 health)</option>
+                  <option value="tough">Tough (20 health)</option>
+                </select>
+              </span>
+              {isHostile(game, actor) && actor.weapons.length > 0 && (
+                <span className="storyboard-scene-parts__attach">
+                  <label>
+                    Retreats at health{" "}
+                    <input
+                      type="number"
+                      min={0}
+                      max={actor.maxHp}
+                      aria-label={`Retreat at health for ${actor.name}`}
+                      defaultValue={actor.tactics?.retreatAt ?? 0}
+                      disabled={busy}
+                      onBlur={(event) =>
+                        attempt(() =>
+                          setTactics(scene, characterOf(actor.id), {
+                            retreatAt: Number(event.target.value),
+                          }),
+                        )
+                      }
+                    />
+                  </label>
+                  <select
+                    aria-label={`Runs to, for ${actor.name}`}
+                    value={actor.tactics?.escapeTo ?? ""}
+                    disabled={busy}
+                    onChange={(event) =>
+                      attempt(() =>
+                        setTactics(scene, characterOf(actor.id), {
+                          escapeTo: event.target.value || null,
+                        }),
+                      )
+                    }
+                  >
+                    <option value="">Does not run</option>
+                    {positions.map((position) => (
+                      <option key={position.id} value={position.id}>
+                        Runs to {position.name}
+                      </option>
+                    ))}
+                  </select>
+                </span>
+              )}
             </li>
           ))}
         </ul>
