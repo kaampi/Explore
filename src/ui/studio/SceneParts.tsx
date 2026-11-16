@@ -3,7 +3,9 @@ import type { CampaignScene, CharacterTemplate, ObjectTemplate } from "../../lib
 import {
   actorIdFor,
   addPerson,
+  addPickUp,
   itemsHere,
+  pickUpAction,
   peopleHere,
   placeItem,
   removeItem,
@@ -153,6 +155,16 @@ export function SceneParts({
               <span>
                 {itemName(entry.itemId)} · {describeWhere(entry.where)}
               </span>
+              {"position" in entry.where && !pickUpAction(scene, entry.itemId) && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  aria-label={`Let the player take ${itemName(entry.itemId)}`}
+                  onClick={() => attempt(() => addPickUp(scene, entry.itemId))}
+                >
+                  Pick up
+                </button>
+              )}
               <button
                 type="button"
                 className="playable-remove"

@@ -1,6 +1,7 @@
 import type { CampaignScene, CharacterTemplate, ObjectTemplate } from "./LibrarySchema";
 import type { Actor, EncounterGame } from "../game/EncounterSchema";
 import { validateEncounter } from "../game/EncounterEngine";
+import { InteractionSchema } from "../game/EncounterSchema";
 
 /**
  * Small, pure operations that change the parts of a scene: who is here, what is here.
@@ -192,4 +193,47 @@ export function removeItem(scene: CampaignScene, objectId: string): CampaignScen
   withoutItem(game, objectId);
   const next = finish(current, game);
   return { ...next, objectIds: scene.objectIds.filter((id) => id !== objectId) };
+}
+
+/** The action that lets the player take an item, if the scene has one. */
+export function pickUpAction(scene: CampaignScene, objectId: string) {
+  return scene.encounter?.definition.interactions.find((action) =>
+    action.success.effects.some(
+      (effect) => effect.kind === "take-item" && effect.itemId === objectId,
+    ),
+  );
+}
+
+/**
+ * A ready-made action: take an item that lies on a position. It is an ordinary action, so it
+ * can be edited afterwards. Taking the item records a discovery that can open a way on, and
+ * the action goes away once the item is taken.
+ */
+export function addPickUp(scene: CampaignScene, objectId: string): CampaignScene {
+  const current = requireGame(scene);
+  const game = structuredClone(current.encounter);
+  const item = game.definition.items.find((entry) => entry.id === objectId);
+  const position = game.state.itemLocations[objectId];
+  if (!item || !position) throw new Error("Place the thing on a position first.");
+  if (pickUpAction(scene, objectId)) throw new Error(`${item.name} can already be taken.`);
+  const flag = `taken:${objectId}`;
+  game.definition.interactions.push(
+    InteractionSchema.parse({
+      id: crypto.randomUUID(),
+      label: `Take ${item.name}`,
+      description: "",
+      position,
+      once: true,
+      excludesFlags: [flag],
+      success: {
+        text: `You take the ${item.name.toLowerCase()}.`,
+        effects: [
+          { kind: "take-item", itemId: objectId },
+          { kind: "flag", flag },
+        ],
+      },
+      failure: { text: "You cannot reach it.", effects: [] },
+    }),
+  );
+  return finish(current, game);
 }

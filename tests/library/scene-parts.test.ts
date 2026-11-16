@@ -1,17 +1,20 @@
 import { describe, expect, it } from "vitest";
 import fc from "fast-check";
-import { connectedAdventureExample } from "../../src/library/playableCampaign";
+import { adventureFacts, connectedAdventureExample } from "../../src/library/playableCampaign";
+import { publicCommands } from "../../src/game/catalog";
 import { newCharacterTemplate, newObjectTemplate } from "../../src/library/LibrarySchema";
 import {
   actorIdFor,
   addPerson,
+  addPickUp,
   itemsHere,
+  pickUpAction,
   peopleHere,
   placeItem,
   removeItem,
   removePerson,
 } from "../../src/library/sceneParts";
-import { validateEncounter } from "../../src/game/EncounterEngine";
+import { resolveEncounterAction, validateEncounter } from "../../src/game/EncounterEngine";
 
 function setup() {
   const built = connectedAdventureExample();
@@ -191,5 +194,71 @@ describe("any sequence of operations", () => {
       }),
       { numRuns: 60 },
     );
+  });
+});
+
+describe("the pick-up action", () => {
+  function withLamp() {
+    const { built, scene, lamp } = setup();
+    const placed = placeItem(scene, lamp, { position: "here" });
+    return { built, lamp, placed, withPickUp: addPickUp(placed, lamp.id) };
+  }
+
+  it("needs the thing to lie on a position", () => {
+    const { scene, lamp } = setup();
+
+    expect(() => addPickUp(scene, lamp.id)).toThrow(/Place the thing on a position first/);
+    const carried = placeItem(scene, lamp, { heldBy: "player" });
+    expect(() => addPickUp(carried, lamp.id)).toThrow(/Place the thing on a position first/);
+  });
+
+  it("adds one ordinary action and will not add a second", () => {
+    const { lamp, placed, withPickUp } = withLamp();
+
+    const before = placed.encounter!.definition.interactions.map((action) => action.id);
+    const added = withPickUp.encounter!.definition.interactions.filter(
+      (action) => !before.includes(action.id),
+    );
+    expect(added).toHaveLength(1);
+    expect(added[0]).toMatchObject({ label: "Take Brass lamp", once: true });
+    expect(pickUpAction(withPickUp, lamp.id)).toBeTruthy();
+    expect(() => addPickUp(withPickUp, lamp.id)).toThrow(/already be taken/);
+  });
+
+  it("lets the player take the thing in the engine, once, and records a discovery", () => {
+    const { lamp, withPickUp } = withLamp();
+    const game = withPickUp.encounter!;
+    const action = pickUpAction(withPickUp, lamp.id)!;
+    const request = (id: string) => ({
+      id,
+      expectedRevision: game.state.revision,
+      expectedSceneId: game.definition.id,
+      action: { kind: "interaction" as const, interactionId: action.id },
+    });
+
+    const next = resolveEncounterAction(game, request("take-1"), () => {
+      throw new Error("Taking a thing needs no dice.");
+    });
+
+    expect(next.state.actors.player!.inventory).toContain(lamp.id);
+    expect(next.state.itemLocations[lamp.id]).toBeUndefined();
+    expect(next.state.flags).toContain(`taken:${lamp.id}`);
+    expect(publicCommands(next).some((c) => c.label === "Take Brass lamp")).toBe(false);
+  });
+
+  it("makes the discovery available to connections and objectives", () => {
+    const { built, lamp, withPickUp } = withLamp();
+    const campaign = { ...built.campaign, scenes: [withPickUp, ...built.campaign.scenes.slice(1)] };
+
+    const fact = adventureFacts(campaign).find((item) => item.id === `taken:${lamp.id}`);
+
+    expect(fact?.label).toBe("Take Brass lamp · succeeded");
+  });
+
+  it("is refused for a scene that is not playable yet", () => {
+    const { scene, lamp } = setup();
+    const blank = { ...scene, encounter: undefined };
+
+    expect(() => addPickUp(blank, lamp.id)).toThrow(/playable/);
   });
 });
