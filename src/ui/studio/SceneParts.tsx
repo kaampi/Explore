@@ -10,6 +10,8 @@ import {
   addDoor,
   addPerson,
   addPickUp,
+  addTry,
+  TRY_VERBS,
   attachDoorToConnection,
   attachDoorToRoute,
   doorsHere,
@@ -59,6 +61,7 @@ export function SceneParts({
 }) {
   const [personId, setPersonId] = useState("");
   const [thingId, setThingId] = useState("");
+  const [tryVerb, setTryVerb] = useState<Record<string, string>>({});
   const [where, setWhere] = useState("position:");
   const [message, setMessage] = useState("");
   const [doorName, setDoorName] = useState("");
@@ -367,6 +370,37 @@ export function SceneParts({
                 >
                   Pick up
                 </button>
+              )}
+              {"position" in entry.where && things.some((t) => t.id === entry.itemId) && (
+                <>
+                  <select
+                    aria-label={`What to try with ${itemName(entry.itemId)}`}
+                    value={tryVerb[entry.itemId] ?? "Use"}
+                    onChange={(e) => setTryVerb({ ...tryVerb, [entry.itemId]: e.target.value })}
+                  >
+                    {TRY_VERBS.map((verb) => (
+                      <option key={verb}>{verb}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    aria-label={`Add a try with ${itemName(entry.itemId)}`}
+                    onClick={() =>
+                      attempt(() =>
+                        addTry(
+                          scene,
+                          things.find((t) => t.id === entry.itemId)!,
+                          {
+                            verb: tryVerb[entry.itemId] ?? "Use",
+                          },
+                        ),
+                      )
+                    }
+                  >
+                    Try
+                  </button>
+                </>
               )}
               <button
                 type="button"

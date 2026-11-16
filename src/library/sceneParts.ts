@@ -7,6 +7,8 @@ import type {
 import type { Actor, EncounterGame } from "../game/EncounterSchema";
 import { validateEncounter } from "../game/EncounterEngine";
 import { InteractionSchema } from "../game/EncounterSchema";
+import { levelModifier } from "../game/rules";
+import { skillIdFor } from "./sceneSync";
 
 /**
  * Small, pure operations that change the parts of a scene: who is here, what is here.
@@ -288,6 +290,80 @@ export function addPickUp(scene: CampaignScene, objectId: string): CampaignScene
         ],
       },
       failure: { text: "You cannot reach it.", effects: [] },
+    }),
+  );
+  return finish(current, game);
+}
+
+export const TRY_VERBS = ["Lift", "Force", "Open", "Use", "Examine"] as const;
+
+/**
+ * The skill a "Try" on this card rolls against: the card's check attribute matched as in the
+ * weapon rule (id first, then name), else the scene's first number skill. `matched` is false
+ * when the card names something the scene does not have. Without scales the player's own first
+ * value is used; with none at all the author has to choose.
+ */
+export function trySkill(
+  scene: CampaignScene,
+  object: ObjectTemplate,
+): { id: string; matched: boolean } | undefined {
+  const game = requireGame(scene).encounter;
+  const scales = game.definition.rules.attributes;
+  const text = object.checkAttribute?.trim();
+  if (scales.length > 0) {
+    if (text) {
+      const id = skillIdFor(text, { scales });
+      if (scales.some((scale) => scale.id === id)) return { id, matched: true };
+    }
+    return { id: scales[0]!.id, matched: !text };
+  }
+  const own = Object.keys(game.state.actors[game.definition.playerId]?.stats ?? {});
+  if (text && own.includes(text)) return { id: text, matched: true };
+  const first = own[0];
+  return first ? { id: first, matched: !text } : undefined;
+}
+
+/**
+ * A ready-made action for a thing that lies on a position: try to lift, force, open or use it,
+ * with a roll. The difficulty comes from the card's level. It is an ordinary action afterwards,
+ * so the author can rewrite the texts and add effects.
+ */
+export function addTry(
+  scene: CampaignScene,
+  object: ObjectTemplate,
+  options: { verb: string; attribute?: string },
+): CampaignScene {
+  const current = requireGame(scene);
+  const game = structuredClone(current.encounter);
+  const item = game.definition.items.find((entry) => entry.id === object.id);
+  const position = game.state.itemLocations[object.id];
+  if (!item || !position) throw new Error("Place the thing on a position first.");
+  const verb = options.verb.trim();
+  if (!verb) throw new Error("Say what the player tries to do.");
+  const stat = options.attribute ?? trySkill(scene, object)?.id;
+  if (!stat) throw new Error("Choose the skill the roll uses.");
+  const known = [
+    ...game.definition.rules.attributes.map((scale) => scale.id),
+    ...Object.keys(game.state.actors[game.definition.playerId]?.stats ?? {}),
+  ];
+  if (!known.includes(stat)) throw new Error(`“${stat}” is not a skill in this scene.`);
+  const name = item.name.toLowerCase();
+  game.definition.interactions.push(
+    InteractionSchema.parse({
+      id: crypto.randomUUID(),
+      label: `${verb} ${item.name}`,
+      description: "",
+      position,
+      once: false,
+      check: {
+        stat,
+        modifier: object.checkLevel ? levelModifier(object.checkLevel) : 0,
+      },
+      success: {
+        text: `You manage it with the ${name}.`,
+        effects: [{ kind: "flag", flag: `done:${object.id}` }],
+      },
+      failure: { text: `The ${name} does not give.`, effects: [] },
     }),
   );
   return finish(current, game);
