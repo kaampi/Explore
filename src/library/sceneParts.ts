@@ -243,6 +243,9 @@ export function removeItem(scene: CampaignScene, objectId: string): CampaignScen
   const current = requireGame(scene);
   const game = structuredClone(current.encounter);
   const name = game.definition.items.find((item) => item.id === objectId)?.name ?? "That item";
+  const inside = containedIn(game, objectId);
+  if (inside.length > 0)
+    throw new Error(`${name} still holds ${inside.join(", ")}. Take those out first.`);
   const used = actionsUsingItem(game, objectId);
   if (used.length > 0)
     throw new Error(`${name} is used by “${used[0]}”. Change or remove that action first.`);
@@ -365,6 +368,82 @@ export function addTry(
         effects: [{ kind: "flag", flag: `done:${object.id}` }],
       },
       failure: { text: `The ${name} does not give.`, effects: [] },
+    }),
+  );
+  return finish(current, game);
+}
+
+/** The things a container holds: hidden until the container's `opened:` flag is set. */
+function containedIn(game: EncounterGame, containerId: string): string[] {
+  const flag = `opened:${containerId}`;
+  return game.definition.items
+    .filter((item) => item.requiresFlags.includes(flag))
+    .map((item) => item.name);
+}
+
+/** The things a container holds, by name. */
+export const containerContents = (scene: CampaignScene, containerId: string): string[] =>
+  scene.encounter ? containedIn(scene.encounter, containerId) : [];
+
+/** The action that opens a container, if the scene has one. */
+export function openAction(scene: CampaignScene, containerId: string) {
+  return scene.encounter?.definition.interactions.find((action) =>
+    action.success.effects.some(
+      (effect) => effect.kind === "flag" && effect.flag === `opened:${containerId}`,
+    ),
+  );
+}
+
+/**
+ * A ready-made container: a thing that opens, with things inside that show only once it is
+ * open and can then be taken. A locked one needs a key the player carries. All of it is
+ * ordinary actions and hidden things, so it can be changed afterwards.
+ */
+export function addContainer(
+  scene: CampaignScene,
+  container: ObjectTemplate,
+  options: { contents: ObjectTemplate[]; key?: ObjectTemplate },
+): CampaignScene {
+  const start = requireGame(scene);
+  const position = start.encounter.state.itemLocations[container.id];
+  if (!start.encounter.definition.items.some((item) => item.id === container.id) || !position)
+    throw new Error("Place the thing on a position first.");
+  if (!container.openable)
+    throw new Error(`${container.name} is not marked as something that opens.`);
+  if (openAction(scene, container.id)) throw new Error(`${container.name} can already be opened.`);
+  const { key } = options;
+  if (key) {
+    if (!container.lockable) throw new Error(`${container.name} is not marked as lockable.`);
+    if (key.weapon || start.encounter.definition.weapons.some((w) => w.id === key.id))
+      throw new Error(`${key.name} is a weapon, so it cannot be a key. Use another thing.`);
+    if (!start.encounter.definition.items.some((item) => item.id === key.id))
+      throw new Error(`Put ${key.name} in the scene first, so the player can find it.`);
+  }
+  const flag = `opened:${container.id}`;
+  let next: CampaignScene = scene;
+  for (const content of options.contents) {
+    if (content.weapon) throw new Error(`${content.name} is a weapon and cannot be put inside.`);
+    if (next.encounter!.definition.items.some((item) => item.id === content.id))
+      throw new Error(`${content.name} is already in the scene.`);
+    next = placeItem(next, content, { position });
+    const tagged = structuredClone(next.encounter!);
+    tagged.definition.items.find((item) => item.id === content.id)!.requiresFlags = [flag];
+    next = finish(requireGame(next), tagged);
+    next = addPickUp(next, content.id);
+  }
+  const current = requireGame(next);
+  const game = structuredClone(current.encounter);
+  const name = container.name.toLowerCase();
+  game.definition.interactions.push(
+    InteractionSchema.parse({
+      id: crypto.randomUUID(),
+      label: `Open ${container.name}`,
+      description: "",
+      position,
+      once: true,
+      requiresItems: key ? [key.id] : [],
+      success: { text: `You open the ${name}.`, effects: [{ kind: "flag", flag }] },
+      failure: { text: `The ${name} stays shut.`, effects: [] },
     }),
   );
   return finish(current, game);

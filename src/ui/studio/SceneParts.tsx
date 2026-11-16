@@ -9,7 +9,10 @@ import {
   actorIdFor,
   addDoor,
   addPerson,
+  addContainer,
   addPickUp,
+  openAction,
+  containerContents,
   addTry,
   TRY_VERBS,
   attachDoorToConnection,
@@ -61,6 +64,8 @@ export function SceneParts({
 }) {
   const [personId, setPersonId] = useState("");
   const [thingId, setThingId] = useState("");
+  const [inside, setInside] = useState<Record<string, string>>({});
+  const [lockKey, setLockKey] = useState<Record<string, string>>({});
   const [tryVerb, setTryVerb] = useState<Record<string, string>>({});
   const [where, setWhere] = useState("position:");
   const [message, setMessage] = useState("");
@@ -401,6 +406,73 @@ export function SceneParts({
                     Try
                   </button>
                 </>
+              )}
+              {"position" in entry.where &&
+                things.find((t) => t.id === entry.itemId)?.openable &&
+                !openAction(scene, entry.itemId) && (
+                  <>
+                    <select
+                      aria-label={`What is inside ${itemName(entry.itemId)}`}
+                      value={inside[entry.itemId] ?? ""}
+                      onChange={(e) => setInside({ ...inside, [entry.itemId]: e.target.value })}
+                    >
+                      <option value="">Nothing inside</option>
+                      {things
+                        .filter(
+                          (t) =>
+                            !t.weapon &&
+                            t.id !== entry.itemId &&
+                            !game.definition.items.some((i) => i.id === t.id),
+                        )
+                        .map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name}
+                          </option>
+                        ))}
+                    </select>
+                    {things.find((t) => t.id === entry.itemId)?.lockable && (
+                      <select
+                        aria-label={`Key to ${itemName(entry.itemId)}`}
+                        value={lockKey[entry.itemId] ?? ""}
+                        onChange={(e) => setLockKey({ ...lockKey, [entry.itemId]: e.target.value })}
+                      >
+                        <option value="">Not locked</option>
+                        {itemsHere(scene)
+                          .filter((e) => e.itemId !== entry.itemId)
+                          .map((e) => (
+                            <option key={e.itemId} value={e.itemId}>
+                              {itemName(e.itemId)}
+                            </option>
+                          ))}
+                      </select>
+                    )}
+                    <button
+                      type="button"
+                      disabled={busy}
+                      aria-label={`Make ${itemName(entry.itemId)} a container`}
+                      onClick={() =>
+                        attempt(() =>
+                          addContainer(
+                            scene,
+                            things.find((t) => t.id === entry.itemId)!,
+                            {
+                              contents: things.filter((t) => t.id === inside[entry.itemId]),
+                              ...(lockKey[entry.itemId]
+                                ? { key: things.find((t) => t.id === lockKey[entry.itemId])! }
+                                : {}),
+                            },
+                          ),
+                        )
+                      }
+                    >
+                      Container
+                    </button>
+                  </>
+                )}
+              {containerContents(scene, entry.itemId).length > 0 && (
+                <span className="playable-hint">
+                  Holds {containerContents(scene, entry.itemId).join(", ")}
+                </span>
               )}
               <button
                 type="button"
