@@ -224,6 +224,7 @@ export const ObjectTemplateSchema = z.object({
   lockable: z.boolean().optional(),
   weight: z.number().nonnegative().optional(),
   difficulty: z.number().nonnegative().optional(),
+  checkLevel: z.enum(["easy", "standard", "hard", "veryHard"]).optional(),
   checkAttribute: z.string().min(1).optional(),
   /** Set when the thing can be used as a weapon. */
   weapon: ObjectWeaponSchema.optional(),

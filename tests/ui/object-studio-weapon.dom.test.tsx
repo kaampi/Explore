@@ -7,8 +7,11 @@ import { ObjectStudio } from "../../src/ui/studio/ObjectStudio";
 import { IndexedDBRepository } from "../../src/persistence/IndexedDBRepository";
 
 async function mount() {
+  return mountWith(new IndexedDBRepository(new IDBFactory(), "object-studio-weapon"));
+}
+
+async function mountWith(repo: IndexedDBRepository) {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-  const repo = new IndexedDBRepository(new IDBFactory(), "object-studio-weapon");
   const host = document.createElement("div");
   document.body.append(host);
   const root = createRoot(host);
@@ -82,5 +85,44 @@ it("refuses damage that is not a whole number and says why", async () => {
     expect((await ui.repo.listObjects()).some((object) => object.name === "Odd blade")).toBe(false);
   } finally {
     await ui.close();
+  }
+});
+
+it("suggests a level from an old difficulty number and saves it only on Save", async () => {
+  const { newObjectTemplate } = await import("../../src/library/LibrarySchema");
+  const ui = await mount();
+  try {
+    await ui.repo.saveObject(
+      newObjectTemplate({
+        name: "Heavy stone",
+        note: "",
+        tags: [],
+        difficulty: 14,
+        source: "player",
+      }),
+    );
+    await act(async () => ui.close());
+  } finally {
+    // remount so the shelf lists the saved card
+  }
+  const again = await mountWith(ui.repo);
+  try {
+    await act(async () =>
+      Array.from(again.host.querySelectorAll("button"))
+        .find((b) => b.textContent?.includes("Heavy stone"))!
+        .click(),
+    );
+    const select = again.host.querySelector<HTMLSelectElement>('select[aria-label="Difficulty"]')!;
+    expect(select.value).toBe("hard");
+    expect((await again.repo.listObjects())[0]?.checkLevel).toBeUndefined();
+    await act(async () => button(again.host, "Save").click());
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    });
+    const saved = (await again.repo.listObjects()).find((o) => o.name === "Heavy stone")!;
+    expect(saved.checkLevel).toBe("hard");
+    expect(saved.difficulty).toBe(14);
+  } finally {
+    await again.close();
   }
 });

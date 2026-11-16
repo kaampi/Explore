@@ -1,5 +1,5 @@
 import { encounterDescription } from "./sceneDescription";
-import { encounterRules } from "./rules";
+import { encounterRules, levelLabelForModifier } from "./rules";
 import type {
   Actor,
   EncounterAction,
@@ -111,14 +111,7 @@ export function checkPreview(
   const value = actor.stats[stat];
   const shown =
     value === undefined ? "—" : Number.isInteger(value) ? String(value) : value.toFixed(1);
-  const level =
-    modifier === 0
-      ? "Standard"
-      : modifier === 20
-        ? "Easy"
-        : modifier === -20
-          ? "Hard"
-          : `${modifier > 0 ? "+" : ""}${modifier}`;
+  const level = levelLabelForModifier(modifier) ?? `${modifier > 0 ? "+" : ""}${modifier}`;
   const chance = encounterRules(d).skillTarget(actor, stat, modifier, d);
   return `${statName(d, stat)} ${shown} · ${level} · ${chance} %`;
 }

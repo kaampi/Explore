@@ -1,3 +1,4 @@
+import { CHECK_LEVELS } from "../../game/rules";
 import { useEffect, useRef, useState } from "react";
 import type {
   CampaignTemplate,
@@ -1466,9 +1467,11 @@ function SceneActions({
                     })
                   }
                 >
-                  <option value={20}>Easy</option>
-                  <option value={0}>Standard</option>
-                  <option value={-20}>Hard</option>
+                  {CHECK_LEVELS.map((level) => (
+                    <option key={level.id} value={level.modifier}>
+                      {level.label}
+                    </option>
+                  ))}
                 </select>
               </label>
               <p className="playable-hint" role="status" aria-label="Your chance">

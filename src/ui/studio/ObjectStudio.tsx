@@ -1,3 +1,4 @@
+import { CHECK_LEVELS, suggestLevel, type CheckLevel } from "../../game/rules";
 import { validateObjectNesting, objectContents } from "@library/objectLocation";
 import { useEffect, useState } from "react";
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
@@ -29,6 +30,7 @@ type Draft = {
   placeId: string;
   weight: string;
   difficulty: string;
+  checkLevel: CheckLevel | "";
   checkAttribute: string;
   isWeapon: boolean;
   weaponSkill: string;
@@ -70,6 +72,7 @@ function emptyDraft(): Draft {
     placeId: "",
     weight: "",
     difficulty: "",
+    checkLevel: "",
     checkAttribute: "",
     isWeapon: false,
     weaponSkill: "Melee",
@@ -107,6 +110,9 @@ function draftFrom(template: ObjectTemplate): Draft {
         : (template.placeId ?? ""),
     weight: template.weight !== undefined ? String(template.weight) : "",
     difficulty: template.difficulty !== undefined ? String(template.difficulty) : "",
+    checkLevel:
+      template.checkLevel ??
+      (template.difficulty !== undefined ? suggestLevel(template.difficulty) : ""),
     checkAttribute: template.checkAttribute ?? "",
     isWeapon: Boolean(template.weapon),
     weaponSkill: template.weapon?.skill ?? "Melee",
@@ -248,6 +254,7 @@ export function ObjectStudio({ repo }: { repo: IndexedDBRepository }) {
         lockable: draft.lockable,
         ...(weight !== undefined ? { weight } : {}),
         ...(difficulty !== undefined ? { difficulty } : {}),
+        ...(draft.checkLevel ? { checkLevel: draft.checkLevel } : {}),
         ...(draft.checkAttribute.trim() ? { checkAttribute: draft.checkAttribute.trim() } : {}),
         ...(draft.isWeapon
           ? {
@@ -682,12 +689,20 @@ export function ObjectStudio({ repo }: { repo: IndexedDBRepository }) {
                   </label>
                   <label className="setup-field">
                     Difficulty <span className="setup-optional">optional</span>
-                    <input
-                      value={draft.difficulty}
-                      onChange={(e) => setDraft({ ...draft, difficulty: e.target.value })}
-                      placeholder="14"
-                      inputMode="decimal"
-                    />
+                    <select
+                      aria-label="Difficulty"
+                      value={draft.checkLevel}
+                      onChange={(e) =>
+                        setDraft({ ...draft, checkLevel: e.target.value as CheckLevel | "" })
+                      }
+                    >
+                      <option value="">Not set</option>
+                      {CHECK_LEVELS.map((level) => (
+                        <option key={level.id} value={level.id}>
+                          {level.label}
+                        </option>
+                      ))}
+                    </select>
                   </label>
                 </div>
                 <label className="setup-field setup-field--row">

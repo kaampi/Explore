@@ -25,6 +25,29 @@ export interface RulesAdapter {
   ): ActionCheck;
   damage(check: ActionCheck, weapon: Weapon, definition: EncounterDefinition): number;
 }
+/** Difficulty levels shared by object cards and the storyboard: percentage points on the chance. */
+export const CHECK_LEVELS = [
+  { id: "easy", label: "Easy", modifier: 20 },
+  { id: "standard", label: "Standard", modifier: 0 },
+  { id: "hard", label: "Hard", modifier: -20 },
+  { id: "veryHard", label: "Very hard", modifier: -40 },
+] as const;
+export type CheckLevel = (typeof CHECK_LEVELS)[number]["id"];
+
+export const levelModifier = (level: CheckLevel): number =>
+  CHECK_LEVELS.find((l) => l.id === level)!.modifier;
+
+export const levelLabelForModifier = (modifier: number): string | undefined =>
+  CHECK_LEVELS.find((l) => l.modifier === modifier)?.label;
+
+/** Suggests a level from an older d20-style difficulty number. */
+export function suggestLevel(difficulty: number): CheckLevel {
+  if (difficulty <= 8) return "easy";
+  if (difficulty <= 13) return "standard";
+  if (difficulty <= 17) return "hard";
+  return "veryHard";
+}
+
 /**
  * The chance, 0 to 100, that a value on a scale stands for: the middle of the scale is 50, the
  * ends are 0 and 100, and a value outside the scale counts as its nearest end. A scale that
