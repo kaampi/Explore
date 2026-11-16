@@ -5,6 +5,7 @@ import type {
   PlaceTemplate,
   CharacterTemplate,
   ObjectTemplate,
+  RulesetTemplate,
   StoryboardLink,
   StoryboardPosition,
   StoryboardSection,
@@ -63,6 +64,7 @@ export function PlayableStoryboard({
   mapPlaces,
   onCreatePlace,
   onOpenLibrary,
+  rulesets = [],
   initialStep = "scenes",
 }: {
   campaign: CampaignTemplate;
@@ -75,6 +77,8 @@ export function PlayableStoryboard({
   onSave?: () => void;
   expanded?: boolean;
   mapPlaces?: AdventureMapPlace[] | undefined;
+  /** The saved rule-sets, for the values a new scene is made with. */
+  rulesets?: RulesetTemplate[];
   /** Opens the Cast or Things step, for when there is nothing to choose from. */
   onOpenLibrary?: ((what: "people" | "things") => void) | undefined;
   /** Which step to show first. */
@@ -334,7 +338,7 @@ export function PlayableStoryboard({
       ...(parent ? { storyboardSectionId: parent.id } : {}),
     };
     if (campaign.scenes.some((item) => item.encounter) && next.placeId)
-      next = makePlayableScene(campaign, next, places, characters, objects);
+      next = makePlayableScene(campaign, next, places, characters, objects, rulesets);
     const mapped = mapPlaces?.find((entry) => entry.place.id === next.placeId);
     if (mapped) next = bindSceneMapPlace(next, mapped);
     const actId = parent && hierarchy.parentAct(parent);
@@ -803,7 +807,7 @@ export function PlayableStoryboard({
             (mapPlaces ? !sceneMapPlace : !places.some((place) => place.id === scene.placeId))
           }
           onClick={() => {
-            patchScene(makePlayableScene(campaign, scene, places, characters, objects));
+            patchScene(makePlayableScene(campaign, scene, places, characters, objects, rulesets));
             setFocus("arrival");
           }}
         >

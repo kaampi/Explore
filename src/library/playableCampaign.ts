@@ -22,6 +22,7 @@ import {
   type PlaceTemplate,
   type CharacterTemplate,
   type ObjectTemplate,
+  type RulesetTemplate,
 } from "./LibrarySchema";
 export function newOpportunity(
   label = "New action",
@@ -46,6 +47,7 @@ export function makePlayableScene(
   places: PlaceTemplate[],
   characters: CharacterTemplate[],
   objects: ObjectTemplate[],
+  rulesets: RulesetTemplate[] = [],
 ): CampaignScene {
   const place = places.find((p) => p.id === scene.placeId),
     stats = Object.fromEntries(
@@ -133,7 +135,11 @@ export function makePlayableScene(
     },
     history: [],
   });
-  return syncScene(campaign, { ...scene, encounter: game }, { characters, objects, places });
+  return syncScene(
+    campaign,
+    { ...scene, encounter: game },
+    { characters, objects, places, rulesets },
+  );
 }
 export function adventureFacts(campaign: CampaignTemplate) {
   const facts = new Map<string, string>();

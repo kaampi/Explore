@@ -433,6 +433,7 @@ export function CampaignStudio({
       characters: visibleCharacters,
       objects: visibleObjects,
       places: visiblePlaces,
+      rulesets: visibleRulesets,
     });
   }
 
@@ -1574,6 +1575,7 @@ export function CampaignStudio({
                 repo={repo}
                 onRefresh={refresh}
                 onCreatePlace={createPlace}
+                rulesets={visibleRulesets}
                 onOpenLibrary={(what) => {
                   setStoryboardOpen(false);
                   setStoryboardStep("scenes");

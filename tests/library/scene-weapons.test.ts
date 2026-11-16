@@ -211,8 +211,8 @@ describe("keeping a weapon in step with its card", () => {
     expect(synced.encounter!.state.actors[eddaId]!.inventory).not.toContain(sword.id);
   });
 
-  it("gives a value of 40 where the person has none, and the Cast value once there is one", () => {
-    const { campaign, sword, eddaId, library } = armed();
+  it("gives a value of 40 for a skill outside the rule-set, since the set decides the values", () => {
+    const { campaign, eddaId, library } = armed();
     const id = eddaId.slice(4);
 
     const without = syncAdventure(campaign, library);
@@ -229,8 +229,10 @@ describe("keeping a weapon in step with its card", () => {
       },
       library,
     );
-    expect(withValue.scenes[0]!.encounter!.state.actors[eddaId]!.stats.Melee).toBe(65);
-    expect(sword.id).toBeTruthy();
+    // Melee is not one of the set's values, so the Cast cannot give one.
+    expect(withValue.scenes[0]!.encounter!.state.actors[eddaId]!.stats.Melee).toBe(
+      DEFAULT_WEAPON_SKILL,
+    );
   });
 
   it("is stable when run twice", () => {

@@ -4,10 +4,13 @@ import type {
   CharacterTemplate,
   ObjectTemplate,
   PlaceTemplate,
+  RulesetTemplate,
 } from "./LibrarySchema";
 import type { EncounterGame } from "../game/EncounterSchema";
 import { validateEncounter } from "../game/EncounterEngine";
 import { sceneFormat } from "./sceneFormat";
+import { attributeRange } from "../state/traitBands";
+import { BASIC_RULESET, BASIC_START_VALUE } from "./basicRuleset";
 import { STARTING_AMMUNITION, isHostile, weaponRecord } from "./sceneParts";
 
 /** The cards a scene's details come from. */
@@ -15,6 +18,8 @@ export type SceneLibrary = {
   characters: CharacterTemplate[];
   objects: ObjectTemplate[];
   places: PlaceTemplate[];
+  /** The saved rule-sets. Missing is the same as none. */
+  rulesets?: RulesetTemplate[];
 };
 
 const MAX_STAT = 100;
@@ -28,15 +33,86 @@ function numericStats(sheet: Record<string, string | number> | undefined): Recor
   );
 }
 
-function syncPlayer(campaign: CampaignTemplate, game: EncounterGame) {
+type Scale = { id: string; name: string; min: number; max: number };
+/** The scales a scene is played with, and the value a person gets for a skill they have none for. */
+type ActiveRules = { scales: Scale[]; startValue: (scale: Scale) => number };
+
+const hasNumbers = (sheet: Record<string, string | number> | undefined) =>
+  Object.keys(numericStats(sheet)).length > 0;
+
+/**
+ * Which values the scene is played with. The adventure's rule-set if it has one, otherwise the
+ * basic set. An adventure with no rule-set and no values on the player's sheet, in a scene that
+ * has no scales, is left exactly as it was.
+ */
+function activeRules(
+  campaign: CampaignTemplate,
+  game: EncounterGame,
+  library: SceneLibrary,
+): ActiveRules | undefined {
+  const chosen = campaign.rulesetId
+    ? library.rulesets?.find((set) => set.id === campaign.rulesetId)
+    : undefined;
+  const untouched =
+    !campaign.rulesetId &&
+    !hasNumbers(campaign.player?.stats) &&
+    game.definition.rules.attributes.length === 0;
+  if (untouched) return undefined;
+  const numeric = (chosen?.attributes ?? []).filter((attribute) => attribute.kind === "number");
+  const usable = numeric.length > 0;
+  const attributes = usable ? numeric : BASIC_RULESET.attributes;
+  const scales = attributes.map((attribute) => ({
+    id: attribute.id,
+    name: attribute.name,
+    ...attributeRange(attribute),
+  }));
+  return {
+    scales,
+    startValue: usable ? (scale) => (scale.min + scale.max) / 2 : () => BASIC_START_VALUE,
+  };
+}
+
+/** Exactly the set's values: the sheet's number, else the start value. Anything else is dropped. */
+function statsFor(
+  rules: ActiveRules,
+  sheet: Record<string, string | number> | undefined,
+): Record<string, number> {
+  const given = Object.fromEntries(
+    Object.entries(sheet ?? {})
+      .filter(([, value]) => String(value).trim() !== "" && Number.isFinite(Number(value)))
+      .map(([id, value]) => [id, Number(value)]),
+  );
+  return Object.fromEntries(
+    rules.scales.map((scale) => [scale.id, given[scale.id] ?? rules.startValue(scale)]),
+  );
+}
+
+/** Write the scales, and every person's values on them. */
+function syncRules(campaign: CampaignTemplate, game: EncounterGame, rules: ActiveRules) {
+  game.definition.rules.attributes = rules.scales;
+  const player = game.state.actors[game.definition.playerId];
+  if (player) player.stats = statsFor(rules, campaign.player?.stats);
+  for (const actor of Object.values(game.state.actors)) {
+    if (!actor.id.startsWith("npc:")) continue;
+    const member = campaign.people.find((person) => person.characterId === actor.id.slice(4));
+    actor.stats = statsFor(rules, member?.stats);
+  }
+}
+
+function syncPlayer(campaign: CampaignTemplate, game: EncounterGame, rules?: ActiveRules) {
   const player = game.state.actors[game.definition.playerId];
   if (!player) return;
   const name = campaign.player?.name?.trim();
   if (name) player.name = name;
-  Object.assign(player.stats, numericStats(campaign.player?.stats));
+  if (!rules) Object.assign(player.stats, numericStats(campaign.player?.stats));
 }
 
-function syncPeople(campaign: CampaignTemplate, game: EncounterGame, library: SceneLibrary) {
+function syncPeople(
+  campaign: CampaignTemplate,
+  game: EncounterGame,
+  library: SceneLibrary,
+  rules?: ActiveRules,
+) {
   for (const actor of Object.values(game.state.actors)) {
     if (!actor.id.startsWith("npc:")) continue;
     const characterId = actor.id.slice(4);
@@ -46,7 +122,7 @@ function syncPeople(campaign: CampaignTemplate, game: EncounterGame, library: Sc
     if (card.anatomyTemplateId) actor.anatomyTemplateId = card.anatomyTemplateId;
     else delete actor.anatomyTemplateId;
     const member = campaign.people.find((person) => person.characterId === characterId);
-    Object.assign(actor.stats, numericStats(member?.stats));
+    if (!rules) Object.assign(actor.stats, numericStats(member?.stats));
   }
 }
 
@@ -142,8 +218,10 @@ export function syncScene(
 ): CampaignScene {
   if (!scene.encounter) return scene;
   const game = structuredClone(scene.encounter);
-  syncPlayer(campaign, game);
-  syncPeople(campaign, game, library);
+  const rules = activeRules(campaign, game, library);
+  if (rules) syncRules(campaign, game, rules);
+  syncPlayer(campaign, game, rules);
+  syncPeople(campaign, game, library, rules);
   syncItems(game, library);
   syncWeapons(game, library);
   resetPlayState(game);
