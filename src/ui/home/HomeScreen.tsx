@@ -40,6 +40,7 @@ import type { ConversationEntry } from "@persistence/ConversationSchema";
 import { HomeConnection } from "../connection/ConnectionHelp";
 import { WorldArtwork } from "./WorldArtwork";
 import { CoreManuscripts } from "./CoreManuscripts";
+import { ExploreWorldDialog } from "./ExploreWorldDialog";
 
 export function HomeScreen({
   repo,
@@ -84,6 +85,7 @@ export function HomeScreen({
   const [quickName, setQuickName] = useState("");
   const [quickPersonality, setQuickPersonality] = useState("");
   const [world, setWorld] = useState<RealmTemplate | null>(null);
+  const [exploring, setExploring] = useState<RealmTemplate | null>(null);
   const [campaign, setCampaign] = useState<CampaignTemplate | null>(null);
   const [placeId, setPlaceId] = useState("");
   const [characterId, setCharacterId] = useState("");
@@ -745,6 +747,19 @@ export function HomeScreen({
             <button type="button" className="sb-link" onClick={() => onStudio("places")}>
               Worlds & places ↗
             </button>
+            {world.worldMap && world.worldMap.nodes.length > 0 && (
+              <button
+                type="button"
+                className="sb-link"
+                disabled={busy}
+                onClick={() => {
+                  setExploring(world);
+                  setWorld(null);
+                }}
+              >
+                Explore this world…
+              </button>
+            )}
             <button
               type="button"
               className="sb-button"
@@ -759,6 +774,18 @@ export function HomeScreen({
             </button>
           </div>
         </Modal>
+      )}
+      {exploring && (
+        <ExploreWorldDialog
+          repo={repo}
+          world={exploring}
+          places={places}
+          rulesets={rulesets}
+          sessionId={sessionId}
+          model={initialModel(preferredModel, discovery.models) || session?.runtime.model}
+          onStart={onStart}
+          onClose={() => setExploring(null)}
+        />
       )}
       {campaign && (
         <Modal title={campaign.name} onClose={() => setCampaign(null)}>
