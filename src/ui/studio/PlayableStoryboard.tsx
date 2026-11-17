@@ -38,7 +38,7 @@ import {
   type SceneField,
   type StoryboardIssue,
 } from "./storyboardReadiness";
-import { sceneFormat } from "../../library/sceneFormat";
+import { isOpenDraft, sceneFormat } from "../../library/sceneFormat";
 import { checkPreview, statName } from "../../game/narration";
 import { SceneParts } from "./SceneParts";
 import { ScenePositions } from "./ScenePositions";
@@ -153,7 +153,10 @@ export function PlayableStoryboard({
     issues.flatMap((issue) => (issue.kind === "scene" ? [issue.id] : [])),
   );
   /** Scenes built here. Scenes in the earlier format are built and started in Scenes. */
-  const buildable = campaign.scenes.filter((item) => sceneFormat(item) !== "earlier");
+  // A draft nothing has been built in yet is not a scene to start from or to count as unfinished.
+  const buildable = campaign.scenes.filter(
+    (item) => sceneFormat(item) !== "earlier" && !isOpenDraft(item),
+  );
   const testScene = buildable.find((item) => item.id === testSceneId) ?? buildable[0];
   const connectionSource =
     campaign.scenes.find((item) => item.id === connectionSourceId) ?? scene ?? testScene;

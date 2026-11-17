@@ -579,7 +579,14 @@ function freelyFrom(campaign: CampaignTemplate, startId: string): Set<string> {
 function reachableFreely(campaign: CampaignTemplate, startSceneId?: string): Set<string> {
   if (startSceneId && campaign.scenes.some((scene) => scene.id === startSceneId))
     return freelyFrom(campaign, startSceneId);
-  const [first, ...rest] = campaign.scenes;
+  // Any scene a game can start in could be the start. A scene nothing leads to or from, and a
+  // draft nothing is built in, would only make the count needlessly cautious.
+  const linked = new Set(campaign.sceneLinks.flatMap((link) => [link.fromSceneId, link.toSceneId]));
+  const playable = campaign.scenes.filter((scene) => scene.encounter);
+  const connected = playable.filter((scene) => linked.has(scene.id));
+  const starts =
+    connected.length > 0 ? connected : playable.length > 0 ? playable : campaign.scenes;
+  const [first, ...rest] = starts;
   if (!first) return new Set();
   let allowed = freelyFrom(campaign, first.id);
   for (const scene of rest) {
