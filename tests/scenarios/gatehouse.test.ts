@@ -110,6 +110,15 @@ describe("the city gate on the common engine", () => {
     expect(adventureCompleted(engine.getSession())).toBe(true);
   });
 
+  it("does not let a failed lock-picking be tried again", () => {
+    const { engine } = fixture();
+
+    act(engine, interaction("pick-lock"), 0.99);
+
+    expect(doorOf(engine).locked).toBe(true);
+    expect(() => act(engine, interaction("pick-lock"), 0)).toThrow();
+  });
+
   it("lets the player break the gate, and a failure starts a fight", () => {
     const won = fixture();
     act(won.engine, interaction("break-gate"), 0);

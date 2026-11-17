@@ -329,7 +329,8 @@ export function trySkill(
 
 /**
  * A ready-made action for a thing that lies on a position: try to lift, force, open or use it,
- * with a roll. The difficulty comes from the card's level. It is an ordinary action afterwards,
+ * with a roll. A roll is tried once: a failure that cost nothing would only be tried again. The
+ * difficulty comes from the card's level. It is an ordinary action afterwards,
  * so the author can rewrite the texts and add effects.
  */
 export function addTry(
@@ -352,20 +353,21 @@ export function addTry(
   ];
   if (!known.includes(stat)) throw new Error(`“${stat}” is not a skill in this scene.`);
   const name = item.name.toLowerCase();
+  const id = crypto.randomUUID();
   game.definition.interactions.push(
     InteractionSchema.parse({
-      id: crypto.randomUUID(),
+      id,
       label: `${verb} ${item.name}`,
       description: "",
       position,
-      once: false,
+      once: true,
       check: {
         stat,
         modifier: object.checkLevel ? levelModifier(object.checkLevel) : 0,
       },
       success: {
         text: `You manage it with the ${name}.`,
-        effects: [{ kind: "flag", flag: `done:${object.id}` }],
+        effects: [{ kind: "flag", flag: `done:${id}` }],
       },
       failure: { text: `The ${name} does not give.`, effects: [] },
     }),

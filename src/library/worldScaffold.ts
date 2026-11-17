@@ -12,9 +12,10 @@ import {
 } from "./LibrarySchema";
 import { adventureMapPlaces, type AdventureMapPlace } from "./adventureMap";
 import { makePlayableScene } from "./playableCampaign";
-import { addPickUp, placeItem } from "./sceneParts";
+import { actorIdFor, addPickUp, placeItem } from "./sceneParts";
 import { syncAdventure } from "./sceneSync";
 import type { MapNode } from "./worldMap";
+import { parseTravelMinutes } from "../state/gameClock";
 
 /** Most scenes one free-play game is built with. A bigger world is played from a town or a building. */
 export const MAX_WORLD_SCENES = 300;
@@ -86,11 +87,23 @@ export function scaffoldFromWorld(
     scenes: [],
   });
   const peopleIds = new Set<string>();
+  const placedAt = new Map<string, string>();
+  const heldHere = new Map<string, ObjectTemplate[]>();
   const objectIds = new Set<string>();
   const scenes = ordered.map((entry, index) => {
     const { node, place } = entry;
     const people = node.characterIds
       .filter((id) => library.characters.some((card) => card.id === id))
+      .filter((id) => {
+        const first = placedAt.get(id);
+        if (first === undefined) {
+          placedAt.set(id, node.name);
+          return true;
+        }
+        const who = library.characters.find((card) => card.id === id)!.name;
+        skipped.push(`${who} is also on “${node.name}”, but stands only at “${first}”`);
+        return false;
+      })
       .map((characterId) => {
         peopleIds.add(characterId);
         return {
@@ -109,6 +122,15 @@ export function scaffoldFromWorld(
         card.startingLocation?.kind === "place" && card.startingLocation.placeId === place.id,
     );
     for (const card of here) objectIds.add(card.id);
+    const held = library.objects.filter((card) => {
+      const holder = card.startingLocation;
+      return (
+        holder?.kind === "character" &&
+        people.some((person) => person.characterId === holder.characterId)
+      );
+    });
+    for (const card of held) objectIds.add(card.id);
+    heldHere.set(node.id, held);
     return {
       ...emptyCampaignScene(),
       name: node.name,
@@ -140,6 +162,11 @@ export function scaffoldFromWorld(
       const card = library.objects.find((item) => item.id === id)!;
       playable = addPickUp(placeItem(playable, card, { position: "here" }), card.id);
     }
+    for (const card of heldHere.get(entry.node.id) ?? [])
+      if (card.startingLocation?.kind === "character")
+        playable = placeItem(playable, card, {
+          heldBy: actorIdFor(card.startingLocation.characterId),
+        });
     sceneOf.set(entry.node.id, playable);
     return playable;
   });
@@ -224,6 +251,7 @@ function routeLinks(
     a: MapNode,
     b: MapNode,
     directions: [MapNode, MapNode][],
+    minutes?: number,
   ) => {
     const doorway = access === "locked" || isDoorway(a, b, byNode);
     for (const [from, to] of directions) {
@@ -246,29 +274,51 @@ function routeLinks(
         requiresFlags: [],
         requiresAbsentFlags: [],
         ...(doorway ? { requiresOpenBarriers: [id] } : {}),
+        ...(minutes !== undefined ? { minutes } : {}),
         setsFlags: [],
       });
     }
   };
+
+  // Ways that run on from place to place through crossings are followed to the other end.
+  const nodeById = new Map(map.nodes.map((node) => [node.id, node]));
+  const leaving = new Map<string, { to: string; route: Route }[]>();
   for (const route of map.routes as Route[]) {
-    const a = byNode.get(route.from)?.node,
-      b = byNode.get(route.to)?.node;
-    if (!a || !b || route.access === "hidden") continue;
-    // A way to something inside does not bring the place itself any nearer to its surroundings.
-    if (!insideOf(a, b)) routed.add(a.id);
-    if (!insideOf(b, a)) routed.add(b.id);
-    connect(
-      route.id,
-      route.access,
-      a,
-      b,
-      route.bothWays
-        ? [
-            [a, b],
-            [b, a],
-          ]
-        : [[a, b]],
-    );
+    if (route.access === "hidden") continue;
+    const add = (from: string, to: string) =>
+      leaving.set(from, [...(leaving.get(from) ?? []), { to, route }]);
+    add(route.from, route.to);
+    if (route.bothWays) add(route.to, route.from);
+  }
+  const seenPair = new Set<string>();
+  for (const { node: a } of byNode.values()) {
+    const queue: { at: string; hops: Route[]; seen: Set<string> }[] = [
+      { at: a.id, hops: [], seen: new Set([a.id]) },
+    ];
+    while (queue.length > 0) {
+      const { at, hops, seen } = queue.shift()!;
+      for (const step of leaving.get(at) ?? []) {
+        if (seen.has(step.to)) continue;
+        const next = [...hops, step.route];
+        const target = byNode.get(step.to)?.node;
+        if (target) {
+          const key = `${a.id}>${target.id}`;
+          if (seenPair.has(key)) continue;
+          seenPair.add(key);
+          if (!insideOf(a, target)) routed.add(a.id);
+          if (!insideOf(target, a)) routed.add(target.id);
+          const locked = next.find((hop) => hop.access === "locked");
+          const id = locked?.id ?? next.map((hop) => hop.id).sort()[0]!;
+          const times = next.map((hop) => parseTravelMinutes(hop.duration));
+          const minutes = times.every((time) => time !== undefined)
+            ? Math.round(times.reduce((sum, time) => sum + time!, 0))
+            : undefined;
+          connect(id, locked ? "locked" : "open", a, target, [[a, target]], minutes);
+        } else if (nodeById.get(step.to)?.isJunction) {
+          queue.push({ at: step.to, hops: next, seen: new Set([...seen, step.to]) });
+        }
+      }
+    }
   }
   // A place inside another that no route reaches is entered by its own entrance.
   for (const { node } of byNode.values()) {

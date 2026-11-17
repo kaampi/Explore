@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { innVisitExample } from "../../src/scenarios/innVisit";
 import { scaffoldFromWorld } from "../../src/library/worldScaffold";
-import { emptyCampaignPlayer } from "../../src/library/LibrarySchema";
+import {
+  emptyCampaignPlayer,
+  newCharacterTemplate,
+  newObjectTemplate,
+} from "../../src/library/LibrarySchema";
 import { adventureMapPlaces } from "../../src/library/adventureMap";
 import { adventureFacts } from "../../src/library/playableCampaign";
 import { startPlayableCampaign } from "../../src/session/adventureStart";
@@ -190,5 +194,121 @@ describe("what the build leaves out and what it checks", () => {
     expect(() => scaffoldFromWorld(inn.realm, empty, { player, startNodeId: "nowhere" })).toThrow(
       /Choose a place/,
     );
+  });
+});
+
+describe("ways through crossings, and people and things on the map", () => {
+  /** The kitchen and the guest room, joined through a crossing instead of directly. */
+  function throughCrossing(access: "open" | "locked" | "hidden" = "open") {
+    const { inn } = scaffold();
+    const world = structuredClone(inn.realm);
+    const map = world.worldMap!;
+    const kitchen = named(world, "Kitchen");
+    const guest = named(world, "Guest room");
+    const direct = map.routes.find(
+      (r) => [r.from, r.to].includes(kitchen.id) && [r.from, r.to].includes(guest.id),
+    )!;
+    map.nodes.push({
+      ...structuredClone(guest),
+      id: "crossing",
+      name: "Crossing",
+      isJunction: true,
+      characterIds: [],
+    });
+    map.routes = map.routes.filter((r) => r !== direct);
+    map.routes.push(
+      {
+        ...structuredClone(direct),
+        id: "to-crossing",
+        from: kitchen.id,
+        to: "crossing",
+        duration: "5 minutes",
+      },
+      {
+        ...structuredClone(direct),
+        id: "from-crossing",
+        from: "crossing",
+        to: guest.id,
+        duration: "7 minutes",
+        access,
+      },
+    );
+    return { world, kitchen, guest };
+  }
+  const linkBetween = (built: ReturnType<typeof scaffoldFromWorld>, from: string, to: string) => {
+    const scene = (id: string) => built.campaign.scenes.find((s) => s.mapNodeId === id)!;
+    return built.campaign.sceneLinks.find(
+      (l) => l.fromSceneId === scene(from).id && l.toSceneId === scene(to).id,
+    );
+  };
+
+  it("follows a way through a crossing to the place on the other side, both ways, with the total travel time", () => {
+    const { world, kitchen, guest } = throughCrossing();
+
+    const built = scaffoldFromWorld(world, empty, { player, startNodeId: kitchen.id });
+
+    expect(linkBetween(built, kitchen.id, guest.id)?.minutes).toBe(12);
+    expect(linkBetween(built, guest.id, kitchen.id)?.minutes).toBe(12);
+    expect(built.campaign.scenes.map((s) => s.name)).not.toContain("Crossing");
+  });
+
+  it("makes the whole way a locked door if any part of it is locked, and drops it if any part is hidden", () => {
+    const locked = throughCrossing("locked");
+    const lockedBuild = scaffoldFromWorld(locked.world, empty, {
+      player,
+      startNodeId: locked.kitchen.id,
+    });
+    const link = linkBetween(lockedBuild, locked.kitchen.id, locked.guest.id)!;
+    expect(link.requiresOpenBarriers).toEqual(["from-crossing"]);
+
+    const hidden = throughCrossing("hidden");
+    const hiddenBuild = scaffoldFromWorld(hidden.world, empty, {
+      player,
+      startNodeId: hidden.kitchen.id,
+    });
+    expect(linkBetween(hiddenBuild, hidden.kitchen.id, hidden.guest.id)).toBeUndefined();
+  });
+
+  it("puts a person on the map's first place only, and says so", () => {
+    const { inn } = scaffold();
+    const world = structuredClone(inn.realm);
+    const edda = newCharacterTemplate({ name: "Edda" });
+    named(world, "Common room").characterIds = [edda.id];
+    named(world, "Kitchen").characterIds = [edda.id];
+    const built = scaffoldFromWorld(
+      world,
+      { ...empty, characters: [edda] },
+      { player, startNodeId: named(world, "Common room").id },
+    );
+
+    const where = built.campaign.scenes.filter((s) =>
+      Object.keys(s.encounter!.state.actors).includes(`npc:${edda.id}`),
+    );
+
+    expect(where).toHaveLength(1);
+    expect(built.skipped.join(" ")).toContain("Edda is also on");
+  });
+
+  it("gives a person the things whose card says they start with them", () => {
+    const { inn } = scaffold();
+    const world = structuredClone(inn.realm);
+    const edda = newCharacterTemplate({ name: "Edda" });
+    const ring = newObjectTemplate({
+      name: "Silver ring",
+      note: "",
+      tags: [],
+      source: "player",
+      startingLocation: { kind: "character", characterId: edda.id },
+    });
+    named(world, "Common room").characterIds = [edda.id];
+    const built = scaffoldFromWorld(
+      world,
+      { ...empty, characters: [edda], objects: [ring] },
+      { player, startNodeId: named(world, "Common room").id },
+    );
+
+    const scene = built.campaign.scenes.find((s) => s.name === "Common room")!;
+
+    expect(scene.encounter!.state.actors[`npc:${edda.id}`]!.inventory).toContain(ring.id);
   });
 });

@@ -564,7 +564,9 @@ export function EncounterPanel({
           <h2>{d.title}</h2>
           <p>
             {session.adventure
-              ? "Explore the scene through its actions. Discoveries can open new connections, and your progress is saved."
+              ? session.adventure.goal
+                ? "Explore the scene through its actions. Discoveries can open new connections, and your progress is saved."
+                : "Look around, talk to people and move on when you like. The places you leave remember what happened, and your progress is saved."
               : "Talk, negotiate, explore or fight. Your choices and their consequences are saved."}
           </p>
         </header>
@@ -574,7 +576,7 @@ export function EncounterPanel({
         <PlayerInventory session={session} busy={busy} onAction={choose} />
         {session.adventure && (
           <section className="adventure-path">
-            <small>YOUR ADVENTURE</small>
+            <small>{session.adventure.goal ? "YOUR ADVENTURE" : "YOUR WORLD"}</small>
             <h3>{session.adventure.title}</h3>
             <p>
               {

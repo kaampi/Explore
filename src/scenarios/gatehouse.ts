@@ -247,7 +247,6 @@ export function gatehouseExample() {
       },
     ),
     action("pick-lock", "Pick the lock", "here", "The lock clicks.", {
-      once: false,
       requiresItems: [lockpick.id],
       check: { stat: "Dexterity", modifier: 0 },
       success: { text: "The lock clicks open.", effects: [unlock(false)] },

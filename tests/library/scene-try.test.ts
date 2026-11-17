@@ -44,8 +44,8 @@ describe("Try", () => {
     )!;
     expect(action.check).toEqual({ stat: "str", modifier: -20 });
     expect(action.position).toBe(next.encounter!.state.itemLocations[stone.id]);
-    expect(action.once).toBe(false);
-    expect(action.success.effects).toEqual([{ kind: "flag", flag: `done:${stone.id}` }]);
+    expect(action.once).toBe(true);
+    expect(action.success.effects).toEqual([{ kind: "flag", flag: `done:${action.id}` }]);
     expect(() => validateEncounter(next.encounter!)).not.toThrow();
   });
 
@@ -63,6 +63,18 @@ describe("Try", () => {
 
     expect(trySkill(none.scene, none.stone)).toEqual({ id: "str", matched: true });
     expect(trySkill(miss.scene, miss.stone)).toEqual({ id: "str", matched: false });
+  });
+
+  it("is tried once, and two tries on the same thing do not share a discovery", () => {
+    const { scene, stone } = setup();
+
+    const next = addTry(addTry(scene, stone, { verb: "Lift" }), stone, { verb: "Force" });
+
+    const [lift, force] = next.encounter!.definition.interactions.slice(-2);
+    expect(lift!.once).toBe(true);
+    expect(force!.once).toBe(true);
+    const flagOf = (a: typeof lift) => a!.success.effects.find((e) => e.kind === "flag");
+    expect(flagOf(lift)).not.toEqual(flagOf(force));
   });
 
   it("uses no modifier when the card has no level", () => {

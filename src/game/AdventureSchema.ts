@@ -11,6 +11,8 @@ export const AdventureLinkSchema = z.object({
   requiresAbsentFlags: z.array(z.string().min(1)).default([]),
   setsFlags: z.array(z.string().min(1)).default([]),
   label: z.string().default(""),
+  /** Travel time in minutes, when the way has one. */
+  minutes: z.number().int().nonnegative().optional(),
 });
 export const AdventureGoalSchema = z.object({
   title: z.string().trim().min(1),
