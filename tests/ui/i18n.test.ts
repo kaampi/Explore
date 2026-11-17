@@ -34,7 +34,7 @@ describe("the interface languages", () => {
 
   it("do not leave English text in the Swedish or Norwegian lists for the start page, the world dialog and the play panel", () => {
     // Words that really are the same in Swedish or Norwegian as in English.
-    const sameWord = new Set(["scene", "{count} scene", "test", "normal", "neutral"]);
+    const sameWord = new Set(["scene", "{count} scene", "test", "normal", "neutral", "intro"]);
     const added = keys.slice(keys.indexOf("voiceInstructionPlaceholder") + 1);
 
     expect(added.length).toBeGreaterThan(40);

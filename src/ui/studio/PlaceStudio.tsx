@@ -1,3 +1,4 @@
+import { useTranslate } from "../i18n/LanguageProvider";
 import { useEffect, useRef, useState } from "react";
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 import {
@@ -210,6 +211,7 @@ function PictureStrip({
   onRemove: (index: number) => void;
   onPlay: (play: PicturePlay) => void;
 }) {
+  const t = useTranslate();
   return (
     <div className="studio-gallery">
       {pictures.length === 0 ? (
@@ -228,7 +230,7 @@ function PictureStrip({
                 disabled={busy}
                 onClick={() => onRemove(index)}
               >
-                Remove
+                {t("spRemove")}
               </button>
             </div>
           ))}
@@ -247,13 +249,13 @@ function PictureStrip({
       </div>
       {pictures.length > 1 ? (
         <label className="setup-field">
-          Several pictures
+          {t("plsSeveralPictures")}
           <select
             value={play}
             onChange={(e) => onPlay(e.target.value === "random" ? "random" : "fade")}
           >
-            <option value="fade">Fade slowly</option>
-            <option value="random">Pick one when you enter</option>
+            <option value="fade">{t("plsFadeSlowly")}</option>
+            <option value="random">{t("plsPickOneWhenYou")}</option>
           </select>
         </label>
       ) : null}
@@ -276,6 +278,7 @@ function SoundStrip({
   onRemove: (index: number) => void;
   onPlay: (play: PicturePlay) => void;
 }) {
+  const t = useTranslate();
   return (
     <div className="studio-gallery">
       {clips.length > 0 ? (
@@ -289,7 +292,7 @@ function SoundStrip({
                 disabled={busy}
                 onClick={() => onRemove(index)}
               >
-                Remove
+                {t("spRemove")}
               </button>
             </div>
           ))}
@@ -308,13 +311,13 @@ function SoundStrip({
       </div>
       {clips.length > 1 ? (
         <label className="setup-field">
-          Several loops
+          {t("plsSeveralLoops")}
           <select
             value={play}
             onChange={(e) => onPlay(e.target.value === "random" ? "random" : "fade")}
           >
-            <option value="fade">Fade slowly</option>
-            <option value="random">Pick one when you enter</option>
+            <option value="fade">{t("plsFadeSlowly")}</option>
+            <option value="random">{t("plsPickOneWhenYou")}</option>
           </select>
         </label>
       ) : null}
@@ -323,6 +326,7 @@ function SoundStrip({
 }
 
 export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
+  const t = useTranslate();
   const [library, setLibrary] = useState<PlaceTemplate[]>([]);
   const [realms, setRealms] = useState<RealmTemplate[]>([]);
   const [selectedRealmId, setSelectedRealmId] = useState<string | null>(null);
@@ -938,11 +942,11 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
             <SheetNameField
               ariaLabel="Realm name"
               value={realmDraft.name}
-              placeholder="New realm"
+              placeholder={t("plsNewRealm")}
               onChange={(name) => setRealmDraft({ ...realmDraft, name })}
             />
             <FormSection
-              title="Pictures"
+              title={t("plsPictures")}
               lede="Atlas thumb, and a chat backdrop if the landmark has none. Not sent to the model."
             >
               <PictureStrip
@@ -955,7 +959,7 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
               />
             </FormSection>
             <FormSection
-              title="Sound"
+              title={t("plsSound")}
               lede="A looping mp3/ogg/wav under 6 MB. Plays if the landmark has no loop. Not sent to the model."
             >
               <SoundStrip
@@ -968,7 +972,7 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
               />
             </FormSection>
             <FormSection
-              title="Intro"
+              title={t("plsIntro")}
               lede="A postcard for the player. Not Here — the scene still plays in a landmark."
             >
               <textarea
@@ -979,7 +983,7 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
               />
             </FormSection>
             <FormSection
-              title="For the model"
+              title={t("plsForTheModel")}
               lede="Two or three facts for the story AI. Empty = the intro is sent instead."
             >
               <textarea
@@ -990,7 +994,7 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
               />
             </FormSection>
             <FormSection
-              title="Free play"
+              title={t("pathFreeTitle")}
               lede="When someone explores this world on its map, the story AI can give a place with no people a couple of ordinary residents to talk to. They carry nothing, hand out nothing and cannot be fought; they are only someone to talk to."
             >
               <label className="setup-field setup-field--row">
@@ -1001,9 +1005,7 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
                     setRealmDraft({ ...realmDraft, generateResidents: e.target.checked })
                   }
                 />
-                <span className="setup-field__label">
-                  Let the AI invent residents for empty places
-                </span>
+                <span className="setup-field__label">{t("plsLetTheAiInvent")}</span>
               </label>
             </FormSection>
             {notice && <p className="setup-notice">{notice}</p>}
@@ -1015,11 +1017,11 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
                 disabled={busy}
                 onClick={() => void saveRealm()}
               >
-                Save
+                {t("cpSave")}
               </button>
               {realmSaved && (
                 <button type="button" className="setup-example" onClick={() => void removeRealm()}>
-                  Delete
+                  {t("cstDelete")}
                 </button>
               )}
             </div>
@@ -1034,13 +1036,13 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
             <SheetNameField
               ariaLabel="Landmark name"
               value={draft.name}
-              placeholder="New landmark"
+              placeholder={t("plsNewLandmark")}
               onChange={(name) => setDraft({ ...draft, name })}
             />
             <label className="setup-field setup-field--row">
               <span className="setup-field__label">
-                Tags
-                <span className="setup-optional">this landmark only</span>
+                {t("plsTags")}
+                <span className="setup-optional">{t("plsThisLandmarkOnly")}</span>
               </span>
               <input
                 value={draft.tags}
@@ -1049,7 +1051,7 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
               />
             </label>
             <FormSection
-              title="Pictures"
+              title={t("plsPictures")}
               lede="Each file becomes a thumb and a chat backdrop. This is Here until someone walks into another focal. Not sent to the model."
             >
               <PictureStrip
@@ -1062,7 +1064,7 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
               />
             </FormSection>
             <FormSection
-              title="Sound"
+              title={t("plsSound")}
               lede="A looping mp3/ogg/wav under 6 MB. Not sent to the model."
             >
               <SoundStrip
@@ -1074,10 +1076,10 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
                 onPlay={(play) => setDraft({ ...draft, audioPlay: play })}
               />
             </FormSection>
-            <FormSection title="Light and sound">
+            <FormSection title={t("plsLightAndSound")}>
               <div className="setup-row">
                 <label className="setup-field">
-                  <span className="setup-field__label">Light</span>
+                  <span className="setup-field__label">{t("themeLight")}</span>
                   <input
                     value={draft.lighting}
                     onChange={(e) => setDraft({ ...draft, lighting: e.target.value })}
@@ -1085,7 +1087,7 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
                   />
                 </label>
                 <label className="setup-field">
-                  <span className="setup-field__label">Sound</span>
+                  <span className="setup-field__label">{t("plsSound")}</span>
                   <input
                     value={draft.noise}
                     onChange={(e) => setDraft({ ...draft, noise: e.target.value })}
@@ -1099,11 +1101,11 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
                   checked={draft.music}
                   onChange={(e) => setDraft({ ...draft, music: e.target.checked })}
                 />
-                Music is playing
+                {t("plsMusicIsPlaying")}
               </label>
             </FormSection>
             <FormSection
-              title="Intro"
+              title={t("plsIntro")}
               lede="Typed over the picture. The player sees this. Not sent if For the model is filled."
             >
               <textarea
@@ -1114,7 +1116,7 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
               />
             </FormSection>
             <FormSection
-              title="For the model"
+              title={t("plsForTheModel")}
               lede="Compact Here for this landmark. Empty = the intro is sent instead."
             >
               <textarea
@@ -1133,11 +1135,11 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
                 disabled={busy}
                 onClick={() => void save()}
               >
-                Save
+                {t("cpSave")}
               </button>
               {saved && (
                 <button type="button" className="setup-example" onClick={() => void remove()}>
-                  Delete landmark
+                  {t("plsDeleteLandmark")}
                 </button>
               )}
             </div>
@@ -1152,7 +1154,7 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
             <SheetNameField
               ariaLabel="Focal name"
               value={selectedRoom.label}
-              placeholder="New focal"
+              placeholder={t("plsNewFocal")}
               onChange={(label) =>
                 setDraft({
                   ...draft,
@@ -1163,7 +1165,7 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
               }
             />
             <FormSection
-              title="Pictures"
+              title={t("plsPictures")}
               lede="Typed over the picture. A focal without a picture stays dark instead of showing the landmark."
             >
               <PictureStrip
@@ -1185,7 +1187,7 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
                 }
               />
             </FormSection>
-            <FormSection title="Sound">
+            <FormSection title={t("plsSound")}>
               <SoundStrip
                 clips={selectedRoom.clips}
                 play={selectedRoom.audioPlay}
@@ -1205,7 +1207,7 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
                 }
               />
             </FormSection>
-            <FormSection title="Intro" lede="Typed over the picture. The player sees this.">
+            <FormSection title={t("plsIntro")} lede="Typed over the picture. The player sees this.">
               <textarea
                 className="setup-field__story"
                 value={selectedRoom.description}
@@ -1220,7 +1222,7 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
                 }
               />
             </FormSection>
-            <FormSection title="For the model">
+            <FormSection title={t("plsForTheModel")}>
               <textarea
                 className="setup-field__story"
                 value={selectedRoom.brief}
@@ -1236,7 +1238,7 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
               />
             </FormSection>
             <FormSection
-              title="Also match"
+              title={t("plsAlsoMatch")}
               lede="Other names that count as walking into this room."
             >
               <label className="setup-field">
@@ -1255,11 +1257,11 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
               </label>
             </FormSection>
             <FormSection
-              title="Door"
+              title={t("plsDoor")}
               lede="How this room shows on the Go row in chat. Closed rooms wait until chat names them, a listed reply goes there, or you open them in Inspector. Hidden rooms have no button until then."
             >
               <label className="setup-field setup-field--row">
-                <span className="setup-field__label">In play</span>
+                <span className="setup-field__label">{t("plsInPlay")}</span>
                 <select
                   value={selectedRoom.gate}
                   onChange={(e) => {
@@ -1275,14 +1277,14 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
                     });
                   }}
                 >
-                  <option value="open">Always open</option>
-                  <option value="locked">Visible, closed until opened</option>
-                  <option value="hidden">Hidden until named</option>
+                  <option value="open">{t("plsAlwaysOpen")}</option>
+                  <option value="locked">{t("plsVisibleClosedUntilOpened")}</option>
+                  <option value="hidden">{t("plsHiddenUntilNamed")}</option>
                 </select>
               </label>
             </FormSection>
             <FormSection
-              title="Reachable from"
+              title={t("plsReachableFrom")}
               lede="Where you can walk in from — and where the Go buttons appear. Empty = from the landmark floor only, not from other rooms. Tick both ends of a door if they should connect."
             >
               <label className="setup-check">
@@ -1351,7 +1353,7 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
                 disabled={busy}
                 onClick={() => void save()}
               >
-                Save
+                {t("cpSave")}
               </button>
               <button
                 type="button"
@@ -1364,7 +1366,7 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
                   setSelectedFocalId(FLOOR_FOCAL_ID);
                 }}
               >
-                Remove focal
+                {t("plsRemoveFocal")}
               </button>
             </div>
           </>

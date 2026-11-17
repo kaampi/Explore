@@ -1,3 +1,4 @@
+import { useTranslate } from "../i18n/LanguageProvider";
 import { CHECK_LEVELS, suggestLevel, type CheckLevel } from "../../game/rules";
 import { validateObjectNesting, objectContents } from "@library/objectLocation";
 import { useEffect, useState } from "react";
@@ -133,6 +134,7 @@ function parseOptionalNumber(raw: string): number | undefined {
 }
 
 export function ObjectStudio({ repo }: { repo: IndexedDBRepository }) {
+  const t = useTranslate();
   const [library, setLibrary] = useState<ObjectTemplate[]>([]);
   const [stories, setStories] = useState<StoryTemplate[]>([]);
   const [characters, setCharacters] = useState<CharacterTemplate[]>([]);
@@ -323,25 +325,20 @@ export function ObjectStudio({ repo }: { repo: IndexedDBRepository }) {
         empty="No objects yet."
       />
       <section className="studio-sheet studio-sheet--form">
-        {!draft && (
-          <p className="inspector-empty">
-            Create the objects that belong in your world. Describe their appearance, starting
-            location and role in the story.
-          </p>
-        )}
+        {!draft && <p className="inspector-empty">{t("osCreateTheObjectsThat")}</p>}
         {draft && (
           <>
             <p className="setup-kicker">{sourceCaption(draft.source, saved)}</p>
             <SheetNameField
               ariaLabel="Object name"
               value={draft.name}
-              placeholder="New object"
+              placeholder={t("osNewObject")}
               onChange={(name) => setDraft({ ...draft, name })}
             />
             <label className="setup-field setup-field--row">
               <span className="setup-field__label">
-                Description
-                <span className="setup-optional">what it is, in this world</span>
+                {t("osDescription")}
+                <span className="setup-optional">{t("osWhatItIsIn")}</span>
               </span>
               <textarea
                 rows={5}
@@ -352,8 +349,8 @@ export function ObjectStudio({ repo }: { repo: IndexedDBRepository }) {
             </label>
             <label className="setup-field setup-field--row">
               <span className="setup-field__label">
-                Tags
-                <span className="setup-optional">this object only</span>
+                {t("osTags")}
+                <span className="setup-optional">{t("osThisObjectOnly")}</span>
               </span>
               <input
                 value={draft.tags}
@@ -366,7 +363,7 @@ export function ObjectStudio({ repo }: { repo: IndexedDBRepository }) {
               value={draft.factionIds}
               onChange={(factionIds) => setDraft({ ...draft, factionIds })}
             />
-            <FormSection title="Picture" lede="Optional visual reference.">
+            <FormSection title={t("osPicture")} lede="Optional visual reference.">
               {draft.imageDataUrl && (
                 <div>
                   <img
@@ -380,7 +377,7 @@ export function ObjectStudio({ repo }: { repo: IndexedDBRepository }) {
                     }}
                   />
                   <button type="button" onClick={() => setDraft({ ...draft, imageDataUrl: "" })}>
-                    Remove picture
+                    {t("osRemovePicture")}
                   </button>
                 </div>
               )}
@@ -413,20 +410,20 @@ export function ObjectStudio({ repo }: { repo: IndexedDBRepository }) {
               />
             </FormSection>
             <FormSection
-              title="Role in the story"
+              title={t("osRoleInTheStory")}
               lede="Importance is separate from monetary value. This is author information, not a reveal to the player."
             >
               <label className="setup-field">
-                <span className="setup-field__label">Role</span>
+                <span className="setup-field__label">{t("osRole")}</span>
                 <select
                   value={draft.storyRole}
                   onChange={(e) =>
                     setDraft({ ...draft, storyRole: e.target.value as Draft["storyRole"] })
                   }
                 >
-                  <option value="background">Background — part of the setting</option>
-                  <option value="useful">Useful — can help during play</option>
-                  <option value="critical">Story-critical — essential to a goal</option>
+                  <option value="background">{t("osBackgroundPartOfThe")}</option>
+                  <option value="useful">{t("osUsefulCanHelpDuring")}</option>
+                  <option value="critical">{t("osStoryCriticalEssentialTo")}</option>
                 </select>
               </label>
               <label className="setup-field">
@@ -442,7 +439,7 @@ export function ObjectStudio({ repo }: { repo: IndexedDBRepository }) {
                 />
               </label>
             </FormSection>
-            <FormSection title="Properties" lede="Describe how this object can be used.">
+            <FormSection title={t("osProperties")} lede="Describe how this object can be used.">
               <label>
                 <input
                   type="checkbox"
@@ -477,32 +474,32 @@ export function ObjectStudio({ repo }: { repo: IndexedDBRepository }) {
               )}
             </FormSection>
             <FormSection
-              title="Starting location"
+              title={t("osStartingLocation")}
               lede="Where the object begins. Its position during play can change."
             >
               <label className="setup-field">
-                <span className="setup-field__label">Starts</span>
+                <span className="setup-field__label">{t("osStarts")}</span>
                 <select
                   value={draft.locationKind}
                   onChange={(e) =>
                     setDraft({ ...draft, locationKind: e.target.value as Draft["locationKind"] })
                   }
                 >
-                  <option value="none">Not placed yet</option>
-                  <option value="place">At a place</option>
-                  <option value="character">With a character</option>
-                  <option value="player">With the player</option>
-                  <option value="object">Inside another object</option>
+                  <option value="none">{t("osNotPlacedYet")}</option>
+                  <option value="place">{t("osAtAPlace")}</option>
+                  <option value="character">{t("osWithACharacter")}</option>
+                  <option value="player">{t("osWithThePlayer")}</option>
+                  <option value="object">{t("osInsideAnotherObject")}</option>
                 </select>
               </label>
               {draft.locationKind === "character" && (
                 <label className="setup-field">
-                  <span className="setup-field__label">Character</span>
+                  <span className="setup-field__label">{t("osCharacter")}</span>
                   <select
                     value={draft.characterId}
                     onChange={(e) => setDraft({ ...draft, characterId: e.target.value })}
                   >
-                    <option value="">Choose a character</option>
+                    <option value="">{t("hsChooseACharacter")}</option>
                     {characters.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.name}
@@ -513,12 +510,12 @@ export function ObjectStudio({ repo }: { repo: IndexedDBRepository }) {
               )}
               {draft.locationKind === "object" && (
                 <label className="setup-field">
-                  <span className="setup-field__label">Containing object</span>
+                  <span className="setup-field__label">{t("osContainingObject")}</span>
                   <select
                     value={draft.containerId}
                     onChange={(e) => setDraft({ ...draft, containerId: e.target.value })}
                   >
-                    <option value="">Choose an object</option>
+                    <option value="">{t("osChooseAnObject")}</option>
                     {library
                       .filter(
                         (o) =>
@@ -543,14 +540,14 @@ export function ObjectStudio({ repo }: { repo: IndexedDBRepository }) {
               <div className="setup-row">
                 <label className="setup-field">
                   <span className="setup-field__label">
-                    Related story
-                    <span className="setup-optional">optional</span>
+                    {t("osRelatedStory")}
+                    <span className="setup-optional">{t("optional")}</span>
                   </span>
                   <select
                     value={draft.storyId}
                     onChange={(e) => setDraft({ ...draft, storyId: e.target.value })}
                   >
-                    <option value="">None</option>
+                    <option value="">{t("cstNone")}</option>
                     {stories.map((item) => (
                       <option key={item.id} value={item.id}>
                         {item.name}
@@ -559,13 +556,13 @@ export function ObjectStudio({ repo }: { repo: IndexedDBRepository }) {
                   </select>
                 </label>
                 <label className="setup-field">
-                  <span className="setup-field__label">Starting place</span>
+                  <span className="setup-field__label">{t("osStartingPlace")}</span>
                   <select
                     disabled={draft.locationKind !== "place"}
                     value={draft.placeId}
                     onChange={(e) => setDraft({ ...draft, placeId: e.target.value })}
                   >
-                    <option value="">None</option>
+                    <option value="">{t("cstNone")}</option>
                     {places.map((item) => (
                       <option key={item.id} value={item.id}>
                         {item.name}
@@ -576,7 +573,7 @@ export function ObjectStudio({ repo }: { repo: IndexedDBRepository }) {
               </div>
             </FormSection>
             <FormSection
-              title="Contents"
+              title={t("osContents")}
               lede="Objects inside this object. Their location follows this container."
             >
               {draft.id && objectContents(library, draft.id).length ? (
@@ -590,14 +587,11 @@ export function ObjectStudio({ repo }: { repo: IndexedDBRepository }) {
                   ))}
                 </ul>
               ) : (
-                <p>
-                  No objects inside yet. Save an object with “Inside another object” as its starting
-                  location to add it here.
-                </p>
+                <p>{t("osNoObjectsInsideYet")}</p>
               )}
             </FormSection>
             <FormSection
-              title="Readable content"
+              title={t("osReadableContent")}
               lede="Text or information revealed by reading or examining, not merely seeing the object. A book can also contain physical objects."
             >
               <textarea
@@ -610,7 +604,7 @@ export function ObjectStudio({ repo }: { repo: IndexedDBRepository }) {
               />
             </FormSection>
             <FormSection
-              title="Weapon"
+              title={t("osWeapon")}
               lede="Lets a person carry this as a weapon in a fight. The skill is the name of a value, like Melee. A person without that value is treated as 40."
             >
               <label className="setup-field setup-field--row">
@@ -624,7 +618,7 @@ export function ObjectStudio({ repo }: { repo: IndexedDBRepository }) {
               {draft.isWeapon && (
                 <div className="setup-row">
                   <label className="setup-field">
-                    Skill
+                    {t("psSkill")}
                     <input
                       aria-label="Weapon skill"
                       value={draft.weaponSkill}
@@ -633,7 +627,7 @@ export function ObjectStudio({ repo }: { repo: IndexedDBRepository }) {
                     />
                   </label>
                   <label className="setup-field">
-                    Kind
+                    {t("osKind")}
                     <select
                       aria-label="Weapon kind"
                       value={draft.weaponKind}
@@ -641,12 +635,12 @@ export function ObjectStudio({ repo }: { repo: IndexedDBRepository }) {
                         setDraft({ ...draft, weaponKind: e.target.value as "melee" | "ranged" })
                       }
                     >
-                      <option value="melee">Close combat</option>
-                      <option value="ranged">From a distance</option>
+                      <option value="melee">{t("osCloseCombat")}</option>
+                      <option value="ranged">{t("osFromADistance")}</option>
                     </select>
                   </label>
                   <label className="setup-field">
-                    Damage
+                    {t("osDamage")}
                     <input
                       aria-label="Weapon damage"
                       value={draft.weaponDamage}
@@ -655,7 +649,8 @@ export function ObjectStudio({ repo }: { repo: IndexedDBRepository }) {
                     />
                   </label>
                   <label className="setup-field">
-                    Range <span className="setup-optional">metres, optional</span>
+                    {t("osRange")}
+                    <span className="setup-optional">{t("osMetresOptional")}</span>
                     <input
                       aria-label="Weapon range"
                       value={draft.weaponRange}
@@ -675,11 +670,15 @@ export function ObjectStudio({ repo }: { repo: IndexedDBRepository }) {
               )}
             </FormSection>
             <details>
-              <summary>Advanced checks</summary>
-              <FormSection title="For later checks" lede="Stored for rolls that are not wired yet.">
+              <summary>{t("osAdvancedChecks")}</summary>
+              <FormSection
+                title={t("osForLaterChecks")}
+                lede="Stored for rolls that are not wired yet."
+              >
                 <div className="setup-row">
                   <label className="setup-field">
-                    Weight <span className="setup-optional">optional</span>
+                    {t("osWeight")}
+                    <span className="setup-optional">{t("optional")}</span>
                     <input
                       value={draft.weight}
                       onChange={(e) => setDraft({ ...draft, weight: e.target.value })}
@@ -688,7 +687,8 @@ export function ObjectStudio({ repo }: { repo: IndexedDBRepository }) {
                     />
                   </label>
                   <label className="setup-field">
-                    Difficulty <span className="setup-optional">optional</span>
+                    {t("psDifficulty")}
+                    <span className="setup-optional">{t("optional")}</span>
                     <select
                       aria-label="Difficulty"
                       value={draft.checkLevel}
@@ -696,7 +696,7 @@ export function ObjectStudio({ repo }: { repo: IndexedDBRepository }) {
                         setDraft({ ...draft, checkLevel: e.target.value as CheckLevel | "" })
                       }
                     >
-                      <option value="">Not set</option>
+                      <option value="">{t("osNotSet")}</option>
                       {CHECK_LEVELS.map((level) => (
                         <option key={level.id} value={level.id}>
                           {level.label}
@@ -707,8 +707,8 @@ export function ObjectStudio({ repo }: { repo: IndexedDBRepository }) {
                 </div>
                 <label className="setup-field setup-field--row">
                   <span className="setup-field__label">
-                    Check attribute
-                    <span className="setup-optional">e.g. strength — unused until rolls exist</span>
+                    {t("osCheckAttribute")}
+                    <span className="setup-optional">{t("osEGStrengthUnused")}</span>
                   </span>
                   <input
                     value={draft.checkAttribute}
@@ -727,11 +727,11 @@ export function ObjectStudio({ repo }: { repo: IndexedDBRepository }) {
                 disabled={busy}
                 onClick={() => void save()}
               >
-                Save
+                {t("cpSave")}
               </button>
               {saved && (
                 <button type="button" className="setup-example" onClick={() => void remove()}>
-                  Delete
+                  {t("cstDelete")}
                 </button>
               )}
             </div>

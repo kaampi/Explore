@@ -1,3 +1,4 @@
+import { useTranslate } from "../i18n/LanguageProvider";
 import { pinSessionAnatomy, pinSessionFactions } from "@state/anatomy";
 import { useEffect, useState } from "react";
 import { IndexedDBRepository } from "@persistence/IndexedDBRepository";
@@ -92,6 +93,7 @@ export function AdventureStudio({
   onStart: (session: Session) => void;
   onOpenShelf: (view: StudioView) => void;
 }) {
+  const t = useTranslate();
   const [characters, setCharacters] = useState<CharacterTemplate[]>([]);
   const [places, setPlaces] = useState<PlaceTemplate[]>([]);
   const [realms, setRealms] = useState<RealmTemplate[]>([]);
@@ -385,16 +387,13 @@ export function AdventureStudio({
   return (
     <div className="setup-screen studio-adventure">
       <div className="setup-card studio-sheet--form">
-        <p className="setup-kicker">Quick scene</p>
-        <h1 className="setup-title">Assemble a scene</h1>
-        <p className="setup-lede">
-          No adventure — just tonight. Pick a place and a character. Stats need a rule-set. Then
-          Start scene.
-        </p>
+        <p className="setup-kicker">{t("cstQuickScene")}</p>
+        <h1 className="setup-title">{t("asAssembleAScene")}</h1>
+        <p className="setup-lede">{t("asNoAdventureJustTonight")}</p>
 
         <section className="setup-section">
           <div className="setup-section__head">
-            <p className="panel-heading">Model</p>
+            <p className="panel-heading">{t("cstModel")}</p>
           </div>
           <label className="setup-field">
             Ollama
@@ -404,9 +403,9 @@ export function AdventureStudio({
 
         <section className="setup-section">
           <div className="setup-section__head">
-            <p className="panel-heading">Narrator</p>
+            <p className="panel-heading">{t("csNarrator")}</p>
             <button type="button" className="setup-text-btn" onClick={() => onOpenShelf("voices")}>
-              Edit voices
+              {t("cstEditVoices")}
             </button>
           </div>
           <div className="setup-chips" role="list">
@@ -424,15 +423,13 @@ export function AdventureStudio({
 
         <section className="setup-section">
           <div className="setup-section__head">
-            <p className="panel-heading">Ground story</p>
+            <p className="panel-heading">{t("csGroundStory")}</p>
             <button type="button" className="setup-text-btn" onClick={() => onOpenShelf("stories")}>
-              Edit stories
+              {t("asEditStories")}
             </button>
           </div>
           {stories.length === 0 ? (
-            <p className="inspector-empty">
-              Optional. Write one on the Stories shelf if this world has a premise.
-            </p>
+            <p className="inspector-empty">{t("asOptionalWriteOneOn")}</p>
           ) : (
             <div className="setup-chips" role="list">
               <Chip active={storyId === null} label="None" onPick={() => setStoryId(null)} />
@@ -450,13 +447,13 @@ export function AdventureStudio({
 
         <section className="setup-section">
           <div className="setup-section__head">
-            <p className="panel-heading">Landmark</p>
+            <p className="panel-heading">{t("cstLandmark")}</p>
             <button type="button" className="setup-text-btn" onClick={() => onOpenShelf("places")}>
-              Edit locations
+              {t("cstEditLocations")}
             </button>
           </div>
           {visiblePlaces.length === 0 ? (
-            <p className="inspector-empty">Save a landmark first — it must live in a realm.</p>
+            <p className="inspector-empty">{t("asSaveALandmarkFirst")}</p>
           ) : (
             <div className="setup-chips" role="list">
               {visiblePlaces.map((item) => (
@@ -474,13 +471,13 @@ export function AdventureStudio({
 
         <section className="setup-section">
           <div className="setup-section__head">
-            <p className="panel-heading">Rule-set</p>
+            <p className="panel-heading">{t("ruleSet")}</p>
             <button
               type="button"
               className="setup-text-btn"
               onClick={() => onOpenShelf("rulesets")}
             >
-              Edit rule-sets
+              {t("cstEditRuleSets")}
             </button>
           </div>
           <div className="setup-chips" role="list">
@@ -498,9 +495,9 @@ export function AdventureStudio({
 
         <section className="setup-section">
           <div className="setup-section__head">
-            <p className="panel-heading">Objects</p>
+            <p className="panel-heading">{t("asObjects")}</p>
             <button type="button" className="setup-text-btn" onClick={() => onOpenShelf("objects")}>
-              Edit objects
+              {t("cstEditObjects")}
             </button>
           </div>
           <p className="inspector-empty" style={{ marginBottom: 8 }}>
@@ -541,9 +538,7 @@ export function AdventureStudio({
             ))}
           </div>
           {filteredObjects.length === 0 ? (
-            <p className="inspector-empty">
-              Nothing on this filter. Save objects on the Objects shelf, or switch to All.
-            </p>
+            <p className="inspector-empty">{t("asNothingOnThisFilter")}</p>
           ) : (
             <div className="setup-chips" role="list" style={{ marginTop: 8 }}>
               {filteredObjects.map((item) => (
@@ -560,19 +555,17 @@ export function AdventureStudio({
 
         <section className="setup-section">
           <div className="setup-section__head">
-            <p className="panel-heading">Cast</p>
+            <p className="panel-heading">{t("pwCast")}</p>
             <button
               type="button"
               className="setup-text-btn"
               onClick={() => onOpenShelf("characters")}
             >
-              Edit characters
+              {t("cstEditCharacters")}
             </button>
           </div>
           {visibleCharacters.length === 0 ? (
-            <p className="inspector-empty">
-              The archive is empty. Add someone on the Characters shelf, then come back.
-            </p>
+            <p className="inspector-empty">{t("asTheArchiveIsEmpty")}</p>
           ) : (
             <div className="setup-chips" role="list">
               {visibleCharacters.map((item) => (
@@ -607,12 +600,12 @@ export function AdventureStudio({
                       )
                     }
                   >
-                    Remove
+                    {t("spRemove")}
                   </button>
                 </div>
                 <div className="setup-row">
                   <label className="setup-field">
-                    Mood in this scene
+                    {t("asMoodInThisScene")}
                     <input
                       value={pick.mood}
                       onChange={(e) => patchCast(pick.libraryId, { mood: e.target.value })}
@@ -620,7 +613,7 @@ export function AdventureStudio({
                     />
                   </label>
                   <label className="setup-field">
-                    Where in this place?
+                    {t("cstWhereInThisPlace")}
                     <input
                       value={pick.position}
                       onChange={(e) => patchCast(pick.libraryId, { position: e.target.value })}
@@ -630,7 +623,8 @@ export function AdventureStudio({
                 </div>
                 <div className="setup-row">
                   <label className="setup-field">
-                    Wearing now <span className="setup-optional">this scene</span>
+                    {t("asWearingNow")}
+                    <span className="setup-optional">{t("asThisScene")}</span>
                     <input
                       value={pick.clothing}
                       onChange={(e) => patchCast(pick.libraryId, { clothing: e.target.value })}
@@ -638,7 +632,8 @@ export function AdventureStudio({
                     />
                   </label>
                   <label className="setup-field">
-                    In their hands <span className="setup-optional">this scene</span>
+                    {t("cstInTheirHands")}
+                    <span className="setup-optional">{t("asThisScene")}</span>
                     <input
                       value={pick.holding}
                       onChange={(e) => patchCast(pick.libraryId, { holding: e.target.value })}
@@ -714,7 +709,8 @@ export function AdventureStudio({
                 )}
                 <div className="setup-row" style={{ gridTemplateColumns: "1fr 1fr 1fr" }}>
                   <label className="setup-field">
-                    Trust <span className="setup-optional">with you</span>
+                    {t("cstTrust")}
+                    <span className="setup-optional">{t("cstWithYou")}</span>
                     <input
                       value={pick.trust}
                       onChange={(e) => patchCast(pick.libraryId, { trust: e.target.value })}
@@ -722,7 +718,7 @@ export function AdventureStudio({
                     />
                   </label>
                   <label className="setup-field">
-                    Familiarity
+                    {t("cstFamiliarity")}
                     <input
                       value={pick.familiarity}
                       onChange={(e) => patchCast(pick.libraryId, { familiarity: e.target.value })}
@@ -730,7 +726,7 @@ export function AdventureStudio({
                     />
                   </label>
                   <label className="setup-field">
-                    Tension
+                    {t("cstTension")}
                     <input
                       value={pick.tension}
                       onChange={(e) => patchCast(pick.libraryId, { tension: e.target.value })}
@@ -753,7 +749,7 @@ export function AdventureStudio({
             disabled={!canStart || busy}
             onClick={() => void start()}
           >
-            Start scene
+            {t("asStartScene")}
           </button>
           {!canStart && !busy ? (
             <p className="inspector-empty">
