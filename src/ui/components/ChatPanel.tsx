@@ -1,3 +1,4 @@
+import { useTranslate } from "../i18n/LanguageProvider";
 import type { CheckResult } from "../../checks/CheckEngine";
 import { ActionCheckDialog } from "./ActionCheckDialog";
 import { playerCheckStats } from "../../checks/playerCheck";
@@ -165,6 +166,7 @@ export function ChatPanel({
   conversationTitle?: string | undefined;
   onIdeas?: (() => void) | undefined;
 }) {
+  const t = useTranslate();
   const {
     useSession,
     phase,
@@ -421,7 +423,7 @@ export function ChatPanel({
     <div className="chat-exits chat-party">
       <div className="chat-party__row">
         <div className="chat-party__group">
-          <p className="chat-exits__label">My Party</p>
+          <p className="chat-exits__label">{t("cpMyParty")}</p>
           <div className="chat-party__faces">
             <div className="chat-party__you" title={youLabel}>
               {youPortrait ? (
@@ -486,7 +488,7 @@ export function ChatPanel({
           </div>
         </div>
         <div className="chat-party__later">
-          <p className="chat-exits__label">Prospects</p>
+          <p className="chat-exits__label">{t("cpProspects")}</p>
           <div className="chat-party__faces">
             {later.map((slot, index) => {
               if (slot.kind === "empty") {
@@ -494,7 +496,7 @@ export function ChatPanel({
                   <div
                     key={`later-empty-${index}`}
                     className="chat-party__slot chat-party__slot--empty chat-party__slot--later"
-                    title="Someone who asked to join can wait here"
+                    title={t("cpSomeoneWhoAskedTo")}
                   />
                 );
               }
@@ -591,27 +593,27 @@ export function ChatPanel({
         />
       )}
       {regenerateOpen && (
-        <Modal title="Rewrite this reply" onClose={() => setRegenerateOpen(false)}>
-          <p>Generate a new version of the latest reply. You can add instructions below.</p>
+        <Modal title={t("cpRewriteThisReply")} onClose={() => setRegenerateOpen(false)}>
+          <p>{t("cpGenerateANewVersion")}</p>
           <label>
-            Optional instructions
+            {t("cpOptionalInstructions")}
             <textarea
               autoFocus
               value={regenNote}
               onChange={(event) => setRegenNote(event.target.value)}
-              placeholder="What would you like to change?"
+              placeholder={t("cpWhatWouldYouLike")}
             />
           </label>
           <div className="sb-dialog__actions">
             <button type="button" onClick={() => setRegenerateOpen(false)}>
-              Cancel
+              {t("psCancel")}
             </button>
             <button
               type="button"
               disabled={busy || !canSend || !canRegenerate}
               onClick={() => void handleRegenerate()}
             >
-              Regenerate
+              {t("cpRegenerate")}
             </button>
           </div>
         </Modal>
@@ -632,7 +634,7 @@ export function ChatPanel({
           disabled={busy || !canSend || !!session.journey}
           onClick={() => setCheckingAction(true)}
         >
-          Take a chance · Roll dice
+          {t("cpTakeAChanceRoll")}
         </button>
       )}
       {planningJourney && repo && (
@@ -656,7 +658,7 @@ export function ChatPanel({
               disabled={busy || !canSend || Boolean(queuedMessage)}
               onClick={() => setPlanningJourney(true)}
             >
-              Plan journey
+              {t("cpPlanJourney")}
             </button>
           )}
           <time
@@ -680,7 +682,7 @@ export function ChatPanel({
                 disabled={busy || !selectedTurns.size}
                 onClick={() => capture(selectedTurns)}
               >
-                Save selection as idea
+                {t("cpSaveSelectionAsIdea")}
               </button>
               <button
                 type="button"
@@ -689,7 +691,7 @@ export function ChatPanel({
                   setSelectedTurns(new Set());
                 }}
               >
-                Cancel selection
+                {t("cpCancelSelection")}
               </button>
             </>
           ) : (
@@ -701,12 +703,12 @@ export function ChatPanel({
                 setIdeaNotice("");
               }}
             >
-              Capture ideas
+              {t("cpCaptureIdeas")}
             </button>
           )}
           {onIdeas && (
             <button type="button" disabled={busy} onClick={onIdeas}>
-              My ideas
+              {t("ideas")}
             </button>
           )}
           {ideaNotice && <span role="status">{ideaNotice}</span>}
@@ -823,7 +825,7 @@ export function ChatPanel({
                             });
                           }}
                         />
-                        Select
+                        {t("cpSelect")}
                       </label>
                     )}
                     <Dot kind={turn.role === "player" ? "player" : "ai"} />
@@ -899,7 +901,7 @@ export function ChatPanel({
                               fontSize: "11.5px",
                             }}
                           >
-                            Cancel
+                            {t("psCancel")}
                           </button>
                           <button
                             onClick={saveEdit}
@@ -913,7 +915,7 @@ export function ChatPanel({
                               fontWeight: 600,
                             }}
                           >
-                            Save
+                            {t("cpSave")}
                           </button>
                         </div>
                       </div>
@@ -998,7 +1000,7 @@ export function ChatPanel({
                   disabled={busy || !canSend}
                   onClick={() => void sendMessage("I rest until morning.")}
                 >
-                  Rest until morning · 08:00
+                  {t("cpRestUntilMorning08")}
                 </button>
               )}
               <button
@@ -1015,14 +1017,14 @@ export function ChatPanel({
                   disabled={busy || !canSend}
                   onClick={() => void sendMessage("I continue the journey without rest.")}
                 >
-                  Continue without rest
+                  {t("cpContinueWithoutRest")}
                 </button>
               )}
             </div>
             {session.journey.plan &&
               session.journey.plan.stops.length > session.journey.completedStages && (
                 <details className="chat-time-controls">
-                  <summary>Upcoming stops</summary>
+                  <summary>{t("cpUpcomingStops")}</summary>
                   <ul>
                     {session.journey.plan.stops
                       .slice(session.journey.completedStages)
@@ -1036,7 +1038,7 @@ export function ChatPanel({
                             aria-label={`Remove stop: ${stop.label}`}
                             onClick={() => removeJourneyStop(session.journey!.completedStages + i)}
                           >
-                            Remove
+                            {t("spRemove")}
                           </button>
                         </li>
                       ))}
@@ -1047,14 +1049,11 @@ export function ChatPanel({
         )}
         {session.gameClock && !fork && (
           <details className="chat-time-controls">
-            <summary>Pass time</summary>
-            <p>
-              Choose how much fictional time passes here. Conversation length and real time do not
-              move the clock.
-            </p>
+            <summary>{t("cpPassTime")}</summary>
+            <p>{t("cpChooseHowMuchFictional")}</p>
             <div className="setup-row">
               <label>
-                Action
+                {t("cpAction")}
                 <select
                   aria-label="Time action"
                   value={timeAction}
@@ -1066,13 +1065,13 @@ export function ChatPanel({
                     }
                   }}
                 >
-                  <option value="wait">Wait</option>
-                  <option value="rest">Rest</option>
-                  <option value="sleep">Sleep</option>
+                  <option value="wait">{t("cpWait")}</option>
+                  <option value="rest">{t("cpRest")}</option>
+                  <option value="sleep">{t("cpSleep")}</option>
                 </select>
               </label>
               <label>
-                Duration
+                {t("cpDuration")}
                 <input
                   aria-label="Time duration"
                   type="number"
@@ -1083,14 +1082,14 @@ export function ChatPanel({
                 />
               </label>
               <label>
-                Unit
+                {t("cpUnit")}
                 <select
                   aria-label="Time unit"
                   value={timeUnit}
                   onChange={(e) => setTimeUnit(e.target.value)}
                 >
-                  <option value="minutes">Minutes</option>
-                  <option value="hours">Hours</option>
+                  <option value="minutes">{t("cpMinutes")}</option>
+                  <option value="hours">{t("cpHours")}</option>
                 </select>
               </label>
               <button
@@ -1103,21 +1102,21 @@ export function ChatPanel({
                 }
                 onClick={() => void sendMessage(`I ${timeAction} for ${timeAmount} ${timeUnit}.`)}
               >
-                Pass time
+                {t("cpPassTime")}
               </button>
               <button
                 type="button"
                 disabled={busy || !canSend}
                 onClick={() => void sendMessage(`I ${timeAction} until morning.`)}
               >
-                Until morning · 08:00
+                {t("cpUntilMorning0800")}
               </button>
             </div>
           </details>
         )}
         {busy && replyComplete && (
           <p role="status" className="sb-chat-connection-hint">
-            Updating the world… You can send your next message.
+            {t("cpUpdatingTheWorldYou")}
           </p>
         )}
         {queuedMessage && (
@@ -1132,7 +1131,7 @@ export function ChatPanel({
                 setDraft((current) => current || queuedMessage);
               }}
             >
-              Cancel
+              {t("psCancel")}
             </button>
           </p>
         )}
@@ -1141,7 +1140,7 @@ export function ChatPanel({
             You can write a draft while AI connects.{" "}
             {onCheckConnection && (
               <button type="button" className="sb-link" onClick={onCheckConnection}>
-                Set up AI
+                {t("pwSetUpAi")}
               </button>
             )}
           </p>
@@ -1151,14 +1150,14 @@ export function ChatPanel({
             {lastError}{" "}
             {onCheckConnection && (
               <button type="button" className="sb-link" onClick={onCheckConnection}>
-                AI connection
+                {t("cpAiConnection")}
               </button>
             )}
           </div>
         )}
         {fork && editingTurn === null ? (
           <div className="chat-what-now">
-            <p className="chat-what-now__label">Pre-defined Replies</p>
+            <p className="chat-what-now__label">{t("cpPreDefinedReplies")}</p>
             <div className="chat-what-now__chips">
               {(session.whatNow ?? []).map((choice) => {
                 const dest = resolveWhatNowRoom(session, choice.room);
@@ -1181,7 +1180,7 @@ export function ChatPanel({
         {gameTools ? (partyTarget ? createPortal(partyContent, partyTarget) : null) : partyContent}
         {exits.length > 0 ? (
           <div className="chat-exits">
-            <p className="chat-exits__label">Go</p>
+            <p className="chat-exits__label">{t("cpGo")}</p>
             <div className="chat-exits__chips">
               {exits.map((exit) => (
                 <button

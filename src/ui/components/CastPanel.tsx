@@ -37,9 +37,9 @@ function isPendingAi(layer: Layer): boolean {
 }
 
 function LockMark({ lock }: { lock: string }) {
-  if (lock === "player_locked")
-    return <Dot kind="locked" title="Locked by you — the AI cannot change this" />;
-  if (lock === "system_locked") return <Dot kind="locked" title="Locked by the system" />;
+  const t = useTranslate();
+  if (lock === "player_locked") return <Dot kind="locked" title={t("csLockedByYouThe")} />;
+  if (lock === "system_locked") return <Dot kind="locked" title={t("csLockedByTheSystem")} />;
   return null;
 }
 
@@ -56,6 +56,7 @@ function Fact({
   note?: string | undefined;
   onUnlock?: () => void;
 }) {
+  const t = useTranslate();
   return (
     <div className="sheet-fact-wrap">
       <div className="sheet-fact">
@@ -65,7 +66,7 @@ function Fact({
           <button
             type="button"
             className="sheet-fact__unlock"
-            title="Locked by you — click to let the scene change this"
+            title={t("csLockedByYouClick")}
             onClick={onUnlock}
           >
             <LockMark lock={lock} />
@@ -106,6 +107,7 @@ function TraitCard({
   onKeywords?: (id: string, keywords: string[]) => void;
   pending?: boolean;
 }) {
+  const t = useTranslate();
   const live = isEffectivelyActive(session, layer);
   const gated = layerHasKeywordGate(layer) && !layer.once;
   const waiting = Boolean(layer.active && gated && !live);
@@ -205,7 +207,7 @@ function TraitCard({
             }}
             onClick={() => onToggle(layer.id, true)}
           >
-            Approve
+            {t("csApprove")}
           </button>
           <button
             className="layer-card__toggle"
@@ -216,7 +218,7 @@ function TraitCard({
             }}
             onClick={() => onRemove(layer.id)}
           >
-            Reject
+            {t("csReject")}
           </button>
         </div>
       )}
@@ -239,6 +241,7 @@ function AddTraitForm({
   onCancel: () => void;
   placeholder: string;
 }) {
+  const t = useTranslate();
   const [type, setType] = useState<"core" | "relationship" | "environment">(types[0] ?? "core");
   const [content, setContent] = useState("");
   const [keywords, setKeywords] = useState("");
@@ -261,7 +264,7 @@ function AddTraitForm({
       />
       <input
         className="layer-card__keywords"
-        placeholder="Wake on words (optional)"
+        placeholder={t("csWakeOnWordsOptional")}
         value={keywords}
         onChange={(e) => setKeywords(e.target.value)}
       />
@@ -271,7 +274,7 @@ function AddTraitForm({
           onAdd(type, content.trim(), parseKeywordList(keywords));
         }}
       >
-        Add
+        {t("csAdd")}
       </button>
       <button
         type="button"
@@ -279,7 +282,7 @@ function AddTraitForm({
         style={{ width: "100%", marginTop: 6 }}
         onClick={onCancel}
       >
-        Cancel
+        {t("psCancel")}
       </button>
     </div>
   );
@@ -292,6 +295,7 @@ function AddOnceBeatForm({
   onAdd: (content: string, keywords: string[]) => void;
   onCancel: () => void;
 }) {
+  const t = useTranslate();
   const [content, setContent] = useState("");
   const [keywords, setKeywords] = useState("");
 
@@ -314,7 +318,7 @@ function AddOnceBeatForm({
           onAdd(content.trim(), parseKeywordList(keywords));
         }}
       >
-        Add once beat
+        {t("csAddOnceBeat")}
       </button>
       <button
         type="button"
@@ -322,7 +326,7 @@ function AddOnceBeatForm({
         style={{ width: "100%", marginTop: 6 }}
         onClick={onCancel}
       >
-        Cancel
+        {t("psCancel")}
       </button>
     </div>
   );
@@ -355,6 +359,7 @@ function CharacterSheet({
   ) => Promise<{ ok: boolean; reason?: string }>;
   compacting: boolean;
 }) {
+  const t = useTranslate();
   const { setFieldLock } = useEngine();
   const character = session.characters[characterId];
   const relationship = session.relationships[characterId];
@@ -371,9 +376,9 @@ function CharacterSheet({
     return (
       <div>
         <button className="sheet-back" onClick={onBack}>
-          ← Characters
+          {t("csCharacters")}
         </button>
-        <p className="inspector-empty">That character is no longer in the scene.</p>
+        <p className="inspector-empty">{t("csThatCharacterIsNo")}</p>
       </div>
     );
   }
@@ -381,7 +386,7 @@ function CharacterSheet({
   return (
     <div>
       <button className="sheet-back" onClick={onBack}>
-        ← Characters
+        {t("csCharacters")}
       </button>
       <div className="sheet-head">
         {portraitSrc(character.portraitDataUrl) ? (
@@ -410,7 +415,7 @@ function CharacterSheet({
       ) : null}
 
       <section className="sheet-section">
-        <p className="panel-heading">Right now</p>
+        <p className="panel-heading">{t("csRightNow")}</p>
         <Fact
           label="mood"
           value={String(character.mood.value)}
@@ -479,7 +484,7 @@ function CharacterSheet({
 
       {relationship && (
         <section className="sheet-section">
-          <p className="panel-heading">With you</p>
+          <p className="panel-heading">{t("csWithYou")}</p>
           <Meter label="trust" value={relationship.trust.value} />
           <Meter label="familiarity" value={relationship.familiarity.value} />
           <Meter label="tension" value={relationship.tension.value} />
@@ -488,7 +493,7 @@ function CharacterSheet({
 
       <section className="sheet-section">
         <div className="setup-section__head">
-          <p className="panel-heading">Who they are</p>
+          <p className="panel-heading">{t("csWhoTheyAre")}</p>
           {core.length >= 2 && (
             <button
               type="button"
@@ -500,7 +505,7 @@ function CharacterSheet({
             </button>
           )}
         </div>
-        {core.length === 0 && <p className="inspector-empty">No personality notes yet.</p>}
+        {core.length === 0 && <p className="inspector-empty">{t("csNoPersonalityNotesYet")}</p>}
         {core.map((layer) => (
           <TraitCard
             key={layer.id}
@@ -514,7 +519,7 @@ function CharacterSheet({
 
       <section className="sheet-section">
         <div className="setup-section__head">
-          <p className="panel-heading">How they see you</p>
+          <p className="panel-heading">{t("csHowTheySeeYou")}</p>
           {relating.length >= 2 && (
             <button
               type="button"
@@ -526,7 +531,9 @@ function CharacterSheet({
             </button>
           )}
         </div>
-        {relating.length === 0 && <p className="inspector-empty">No relationship notes yet.</p>}
+        {relating.length === 0 && (
+          <p className="inspector-empty">{t("csNoRelationshipNotesYet")}</p>
+        )}
         {relating.map((layer) => (
           <TraitCard
             key={layer.id}
@@ -539,8 +546,8 @@ function CharacterSheet({
       </section>
 
       <section className="sheet-section">
-        <p className="panel-heading">States</p>
-        {states.length === 0 && <p className="inspector-empty">No temporary states.</p>}
+        <p className="panel-heading">{t("csStates")}</p>
+        {states.length === 0 && <p className="inspector-empty">{t("csNoTemporaryStates")}</p>}
         {states.map((layer) => (
           <TraitCard
             key={layer.id}
@@ -704,7 +711,7 @@ export function CastPanel() {
         <>
           {session.campaignIntro?.trim() ? (
             <>
-              <p className="panel-heading">Adventure</p>
+              <p className="panel-heading">{t("pathAdventureTitle")}</p>
               <div className="place-card">
                 <div className="place-card__name">{session.story?.title.trim() || "Adventure"}</div>
                 <div className="place-card__intro">{session.campaignIntro}</div>
@@ -720,7 +727,7 @@ export function CastPanel() {
                 className="panel-heading"
                 style={{ marginTop: session.campaignIntro?.trim() ? 22 : undefined }}
               >
-                You
+                {t("csYou")}
               </p>
               <div className="place-card">
                 {portraitSrc(session.player?.portraitDataUrl) ? (
@@ -753,7 +760,7 @@ export function CastPanel() {
                       : undefined,
                 }}
               >
-                Why you are here
+                {t("csWhyYouAreHere")}
               </p>
               <p className="form-section__lede">
                 The agreement from the last scene. The story AI treats it as true. Empty = a new
@@ -766,7 +773,7 @@ export function CastPanel() {
                 placeholder="He asked to sleep. Nothing else happened."
               />
               <p className="panel-heading" style={{ marginTop: 22 }}>
-                For the next scene
+                {t("csForTheNextScene")}
               </p>
               <p className="form-section__lede">
                 Chat will not come with. Write the next agreement here before you leave. Empty =
@@ -783,7 +790,7 @@ export function CastPanel() {
 
           {session.voice?.instruction.trim() ? (
             <>
-              <p className="panel-heading">Narrator</p>
+              <p className="panel-heading">{t("csNarrator")}</p>
               <div className="place-card">
                 <div className="place-card__name">{session.voice.title.trim() || "Narrator"}</div>
                 <div className="story-card__body">{session.voice.instruction}</div>
@@ -797,7 +804,7 @@ export function CastPanel() {
                 className="panel-heading"
                 style={session.voice?.instruction.trim() ? { marginTop: 22 } : undefined}
               >
-                Ground story
+                {t("csGroundStory")}
               </p>
               <div className="place-card">
                 <div className="place-card__name">
@@ -816,9 +823,9 @@ export function CastPanel() {
                 : undefined
             }
           >
-            Characters
+            {t("characters")}
           </p>
-          {characterIds.length === 0 && <p className="inspector-empty">No one in the scene yet.</p>}
+          {characterIds.length === 0 && <p className="inspector-empty">{t("csNoOneInThe")}</p>}
           {characterIds.map((id) => {
             const character = session.characters[id];
             if (!character) return null;
@@ -850,7 +857,7 @@ export function CastPanel() {
           })}
 
           <div className="setup-section__head" style={{ marginTop: 22 }}>
-            <p className="panel-heading">Place</p>
+            <p className="panel-heading">{t("psPlace")}</p>
             {placeLayers.length >= 2 && (
               <button
                 type="button"
@@ -889,7 +896,7 @@ export function CastPanel() {
           </div>
           {(session.objects ?? []).length > 0 && (
             <div className="place-card" style={{ marginTop: 8 }}>
-              <div className="place-card__name">In this room</div>
+              <div className="place-card__name">{t("csInThisRoom")}</div>
               <div className="place-card__meta">
                 {(session.objects ?? []).map((object) => object.name).join(" · ")}
               </div>
