@@ -117,3 +117,59 @@ it("goes through the usual checks for an unfinished scene, with the draft changi
     issues.map((i) => i.message),
   );
 });
+
+import { placeOnWorldMap } from "../../src/integrations/coreEntities";
+import { adventureMapPlaces } from "../../src/library/adventureMap";
+
+it("lets a suggested place be used in an adventure with a map when the place is on that map, and not otherwise", async () => {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  const { campaign, square, orla, lamp, realm } = setup();
+  const world = placeOnWorldMap(realm, [square]);
+  const entries = adventureMapPlaces(world, [square]);
+  const mapped: typeof campaign = { ...campaign, mapWorldId: world.id };
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  let snapshot: typeof campaign = mapped;
+  function Harness({ onMap }: { onMap: boolean }) {
+    const [current, setCurrent] = useState(mapped);
+    snapshot = current;
+    return (
+      <PlayableStoryboard
+        campaign={current}
+        places={onMap ? entries.map((e) => e.place) : []}
+        characters={[]}
+        objects={[]}
+        library={{ characters: [orla], places: [square], objects: [lamp] }}
+        mapPlaces={onMap ? entries : []}
+        busy={false}
+        onChange={setCurrent}
+        onPlay={() => {}}
+      />
+    );
+  }
+  try {
+    await act(async () => root.render(<Harness onMap={false} />));
+    await click(host, "01");
+    const off = Array.from(host.querySelectorAll("button")).find((b) =>
+      b.textContent?.includes("Use The village square as the place"),
+    )!;
+    expect(off.disabled).toBe(true);
+    expect(off.title).toContain("Choose the place on the map");
+
+    await act(async () => root.render(<Harness onMap />));
+    await click(host, "01");
+    const on = Array.from(host.querySelectorAll("button")).find((b) =>
+      b.textContent?.includes("Use The village square as the place"),
+    )!;
+    expect(on.disabled).toBe(false);
+    await act(async () => on.click());
+
+    const scene = snapshot.scenes[0]!;
+    expect(scene.mapNodeId).toBe(world.worldMap!.nodes[0]!.id);
+    expect(scene.placeId).toBe(square.id);
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});

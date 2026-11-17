@@ -20,6 +20,8 @@ import {
   applyCoreEntityChanges,
   copyCoreEntity,
   manuscriptWorld,
+  placeOnWorldMap,
+  renameOnWorldMap,
   reviewCoreEntity,
   sameCoreEntity,
   type CoreEntityKind,
@@ -178,9 +180,10 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
           origin,
           selected.manuscript.title,
         );
-        if (created) await repo.saveRealm(realm);
         const place = copyCoreEntity(kind, entity, origin, { realmId: realm.id });
         await repo.savePlace(place);
+        // The world is saved after the place, so its map never points at a place that is not there.
+        await repo.saveRealm(placeOnWorldMap(realm, [place]));
         setImportNotice(
           `${place.name} was copied into the world “${realm.name}”. kaampi Write was not changed.`,
         );
@@ -316,11 +319,13 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
         chosen,
         library: { realms, characters, places, objects, factions },
       });
-      if (result.realmIsNew) await repo.saveRealm(result.realm);
       for (const card of result.characters) await repo.saveCharacter(card);
       for (const card of result.places) await repo.savePlace(card);
       for (const card of result.objects) await repo.saveObject(card);
       for (const card of result.factions) await repo.saveFaction(card);
+      // Last, so the map never points at a place that is not saved.
+      const world = placeOnWorldMap(result.realm, result.places);
+      if (result.realmIsNew || world !== result.realm) await repo.saveRealm(world);
       const parts = [
         [result.characters.length, "character"],
         [result.places.length, "place"],
@@ -384,14 +389,14 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
         await repo.saveCharacter(updated);
         name = updated.name;
       } else if (kind === "locations") {
-        const updated = applyCoreEntityChanges(
-          current as PlaceTemplate,
-          kind,
-          review.entity,
-          approved,
-          target,
-        );
+        const before = current as PlaceTemplate;
+        const updated = applyCoreEntityChanges(before, kind, review.entity, approved, target);
         await repo.savePlace(updated);
+        if (updated.name !== before.name) {
+          const world = (await repo.listRealms()).find((item) => item.id === updated.realmId);
+          const renamed = world && renameOnWorldMap(world, updated.id, before.name, updated.name);
+          if (world && renamed && renamed !== world) await repo.saveRealm(renamed);
+        }
         name = updated.name;
       } else if (kind === "objects") {
         const updated = applyCoreEntityChanges(

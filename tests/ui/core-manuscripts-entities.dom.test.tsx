@@ -16,14 +16,14 @@ const entry = (revision: number) => ({
   revision,
   updatedAt: "2026-10-27",
 });
-const bible = (mill: string) => [
+const bible = (mill: string, name = "The Old Mill") => [
   {
     kind: "locations",
     label: "Locations",
     entities: [
       {
         entity_ref: "mill",
-        name: "The Old Mill",
+        name,
         looks: mill,
         referenceImages: [],
         facts: [{ predicate: "built", label: "Built", value: "After the flood" }],
@@ -52,7 +52,12 @@ const bible = (mill: string) => [
   },
 ];
 
-async function mount(repo: IndexedDBRepository, revision: number, mill: string) {
+async function mount(
+  repo: IndexedDBRepository,
+  revision: number,
+  mill: string,
+  name = "The Old Mill",
+) {
   (
     globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
   ).IS_REACT_ACT_ENVIRONMENT = true;
@@ -79,7 +84,12 @@ async function mount(repo: IndexedDBRepository, revision: number, mill: string) 
           ? [entry(revision)]
           : {
               ...entry(revision),
-              manuscript: { title: "Night Keys", synopsis: "", chapters: [], bible: bible(mill) },
+              manuscript: {
+                title: "Night Keys",
+                synopsis: "",
+                chapters: [],
+                bible: bible(mill, name),
+              },
             },
       ),
     ),
@@ -190,5 +200,105 @@ it("creates a world from chosen entries in one go, and a second go adds the rest
     expect(ui.text()).toContain("Already in your library, left as they are");
   } finally {
     await ui.close();
+  }
+});
+
+/** Record the order of saves, to see the world is saved after the places its map points to. */
+function recording(repo: IndexedDBRepository) {
+  const order: string[] = [];
+  const realms: Awaited<ReturnType<IndexedDBRepository["listRealms"]>> = [];
+  const savePlace = repo.savePlace.bind(repo);
+  const saveRealm = repo.saveRealm.bind(repo);
+  repo.savePlace = async (place) => {
+    order.push(`place:${place.id}`);
+    await savePlace(place);
+  };
+  repo.saveRealm = async (realm) => {
+    order.push(`realm:${realm.id}`);
+    realms.push(structuredClone(realm));
+    await saveRealm(realm);
+  };
+  return { order, realms };
+}
+
+it("puts an imported place on the world's map, and saves the world after the place", async () => {
+  const repo = new IndexedDBRepository(new IDBFactory(), "core-entities-ui-map-1");
+  const log = recording(repo);
+  const ui = await mount(repo, 2, "A leaning mill.");
+  try {
+    await ui.click("Copy to kaampi Explore library", 0);
+
+    const [place] = await repo.listPlaces();
+    const [world] = await repo.listRealms();
+    expect(world!.worldMap!.nodes.map((n) => n.placeId)).toEqual([place!.id]);
+    expect(world!.worldMap!.nodes[0]!.name).toBe("The Old Mill");
+    expect(log.order.at(-1)).toBe(`realm:${world!.id}`);
+    expect(log.order.indexOf(`place:${place!.id}`)).toBeLessThan(
+      log.order.lastIndexOf(`realm:${world!.id}`),
+    );
+    expect(
+      log.order.filter(
+        (entry) =>
+          entry.startsWith("realm:") &&
+          log.order.indexOf(entry) < log.order.indexOf(`place:${place!.id}`),
+      ),
+    ).toEqual([]);
+  } finally {
+    await ui.close();
+  }
+});
+
+it("puts every place of a world made in one go on its map, saved after the places", async () => {
+  const repo = new IndexedDBRepository(new IDBFactory(), "core-entities-ui-map-2");
+  const log = recording(repo);
+  const ui = await mount(repo, 2, "A leaning mill.");
+  try {
+    await ui.click("Create world from this manuscript");
+    await ui.click("Create world (3)");
+
+    const places = await repo.listPlaces();
+    const [world] = await repo.listRealms();
+    expect(world!.worldMap!.nodes.map((n) => n.placeId)).toEqual(places.map((p) => p.id));
+    const lastRealm = log.order.lastIndexOf(`realm:${world!.id}`);
+    for (const place of places)
+      expect(log.order.indexOf(`place:${place.id}`)).toBeLessThan(lastRealm);
+    expect(log.order.at(-1)).toBe(`realm:${world!.id}`);
+    const saved = log.realms.at(-1)!;
+    expect(saved.worldMap!.nodes.every((n) => places.some((p) => p.id === n.placeId))).toBe(true);
+  } finally {
+    await ui.close();
+  }
+});
+
+it("renames the point on the map with a place renamed from the manuscript, unless the author renamed the point", async () => {
+  const repo = new IndexedDBRepository(new IDBFactory(), "core-entities-ui-map-3");
+  const first = await mount(repo, 2, "A leaning mill.");
+  await first.click("Copy to kaampi Explore library", 0);
+  await first.close();
+  const [world] = await repo.listRealms();
+  const [place] = await repo.listPlaces();
+  expect(world!.worldMap!.nodes[0]!.name).toBe(place!.name);
+  await repo.saveRealm({
+    ...world!,
+    worldMap: {
+      ...world!.worldMap!,
+      nodes: [{ ...world!.worldMap!.nodes[0]!, name: "Brightwater Mill" }],
+    },
+  });
+
+  // The manuscript renames the mill; the author had already renamed its point.
+  const renamed = await mount(repo, 3, "A leaning mill.", "The Ruined Mill");
+  try {
+    await renamed.click("Copy to kaampi Explore library", 0);
+    const box = renamed.container.querySelector<HTMLInputElement>(
+      'section[aria-label="Review updates"] input[type="checkbox"]',
+    )!;
+    await act(async () => box.click());
+    await renamed.click("Apply selected updates");
+
+    expect((await repo.listPlaces())[0]!.name).toBe("The Ruined Mill");
+    expect((await repo.listRealms())[0]!.worldMap!.nodes[0]!.name).toBe("Brightwater Mill");
+  } finally {
+    await renamed.close();
   }
 });
