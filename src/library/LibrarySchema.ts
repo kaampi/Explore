@@ -443,6 +443,12 @@ export const CampaignTemplateSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   mapWorldId: z.string().min(1).optional(),
+  /**
+   * "map" lets the player leave the written scenes: places on the map that have no scene of their
+   * own get one when a game starts, joined to the written scenes by the map's ways. Written scenes,
+   * their ways and the goal always come first.
+   */
+  openWorld: z.enum(["scenes", "map"]).default("scenes"),
   goal: AdventureGoalSchema.optional(),
   exampleId: z.string().optional(),
   exampleVersion: z.number().int().nonnegative().optional(),

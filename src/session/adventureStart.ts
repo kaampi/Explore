@@ -7,6 +7,7 @@ import type {
   CampaignTemplate,
   CampaignScene,
   CharacterTemplate,
+  ObjectTemplate,
   PlaceTemplate,
   RealmTemplate,
   RulesetTemplate,
@@ -17,6 +18,7 @@ import { AdventureRunSchema, type AdventureNarration, type Persona } from "../ga
 import { unifyAdventureEquipment } from "../game/AdventureEngine";
 import { bodyPlanSummary, factionSummary } from "../context/bodyPlan";
 import type { AnatomyTemplate } from "../state/StateSchema";
+import { scaffoldIntoAdventure } from "../library/worldScaffold";
 import { createSessionFromSetup } from "./createSession";
 import { parseSession } from "../state/StateSchema";
 const clip = (text: string | undefined, max: number) => (text ?? "").trim().slice(0, max);
@@ -94,7 +96,7 @@ function sessionRuleset(
 }
 
 export function startPlayableCampaign(
-  campaign: CampaignTemplate,
+  written: CampaignTemplate,
   scene: CampaignScene,
   places: PlaceTemplate[],
   id: string,
@@ -103,13 +105,24 @@ export function startPlayableCampaign(
     characters?: CharacterTemplate[];
     voices?: VoiceTemplate[];
     rulesets?: RulesetTemplate[];
+    objects?: ObjectTemplate[];
   } & PersonaSources = {},
 ) {
-  const world = campaign.mapWorldId ? worlds.find((w) => w.id === campaign.mapWorldId) : undefined;
-  if (campaign.mapWorldId && !world?.worldMap)
+  const world = written.mapWorldId ? worlds.find((w) => w.id === written.mapWorldId) : undefined;
+  if (written.mapWorldId && !world?.worldMap)
     throw Error(
       "The adventure’s world map is unavailable. Choose a saved map in Storyboard Editor.",
     );
+  // An adventure that opens onto the map gets scenes for the rest of the map, for this game only.
+  const campaign =
+    written.openWorld === "map" && world?.worldMap
+      ? scaffoldIntoAdventure(written, world, {
+          characters: sources.characters ?? [],
+          objects: sources.objects ?? [],
+          places,
+          rulesets: sources.rulesets ?? [],
+        }).campaign
+      : written;
   const mapped = campaign.mapWorldId ? adventureMapPlaces(world, places) : undefined;
   const scenes = campaign.scenes.map((s) => {
     const entry = mapped ? mapPlaceForScene(s, mapped) : undefined;

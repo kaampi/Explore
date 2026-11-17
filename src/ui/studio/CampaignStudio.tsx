@@ -1017,6 +1017,25 @@ export function CampaignStudio({
                 ))}
               </select>
             </FormSection>
+            {draft.mapWorldId && (
+              <FormSection
+                title="Beyond the story"
+                lede="Places on the map that have no scene of their own get one when a game starts, joined to your scenes by the map's ways. Your scenes, their ways and the goal always come first, and nothing here is added to your draft."
+              >
+                <label className="setup-field setup-field--row">
+                  <input
+                    type="checkbox"
+                    checked={draft.openWorld === "map"}
+                    onChange={(e) =>
+                      setDraft({ ...draft, openWorld: e.target.checked ? "map" : "scenes" })
+                    }
+                  />
+                  <span className="setup-field__label">
+                    Let players leave the written scenes and explore the map
+                  </span>
+                </label>
+              </FormSection>
+            )}
             <div className="campaign-general__pair">
               <FormSection
                 title="Rule-set"

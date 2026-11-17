@@ -300,6 +300,7 @@ export function sessionFromCampaignScene(
             characters: args.characters,
             voices: args.voices,
             rulesets: args.rulesets,
+            objects: args.objects,
             ...(args.anatomyTemplates ? { anatomyTemplates: args.anatomyTemplates } : {}),
             ...(args.factions ? { factions: args.factions } : {}),
           },
