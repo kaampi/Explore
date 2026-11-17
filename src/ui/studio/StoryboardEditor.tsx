@@ -65,8 +65,10 @@ export function StoryboardEditor({
       setBuilt(
         result.added > 0
           ? `Added ${result.added} ${result.added === 1 ? "scene" : "scenes"} from the map.${
-              result.skipped.length ? ` Left out: ${result.skipped.join("; ")}.` : ""
-            }`
+              result.reconnected.length
+                ? ` New ways out were added from: ${result.reconnected.join(", ")}.`
+                : ""
+            }${result.skipped.length ? ` Left out: ${result.skipped.join("; ")}.` : ""}`
           : (result.skipped[0] ?? "Nothing to add."),
       );
     } catch (e) {

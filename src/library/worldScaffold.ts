@@ -423,7 +423,7 @@ export function scaffoldIntoAdventure(
   campaign: CampaignTemplate,
   world: RealmTemplate,
   library: ScaffoldLibrary,
-): { campaign: CampaignTemplate; added: number; skipped: string[] } {
+): { campaign: CampaignTemplate; added: number; skipped: string[]; reconnected: string[] } {
   if (!world.worldMap) throw new Error("This world has no map to build scenes from.");
   const places = adventureMapPlaces(world, library.places);
   const usable = places.filter(({ node }) => !node.isArea && node.visibility !== "hidden");
@@ -434,7 +434,7 @@ export function scaffoldIntoAdventure(
     );
   const missing = usable.filter((entry) => !existingFor(entry));
   if (missing.length === 0)
-    return { campaign, added: 0, skipped: ["Every place already has a scene."] };
+    return { campaign, added: 0, skipped: ["Every place already has a scene."], reconnected: [] };
   const startEntry = usable.find((entry) => existingFor(entry)) ?? usable[0]!;
   const built = scaffoldFromWorld(world, library, {
     player: campaign.player ?? emptyCampaignPlayer(),
@@ -450,6 +450,7 @@ export function scaffoldIntoAdventure(
       campaign,
       added: 0,
       skipped: [...skipped, "Nothing in range of the places already there."],
+      reconnected: [],
     };
 
   // A built scene that stands for a place with a scene of its own is replaced by that scene.
@@ -468,12 +469,21 @@ export function scaffoldIntoAdventure(
     "a place";
   const links: Link[] = [];
   const stillNeeded = new Set<string>();
+  const reconnected = new Set<string>();
   for (const link of built.campaign.sceneLinks) {
     const from = standIn.get(link.fromSceneId) ?? link.fromSceneId;
     const to = standIn.get(link.toSceneId) ?? link.toSceneId;
     if (oldIds.has(from) && oldIds.has(to)) continue;
     if (have.has(`${from}>${to}`)) continue;
     const touchesOld = oldIds.has(from) || oldIds.has(to);
+    // A new way into a scene that is already there could be a detour round the author's own
+    // conditions and doors, so it is only added when nothing guards the ways into that scene.
+    if (oldIds.has(to) && guarded(campaign, to)) {
+      skipped.push(
+        `The way from “${nameOf(from)}” to “${nameOf(to)}” was left out, because the ways into “${nameOf(to)}” have conditions; add it yourself if you want it`,
+      );
+      continue;
+    }
     let next: Link = { ...link, fromSceneId: from, toSceneId: to };
     if (touchesOld && link.requiresOpenBarriers?.length) {
       const sceneWithDoor = newScenes.find((scene) => scene.id === (oldIds.has(from) ? to : from));
@@ -490,6 +500,7 @@ export function scaffoldIntoAdventure(
       next = free;
     }
     for (const id of next.requiresOpenBarriers ?? []) stillNeeded.add(id);
+    if (oldIds.has(from)) reconnected.add(from);
     links.push(next);
   }
   const lowest = campaign.scenes.reduce(
@@ -531,5 +542,19 @@ export function scaffoldIntoAdventure(
     },
     added: scenes.length,
     skipped,
+    reconnected: campaign.scenes
+      .filter((scene) => reconnected.has(scene.id))
+      .map((scene) => scene.name),
   };
+}
+
+/** Whether any way into the scene has a condition or a door, as the author wrote it. */
+function guarded(campaign: CampaignTemplate, sceneId: string): boolean {
+  return campaign.sceneLinks.some(
+    (link) =>
+      link.toSceneId === sceneId &&
+      (link.requiresFlags.length > 0 ||
+        link.requiresAbsentFlags.length > 0 ||
+        (link.requiresOpenBarriers ?? []).length > 0),
+  );
 }
