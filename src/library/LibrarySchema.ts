@@ -2,6 +2,7 @@ import { AdventureLinkSchema, AdventureGoalSchema } from "../game/AdventureSchem
 import { upgradeMissingMessengerCampaign } from "../scenarios/missingMessenger";
 import { EncounterGameSchema } from "../game/EncounterSchema";
 import { ObjectLocationSchema } from "./objectLocation";
+import { CoreEntitySnapshotSchema, CoreOriginSchema } from "./coreOrigin";
 import { WorldMapSchema } from "./worldMap";
 import {
   ApproximateAgeSchema,
@@ -125,6 +126,8 @@ export const PlaceTemplateSchema = z.object({
   /** Landmark Look for. Not sent to the model. Not a character tag. */
   tags: z.array(z.string().min(1)).default(() => []),
   source: LibrarySourceSchema.default("player"),
+  coreOrigin: CoreOriginSchema.optional(),
+  coreSnapshot: CoreEntitySnapshotSchema.optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -156,6 +159,8 @@ export const RealmTemplateSchema = z.object({
   audioPlay: PicturePlaySchema.optional(),
   /** Free play in this world. Off unless the owner turns it on. */
   openWorld: z.object({ generateResidents: z.boolean().default(false) }).optional(),
+  /** Set when the world was made from a shared manuscript, so later imports go into the same world. */
+  coreOrigin: CoreOriginSchema.optional(),
   source: LibrarySourceSchema.default("player"),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -231,6 +236,8 @@ export const ObjectTemplateSchema = z.object({
   /** Set when the thing can be used as a weapon. */
   weapon: ObjectWeaponSchema.optional(),
   source: LibrarySourceSchema.default("player"),
+  coreOrigin: CoreOriginSchema.optional(),
+  coreSnapshot: CoreEntitySnapshotSchema.optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

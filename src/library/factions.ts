@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CoreEntitySnapshotSchema, CoreOriginSchema } from "./coreOrigin";
 
 export const FactionSchema = z.object({
   id: z.string().min(1),
@@ -15,6 +16,8 @@ export const FactionSchema = z.object({
     .optional(),
   alliedFactionIds: z.array(z.string().min(1)).optional(),
   hostileFactionIds: z.array(z.string().min(1)).optional(),
+  coreOrigin: CoreOriginSchema.optional(),
+  coreSnapshot: CoreEntitySnapshotSchema.optional(),
 });
 
 export type Faction = z.infer<typeof FactionSchema>;

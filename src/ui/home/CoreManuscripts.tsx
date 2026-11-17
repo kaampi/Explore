@@ -6,7 +6,16 @@ import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 import { copyCoreCharacter } from "../../integrations/coreBible";
 import type { CoreBibleSection, CoreBibleEntity } from "../../integrations/coreBibleSchema";
 import { portraitSrc } from "../studio/portrait";
-import type { CharacterTemplate } from "@library/LibrarySchema";
+import type { CharacterTemplate, ObjectTemplate, PlaceTemplate } from "@library/LibrarySchema";
+import type { Faction } from "@library/factions";
+import {
+  applyCoreEntityChanges,
+  copyCoreEntity,
+  manuscriptWorld,
+  reviewCoreEntity,
+  sameCoreEntity,
+  type CoreEntityKind,
+} from "../../integrations/coreEntities";
 import {
   applyCoreCharacterChanges,
   reviewCoreCharacter,
@@ -54,7 +63,8 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
   const [importNotice, setImportNotice] = useState("");
   const [importing, setImporting] = useState(false);
   const [review, setReview] = useState<{
-    character: CharacterTemplate;
+    kind: "characters" | CoreEntityKind;
+    character: CharacterTemplate | PlaceTemplate | ObjectTemplate | Faction;
     entity: CoreBibleEntity;
     changes: CoreCharacterChange[];
   } | null>(null);
@@ -87,7 +97,7 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
       setBusy(false);
     }
   }
-  async function copy(entity: CoreBibleEntity) {
+  async function copy(entity: CoreBibleEntity, kind: "characters" | CoreEntityKind) {
     if (!selected || importing) return;
     setImporting(true);
     setImportNotice("");
@@ -97,24 +107,41 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
         projectId: selected.projectId,
         revision: selected.revision,
       };
-      const existing = await repo.listCharacters();
-      const character = existing.find((person) =>
-        sameCoreCharacter(person, { ...origin, entityRef: entity.entity_ref }),
-      );
-      if (character) {
-        if (!character.coreSnapshot) {
+      const here = { ...origin, entityRef: entity.entity_ref };
+      const existing: CharacterTemplate | PlaceTemplate | ObjectTemplate | Faction | undefined =
+        kind === "characters"
+          ? (await repo.listCharacters()).find((person) => sameCoreCharacter(person, here))
+          : kind === "locations"
+            ? (await repo.listPlaces()).find((card) => sameCoreEntity(card, here))
+            : kind === "objects"
+              ? (await repo.listObjects()).find((card) => sameCoreEntity(card, here))
+              : (await repo.listFactions()).find((card) => sameCoreEntity(card, here));
+      if (existing) {
+        if (!existing.coreSnapshot) {
           setImportNotice(
             "This older copy has no comparison history. Your local card was preserved; automatic comparison is unavailable.",
           );
           return;
         }
-        if (origin.revision < character.coreOrigin!.revision) {
+        if (origin.revision < existing.coreOrigin!.revision) {
           setImportNotice("This manuscript version is older than your local copy.");
           return;
         }
-        const changes = reviewCoreCharacter(character, character.coreSnapshot, entity);
+        const changes =
+          kind === "characters"
+            ? reviewCoreCharacter(
+                existing as CharacterTemplate,
+                (existing as CharacterTemplate).coreSnapshot!,
+                entity,
+              )
+            : reviewCoreEntity(
+                existing as PlaceTemplate | ObjectTemplate | Faction,
+                kind,
+                existing.coreSnapshot as { name: string; text: string },
+                entity,
+              );
         setApproved([]);
-        setReview(changes.length ? { character, entity, changes } : null);
+        setReview(changes.length ? { kind, character: existing, entity, changes } : null);
         setImportNotice(
           changes.length
             ? "Select the facts you want to update."
@@ -122,13 +149,37 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
         );
         return;
       }
-      const local = copyCoreCharacter(entity, origin);
-      await repo.saveCharacter(local);
-      setImportNotice(
-        `${local.name} was copied to your kaampi Explore character library. kaampi Write was not changed.`,
-      );
+      if (kind === "characters") {
+        const local = copyCoreCharacter(entity, origin);
+        await repo.saveCharacter(local);
+        setImportNotice(
+          `${local.name} was copied to your kaampi Explore character library. kaampi Write was not changed.`,
+        );
+      } else if (kind === "locations") {
+        const { realm, created } = manuscriptWorld(
+          await repo.listRealms(),
+          origin,
+          selected.manuscript.title,
+        );
+        if (created) await repo.saveRealm(realm);
+        const place = copyCoreEntity(kind, entity, origin, { realmId: realm.id });
+        await repo.savePlace(place);
+        setImportNotice(
+          `${place.name} was copied into the world “${realm.name}”. kaampi Write was not changed.`,
+        );
+      } else if (kind === "objects") {
+        const thing = copyCoreEntity(kind, entity, origin);
+        await repo.saveObject(thing);
+        setImportNotice(`${thing.name} was copied to your things. kaampi Write was not changed.`);
+      } else {
+        const faction = copyCoreEntity(kind, entity, origin);
+        await repo.saveFaction(faction);
+        setImportNotice(
+          `${faction.name} was copied to your factions. kaampi Write was not changed.`,
+        );
+      }
     } catch (reason) {
-      setImportNotice(reason instanceof Error ? reason.message : "Could not copy this character.");
+      setImportNotice(reason instanceof Error ? reason.message : "Could not copy this.");
     } finally {
       setImporting(false);
     }
@@ -137,26 +188,71 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
     if (!review || !selected || importing || !approved.length) return;
     setImporting(true);
     try {
-      const current = (await repo.listCharacters()).find(
-        (person) => person.id === review.character.id,
-      );
-      if (!current || JSON.stringify(current) !== JSON.stringify(review.character))
-        throw new Error(
-          "The local character changed. Close this review and review the latest card again.",
-        );
-      const updated = applyCoreCharacterChanges(current, review.entity, approved, {
+      const target = {
         workspaceId: selected.workspaceId,
         projectId: selected.projectId,
         revision: selected.revision,
         entityRef: review.entity.entity_ref,
-      });
-      await repo.saveCharacter(updated);
+      };
+      const id = review.character.id;
+      const kind = review.kind;
+      const current =
+        kind === "characters"
+          ? (await repo.listCharacters()).find((card) => card.id === id)
+          : kind === "locations"
+            ? (await repo.listPlaces()).find((card) => card.id === id)
+            : kind === "objects"
+              ? (await repo.listObjects()).find((card) => card.id === id)
+              : (await repo.listFactions()).find((card) => card.id === id);
+      if (!current || JSON.stringify(current) !== JSON.stringify(review.character))
+        throw new Error(
+          "The local card changed. Close this review and review the latest card again.",
+        );
+      let name: string;
+      if (kind === "characters") {
+        const updated = applyCoreCharacterChanges(
+          current as CharacterTemplate,
+          review.entity,
+          approved,
+          target,
+        );
+        await repo.saveCharacter(updated);
+        name = updated.name;
+      } else if (kind === "locations") {
+        const updated = applyCoreEntityChanges(
+          current as PlaceTemplate,
+          kind,
+          review.entity,
+          approved,
+          target,
+        );
+        await repo.savePlace(updated);
+        name = updated.name;
+      } else if (kind === "objects") {
+        const updated = applyCoreEntityChanges(
+          current as ObjectTemplate,
+          kind,
+          review.entity,
+          approved,
+          target,
+        );
+        await repo.saveObject(updated);
+        name = updated.name;
+      } else {
+        const updated = applyCoreEntityChanges(
+          current as Faction,
+          kind,
+          review.entity,
+          approved,
+          target,
+        );
+        await repo.saveFaction(updated);
+        name = updated.name;
+      }
       setReview(null);
-      setImportNotice(`${updated.name} was updated in your kaampi Explore library.`);
+      setImportNotice(`${name} was updated in your kaampi Explore library.`);
     } catch (reason) {
-      setImportNotice(
-        reason instanceof Error ? reason.message : "Could not update this character.",
-      );
+      setImportNotice(reason instanceof Error ? reason.message : "Could not update this.");
     } finally {
       setImporting(false);
     }
@@ -218,7 +314,7 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
             <h3>Story Bible</h3>
             <p className="sb-section-description">
               Only kaampi Write's approved, visible information is shared. This is a read-only view;
-              copying a character makes an independent kaampi Explore card.
+              copying a character, place, thing or faction makes an independent kaampi Explore card.
             </p>
             {selected.manuscript.bible.length === 0 && (
               <p>No shared Story Bible entries in this manuscript.</p>
@@ -231,12 +327,17 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
                     <article key={entity.entity_ref} className="sb-core-entity">
                       <div className="sb-section-heading">
                         <h5>{entity.name}</h5>
-                        {section.kind === "characters" && (
+                        {(section.kind === "characters" ||
+                          section.kind === "locations" ||
+                          section.kind === "objects" ||
+                          section.kind === "groups") && (
                           <button
                             type="button"
                             className="sb-link"
                             disabled={importing || !!review}
-                            onClick={() => void copy(entity)}
+                            onClick={() =>
+                              void copy(entity, section.kind as "characters" | CoreEntityKind)
+                            }
                           >
                             Copy to kaampi Explore library / Review updates
                           </button>
@@ -268,7 +369,7 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
               </section>
             ))}
             {review && (
-              <section aria-label="Review character updates">
+              <section aria-label="Review updates">
                 <h3>Review updates for {review.character.name}</h3>
                 <p>
                   Only selected changes will be saved. Unselected changes and your other local
