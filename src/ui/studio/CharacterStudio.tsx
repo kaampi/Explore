@@ -1,3 +1,4 @@
+import { useTranslate } from "../i18n/LanguageProvider";
 import {
   collectCharacterBackup,
   LIBRARY_BACKUP_KIND,
@@ -128,6 +129,7 @@ function draftFrom(template: CharacterTemplate): Draft {
 }
 
 export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
+  const t = useTranslate();
   const [anatomyOptions, setAnatomyOptions] = useState<AnatomyTemplate[]>([]);
   useEffect(() => {
     void repo
@@ -570,7 +572,7 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
               onClick={() => fileRef.current?.click()}
               disabled={busy}
             >
-              Import SillyTavern
+              {t("chsImportSillytavern")}
             </button>
             <button
               type="button"
@@ -578,7 +580,7 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
               onClick={openGenerator}
               disabled={busy}
             >
-              Generate
+              {t("chsGenerate")}
             </button>
           </>
         }
@@ -590,7 +592,7 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
                 checked={shelfFilter.male}
                 onChange={(e) => patchShelfFilter({ male: e.target.checked })}
               />
-              Male
+              {t("chsMale")}
             </label>
             <label className="setup-check">
               <input
@@ -598,7 +600,7 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
                 checked={shelfFilter.female}
                 onChange={(e) => patchShelfFilter({ female: e.target.checked })}
               />
-              Female
+              {t("chsFemale")}
             </label>
             <label className="setup-check">
               <input
@@ -606,7 +608,7 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
                 checked={shelfFilter.imported}
                 onChange={(e) => patchShelfFilter({ imported: e.target.checked })}
               />
-              Imported
+              {t("chsImported")}
             </label>
           </div>
         }
@@ -701,8 +703,8 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
               />
               {importSession.lorebook && (
                 <section className="sb-embedded-lore">
-                  <h2>Included lorebook</h2>
-                  <p>Saved with this character. Choose entries to use in new conversations.</p>
+                  <h2>{t("chsIncludedLorebook")}</h2>
+                  <p>{t("chsSavedWithThisCharacter")}</p>
                   <LoreReview
                     book={importSession.lorebook}
                     disabled={busy}
@@ -724,7 +726,7 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
                     ? titleText
                     : formatPersonName(draft.name, draft.familyName, draft.middleName)
                 }
-                placeholder="New character"
+                placeholder={t("chsNewCharacter")}
                 onFocus={() => {
                   setTitleText(formatPersonName(draft.name, draft.familyName, draft.middleName));
                   setTitleFocused(true);
@@ -803,7 +805,7 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
                 />
               )}
               <div className="setup-field">
-                <span className="setup-field__label">Pronoun</span>
+                <span className="setup-field__label">{t("cstPronoun")}</span>
                 <PickChips
                   ariaLabel="Pronoun"
                   choices={[
@@ -823,7 +825,7 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
                 />
               </div>
               <label className="setup-field setup-field--row">
-                <span className="setup-field__label">Approximate age</span>
+                <span className="setup-field__label">{t("chsApproximateAge")}</span>
                 <input
                   type="number"
                   min={1}
@@ -841,12 +843,12 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
                 />
               </label>
               <label className="setup-field setup-field--row">
-                <span className="setup-field__label">Looks</span>
+                <span className="setup-field__label">{t("cstLooks")}</span>
                 <textarea
                   className="setup-field__story setup-field__looks"
                   value={draft.appearance}
                   onChange={(e) => setDraft({ ...draft, appearance: e.target.value })}
-                  placeholder="body and face, not clothes"
+                  placeholder={t("chsBodyAndFaceNot")}
                 />
               </label>
               <label className="setup-field setup-field--row">
@@ -855,7 +857,7 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
                   value={draft.anatomyTemplateId}
                   onChange={(e) => setDraft({ ...draft, anatomyTemplateId: e.target.value })}
                 >
-                  <option value="">No anatomy template</option>
+                  <option value="">{t("chsNoAnatomyTemplate")}</option>
                   {anatomyOptions.map((template) => (
                     <option key={template.id} value={template.id}>
                       {template.name} (v{template.version})
@@ -864,15 +866,15 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
                 </select>
               </label>
               <label className="setup-field setup-field--row">
-                <span className="setup-field__label">Typical mood</span>
+                <span className="setup-field__label">{t("chsTypicalMood")}</span>
                 <input
                   value={draft.mood}
                   onChange={(e) => setDraft({ ...draft, mood: e.target.value })}
-                  placeholder="not a scene"
+                  placeholder={t("chsNotAScene")}
                 />
               </label>
               <label className="setup-field setup-field--row">
-                <span className="setup-field__label">How they speak</span>
+                <span className="setup-field__label">{t("chsHowTheySpeak")}</span>
                 <input
                   value={draft.speech}
                   onChange={(e) => setDraft({ ...draft, speech: e.target.value })}
@@ -881,8 +883,8 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
               </label>
               <label className="setup-field setup-field--row">
                 <span className="setup-field__label">
-                  Tags
-                  <span className="setup-optional">this person only</span>
+                  {t("osTags")}
+                  <span className="setup-optional">{t("chsThisPersonOnly")}</span>
                 </span>
                 <input
                   value={draft.tags}
@@ -891,7 +893,7 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
                 />
               </label>
               <label className="setup-field">
-                <span className="setup-field__label">Personality</span>
+                <span className="setup-field__label">{t("hsPersonality")}</span>
                 <textarea
                   className="setup-field__story"
                   value={draft.personality}
@@ -908,7 +910,7 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
                   disabled={busy}
                   onClick={() => void save()}
                 >
-                  Save
+                  {t("cpSave")}
                 </button>
                 <button
                   type="button"
@@ -925,7 +927,7 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
                     disabled={busy}
                     onClick={undoCompact}
                   >
-                    Undo compact
+                    {t("chsUndoCompact")}
                   </button>
                 ) : null}
                 {saved && draft.id && (
@@ -949,12 +951,12 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
                       })()
                     }
                   >
-                    Export JSON
+                    {t("chsExportJson")}
                   </button>
                 )}
                 {saved && (
                   <button type="button" className="setup-example" onClick={() => void remove()}>
-                    Delete
+                    {t("cstDelete")}
                   </button>
                 )}
               </div>

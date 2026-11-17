@@ -1,3 +1,4 @@
+import { useTranslate } from "../i18n/LanguageProvider";
 import { openGuide } from "../guide/GuidePanel";
 import { useEffect, useState } from "react";
 import "./anatomy.css";
@@ -24,6 +25,7 @@ const emptyPart = (id: string, group: string): Part => ({
 const groupsOf = (parts: Part[]) => [...new Set(parts.map((part) => part.group || "Other"))];
 
 export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
+  const t = useTranslate();
   const [custom, setCustom] = useState<AnatomyTemplate[]>([]);
   const [draft, setDraft] = useState<AnatomyTemplate | null>(null);
   const [expanded, setExpanded] = useState("");
@@ -139,19 +141,14 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
       </nav>
       <header className="anatomy-header">
         <div>
-          <span className="anatomy-eyebrow">CHARACTER FOUNDATIONS</span>
+          <span className="anatomy-eyebrow">{t("ansCharacterFoundations")}</span>
           <h2>{draft ? draft.name : "Anatomy Library"}</h2>
           <p>
             {draft
               ? "Explore the body, one part at a time."
               : "A shared structure for different kinds of bodies."}
           </p>
-          {!draft && (
-            <p>
-              Explore uses body plans to identify body parts and track physical interactions in a
-              scene.
-            </p>
-          )}
+          {!draft && <p>{t("ansExploreUsesBodyPlans")}</p>}
         </div>
         {draft ? (
           <button
@@ -162,7 +159,7 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
               setNotice("");
             }}
           >
-            ← All body plans
+            {t("ansAllBodyPlans")}
           </button>
         ) : (
           <button
@@ -192,12 +189,12 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
               </span>
             </div>
             <button className="anatomy-button" onClick={duplicate}>
-              Customize a copy
+              {t("ansCustomizeACopy")}
             </button>
           </div>
           {draft.id === "builtin-humanoid" && (
             <aside className="anatomy-tip">
-              <strong>One structure. Many characters.</strong>
+              <strong>{t("ansOneStructureManyCharacters")}</strong>
               <p>
                 Humans, elves and dwarves share this body plan. Describe appearance and size on the
                 character; customize anatomy when the body structure changes.
@@ -206,18 +203,15 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
           )}
           {!builtIn && (
             <label className="anatomy-field">
-              Body plan name
+              {t("ansBodyPlanName")}
               <input value={draft.name} onChange={(e) => patch({ name: e.target.value })} />
             </label>
           )}
           {!builtIn && (
             <section className="anatomy-upload" aria-label="Body plan illustration">
               <div>
-                <h3>Illustration</h3>
-                <p>
-                  PNG, JPEG or WebP · up to 10 MB. Larger images are scaled to a maximum of 1600 ×
-                  1600 pixels. Transparency is preserved.
-                </p>
+                <h3>{t("ansIllustration")}</h3>
+                <p>{t("ansPngJpegOrWebp")}</p>
                 <label className="anatomy-field">
                   {draft.imageDataUrl ? "Replace image" : "Upload image"}
                   <input
@@ -231,7 +225,7 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
                     }}
                   />
                 </label>
-                {uploading && <p role="status">Preparing image…</p>}
+                {uploading && <p role="status">{t("ansPreparingImage")}</p>}
                 {draft.imageDataUrl && (
                   <button
                     className="anatomy-button"
@@ -241,7 +235,7 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
                       setDraft(rest);
                     }}
                   >
-                    Remove image
+                    {t("ansRemoveImage")}
                   </button>
                 )}
               </div>
@@ -255,7 +249,8 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
           <div className="anatomy-workspace">
             <nav className="anatomy-navigation" aria-label="Body parts">
               <div className="anatomy-nav-title">
-                BODY REGIONS <span>Select a part to explore</span>
+                {t("ansBodyRegions")}
+                <span>{t("ansSelectAPartTo")}</span>
               </div>
               {groupsOf(draft.parts).map((group) => (
                 <div className="anatomy-region" key={group}>
@@ -314,7 +309,7 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
                       {current.description && (
                         <p className="anatomy-description">{current.description}</p>
                       )}
-                      <h4>Functions in a scene</h4>
+                      <h4>{t("ansFunctionsInAScene")}</h4>
                       {current.capabilities.length ? (
                         <div className="anatomy-functions">
                           {current.capabilities.map((capability) => (
@@ -324,34 +319,32 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
                           ))}
                         </div>
                       ) : (
-                        <p className="anatomy-muted">
-                          No additional action functions are configured for this part.
-                        </p>
+                        <p className="anatomy-muted">{t("ansNoAdditionalActionFunctions")}</p>
                       )}
                     </>
                   ) : (
                     <div className="anatomy-editor">
                       <label className="anatomy-field">
-                        Part name
+                        {t("ansPartName")}
                         <input
                           value={current.label}
                           onChange={(e) => patchPart({ label: e.target.value })}
                         />
                       </label>
                       <label className="anatomy-field">
-                        Body region
+                        {t("ansBodyRegion")}
                         <input
                           value={current.group || ""}
                           onChange={(e) => patchPart({ group: e.target.value })}
                         />
                       </label>
                       <label className="anatomy-field">
-                        Attached to
+                        {t("ansAttachedTo")}
                         <select
                           value={current.parentId || ""}
                           onChange={(e) => patchPart({ parentId: e.target.value || undefined })}
                         >
-                          <option value="">Independent part</option>
+                          <option value="">{t("ansIndependentPart")}</option>
                           {draft.parts
                             .filter((part) => part.id !== current.id)
                             .map((part) => (
@@ -361,12 +354,9 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
                             ))}
                         </select>
                       </label>
-                      <p>
-                        If the attached part is lost, this part and its attached parts become
-                        unavailable too.
-                      </p>
+                      <p>{t("ansIfTheAttachedPart")}</p>
                       <label className="anatomy-field">
-                        Description
+                        {t("osDescription")}
                         <textarea
                           rows={3}
                           value={current.description || ""}
@@ -374,7 +364,7 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
                         />
                       </label>
                       <fieldset className="anatomy-capabilities">
-                        <legend>Functions in a scene</legend>
+                        <legend>{t("ansFunctionsInAScene")}</legend>
                         {CAPABILITIES.map((capability) => (
                           <label key={capability}>
                             <input
@@ -405,15 +395,15 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
                           setPartId("");
                         }}
                       >
-                        Remove part
+                        {t("ansRemovePart")}
                       </button>
                     </div>
                   )}
                 </>
               ) : (
                 <div className="anatomy-empty">
-                  <h3>Select a body part</h3>
-                  <p>Choose a region on the left, then a part to see its functions.</p>
+                  <h3>{t("ansSelectABodyPart")}</h3>
+                  <p>{t("ansChooseARegionOn")}</p>
                 </div>
               )}
             </section>
@@ -425,14 +415,14 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
                 disabled={uploading}
                 onClick={() => void remove()}
               >
-                Delete body plan
+                {t("ansDeleteBodyPlan")}
               </button>
               <button
                 className="anatomy-button anatomy-primary"
                 disabled={uploading}
                 onClick={() => void save()}
               >
-                Save body plan
+                {t("ansSaveBodyPlan")}
               </button>
             </footer>
           )}
@@ -440,16 +430,10 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
       ) : (
         <>
           <aside className="anatomy-tip">
-            <strong>Choose a structure, not an appearance.</strong>
-            <p>
-              A body plan defines parts and physical functions. Characters with the same structure
-              can share a plan.
-            </p>
+            <strong>{t("ansChooseAStructureNot")}</strong>
+            <p>{t("ansABodyPlanDefines")}</p>
           </aside>
-          <p className="anatomy-muted">
-            Built-in body plans are ready to use. To adapt one to your needs, open the plan you want
-            to change and select “Customize a copy”. You can then edit and save your own version.
-          </p>
+          <p className="anatomy-muted">{t("ansBuiltInBodyPlans")}</p>
           <div className="anatomy-library">
             {templates.map((item) => (
               <button className="anatomy-card" key={item.id} onClick={() => open(item)}>
@@ -470,7 +454,7 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
                 <span>
                   {item.parts.length} parts · {groupsOf(item.parts).length} regions
                 </span>
-                <span className="anatomy-card-link">Explore body plan →</span>
+                <span className="anatomy-card-link">{t("ansExploreBodyPlan")}</span>
               </button>
             ))}
           </div>

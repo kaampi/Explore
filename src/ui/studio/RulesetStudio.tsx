@@ -1,3 +1,4 @@
+import { useTranslate } from "../i18n/LanguageProvider";
 import { useEffect, useState } from "react";
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 import {
@@ -168,6 +169,7 @@ function meaningSaveHint(attributes: AttributeDef[]): string | undefined {
 }
 
 export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
+  const t = useTranslate();
   const [library, setLibrary] = useState<RulesetTemplate[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -302,11 +304,11 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
             <SheetNameField
               ariaLabel="Rule-set name"
               value={draft.name}
-              placeholder="New rule-set"
+              placeholder={t("rssNewRuleSet")}
               onChange={(name) => setDraft({ ...draft, name })}
             />
             <FormSection
-              title="Attributes"
+              title={t("rssAttributes")}
               action={
                 <button
                   type="button"
@@ -337,12 +339,12 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
                           })
                         }
                       >
-                        Remove
+                        {t("spRemove")}
                       </button>
                     )}
                   </div>
                   <label className="setup-field">
-                    Name
+                    {t("hsName")}
                     <input
                       value={row.name}
                       onChange={(e) =>
@@ -358,7 +360,7 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
                   </label>
                   {row.kind === "text" ? (
                     <label className="setup-field">
-                      Meaning
+                      {t("rssMeaning")}
                       <textarea
                         value={row.description}
                         onChange={(e) =>
@@ -377,7 +379,7 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
                   ) : (
                     <>
                       <label className="setup-field">
-                        High meaning
+                        {t("rssHighMeaning")}
                         <textarea
                           value={row.highMeaning}
                           onChange={(e) =>
@@ -394,7 +396,7 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
                         />
                       </label>
                       <label className="setup-field">
-                        Low meaning
+                        {t("rssLowMeaning")}
                         <textarea
                           value={row.lowMeaning}
                           onChange={(e) =>
@@ -411,7 +413,8 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
                         />
                       </label>
                       <label className="setup-field">
-                        Mid meaning <span className="setup-optional">optional</span>
+                        {t("rssMidMeaning")}
+                        <span className="setup-optional">{t("optional")}</span>
                         <textarea
                           value={row.midMeaning}
                           onChange={(e) =>
@@ -431,7 +434,7 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
                       !row.highMeaning.trim() &&
                       !row.lowMeaning.trim() ? (
                         <label className="setup-field">
-                          Fallback meaning
+                          {t("rssFallbackMeaning")}
                           <textarea
                             value={row.description}
                             onChange={(e) =>
@@ -451,7 +454,7 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
                   )}
                   <div className="setup-row">
                     <label className="setup-field">
-                      Kind
+                      {t("osKind")}
                       <select
                         value={row.kind}
                         onChange={(e) =>
@@ -469,8 +472,8 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
                           })
                         }
                       >
-                        <option value="number">number</option>
-                        <option value="text">text</option>
+                        <option value="number">{t("rssNumber")}</option>
+                        <option value="text">{t("rssText")}</option>
                       </select>
                     </label>
                     {row.kind === "number" ? (
@@ -480,7 +483,7 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
                           style={{ margin: 0, gridTemplateColumns: "1fr 1fr 1fr" }}
                         >
                           <label className="setup-field">
-                            Min
+                            {t("rssMin")}
                             <input
                               value={row.min}
                               onChange={(e) =>
@@ -494,7 +497,7 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
                             />
                           </label>
                           <label className="setup-field">
-                            Max
+                            {t("rssMax")}
                             <input
                               value={row.max}
                               onChange={(e) =>
@@ -548,7 +551,8 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
                       </div>
                     ) : (
                       <div className="setup-field">
-                        Choices <span className="setup-optional">Adventure picks</span>
+                        {t("rssChoices")}
+                        <span className="setup-optional">{t("rssAdventurePicks")}</span>
                         <EditChips
                           items={row.options}
                           preset={TRAIT_PRESET_EXAMPLE}
@@ -568,11 +572,12 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
               ))}
             </FormSection>
             <FormSection
-              title="Health in adventures"
+              title={t("rssHealthInAdventures")}
               lede="How much health the player starts with. Weapon damage uses the same unit, so a high number makes long fights. Other people's toughness is a share of it. Empty means 20."
             >
               <label className="setup-field">
-                Player health in adventures <span className="setup-optional">optional</span>
+                {t("rssPlayerHealthInAdventures")}
+                <span className="setup-optional">{t("optional")}</span>
                 <input
                   aria-label="Player health in adventures"
                   value={draft.playerHealth}
@@ -591,11 +596,11 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
                 disabled={busy}
                 onClick={() => void save()}
               >
-                Save
+                {t("cpSave")}
               </button>
               {saved && (
                 <button type="button" className="setup-example" onClick={() => void remove()}>
-                  Delete
+                  {t("cstDelete")}
                 </button>
               )}
             </div>
