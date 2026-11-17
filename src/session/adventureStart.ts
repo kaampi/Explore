@@ -19,6 +19,7 @@ import { unifyAdventureEquipment } from "../game/AdventureEngine";
 import { bodyPlanSummary, factionSummary } from "../context/bodyPlan";
 import type { AnatomyTemplate } from "../state/StateSchema";
 import { scaffoldIntoAdventure } from "../library/worldScaffold";
+import { isOpenDraft } from "../library/sceneFormat";
 import { createSessionFromSetup } from "./createSession";
 import { parseSession } from "../state/StateSchema";
 const clip = (text: string | undefined, max: number) => (text ?? "").trim().slice(0, max);
@@ -96,7 +97,7 @@ function sessionRuleset(
 }
 
 export function startPlayableCampaign(
-  written: CampaignTemplate,
+  asWritten: CampaignTemplate,
   scene: CampaignScene,
   places: PlaceTemplate[],
   id: string,
@@ -108,6 +109,22 @@ export function startPlayableCampaign(
     objects?: ObjectTemplate[];
   } & PersonaSources = {},
 ) {
+  // Drafts from a manuscript that nothing has been built in are left out of the game, with every
+  // way that leads to or from them.
+  const drafts = new Set(asWritten.scenes.filter(isOpenDraft).map((item) => item.id));
+  if (drafts.has(scene.id))
+    throw Error(
+      `Choose a place and make “${scene.name || "Untitled scene"}” playable before starting from it.`,
+    );
+  const written: CampaignTemplate = drafts.size
+    ? {
+        ...asWritten,
+        scenes: asWritten.scenes.filter((item) => !drafts.has(item.id)),
+        sceneLinks: asWritten.sceneLinks.filter(
+          (link) => !drafts.has(link.fromSceneId) && !drafts.has(link.toSceneId),
+        ),
+      }
+    : asWritten;
   const world = written.mapWorldId ? worlds.find((w) => w.id === written.mapWorldId) : undefined;
   if (written.mapWorldId && !world?.worldMap)
     throw Error(

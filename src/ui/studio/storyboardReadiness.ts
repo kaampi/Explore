@@ -1,7 +1,7 @@
 import type { CampaignScene, CampaignTemplate, PlaceTemplate } from "../../library/LibrarySchema";
 import { mapPlaceForScene, type AdventureMapPlace } from "../../library/adventureMap";
 import { adventureFacts } from "../../library/playableCampaign";
-import { sceneFormat } from "../../library/sceneFormat";
+import { isOpenDraft, sceneFormat } from "../../library/sceneFormat";
 import { isHostile, reachablePositions } from "../../library/sceneParts";
 
 export type SceneField = "name" | "place" | "playable" | "arrival" | "action" | "reach" | "parts";
@@ -31,6 +31,8 @@ export function storyboardIssues(
   for (const scene of campaign.scenes) {
     // Scenes in the earlier format are built and started elsewhere. Storyboard does not judge them.
     if (sceneFormat(scene) === "earlier") continue;
+    // A draft from a manuscript is a note, not an unfinished scene: it is a warning, not an error.
+    if (isOpenDraft(scene)) continue;
     const name = scene.name.trim() || "Untitled scene";
     const mapPlace = mapPlaces ? mapPlaceForScene(scene, mapPlaces) : undefined;
     const hasPlace = mapPlaces ? !!mapPlace : placeIds.has(scene.placeId);
@@ -434,7 +436,9 @@ type Reach = {
  * action that rolls. This follows the same rules as play, but does not run the engine.
  */
 export function reachableFromStart(campaign: CampaignTemplate): Reach {
-  const first = campaign.scenes.find((scene) => sceneFormat(scene) !== "earlier");
+  const first = campaign.scenes.find(
+    (scene) => sceneFormat(scene) !== "earlier" && !isOpenDraft(scene),
+  );
   const scenes = new Set<string>();
   const flags = new Set<string>(campaign.storyFlags);
   const items = new Set<string>();
@@ -520,6 +524,16 @@ export function reachableFromStart(campaign: CampaignTemplate): Reach {
  * Things worth checking that do not stop the player testing: scenes nothing leads to, and
  * conditions nothing can meet. Each scene can still be tested on its own from "Start from".
  */
+/** A draft nothing has been built in yet is left out of the test, and the author is told. */
+function draftWarning(scene: CampaignScene): StoryboardIssue {
+  return {
+    kind: "scene",
+    id: scene.id,
+    field: "playable",
+    message: `“${scene.name.trim() || "Untitled event"}” is a draft from the manuscript with nothing built yet, so it is left out of the test. Choose a place and make it playable when you are ready.`,
+  };
+}
+
 export function storyboardWarnings(
   campaign: CampaignTemplate,
   facts: ReadonlySet<string>,
@@ -528,9 +542,13 @@ export function storyboardWarnings(
     objects: { id: string; portable?: boolean | undefined; weight?: number | undefined }[];
   },
 ): StoryboardIssue[] {
-  const first = campaign.scenes.find((scene) => sceneFormat(scene) !== "earlier");
-  if (!first) return [];
+  const first = campaign.scenes.find(
+    (scene) => sceneFormat(scene) !== "earlier" && !isOpenDraft(scene),
+  );
+  const drafts = campaign.scenes.filter(isOpenDraft);
+  if (!first) return drafts.map(draftWarning);
   const issues: StoryboardIssue[] = [
+    ...drafts.map(draftWarning),
     ...(library ? missingCardIssues(campaign, library) : []),
     ...(library ? heavyPickUpIssues(campaign, library.objects) : []),
     ...missingKeyIssues(campaign),
@@ -542,7 +560,7 @@ export function storyboardWarnings(
   const discovery = (flag: string) => (labels.has(flag) ? `“${labels.get(flag)}”` : `“${flag}”`);
   const openingName = first.name.trim() || "Untitled scene";
   for (const scene of campaign.scenes) {
-    if (sceneFormat(scene) === "earlier") continue;
+    if (sceneFormat(scene) === "earlier" || isOpenDraft(scene)) continue;
     const name = scene.name.trim() || "Untitled scene";
     if (!reach.scenes.has(scene.id)) {
       issues.push({
