@@ -49,6 +49,11 @@ export const AdventureRunSchema = z.object({
   currentSceneId: z.string().min(1),
   /** Game time in minutes. It moves forward with the travel time of the ways taken, and nothing else. */
   clockMinutes: z.number().int().nonnegative().default(INITIAL_GAME_MINUTES),
+  /**
+   * Things the player chose to keep from a free reply, by scene id. They are words the player
+   * approved, not facts the engine knows, and they change nothing in the game.
+   */
+  notes: z.record(z.string(), z.array(z.string().min(1).max(300)).max(8)).default({}),
   goal: AdventureGoalSchema.optional(),
   /** Keyed by actor id, for example "npc:<characterId>". Older runs have none. */
   cast: z.record(PersonaSchema).default({}),

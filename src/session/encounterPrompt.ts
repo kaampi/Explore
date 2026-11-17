@@ -193,6 +193,14 @@ function untrusted(label: string, text: string): string {
   return wrapped.content;
 }
 
+/** Lines the player chose to keep about this place. */
+function noteLines(session: Session): string[] {
+  const run = session.adventure;
+  const notes = run?.notes[run.currentSceneId] ?? [];
+  if (notes.length === 0) return [];
+  return ["Established here, kept by the player:", ...notes.map((note) => `- ${note}`)];
+}
+
 /** The time of day, when the adventure keeps time: the ways between places take minutes. */
 function timeLines(session: Session): string[] {
   const run = session.adventure;
@@ -215,6 +223,7 @@ function trustedBlock(session: Session, game: EncounterGame, trim: Trim, persona
     narration?.background && `Background: ${narration.background.slice(0, trim.story)}`,
     `Scene: ${d.title}`,
     ...timeLines(session),
+    ...noteLines(session),
     encounterDescription(d, s),
     `The player is ${player.name}, at ${placeName(game, player.position)}.`,
     ...peopleHereLines(game),

@@ -586,6 +586,7 @@ export function CastPanel() {
     compacting,
     setHandoff,
     setOutgoingHandoff,
+    forgetPlaceNote,
   } = useEngine();
   const session = useSession();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -620,6 +621,32 @@ export function CastPanel() {
 
   return (
     <div className="panel panel--left">
+      {session.adventure &&
+        (session.adventure.notes[session.adventure.currentSceneId] ?? []).length > 0 && (
+          <div style={{ marginBottom: 18 }} aria-label="Remembered here">
+            <p className="panel-heading">Remembered here</p>
+            <p className="sheet-note">
+              Lines you chose to keep. The story AI is told them whenever you are in this place.
+            </p>
+            {(session.adventure.notes[session.adventure.currentSceneId] ?? []).map(
+              (note, index) => (
+                <div className="sheet-fact" key={note}>
+                  <span>{note}</span>
+                  <button
+                    type="button"
+                    className="setup-text-btn"
+                    aria-label={`Forget: ${note.slice(0, 40)}`}
+                    onClick={() =>
+                      void forgetPlaceNote(session.adventure!.currentSceneId, index).catch(() => {})
+                    }
+                  >
+                    Forget
+                  </button>
+                </div>
+              ),
+            )}
+          </div>
+        )}
       {pendingReview.length > 0 && (
         <div style={{ marginBottom: 18 }}>
           <div className="setup-section__head">

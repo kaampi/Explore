@@ -29,6 +29,15 @@ import { ActionSaveError } from "../../persistence/ActionSaveError";
 const REPLY_FAILED =
   "The reply could not be written, so the scene shows the plain result. Nothing else changed.";
 
+/** A line to remember from a reply: its words on one line, cut at a sentence end if it is long. */
+export function noteFrom(text: string): string {
+  const line = text.replace(/\s+/g, " ").trim();
+  if (line.length <= 300) return line;
+  const cut = line.slice(0, 300);
+  const end = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("! "), cut.lastIndexOf("? "));
+  return end > 80 ? cut.slice(0, end + 1) : cut.slice(0, 299).trimEnd() + "…";
+}
+
 export function EncounterPanel({
   onHome,
   mapView,
@@ -47,6 +56,7 @@ export function EncounterPanel({
       saveEncounter: saveSession,
       setCombatArtwork,
       transitionAdventure,
+      rememberPlaceNote,
     } = useEngine(),
     session = useSession(),
     game = session.encounter!;
@@ -61,7 +71,9 @@ export function EncounterPanel({
   const [notice, setNotice] = useState(""),
     [saving, setSaving] = useState(false),
     [saveFailed, setSaveFailed] = useState(false);
-  const [menu, setMenu] = useState<{ x: number; y: number; text: string } | null>(null);
+  const [menu, setMenu] = useState<{ x: number; y: number; text: string; free?: boolean } | null>(
+    null,
+  );
   const abortRef = useRef<AbortController | null>(null);
   const lock = useRef(false),
     log = useRef<HTMLDivElement>(null),
@@ -337,6 +349,22 @@ export function EncounterPanel({
             y={menu.y}
             onClose={() => setMenu(null)}
             items={[
+              ...(menu.free && session.adventure
+                ? [
+                    {
+                      label: "Remember this",
+                      action: () => {
+                        rememberPlaceNote(noteFrom(menu.text))
+                          .then(() => setNotice("Remembered here."))
+                          .catch((error: unknown) =>
+                            setNotice(
+                              error instanceof Error ? error.message : "Could not remember this.",
+                            ),
+                          );
+                      },
+                    },
+                  ]
+                : []),
               {
                 label: "Copy",
                 action: () => {
@@ -408,7 +436,12 @@ export function EncounterPanel({
                   className={`message message--${mine ? "player" : "character message--narrator"}`}
                   onContextMenu={(event) => {
                     event.preventDefault();
-                    setMenu({ x: event.clientX, y: event.clientY, text: turn.content });
+                    setMenu({
+                      x: event.clientX,
+                      y: event.clientY,
+                      text: turn.content,
+                      free: (turn as { ai?: { kind?: string } }).ai?.kind === "free-reply",
+                    });
                   }}
                 >
                   <span className="message__attribution">

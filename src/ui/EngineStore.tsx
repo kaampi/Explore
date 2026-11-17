@@ -86,6 +86,8 @@ export interface EngineContextValue {
   /** What a described action may mean. Only ever a proposal for the player to review. */
   planEncounterDo: (text: string, signal?: AbortSignal) => Promise<DoPlan>;
   /** Add AI wording to a turn the engine has already settled and saved. */
+  rememberPlaceNote: (text: string) => Promise<void>;
+  forgetPlaceNote: (sceneId: string, index: number) => Promise<void>;
   wordEncounterTurn: (
     job:
       | { kind: "free-reply"; actionId: string; sceneId: string; addresseeId: string; text: string }
@@ -904,6 +906,16 @@ export function EngineProvider({
         discovery?.state === "available" ? pass1Adapter : undefined,
         signal,
       ),
+    rememberPlaceNote: async (text) => {
+      stateEngine.addPlaceNote(text);
+      notifySession();
+      await repo.saveSession(stateEngine.getSession());
+    },
+    forgetPlaceNote: async (sceneId, index) => {
+      stateEngine.removePlaceNote(sceneId, index);
+      notifySession();
+      await repo.saveSession(stateEngine.getSession());
+    },
     wordEncounterTurn: async (job, options = {}) => {
       if (discovery?.state !== "available") return "failed";
       const model = stateEngine.getSession().runtime.model;

@@ -221,6 +221,33 @@ export class StateEngine {
     turn.ai = { kind: input.kind, model: input.model, at: new Date().toISOString() };
     return true;
   }
+  /**
+   * Keep a line the player chose to remember about the place they are in. The words are shown
+   * to the story AI as established by the player. This changes no state: the state version,
+   * the scene and the history stay as they are.
+   */
+  addPlaceNote(raw: string): void {
+    const run = this.session.adventure;
+    if (!run) throw new Error("There is no adventure to keep this in.");
+    const text = raw.replace(/\s+/g, " ").trim();
+    if (!text) throw new Error("There is nothing to remember.");
+    if (text.length > 300) throw new Error("A remembered line can be at most 300 characters.");
+    const notes = run.notes[run.currentSceneId] ?? [];
+    if (notes.includes(text)) return;
+    if (notes.length >= 8)
+      throw new Error("This place already has 8 remembered lines. Forget one first.");
+    run.notes[run.currentSceneId] = [...notes, text];
+  }
+  /** Let go of a remembered line. */
+  removePlaceNote(sceneId: string, index: number): void {
+    const run = this.session.adventure;
+    const notes = run?.notes[sceneId];
+    if (!run || !notes || !Number.isInteger(index) || index < 0 || index >= notes.length)
+      throw new Error("That line is not remembered.");
+    const kept = notes.filter((_, at) => at !== index);
+    if (kept.length > 0) run.notes[sceneId] = kept;
+    else delete run.notes[sceneId];
+  }
   transitionAdventure(request: AdventureTransition): void {
     const next = advanceAdventure(this.session, request),
       turn =
