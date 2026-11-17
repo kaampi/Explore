@@ -159,3 +159,36 @@ it("copying again reviews what changed instead of making a second card, and appl
     await again.close();
   }
 });
+
+it("creates a world from chosen entries in one go, and a second go adds the rest to the same world", async () => {
+  const repo = new IndexedDBRepository(new IDBFactory(), "core-entities-ui-3");
+  const ui = await mount(repo, 2, "A leaning mill.");
+  try {
+    await ui.click("Create world from this manuscript");
+    expect(ui.text()).toContain("Create world (3)");
+    const box = Array.from(ui.container.querySelectorAll("label"))
+      .find((l) => l.textContent?.includes("Brass key"))!
+      .querySelector("input")!;
+    await act(async () => box.click());
+    expect(ui.text()).toContain("Create world (2)");
+
+    await ui.click("Create world (2)");
+
+    expect((await repo.listRealms()).map((r) => r.name)).toEqual(["Night Keys"]);
+    expect((await repo.listPlaces()).map((p) => p.name)).toEqual(["The Old Mill"]);
+    expect((await repo.listFactions()).map((f) => f.name)).toEqual(["The Millers' Guild"]);
+    expect(await repo.listObjects()).toEqual([]);
+    expect(ui.text()).toContain("Created the world “Night Keys” with 1 place, 1 faction");
+
+    await ui.click("Create world from this manuscript");
+    await ui.click("Create world (3)");
+
+    expect((await repo.listRealms()).length).toBe(1);
+    expect((await repo.listObjects()).map((o) => o.name)).toEqual(["Brass key"]);
+    expect((await repo.listPlaces()).length).toBe(1);
+    expect(ui.text()).toContain("Added to the world “Night Keys” with 1 thing");
+    expect(ui.text()).toContain("Already in your library, left as they are");
+  } finally {
+    await ui.close();
+  }
+});

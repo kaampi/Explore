@@ -9,6 +9,11 @@ import { portraitSrc } from "../studio/portrait";
 import type { CharacterTemplate, ObjectTemplate, PlaceTemplate } from "@library/LibrarySchema";
 import type { Faction } from "@library/factions";
 import {
+  IMPORTABLE_KINDS,
+  importManuscriptBatch,
+  importableEntries,
+} from "../../integrations/coreBatch";
+import {
   applyCoreEntityChanges,
   copyCoreEntity,
   manuscriptWorld,
@@ -69,6 +74,7 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
     changes: CoreCharacterChange[];
   } | null>(null);
   const [approved, setApproved] = useState<string[]>([]);
+  const [chosen, setChosen] = useState<Set<string> | null>(null);
 
   async function refresh() {
     setBusy(true);
@@ -184,6 +190,63 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
       setImporting(false);
     }
   }
+  /** Copy everything chosen at once, into a world made from the manuscript. */
+  async function createWorld() {
+    if (!selected || !chosen || importing) return;
+    setImporting(true);
+    setImportNotice("");
+    try {
+      const [realms, characters, places, objects, factions] = await Promise.all([
+        repo.listRealms(),
+        repo.listCharacters(),
+        repo.listPlaces(),
+        repo.listObjects(),
+        repo.listFactions(),
+      ]);
+      const result = importManuscriptBatch({
+        title: selected.manuscript.title,
+        bible: selected.manuscript.bible,
+        source: {
+          workspaceId: selected.workspaceId,
+          projectId: selected.projectId,
+          revision: selected.revision,
+        },
+        chosen,
+        library: { realms, characters, places, objects, factions },
+      });
+      if (result.realmIsNew) await repo.saveRealm(result.realm);
+      for (const card of result.characters) await repo.saveCharacter(card);
+      for (const card of result.places) await repo.savePlace(card);
+      for (const card of result.objects) await repo.saveObject(card);
+      for (const card of result.factions) await repo.saveFaction(card);
+      const parts = [
+        [result.characters.length, "character"],
+        [result.places.length, "place"],
+        [result.objects.length, "thing"],
+        [result.factions.length, "faction"],
+      ]
+        .filter(([count]) => (count as number) > 0)
+        .map(([count, noun]) => `${count} ${noun}${count === 1 ? "" : "s"}`);
+      setImportNotice(
+        `${result.realmIsNew ? "Created" : "Added to"} the world “${result.realm.name}”${
+          parts.length ? ` with ${parts.join(", ")}` : ""
+        }.${
+          result.alreadyThere.length
+            ? ` Already in your library, left as they are: ${result.alreadyThere.join(", ")}.`
+            : ""
+        }${
+          result.failed.length
+            ? ` Could not copy: ${result.failed.map((f) => `${f.name} (${f.reason})`).join("; ")}.`
+            : ""
+        } kaampi Write was not changed.`,
+      );
+      setChosen(null);
+    } catch (reason) {
+      setImportNotice(reason instanceof Error ? reason.message : "Could not create the world.");
+    } finally {
+      setImporting(false);
+    }
+  }
   async function saveReview() {
     if (!review || !selected || importing || !approved.length) return;
     setImporting(true);
@@ -295,6 +358,7 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
           onClose={() => {
             setSelected(null);
             setReview(null);
+            setChosen(null);
           }}
           wide
         >
@@ -318,6 +382,86 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
             </p>
             {selected.manuscript.bible.length === 0 && (
               <p>No shared Story Bible entries in this manuscript.</p>
+            )}
+            {importableEntries(selected.manuscript.bible).length > 0 && !chosen && (
+              <button
+                type="button"
+                disabled={importing || !!review}
+                onClick={() =>
+                  setChosen(
+                    new Set(importableEntries(selected.manuscript.bible).map((entry) => entry.key)),
+                  )
+                }
+              >
+                Create world from this manuscript…
+              </button>
+            )}
+            {chosen && (
+              <section aria-label="Create world from manuscript">
+                <h3>Create a world from “{selected.manuscript.title}”</h3>
+                <p>
+                  Choose what to copy. Everything becomes your own cards in a new world named after
+                  the manuscript; anything copied before is left as it is. Nothing is written to
+                  kaampi Write.
+                </p>
+                {IMPORTABLE_KINDS.map((kind) => {
+                  const entries = importableEntries(selected.manuscript.bible).filter(
+                    (entry) => entry.kind === kind,
+                  );
+                  return entries.length === 0 ? null : (
+                    <fieldset key={kind}>
+                      <legend>
+                        {
+                          {
+                            characters: "Characters",
+                            locations: "Places",
+                            objects: "Things",
+                            groups: "Factions",
+                          }[kind]
+                        }
+                      </legend>
+                      {entries.map((entry) => (
+                        <label key={entry.key}>
+                          <input
+                            type="checkbox"
+                            checked={chosen.has(entry.key)}
+                            disabled={importing}
+                            onChange={(event) => {
+                              const next = new Set(chosen);
+                              if (event.target.checked) next.add(entry.key);
+                              else next.delete(entry.key);
+                              setChosen(next);
+                            }}
+                          />
+                          {entry.entity.name}
+                        </label>
+                      ))}
+                    </fieldset>
+                  );
+                })}
+                <button
+                  type="button"
+                  disabled={importing}
+                  onClick={() =>
+                    setChosen(
+                      new Set(
+                        importableEntries(selected.manuscript.bible).map((entry) => entry.key),
+                      ),
+                    )
+                  }
+                >
+                  Choose all
+                </button>
+                <button type="button" disabled={importing} onClick={() => setChosen(new Set())}>
+                  Choose none
+                </button>
+                <button type="button" disabled={importing} onClick={() => void createWorld()}>
+                  Create world ({chosen.size})
+                </button>
+                <button type="button" disabled={importing} onClick={() => setChosen(null)}>
+                  Cancel
+                </button>
+              </section>
             )}
             {selected.manuscript.bible.map((section, index) => (
               <section key={`${section.kind}-${index}`}>
