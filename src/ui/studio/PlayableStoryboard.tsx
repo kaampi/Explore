@@ -692,10 +692,17 @@ export function PlayableStoryboard({
           campaign={campaign}
           library={library ?? { characters, places, objects }}
           mapped={!!mapPlaces}
+          mapPlaces={mapPlaces}
           busy={busy}
           onScene={patchScene}
           onCampaign={onChange}
-          onUsePlace={(place) => patchScene(scenePointedAt(scene, place.id, place.name))}
+          onUsePlace={(place) => {
+            // On a map the place is the map point of that place, bound as Storyboard does.
+            const entry = mapPlaces?.find((item) => item.place.id === place.id);
+            patchScene(
+              entry ? bindSceneMapPlace(scene, entry) : scenePointedAt(scene, place.id, place.name),
+            );
+          }}
         />
       )}
       <div className="storyboard-form-block">

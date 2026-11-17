@@ -8,6 +8,7 @@ import {
 } from "@library/LibrarySchema";
 import { FactionSchema, type Faction } from "@library/factions";
 import type { CoreEntitySnapshot, CoreOrigin } from "@library/coreOrigin";
+import { WorldMapSchema, type MapNode } from "@library/worldMap";
 import type { CoreBibleEntity, CoreBibleSection } from "./coreBibleSchema";
 import type { CoreCharacterChange } from "./coreCharacterUpdates";
 
@@ -185,4 +186,87 @@ export function manuscriptWorld(
       coreOrigin: { ...source, entityRef: "manuscript" },
     }),
   };
+}
+
+/** Closest two points may be on the map: points of imported places are never nearer than this. */
+export const MAP_POINT_GAP = 6;
+
+/** Free spots for new points: a grid from (10, 10) at first, then closer, never nearer than the gap to anything. */
+function freeSpots(
+  taken: readonly { x: number; y: number }[],
+  wanted: number,
+): { x: number; y: number }[] {
+  const far = (x: number, y: number) =>
+    taken.every((node) => Math.hypot(node.x - x, node.y - y) >= MAP_POINT_GAP);
+  for (const [start, spacing] of [
+    [10, 12],
+    [5, 8],
+    [5, MAP_POINT_GAP],
+  ] as const) {
+    const spots: { x: number; y: number }[] = [];
+    for (let y = start; y <= 95; y += spacing)
+      for (let x = start; x <= 95; x += spacing) if (far(x, y)) spots.push({ x, y });
+    if (spots.length >= wanted) return spots.slice(0, wanted);
+  }
+  // More places than the map can hold apart: put the rest closer rather than leave one out.
+  const spots: { x: number; y: number }[] = [];
+  for (let y = 5; y <= 95; y += 3)
+    for (let x = 5; x <= 95; x += 3) if (far(x, y)) spots.push({ x, y });
+  while (spots.length < wanted)
+    spots.push(...spots.slice(0, wanted - spots.length), { x: 50, y: 50 });
+  return spots.slice(0, wanted);
+}
+
+/**
+ * Put places on a world's map as points, so a world made from a manuscript can be explored and
+ * its places chosen in adventures that use a map. A world with no map gets one. A place that
+ * already has a point is left out, and nothing already on the map moves or changes. No ways are
+ * drawn: the author moves the points and draws the roads in the map studio.
+ */
+export function placeOnWorldMap(
+  realm: RealmTemplate,
+  places: readonly PlaceTemplate[],
+): RealmTemplate {
+  const map = realm.worldMap ?? WorldMapSchema.parse({ mapType: "world", nodes: [], routes: [] });
+  const onMap = new Set(map.nodes.flatMap((node) => (node.placeId ? [node.placeId] : [])));
+  const missing = places.filter(
+    (place, index) => !onMap.has(place.id) && places.findIndex((p) => p.id === place.id) === index,
+  );
+  if (missing.length === 0 && realm.worldMap) return realm;
+  const spots = freeSpots(map.nodes, missing.length);
+  const nodes: MapNode[] = missing.map((place, index) => ({
+    id: crypto.randomUUID(),
+    placeId: place.id,
+    name: place.name,
+    kind: "Point of Interest",
+    x: spots[index]!.x,
+    y: spots[index]!.y,
+    description: "",
+    population: "",
+    characterIds: [],
+  }));
+  const next = WorldMapSchema.parse({ ...map, nodes: [...map.nodes, ...nodes] });
+  return { ...realm, worldMap: next, updatedAt: new Date().toISOString() };
+}
+
+/**
+ * A place renamed from the manuscript renames its point on the map too, but only if the point
+ * still has the place's old name: a point the author has renamed keeps the author's name.
+ */
+export function renameOnWorldMap(
+  realm: RealmTemplate,
+  placeId: string,
+  oldName: string,
+  newName: string,
+): RealmTemplate {
+  const map = realm.worldMap;
+  if (!map || !map.nodes.some((node) => node.placeId === placeId && node.name === oldName))
+    return realm;
+  const next = WorldMapSchema.parse({
+    ...map,
+    nodes: map.nodes.map((node) =>
+      node.placeId === placeId && node.name === oldName ? { ...node, name: newName } : node,
+    ),
+  });
+  return { ...realm, worldMap: next, updatedAt: new Date().toISOString() };
 }

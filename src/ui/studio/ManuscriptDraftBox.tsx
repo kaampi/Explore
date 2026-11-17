@@ -24,6 +24,7 @@ export function ManuscriptDraftBox({
   campaign,
   library,
   mapped,
+  mapPlaces,
   busy,
   onScene,
   onCampaign,
@@ -34,6 +35,8 @@ export function ManuscriptDraftBox({
   library: DraftLibrary;
   /** The adventure places its scenes on a map, so a place is chosen there, not from a card. */
   mapped: boolean;
+  /** The map places of the adventure, when it uses a map: a place can be used if it is on that map. */
+  mapPlaces?: readonly { place: { id: string } }[] | undefined;
   busy: boolean;
   onScene: (scene: CampaignScene) => void;
   onCampaign: (campaign: CampaignTemplate) => void;
@@ -116,9 +119,13 @@ export function ManuscriptDraftBox({
                 <button
                   key={place.id}
                   type="button"
-                  disabled={busy || mapped}
+                  disabled={
+                    busy || (mapped && !mapPlaces?.some((entry) => entry.place.id === place.id))
+                  }
                   title={
-                    mapped ? "This adventure uses a map. Choose the place on the map." : undefined
+                    mapped && !mapPlaces?.some((entry) => entry.place.id === place.id)
+                      ? "This adventure uses a map. Choose the place on the map."
+                      : undefined
                   }
                   onClick={() => onUsePlace(place)}
                 >
