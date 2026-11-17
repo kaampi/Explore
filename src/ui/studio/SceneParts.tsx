@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslate } from "../i18n/LanguageProvider";
 import type {
   CampaignScene,
   CampaignTemplate,
@@ -62,6 +63,7 @@ export function SceneParts({
   onChangeCampaign: (campaign: CampaignTemplate) => void;
   onOpenLibrary?: ((what: "people" | "things") => void) | undefined;
 }) {
+  const t = useTranslate();
   const [personId, setPersonId] = useState("");
   const [thingId, setThingId] = useState("");
   const [inside, setInside] = useState<Record<string, string>>({});
@@ -92,7 +94,7 @@ export function SceneParts({
       onChange(change());
       setMessage("");
     } catch (reason) {
-      setMessage(reason instanceof Error ? reason.message : "Could not change the scene.");
+      setMessage(reason instanceof Error ? reason.message : t("spCouldNotChange"));
     }
   }
 
@@ -101,7 +103,7 @@ export function SceneParts({
       onChangeCampaign(change());
       setMessage("");
     } catch (reason) {
-      setMessage(reason instanceof Error ? reason.message : "Could not change the scene.");
+      setMessage(reason instanceof Error ? reason.message : t("spCouldNotChange"));
     }
   }
 
@@ -118,19 +120,19 @@ export function SceneParts({
     const route = campaign.sceneLinks.find(
       (link) => link.fromSceneId === scene.id && link.requiresOpenBarriers?.includes(doorId),
     );
-    if (route) return `on the way to ${sceneName(route.toSceneId)}`;
-    return `at ${positionName(game!.state.barriers[doorId]?.position ?? "")}`;
+    if (route) return t("spOnTheWay", { name: sceneName(route.toSceneId) });
+    return t("spAtPlace", { name: positionName(game!.state.barriers[doorId]?.position ?? "") });
   }
 
   function attachOptions() {
     return [
       ...game!.definition.connections.map((c) => ({
         value: `connection:${c.from}:${c.to}`,
-        label: `Between ${positionName(c.from)} and ${positionName(c.to)}`,
+        label: t("spBetween", { a: positionName(c.from), b: positionName(c.to) }),
       })),
       ...routes.map((link) => ({
         value: `route:${link.id}`,
-        label: `On the way to ${sceneName(link.toSceneId)}`,
+        label: t("spOnTheWayTo", { name: sceneName(link.toSceneId) }),
       })),
     ];
   }
@@ -152,9 +154,13 @@ export function SceneParts({
 
   function describeWhere(place: ItemPlace): string {
     if ("position" in place)
-      return `at ${positions.find((p) => p.id === place.position)?.name ?? place.position}`;
+      return t("spAtPlace", {
+        name: positions.find((p) => p.id === place.position)?.name ?? place.position,
+      });
     const holder = game!.state.actors[place.heldBy];
-    return `carried by ${place.heldBy === player.id ? "you" : (holder?.name ?? "someone")}`;
+    return t("spCarriedBy", {
+      name: place.heldBy === player.id ? t("spYou") : (holder?.name ?? t("spSomeone")),
+    });
   }
 
   const itemName = (id: string) =>
@@ -168,15 +174,15 @@ export function SceneParts({
       aria-label="Who and what is here"
       data-storyboard-field="parts"
     >
-      <h4>Who and what is here</h4>
+      <h4>{t("spHeading")}</h4>
       {message && (
         <p role="alert" className="storyboard-scene-parts__error">
           {message}
         </p>
       )}
       <div className="storyboard-scene-parts__group">
-        <strong>People</strong>
-        {here.length === 0 && <p className="playable-hint">No one else is here yet.</p>}
+        <strong>{t("spPeople")}</strong>
+        {here.length === 0 && <p className="playable-hint">{t("spNoOne")}</p>}
         <ul>
           {here.map((actor) => (
             <li key={actor.id}>
@@ -188,7 +194,7 @@ export function SceneParts({
                 aria-label={`Remove ${actor.name}`}
                 onClick={() => attempt(() => removePerson(scene, actor.id.replace(/^npc:/, "")))}
               >
-                Remove
+                {t("spRemove")}
               </button>
               <span className="storyboard-scene-parts__attach">
                 {positions.length > 1 && (
@@ -204,7 +210,7 @@ export function SceneParts({
                   >
                     {positions.map((position) => (
                       <option key={position.id} value={position.id}>
-                        Stands at {position.name}
+                        {t("spStandsAt", { name: position.name })}
                       </option>
                     ))}
                   </select>
@@ -219,8 +225,8 @@ export function SceneParts({
                     )
                   }
                 >
-                  <option value="neutral">Neutral</option>
-                  <option value="hostile">Hostile</option>
+                  <option value="neutral">{t("spNeutral")}</option>
+                  <option value="hostile">{t("spHostile")}</option>
                 </select>
                 <select
                   aria-label={`Toughness of ${actor.name}`}
@@ -233,16 +239,19 @@ export function SceneParts({
                   }
                 >
                   {toughnessOf(actor) === undefined && (
-                    <option value="custom">Custom ({actor.maxHp} health)</option>
+                    <option value="custom">{t("spCustom", { health: actor.maxHp })}</option>
                   )}
                   {(["weak", "normal", "tough"] as const).map((level) => (
                     <option key={level} value={level}>
-                      {level[0]!.toUpperCase() + level.slice(1)} (
-                      {healthFor(
-                        level,
-                        game.definition.rules.playerHealth ?? DEFAULT_PLAYER_HEALTH,
-                      )}{" "}
-                      health)
+                      {t("spToughOption", {
+                        level: t(
+                          level === "weak" ? "spWeak" : level === "normal" ? "spNormal" : "spTough",
+                        ),
+                        health: healthFor(
+                          level,
+                          game.definition.rules.playerHealth ?? DEFAULT_PLAYER_HEALTH,
+                        ),
+                      })}
                     </option>
                   ))}
                 </select>
@@ -250,7 +259,7 @@ export function SceneParts({
               {isHostile(game, actor) && actor.weapons.length > 0 && (
                 <span className="storyboard-scene-parts__attach">
                   <label>
-                    Retreats at health{" "}
+                    {t("spRetreats")}{" "}
                     <input
                       type="number"
                       min={0}
@@ -279,10 +288,10 @@ export function SceneParts({
                       )
                     }
                   >
-                    <option value="">Does not run</option>
+                    <option value="">{t("spDoesNotRun")}</option>
                     {positions.map((position) => (
                       <option key={position.id} value={position.id}>
-                        Runs to {position.name}
+                        {t("spRunsTo", { name: position.name })}
                       </option>
                     ))}
                   </select>
@@ -293,14 +302,14 @@ export function SceneParts({
         </ul>
         {people.length === 0 ? (
           <p className="playable-hint">
-            No one is in the Cast yet.{" "}
+            {t("spNoCast")}{" "}
             {onOpenLibrary && (
               <button
                 type="button"
                 className="setup-text-btn"
                 onClick={() => onOpenLibrary("people")}
               >
-                Open Cast →
+                {t("spOpenCast")}
               </button>
             )}
           </p>
@@ -312,7 +321,9 @@ export function SceneParts({
               disabled={busy || available.length === 0}
               onChange={(event) => setPersonId(event.target.value)}
             >
-              <option value="">{available.length ? "Choose a person" : "Everyone is here"}</option>
+              <option value="">
+                {available.length ? t("spChoosePerson") : t("spEveryoneHere")}
+              </option>
               {available.map((person) => (
                 <option key={person.id} value={person.id}>
                   {person.name}
@@ -329,14 +340,14 @@ export function SceneParts({
                 setPersonId("");
               }}
             >
-              Add person
+              {t("spAddPerson")}
             </button>
           </div>
         )}
       </div>
       <div className="storyboard-scene-parts__group">
-        <strong>Things</strong>
-        {placed.length === 0 && <p className="playable-hint">No things are placed here yet.</p>}
+        <strong>{t("spThings")}</strong>
+        {placed.length === 0 && <p className="playable-hint">{t("spNoThings")}</p>}
         <ul>
           {placed.map((entry) => (
             <li key={`${entry.itemId}`}>
@@ -347,7 +358,7 @@ export function SceneParts({
                 game.definition.weapons.find((weapon) => weapon.id === entry.itemId)
                   ?.usesAmmunition && (
                   <label className="storyboard-scene-parts__rounds">
-                    Rounds{" "}
+                    {t("spRounds")}{" "}
                     <input
                       type="number"
                       min={0}
@@ -373,7 +384,7 @@ export function SceneParts({
                   aria-label={`Let the player take ${itemName(entry.itemId)}`}
                   onClick={() => attempt(() => addPickUp(scene, entry.itemId))}
                 >
-                  Pick up
+                  {t("spPickUp")}
                 </button>
               )}
               {"position" in entry.where && things.some((t) => t.id === entry.itemId) && (
@@ -403,7 +414,7 @@ export function SceneParts({
                       )
                     }
                   >
-                    Try
+                    {t("spTry")}
                   </button>
                 </>
               )}
@@ -416,7 +427,7 @@ export function SceneParts({
                       value={inside[entry.itemId] ?? ""}
                       onChange={(e) => setInside({ ...inside, [entry.itemId]: e.target.value })}
                     >
-                      <option value="">Nothing inside</option>
+                      <option value="">{t("spNothingInside")}</option>
                       {things
                         .filter(
                           (t) =>
@@ -436,7 +447,7 @@ export function SceneParts({
                         value={lockKey[entry.itemId] ?? ""}
                         onChange={(e) => setLockKey({ ...lockKey, [entry.itemId]: e.target.value })}
                       >
-                        <option value="">Not locked</option>
+                        <option value="">{t("spNotLocked")}</option>
                         {itemsHere(scene)
                           .filter((e) => e.itemId !== entry.itemId)
                           .map((e) => (
@@ -465,7 +476,7 @@ export function SceneParts({
                         )
                       }
                     >
-                      Container
+                      {t("spContainer")}
                     </button>
                   </>
                 )}
@@ -481,21 +492,21 @@ export function SceneParts({
                 aria-label={`Remove ${itemName(entry.itemId)}`}
                 onClick={() => attempt(() => removeItem(scene, entry.itemId))}
               >
-                Remove
+                {t("spRemove")}
               </button>
             </li>
           ))}
         </ul>
         {things.length === 0 ? (
           <p className="playable-hint">
-            No things in this adventure yet.{" "}
+            {t("spNoThingsAdv")}{" "}
             {onOpenLibrary && (
               <button
                 type="button"
                 className="setup-text-btn"
                 onClick={() => onOpenLibrary("things")}
               >
-                Open Things →
+                {t("spOpenThings")}
               </button>
             )}
           </p>
@@ -507,7 +518,7 @@ export function SceneParts({
               disabled={busy}
               onChange={(event) => setThingId(event.target.value)}
             >
-              <option value="">Choose a thing</option>
+              <option value="">{t("spChooseThing")}</option>
               {things.map((thing) => (
                 <option key={thing.id} value={thing.id}>
                   {thing.name}
@@ -525,7 +536,7 @@ export function SceneParts({
                   At {position.name}
                 </option>
               ))}
-              <option value={`held:${player.id}`}>Carried by you</option>
+              <option value={`held:${player.id}`}>{t("spCarriedByYou")}</option>
               {here.map((actor) => (
                 <option key={actor.id} value={`held:${actor.id}`}>
                   Carried by {actor.name}
@@ -542,21 +553,23 @@ export function SceneParts({
                 setThingId("");
               }}
             >
-              Place thing
+              {t("spPlaceThing")}
             </button>
           </div>
         )}
       </div>
       <div className="storyboard-scene-parts__group">
-        <strong>Doors</strong>
-        {doors.length === 0 && <p className="playable-hint">No doors in this scene.</p>}
+        <strong>{t("spDoors")}</strong>
+        {doors.length === 0 && <p className="playable-hint">{t("spNoDoors")}</p>}
         <ul>
           {doors.map((door) => (
             <li key={door.id}>
               <span>
                 {door.name} ·{" "}
-                {door.locked ? `locked with ${itemName(door.keyId ?? "")}` : "not locked"} ·{" "}
-                {doorPlace(door.id)}
+                {door.locked
+                  ? t("spLockedWith", { name: itemName(door.keyId ?? "") })
+                  : t("spNotLockedLower")}{" "}
+                · {doorPlace(door.id)}
               </span>
               <button
                 type="button"
@@ -565,7 +578,7 @@ export function SceneParts({
                 aria-label={`Remove ${door.name}`}
                 onClick={() => attemptCampaign(() => removeDoor(campaign, scene.id, door.id))}
               >
-                Remove
+                {t("spRemove")}
               </button>
               {attachOptions().length > 0 && (
                 <span className="storyboard-scene-parts__attach">
@@ -577,7 +590,7 @@ export function SceneParts({
                       setAttachTo((current) => ({ ...current, [door.id]: event.target.value }))
                     }
                   >
-                    <option value="">Put it…</option>
+                    <option value="">{t("spPutIt")}</option>
                     {attachOptions().map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
@@ -590,7 +603,7 @@ export function SceneParts({
                     aria-label={`Put ${door.name} there`}
                     onClick={() => attachDoor(door.id)}
                   >
-                    Put here
+                    {t("spPutHere")}
                   </button>
                 </span>
               )}
@@ -603,7 +616,7 @@ export function SceneParts({
             value={doorName}
             maxLength={120}
             disabled={busy}
-            placeholder="For example: The cellar door"
+            placeholder={t("spDoorPlaceholder")}
             onChange={(event) => setDoorName(event.target.value)}
           />
           <select
@@ -625,7 +638,7 @@ export function SceneParts({
               disabled={busy}
               onChange={(event) => setDoorLocked(event.target.checked)}
             />{" "}
-            Locked
+            {t("spLocked")}
           </label>
           {doorLocked && (
             <select
@@ -634,7 +647,7 @@ export function SceneParts({
               disabled={busy}
               onChange={(event) => setDoorKey(event.target.value)}
             >
-              <option value="">Choose the key</option>
+              <option value="">{t("spChooseKey")}</option>
               {things.map((thing) => (
                 <option key={thing.id} value={thing.id}>
                   {thing.name}
@@ -659,11 +672,11 @@ export function SceneParts({
                 setDoorLocked(false);
                 setDoorKey("");
               } catch (reason) {
-                setMessage(reason instanceof Error ? reason.message : "Could not add the door.");
+                setMessage(reason instanceof Error ? reason.message : t("spCouldNotAddDoor"));
               }
             }}
           >
-            Add door
+            {t("spAddDoor")}
           </button>
         </div>
       </div>

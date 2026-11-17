@@ -33,20 +33,22 @@ describe("the interface languages", () => {
   });
 
   it("do not leave English text in the Swedish or Norwegian lists for the start page, the world dialog and the play panel", () => {
-    // Norwegian "scene" is the same word as English.
-    const added = keys
-      .slice(keys.indexOf("voiceInstructionPlaceholder") + 1)
-      .filter((key) => key !== "sceneOne");
+    // Words that really are the same in the other language.
+    const same: Record<string, ("sv" | "nb")[]> = {
+      sceneOne: ["nb"],
+      spNormal: ["sv", "nb"],
+      spNeutral: ["sv"],
+    };
+    const added = keys.slice(keys.indexOf("voiceInstructionPlaceholder") + 1);
 
     expect(added.length).toBeGreaterThan(40);
-    for (const key of added) {
-      expect(allLabels.sv[key as keyof typeof allLabels.sv], `sv.${key}`).not.toBe(
-        allLabels.en[key as keyof typeof allLabels.en],
-      );
-      expect(allLabels.nb[key as keyof typeof allLabels.nb], `nb.${key}`).not.toBe(
-        allLabels.en[key as keyof typeof allLabels.en],
-      );
-    }
+    for (const key of added)
+      for (const language of ["sv", "nb"] as const) {
+        if (same[key]?.includes(language)) continue;
+        expect((allLabels[language] as Record<string, string>)[key], `${language}.${key}`).not.toBe(
+          (allLabels.en as Record<string, string>)[key],
+        );
+      }
   });
 
   it("do not leave English text in the Swedish or Norwegian lists for the new picture texts", () => {
