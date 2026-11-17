@@ -196,8 +196,11 @@ describe("adding drafts to an adventure", () => {
       "Event 3",
     ]);
     expect(result.campaign.scenes[0]).toEqual(before.scenes[0]);
-    const act = result.campaign.chapters.find((c) => c.title === "Night Keys")!;
-    expect(result.campaign.scenes.slice(1).every((s) => s.chapterId === act.id)).toBe(true);
+    const act = result.campaign.storyboardSections!.find((c) => c.title === "Night Keys")!;
+    expect(act.kind).toBe("act");
+    expect(result.campaign.scenes.slice(1).every((s) => s.storyboardSectionId === act.id)).toBe(
+      true,
+    );
     expect(result.campaign.scenes[1]!.position!.y).toBeGreaterThan(40);
     expect(campaign).toEqual(before);
   });
@@ -224,7 +227,7 @@ describe("adding drafts to an adventure", () => {
     expect(twice.added).toBe(0);
     expect(twice.alreadyThere).toEqual(["Event 1", "Event 2"]);
     expect(twice.campaign.scenes).toHaveLength(2);
-    expect(twice.campaign.chapters).toHaveLength(1);
+    expect(twice.campaign.storyboardSections).toHaveLength(1);
   });
 
   it("adds a later event to the same act", () => {
@@ -236,7 +239,7 @@ describe("adding drafts to an adventure", () => {
 
     expect(more.added).toBe(1);
     expect(more.alreadyThere).toEqual(["Event 1"]);
-    expect(more.campaign.chapters).toHaveLength(1);
+    expect(more.campaign.storyboardSections).toHaveLength(1);
     expect(more.campaign.scenes.map((s) => s.name)).toEqual(["Event 1", "Event 3"]);
   });
 

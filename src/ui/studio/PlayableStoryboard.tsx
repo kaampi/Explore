@@ -59,6 +59,7 @@ import {
   widthForKey,
   INSPECTOR_DEFAULT,
 } from "./inspectorWidth";
+import { ManuscriptDraftBox, type DraftLibrary } from "./ManuscriptDraftBox";
 import "./playable-storyboard.css";
 export function PlayableStoryboard({
   campaign,
@@ -75,6 +76,7 @@ export function PlayableStoryboard({
   onOpenLibrary,
   rulesets,
   openWorldNote,
+  library,
   initialStep = "scenes",
 }: {
   campaign: CampaignTemplate;
@@ -91,6 +93,8 @@ export function PlayableStoryboard({
   rulesets?: RulesetTemplate[];
   /** What "Beyond the story" adds when a game starts, shown with the test. */
   openWorldNote?: string | undefined;
+  /** Every card in the library, for suggestions made from a manuscript. */
+  library?: DraftLibrary | undefined;
   /** Opens the Cast or Things step, for when there is nothing to choose from. */
   onOpenLibrary?: ((what: "people" | "things") => void) | undefined;
   /** Which step to show first. */
@@ -681,6 +685,18 @@ export function PlayableStoryboard({
         <p className="storyboard-next" role="status">
           {sceneIssue.message}
         </p>
+      )}
+      {scene.draft && (
+        <ManuscriptDraftBox
+          scene={scene}
+          campaign={campaign}
+          library={library ?? { characters, places, objects }}
+          mapped={!!mapPlaces}
+          busy={busy}
+          onScene={patchScene}
+          onCampaign={onChange}
+          onUsePlace={(place) => patchScene(scenePointedAt(scene, place.id, place.name))}
+        />
       )}
       <div className="storyboard-form-block">
         <label>

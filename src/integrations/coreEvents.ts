@@ -130,15 +130,16 @@ export function addEventDrafts(args: {
   };
   if (fresh.length === 0) return result;
   const title = args.title.trim() || "Manuscript";
-  const act = campaign.chapters.find((chapter) => chapter.title === title);
-  const chapter = act ?? { id: crypto.randomUUID(), title };
+  const sections = campaign.storyboardSections ?? [];
+  const act = sections.find((section) => section.kind === "act" && section.title === title);
+  const section = act ?? { id: crypto.randomUUID(), title, kind: "act" as const };
   const lowest = campaign.scenes.reduce(
     (most, scene) => Math.max(most, scene.position?.y ?? 0),
     -220,
   );
   const scenes = fresh.map((event, index) => ({
     ...draftFromEvent(event, source, args.library),
-    chapterId: chapter.id,
+    storyboardSectionId: section.id,
     position: { x: (index % 6) * 300, y: lowest + 220 + Math.floor(index / 6) * 220 },
   }));
   return {
@@ -146,7 +147,7 @@ export function addEventDrafts(args: {
     added: scenes.length,
     campaign: {
       ...campaign,
-      chapters: act ? campaign.chapters : [...campaign.chapters, chapter],
+      ...(act ? {} : { storyboardSections: [...sections, section] }),
       scenes: [...campaign.scenes, ...scenes],
     },
   };

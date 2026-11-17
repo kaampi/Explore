@@ -1628,6 +1628,11 @@ export function CampaignStudio({
                 onRefresh={refresh}
                 onCreatePlace={createPlace}
                 rulesets={visibleRulesets}
+                library={{
+                  characters: visibleCharacters,
+                  places: visiblePlaces,
+                  objects: visibleObjects,
+                }}
                 onOpenLibrary={(what) => {
                   setStoryboardOpen(false);
                   setStoryboardStep("scenes");

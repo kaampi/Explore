@@ -112,7 +112,7 @@ it("creates scene drafts from chosen events into a new adventure, with no game c
     expect(scene.encounter).toBeUndefined();
     expect(scene.draft!.suggestedCharacterIds).toHaveLength(1);
     expect(scene.draft!.facts).toEqual([{ label: "Who", value: "Edda sees it happen." }]);
-    expect(campaign!.chapters.map((c) => c.title)).toEqual(["Night Keys"]);
+    expect(campaign!.storyboardSections!.map((c) => c.title)).toEqual(["Night Keys"]);
     expect(ui.text()).toContain("1 scene draft added to “Night Keys”");
   } finally {
     await ui.close();
