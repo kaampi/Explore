@@ -1,3 +1,4 @@
+import { populatePlace, type PopulateResult } from "../session/residents";
 import type { AdventureTransition } from "../game/AdventureSchema";
 import type { EncounterRequest } from "../game/EncounterSchema";
 import { ActionSaveError } from "../persistence/ActionSaveError";
@@ -86,6 +87,7 @@ export interface EngineContextValue {
   /** What a described action may mean. Only ever a proposal for the player to review. */
   planEncounterDo: (text: string, signal?: AbortSignal) => Promise<DoPlan>;
   /** Add AI wording to a turn the engine has already settled and saved. */
+  populateResidents: (signal?: AbortSignal) => Promise<PopulateResult>;
   rememberPlaceNote: (text: string, sceneId?: string) => Promise<void>;
   forgetPlaceNote: (sceneId: string, index: number) => Promise<void>;
   wordEncounterTurn: (
@@ -906,6 +908,18 @@ export function EngineProvider({
         discovery?.state === "available" ? pass1Adapter : undefined,
         signal,
       ),
+    populateResidents: async (signal) => {
+      const result = await populatePlace({
+        engine: stateEngine,
+        provider: discovery?.state === "available" ? pass1Adapter : undefined,
+        signal,
+      });
+      if (result === "populated" || result === "empty") {
+        notifySession();
+        await repo.saveSession(stateEngine.getSession());
+      }
+      return result;
+    },
     rememberPlaceNote: async (text, sceneId) => {
       stateEngine.addPlaceNote(text, sceneId);
       notifySession();

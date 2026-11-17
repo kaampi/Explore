@@ -57,6 +57,7 @@ export function EncounterPanel({
       setCombatArtwork,
       transitionAdventure,
       rememberPlaceNote,
+      populateResidents,
     } = useEngine(),
     session = useSession(),
     game = session.encounter!;
@@ -113,6 +114,18 @@ export function EncounterPanel({
   useEffect(() => {
     log.current?.scrollTo?.({ top: log.current.scrollHeight, behavior: "smooth" });
   }, [visibleTurns]);
+  // A world that invents residents gives an empty place its people once, on arrival.
+  const arrivedAt = session.adventure?.currentSceneId;
+  const mayHaveResidents =
+    !!session.adventure?.openWorld?.generateResidents &&
+    !!arrivedAt &&
+    !session.adventure.settled.includes(arrivedAt);
+  useEffect(() => {
+    if (!mayHaveResidents) return;
+    const stop = new AbortController();
+    void populateResidents(stop.signal).catch(() => {});
+    return () => stop.abort();
+  }, [mayHaveResidents, arrivedAt, populateResidents]);
   useEffect(() => {
     if (!busy && s.phase === "combat" && player.actionsLeft === 0)
       void run(

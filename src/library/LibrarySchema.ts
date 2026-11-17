@@ -154,6 +154,8 @@ export const RealmTemplateSchema = z.object({
   audioDataUrl: z.string().optional(),
   audioGallery: z.array(z.string().min(1)).optional(),
   audioPlay: PicturePlaySchema.optional(),
+  /** Free play in this world. Off unless the owner turns it on. */
+  openWorld: z.object({ generateResidents: z.boolean().default(false) }).optional(),
   source: LibrarySourceSchema.default("player"),
   createdAt: z.string(),
   updatedAt: z.string(),

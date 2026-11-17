@@ -54,6 +54,10 @@ export const AdventureRunSchema = z.object({
    * approved, not facts the engine knows, and they change nothing in the game.
    */
   notes: z.record(z.string(), z.array(z.string().min(1).max(300)).max(8)).default({}),
+  /** Set from the world when the run starts: whether empty places may get invented residents. */
+  openWorld: z.object({ generateResidents: z.boolean() }).optional(),
+  /** Places whose residents have been settled once, however it went. They are never populated again. */
+  settled: z.array(z.string().min(1)).default([]),
   goal: AdventureGoalSchema.optional(),
   /** Keyed by actor id, for example "npc:<characterId>". Older runs have none. */
   cast: z.record(PersonaSchema).default({}),

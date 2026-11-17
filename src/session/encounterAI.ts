@@ -37,7 +37,7 @@ export function aiAllowed(game: EncounterGame | undefined): game is EncounterGam
   return Boolean(game) && game!.state.phase === "exploration";
 }
 
-async function callProvider(
+export async function callProvider(
   provider: Provider,
   request: Omit<CompletionRequest, "signal">,
   options: TextOptions & { timeoutMs: number; maxChars: number },

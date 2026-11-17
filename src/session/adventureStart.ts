@@ -147,6 +147,7 @@ export function startPlayableCampaign(
         goal: campaign.goal,
         cast: castFor(campaign, sources.characters ?? [], sources),
         narration: narrationFor(campaign, sources.voices ?? []),
+        ...(world?.openWorld?.generateResidents ? { openWorld: { generateResidents: true } } : {}),
         exampleId: campaign.exampleId,
         exampleVersion: campaign.exampleVersion,
         ...(world?.worldMap

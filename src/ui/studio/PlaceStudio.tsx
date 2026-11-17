@@ -98,6 +98,7 @@ type RealmDraft = {
   picturePlay: PicturePlay;
   clips: string[];
   audioPlay: PicturePlay;
+  generateResidents: boolean;
   source: LibrarySource;
   createdAt?: string;
 };
@@ -112,6 +113,7 @@ function emptyRealmDraft(): RealmDraft {
     picturePlay: "fade",
     clips: [],
     audioPlay: "fade",
+    generateResidents: false,
     source: "player",
   };
 }
@@ -126,6 +128,7 @@ function realmDraftFrom(template: RealmTemplate): RealmDraft {
     picturePlay: picturePlayOf(template),
     clips: collectPlaceAudio(template),
     audioPlay: audioPlayOf(template),
+    generateResidents: template.openWorld?.generateResidents ?? false,
     source: template.source,
     createdAt: template.createdAt,
   };
@@ -724,6 +727,7 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
         note: realmDraft.note,
         ...(realmDraft.brief.trim() ? { brief: realmDraft.brief.trim() } : {}),
         source: realmDraft.source,
+        ...(realmDraft.generateResidents ? { openWorld: { generateResidents: true } } : {}),
         ...persistPlacePictures(realmDraft.pictures, realmDraft.picturePlay),
         ...persistPlaceAudio(realmDraft.clips, realmDraft.audioPlay),
       });
@@ -984,6 +988,23 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
                 onChange={(e) => setRealmDraft({ ...realmDraft, brief: e.target.value })}
                 placeholder="Dunbaar is a quiet harbour city. Hidden rooms sit behind ordinary doors."
               />
+            </FormSection>
+            <FormSection
+              title="Free play"
+              lede="When someone explores this world on its map, the story AI can give a place with no people a couple of ordinary residents to talk to. They carry nothing, hand out nothing and cannot be fought; they are only someone to talk to."
+            >
+              <label className="setup-field setup-field--row">
+                <input
+                  type="checkbox"
+                  checked={realmDraft.generateResidents}
+                  onChange={(e) =>
+                    setRealmDraft({ ...realmDraft, generateResidents: e.target.checked })
+                  }
+                />
+                <span className="setup-field__label">
+                  Let the AI invent residents for empty places
+                </span>
+              </label>
             </FormSection>
             {notice && <p className="setup-notice">{notice}</p>}
             {error && <p className="setup-error">{error}</p>}

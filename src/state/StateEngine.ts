@@ -2,7 +2,8 @@ import { encounterDescription } from "../game/sceneDescription";
 import { applyAdventurePresentation } from "../session/adventurePresentation";
 import { advanceAdventure, adventureHistoryEntry } from "../game/AdventureEngine";
 import { canNarrateOutcome, isFreeReplyEntry } from "../game/narration";
-import type { AdventureTransition } from "../game/AdventureSchema";
+import { PersonaSchema, type AdventureTransition, type Persona } from "../game/AdventureSchema";
+import { DEFAULT_PLAYER_HEALTH, NEUTRAL_TEAM, healthFor } from "../library/sceneParts";
 import {
   initializeSpatialReferences,
   resolveLocation,
@@ -241,6 +242,70 @@ export class StateEngine {
     if (notes.length >= 8)
       throw new Error("This place already has 8 remembered lines. Forget one first.");
     run.notes[place] = [...notes, text];
+  }
+  /**
+   * Settle who lives at the place the player has just come to, once. The story AI may only
+   * have suggested faces; this decides everything else. Each resident is neutral, of normal
+   * toughness, carries nothing, holds no weapon, has no prepared actions and stands at the
+   * middle of every skill. It can be spoken to and nothing more. A place with no answer, or an
+   * answer that does not hold, is settled empty. Nothing is rolled, and the state version, the
+   * revision and the history stay as they are.
+   */
+  settlePlace(input: { sceneId: string; residents: unknown[] }): void {
+    const run = this.session.adventure;
+    const game = this.session.encounter;
+    if (!run || !game) throw new Error("There is no adventure to settle a place in.");
+    if (!run.openWorld?.generateResidents) throw new Error("This world does not invent residents.");
+    if (input.sceneId !== run.currentSceneId || game.definition.id !== input.sceneId)
+      throw new Error("Only the place the player is in can be settled.");
+    if (game.state.phase !== "exploration")
+      throw new Error("Residents are only settled while exploring.");
+    if (run.settled.includes(input.sceneId)) throw new Error("This place is already settled.");
+    if (Object.keys(game.state.actors).length > 1)
+      throw new Error("Only a place with nobody in it can be given residents.");
+    const residents = input.residents.slice(0, 2).map((raw) => PersonaSchema.parse(raw));
+    if (input.residents.length > 2) throw new Error("A place gets at most two residents.");
+    const taken = new Set(
+      [
+        ...Object.values(run.cast).map((persona) => persona.name),
+        ...Object.values(game.state.actors).map((actor) => actor.name),
+        ...Object.values(run.actors).map((actor) => actor.name),
+      ].map((name) => name.trim().toLowerCase()),
+    );
+    for (const persona of residents) {
+      const name = persona.name.trim().toLowerCase();
+      if (!name || taken.has(name)) throw new Error("A resident needs a name nobody has.");
+      taken.add(name);
+    }
+    const player = game.state.actors[game.definition.playerId]!;
+    const health = healthFor("normal", game.definition.rules.playerHealth ?? DEFAULT_PLAYER_HEALTH);
+    const stats = Object.fromEntries(
+      game.definition.rules.attributes.map((scale) => [scale.id, (scale.min + scale.max) / 2]),
+    );
+    for (const persona of residents) {
+      const id = `npc:resident-${crypto.randomUUID()}`;
+      game.state.actors[id] = {
+        id,
+        name: persona.name.trim(),
+        team: NEUTRAL_TEAM,
+        control: "npc",
+        position: player.position,
+        hp: health,
+        maxHp: health,
+        stats: { ...stats },
+        weapons: [],
+        inventory: [],
+        ammunition: {},
+        resources: {},
+        disposition: "active",
+        defending: false,
+        actionsLeft: 1,
+        movesLeft: 1,
+        toughness: "normal",
+      };
+      run.cast[id] = persona satisfies Persona;
+    }
+    run.settled = [...run.settled, input.sceneId];
   }
   /** Let go of a remembered line. */
   removePlaceNote(sceneId: string, index: number): void {
