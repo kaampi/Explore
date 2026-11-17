@@ -146,7 +146,6 @@ describe("residents invented for an empty place", () => {
       JSON.stringify({ residents: [{ ...person("Mira"), weapon: "axe" }] }),
     ],
     ["a person with no name", answer(person(""))],
-    ["too long a field", answer(person("Mira", { personality: "x".repeat(601) }))],
     ["the same name twice", answer(person("Mira"), person("mira"))],
     ["a name the traveller has", answer(person("Traveller"))],
     ["an empty list", JSON.stringify({ residents: [] })],
@@ -158,6 +157,21 @@ describe("residents invented for an empty place", () => {
 
     expect(others(engine)).toEqual([]);
     expect(engine.getSession().adventure!.settled).toHaveLength(1);
+  });
+
+  it("cut a field that is too long instead of throwing the answer away", async () => {
+    const { engine } = world(true);
+    const long = person("N".repeat(150), { personality: "x".repeat(900), pronoun: "p".repeat(90) });
+
+    expect(await populatePlace({ engine, provider: provider(answer(long)).provider })).toBe(
+      "populated",
+    );
+
+    const [resident] = others(engine);
+    const persona = engine.getSession().adventure!.cast[resident!.id]!;
+    expect(persona.name).toHaveLength(120);
+    expect(persona.personality).toHaveLength(600);
+    expect(persona.pronoun).toHaveLength(40);
   });
 
   it("settle the place empty when the AI fails, and make no call and no mark without a model", async () => {

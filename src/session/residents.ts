@@ -78,11 +78,12 @@ export function buildResidentMessages(place: EmptyPlace): CompletionRequest["mes
 }
 
 const KEYS = new Set(["name", "pronoun", "personality", "speech", "mood", "appearance"]);
+const FIELD_LIMITS: Record<string, number> = { name: 120, pronoun: 40 };
 
 /**
  * Only JSON of the exact form asked for is accepted: one key, a list of at most two people with
- * no other keys, each fitting the limits of a person's description, and names nobody else has.
- * Anything else counts as no answer.
+ * no other keys, and names nobody else has. A field that is too long is cut to the limit of a
+ * person's description. Anything else counts as no answer.
  */
 export function parseResidents(raw: string, taken: Iterable<string>): Persona[] | null {
   if (raw.length > 4000) return null;
@@ -102,7 +103,15 @@ export function parseResidents(raw: string, taken: Iterable<string>): Persona[] 
     for (const item of list) {
       if (typeof item !== "object" || item === null || Array.isArray(item)) return null;
       if (Object.keys(item).some((key) => !KEYS.has(key))) return null;
-      const entry = Object.fromEntries(Object.entries(item).filter(([, value]) => value !== ""));
+      // A field that runs over its limit is cut, not a reason to throw the whole answer away.
+      const entry = Object.fromEntries(
+        Object.entries(item)
+          .filter(([, value]) => value !== "")
+          .map(([key, value]) => [
+            key,
+            typeof value === "string" ? value.trim().slice(0, FIELD_LIMITS[key] ?? 600) : value,
+          ]),
+      );
       const persona = PersonaSchema.safeParse(entry);
       if (!persona.success) return null;
       const name = persona.data.name.trim().toLowerCase();

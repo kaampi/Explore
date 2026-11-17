@@ -1,4 +1,5 @@
 import { formatGameTime, formatTravelTime } from "../../state/gameClock";
+import { useArrivalResidents } from "./useArrivalResidents";
 import { PlayerInventory } from "./PlayerInventory";
 import { itemRevealed } from "../../game/itemVisibility";
 import {
@@ -116,16 +117,17 @@ export function EncounterPanel({
   }, [visibleTurns]);
   // A world that invents residents gives an empty place its people once, on arrival.
   const arrivedAt = session.adventure?.currentSceneId;
-  const mayHaveResidents =
+  const [populating, setPopulating] = useState(false);
+  useArrivalResidents(
+    arrivedAt,
     !!session.adventure?.openWorld?.generateResidents &&
-    !!arrivedAt &&
-    !session.adventure.settled.includes(arrivedAt);
-  useEffect(() => {
-    if (!mayHaveResidents) return;
-    const stop = new AbortController();
-    void populateResidents(stop.signal).catch(() => {});
-    return () => stop.abort();
-  }, [mayHaveResidents, arrivedAt, populateResidents]);
+      !!arrivedAt &&
+      !session.adventure.settled.includes(arrivedAt),
+    (signal) => {
+      setPopulating(true);
+      return populateResidents(signal).finally(() => setPopulating(false));
+    },
+  );
   useEffect(() => {
     if (!busy && s.phase === "combat" && player.actionsLeft === 0)
       void run(
@@ -504,6 +506,11 @@ export function EncounterPanel({
           </div>
         </div>
         <div className="gate-scene-composer">
+          {populating && (
+            <p role="status" className="playable-hint">
+              Looking around…
+            </p>
+          )}
           {notice && <p role="status">{notice}</p>}
           {saveFailed && (
             <p role="alert">
