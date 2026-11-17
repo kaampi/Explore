@@ -2,12 +2,16 @@ import { describe, expect, it } from "vitest";
 import { innVisitExample } from "../../src/scenarios/innVisit";
 import { describeOpenWorld, scaffoldIntoAdventure } from "../../src/library/worldScaffold";
 import { adventureMapPlaces } from "../../src/library/adventureMap";
-import { adventureFacts } from "../../src/library/playableCampaign";
+import { adventureFacts, makePlayableScene } from "../../src/library/playableCampaign";
 import { storyboardIssues } from "../../src/ui/studio/storyboardReadiness";
 import { startPlayableCampaign } from "../../src/session/adventureStart";
 import { validateAdventure } from "../../src/game/AdventureEngine";
 import { scaffoldFromWorld } from "../../src/library/worldScaffold";
-import { emptyCampaignPlayer, newRealmTemplate } from "../../src/library/LibrarySchema";
+import {
+  emptyCampaignPlayer,
+  emptyCampaignScene,
+  newRealmTemplate,
+} from "../../src/library/LibrarySchema";
 import { settlementPiece } from "../../src/library/settlement";
 import { WorldMapSchema } from "../../src/library/worldMap";
 import type { CampaignTemplate } from "../../src/library/LibrarySchema";
@@ -338,6 +342,29 @@ describe("a way round the author's conditions", () => {
             (l) => l.fromSceneId === scene("Farm").id && l.toSceneId === scene(guarded).id,
           ),
         ).toBe(false);
+    });
+
+    it("is not made needlessly cautious by a scene nothing leads to", () => {
+      const { campaign, world } = chain();
+      const loose = { ...emptyCampaignScene(), name: "Loose", position: { x: 0, y: 0 } };
+      const base = makePlayableScene(
+        campaign,
+        { ...loose, placeId: campaign.scenes[0]!.placeId },
+        [],
+        [],
+        [],
+      );
+      const withLoose = { ...campaign, scenes: [...campaign.scenes, base] };
+
+      const result = scaffoldIntoAdventure(withLoose, world, library);
+
+      const scene = (name: string) => result.campaign.scenes.find((s) => s.name === name)!;
+      const into = (to: string) =>
+        result.campaign.sceneLinks.some(
+          (l) => l.fromSceneId === scene("Farm").id && l.toSceneId === scene(to).id,
+        );
+      expect(into("Gate")).toBe(true);
+      expect(into("Palace")).toBe(false);
     });
 
     it("tells the author in one line what Beyond the story does", () => {

@@ -106,16 +106,18 @@ it("shows the manuscript notes, and adds what is suggested only when the author 
   }
 });
 
-it("goes through the usual checks for an unfinished scene, with the draft changing nothing about them", () => {
+it("does not hold the adventure back while the scene is only a draft, but does once the notes are dismissed", () => {
   const { campaign, square } = setup();
 
-  const issues = storyboardIssues(campaign, [square], new Set());
+  const withDraft = storyboardIssues(campaign, [square], new Set());
+  const without = {
+    ...campaign,
+    scenes: campaign.scenes.map(({ draft: _d, ...scene }) => scene),
+  };
+  const dismissed = storyboardIssues(without, [square], new Set());
 
-  expect(issues.some((i) => i.message.includes("The lamp goes out"))).toBe(true);
-  const without = { ...campaign, scenes: campaign.scenes.map(({ draft: _d, ...scene }) => scene) };
-  expect(storyboardIssues(without, [square], new Set()).map((i) => i.message)).toEqual(
-    issues.map((i) => i.message),
-  );
+  expect(withDraft).toEqual([]);
+  expect(dismissed.some((i) => i.message.includes("The lamp goes out"))).toBe(true);
 });
 
 import { placeOnWorldMap } from "../../src/integrations/coreEntities";
