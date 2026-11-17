@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ActorSchema, BarrierSchema, EncounterGameSchema } from "./EncounterSchema";
 import { WorldMapSchema } from "../library/worldMap";
+import { INITIAL_GAME_MINUTES } from "../state/gameClock";
 /** Shared with Storyboard; kept independent of library/session schemas. */
 export const AdventureLinkSchema = z.object({
   id: z.string().min(1),
@@ -46,6 +47,8 @@ export const AdventureRunSchema = z.object({
   campaignId: z.string().min(1),
   title: z.string().min(1),
   currentSceneId: z.string().min(1),
+  /** Game time in minutes. It moves forward with the travel time of the ways taken, and nothing else. */
+  clockMinutes: z.number().int().nonnegative().default(INITIAL_GAME_MINUTES),
   goal: AdventureGoalSchema.optional(),
   /** Keyed by actor id, for example "npc:<characterId>". Older runs have none. */
   cast: z.record(PersonaSchema).default({}),

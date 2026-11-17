@@ -80,6 +80,7 @@ export function adventureOptions(session: Session) {
     .map((link) => ({
       id: link.id,
       label: link.label || run.scenes.find((s) => s.id === link.toSceneId)!.name,
+      ...(link.minutes !== undefined ? { minutes: link.minutes } : {}),
     }));
 }
 export function adventureCompleted(session: Session) {
@@ -151,6 +152,7 @@ export function advanceAdventure(session: Session, raw: AdventureTransition) {
   validateEncounter(game);
   const from = run.currentSceneId;
   run.currentSceneId = target.id;
+  run.clockMinutes += link.minutes ?? 0;
   run.transitions.push({
     id: request.id,
     linkId: link.id,

@@ -6,6 +6,19 @@ export function formatGameTime(totalMinutes = INITIAL_GAME_MINUTES): string {
   return `Day ${Math.floor(minute / 1440) + 1} · ${String(Math.floor((minute % 1440) / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}`;
 }
 
+/** How long a way takes, in a few words: "20 min", "2 h 30 min", "3 days". */
+export function formatTravelTime(minutes: number): string {
+  if (minutes >= 1440) {
+    const days = Math.round((minutes / 1440) * 10) / 10;
+    return `${days} ${days === 1 ? "day" : "days"}`;
+  }
+  if (minutes >= 60) {
+    const rest = minutes % 60;
+    return rest ? `${Math.floor(minutes / 60)} h ${rest} min` : `${minutes / 60} h`;
+  }
+  return `${minutes} min`;
+}
+
 export function gameTimeOfDay(totalMinutes: number): string {
   const hour = Math.floor((totalMinutes % 1440) / 60);
   return hour < 6

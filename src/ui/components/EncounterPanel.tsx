@@ -1,3 +1,4 @@
+import { formatGameTime, formatTravelTime } from "../../state/gameClock";
 import { PlayerInventory } from "./PlayerInventory";
 import { itemRevealed } from "../../game/itemVisibility";
 import {
@@ -578,6 +579,9 @@ export function EncounterPanel({
           <section className="adventure-path">
             <small>{session.adventure.goal ? "YOUR ADVENTURE" : "YOUR WORLD"}</small>
             <h3>{session.adventure.title}</h3>
+            {session.adventure.links.some((link) => link.minutes !== undefined) && (
+              <p aria-label="Game time">{formatGameTime(session.adventure.clockMinutes)}</p>
+            )}
             <p>
               {
                 session.adventure.scenes.find(
@@ -629,7 +633,8 @@ export function EncounterPanel({
                     }
                   }}
                 >
-                  {option.label} →
+                  {option.label}
+                  {option.minutes ? ` · ${formatTravelTime(option.minutes)}` : ""} →
                 </button>
               ))}
             </div>

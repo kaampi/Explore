@@ -8,6 +8,7 @@ import { encounterDescription } from "../game/sceneDescription";
 import { wrapUntrustedContent } from "../context/InstructionHierarchy";
 import { estimateTokens } from "../context/tokenEstimate";
 import { itemRevealed } from "../game/itemVisibility";
+import { formatGameTime, gameTimeOfDay } from "../state/gameClock";
 
 /** Target size of one prompt. Older turns, then extra known facts, then looks are trimmed first. */
 export const ENCOUNTER_PROMPT_TOKEN_TARGET = 1500;
@@ -192,6 +193,13 @@ function untrusted(label: string, text: string): string {
   return wrapped.content;
 }
 
+/** The time of day, when the adventure keeps time: the ways between places take minutes. */
+function timeLines(session: Session): string[] {
+  const run = session.adventure;
+  if (!run || !run.links.some((link) => link.minutes !== undefined)) return [];
+  return [`Time: ${formatGameTime(run.clockMinutes)}, ${gameTimeOfDay(run.clockMinutes)}.`];
+}
+
 function trustedBlock(session: Session, game: EncounterGame, trim: Trim, persona?: Persona) {
   const { definition: d, state: s } = game;
   const player = s.actors[d.playerId]!;
@@ -206,6 +214,7 @@ function trustedBlock(session: Session, game: EncounterGame, trim: Trim, persona
     narration?.voice && `Narrator voice: ${narration.voice.slice(0, trim.story)}`,
     narration?.background && `Background: ${narration.background.slice(0, trim.story)}`,
     `Scene: ${d.title}`,
+    ...timeLines(session),
     encounterDescription(d, s),
     `The player is ${player.name}, at ${placeName(game, player.position)}.`,
     ...peopleHereLines(game),
