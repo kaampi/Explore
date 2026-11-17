@@ -2,6 +2,7 @@ import { useRef, useState, type ComponentProps } from "react";
 import type { IndexedDBRepository } from "../../persistence/IndexedDBRepository";
 import type { RealmTemplate } from "../../library/LibrarySchema";
 import { adventureMapPlaces, chooseAdventureMap } from "../../library/adventureMap";
+import { scaffoldIntoAdventure } from "../../library/worldScaffold";
 import { Modal } from "../components/Modal";
 import { PlayableStoryboard } from "./PlayableStoryboard";
 import { WorldMapStudio } from "./WorldMapStudio";
@@ -26,7 +27,8 @@ export function StoryboardEditor({
     [mapDirty, setMapDirty] = useState(false),
     [confirmMapClose, setConfirmMapClose] = useState(false),
     [refreshing, setRefreshing] = useState(false),
-    [mapError, setMapError] = useState("");
+    [mapError, setMapError] = useState(""),
+    [built, setBuilt] = useState("");
   const mapSave = useRef<(() => Promise<boolean>) | null>(null),
     world = worlds?.find((w) => w.id === props.campaign.mapWorldId),
     entries = props.campaign.mapWorldId ? adventureMapPlaces(world, props.places) : undefined;
@@ -39,6 +41,36 @@ export function StoryboardEditor({
       await onRefresh();
     } catch (e) {
       setMapError(e instanceof Error ? e.message : "Could not refresh the map.");
+    } finally {
+      setRefreshing(false);
+    }
+  }
+  /** Scenes and ways for the map's places that have none yet, added to the draft to write on. */
+  async function buildFromMap() {
+    if (!world) return;
+    setRefreshing(true);
+    setMapError("");
+    setBuilt("");
+    try {
+      const [characters, objects, rulesets] = repo
+        ? await Promise.all([repo.listCharacters(), repo.listObjects(), repo.listRulesets()])
+        : [props.characters, props.objects, props.rulesets ?? []];
+      const result = scaffoldIntoAdventure(props.campaign, world, {
+        characters,
+        objects,
+        places: props.places,
+        rulesets,
+      });
+      if (result.added > 0) props.onChange(result.campaign);
+      setBuilt(
+        result.added > 0
+          ? `Added ${result.added} ${result.added === 1 ? "scene" : "scenes"} from the map.${
+              result.skipped.length ? ` Left out: ${result.skipped.join("; ")}.` : ""
+            }`
+          : (result.skipped[0] ?? "Nothing to add."),
+      );
+    } catch (e) {
+      setMapError(e instanceof Error ? e.message : "Could not build scenes from the map.");
     } finally {
       setRefreshing(false);
     }
@@ -112,6 +144,16 @@ export function StoryboardEditor({
                 {refreshing ? "Refreshing…" : "Refresh map places"}
               </button>
             )}
+            {world?.worldMap && (
+              <button
+                type="button"
+                disabled={props.busy || refreshing}
+                title="Adds a scene for every place on the map that has none, and the ways between them. Scenes you have already made are not changed."
+                onClick={() => void buildFromMap()}
+              >
+                Build scenes from this map
+              </button>
+            )}
             <span>
               {entries
                 ? `${entries.length} map places · includes places inside other places`
@@ -131,7 +173,8 @@ export function StoryboardEditor({
             <span role="alert">{error || mapError}</span>
           ) : (
             <span role="status">
-              {notice ||
+              {built ||
+                notice ||
                 "Right-click a scene, connection or empty workspace for actions. Closing keeps your draft; Save adventure stores it."}
             </span>
           )}

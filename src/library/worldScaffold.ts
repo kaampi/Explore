@@ -1,4 +1,5 @@
 import {
+  emptyCampaignPlayer,
   emptyCampaignScene,
   newCampaignTemplate,
   type CampaignPlayer,
@@ -409,4 +410,126 @@ function routeLinks(
     );
   }
   return { links, doors };
+}
+
+/**
+ * Scenes and ways for the places of the adventure's map that have no scene yet, added to the
+ * adventure as a start to write on. Scenes and ways that are already there are never touched:
+ * a place that has a scene is skipped, and a way between two scenes that already exist is left
+ * as it is. A way from a new scene to an old one is added without a door, since the old scene
+ * cannot be given one, and a locked way to an old scene is left out and reported.
+ */
+export function scaffoldIntoAdventure(
+  campaign: CampaignTemplate,
+  world: RealmTemplate,
+  library: ScaffoldLibrary,
+): { campaign: CampaignTemplate; added: number; skipped: string[] } {
+  if (!world.worldMap) throw new Error("This world has no map to build scenes from.");
+  const places = adventureMapPlaces(world, library.places);
+  const usable = places.filter(({ node }) => !node.isArea && node.visibility !== "hidden");
+  const existingFor = (entry: AdventureMapPlace) =>
+    campaign.scenes.find(
+      (scene) =>
+        scene.mapNodeId === entry.node.id || (!scene.mapNodeId && scene.placeId === entry.place.id),
+    );
+  const missing = usable.filter((entry) => !existingFor(entry));
+  if (missing.length === 0)
+    return { campaign, added: 0, skipped: ["Every place already has a scene."] };
+  const startEntry = usable.find((entry) => existingFor(entry)) ?? usable[0]!;
+  const built = scaffoldFromWorld(world, library, {
+    player: campaign.player ?? emptyCampaignPlayer(),
+    ...(campaign.rulesetId ? { rulesetId: campaign.rulesetId } : {}),
+    startNodeId: startEntry.node.id,
+  });
+  const skipped = [...built.skipped];
+  const isNew = (scene: CampaignScene) =>
+    !!scene.mapNodeId && missing.some((entry) => entry.node.id === scene.mapNodeId);
+  const newScenes = built.campaign.scenes.filter(isNew);
+  if (newScenes.length === 0)
+    return {
+      campaign,
+      added: 0,
+      skipped: [...skipped, "Nothing in range of the places already there."],
+    };
+
+  // A built scene that stands for a place with a scene of its own is replaced by that scene.
+  const standIn = new Map<string, string>();
+  for (const scene of built.campaign.scenes) {
+    if (isNew(scene)) continue;
+    const entry = usable.find((candidate) => candidate.node.id === scene.mapNodeId);
+    const old = entry ? existingFor(entry) : undefined;
+    if (old) standIn.set(scene.id, old.id);
+  }
+  const oldIds = new Set(campaign.scenes.map((scene) => scene.id));
+  const have = new Set(campaign.sceneLinks.map((link) => `${link.fromSceneId}>${link.toSceneId}`));
+  const nameOf = (id: string) =>
+    built.campaign.scenes.find((scene) => scene.id === id)?.name ??
+    campaign.scenes.find((scene) => scene.id === id)?.name ??
+    "a place";
+  const links: Link[] = [];
+  const stillNeeded = new Set<string>();
+  for (const link of built.campaign.sceneLinks) {
+    const from = standIn.get(link.fromSceneId) ?? link.fromSceneId;
+    const to = standIn.get(link.toSceneId) ?? link.toSceneId;
+    if (oldIds.has(from) && oldIds.has(to)) continue;
+    if (have.has(`${from}>${to}`)) continue;
+    const touchesOld = oldIds.has(from) || oldIds.has(to);
+    let next: Link = { ...link, fromSceneId: from, toSceneId: to };
+    if (touchesOld && link.requiresOpenBarriers?.length) {
+      const sceneWithDoor = newScenes.find((scene) => scene.id === (oldIds.has(from) ? to : from));
+      const locked = link.requiresOpenBarriers.some(
+        (id) => sceneWithDoor?.encounter?.state.barriers[id]?.locked,
+      );
+      if (locked) {
+        skipped.push(
+          `The locked way between “${nameOf(from)}” and “${nameOf(to)}” was left out; add it yourself with a key`,
+        );
+        continue;
+      }
+      const { requiresOpenBarriers: _doors, ...free } = next;
+      next = free;
+    }
+    for (const id of next.requiresOpenBarriers ?? []) stillNeeded.add(id);
+    links.push(next);
+  }
+  const lowest = campaign.scenes.reduce(
+    (most, scene) => Math.max(most, scene.position?.y ?? 0),
+    -220,
+  );
+  // The scenes of an adventure share one set of skills and one player health, so the new ones
+  // take them from a scene that is already there.
+  const reference = campaign.scenes.find((scene) => scene.encounter)?.encounter?.definition.rules;
+  const scenes = newScenes.map((scene, index) => {
+    const game = structuredClone(scene.encounter!);
+    if (reference) {
+      game.definition.rules.attributes = structuredClone(reference.attributes);
+      if (reference.playerHealth === undefined) delete game.definition.rules.playerHealth;
+      else game.definition.rules.playerHealth = reference.playerHealth;
+    }
+    for (const id of Object.keys(game.state.barriers))
+      if (!stillNeeded.has(id) && game.state.barriers[id]!.shared) delete game.state.barriers[id];
+    return {
+      ...scene,
+      encounter: game,
+      position: { x: (index % 6) * 300, y: lowest + 220 + Math.floor(index / 6) * 220 },
+    };
+  });
+  const known = new Set(campaign.people.map((person) => person.characterId));
+  return {
+    campaign: {
+      ...campaign,
+      placeIds: [...new Set([...campaign.placeIds, ...scenes.map((scene) => scene.placeId)])],
+      objectIds: [
+        ...new Set([...campaign.objectIds, ...scenes.flatMap((scene) => scene.objectIds)]),
+      ],
+      people: [
+        ...campaign.people,
+        ...built.campaign.people.filter((person) => !known.has(person.characterId)),
+      ],
+      scenes: [...campaign.scenes, ...scenes],
+      sceneLinks: [...campaign.sceneLinks, ...links],
+    },
+    added: scenes.length,
+    skipped,
+  };
 }
