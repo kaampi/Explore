@@ -71,9 +71,13 @@ export function EncounterPanel({
   const [notice, setNotice] = useState(""),
     [saving, setSaving] = useState(false),
     [saveFailed, setSaveFailed] = useState(false);
-  const [menu, setMenu] = useState<{ x: number; y: number; text: string; free?: boolean } | null>(
-    null,
-  );
+  const [menu, setMenu] = useState<{
+    x: number;
+    y: number;
+    text: string;
+    free?: boolean;
+    sceneId?: string;
+  } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const lock = useRef(false),
     log = useRef<HTMLDivElement>(null),
@@ -354,7 +358,7 @@ export function EncounterPanel({
                     {
                       label: "Remember this",
                       action: () => {
-                        rememberPlaceNote(noteFrom(menu.text))
+                        rememberPlaceNote(noteFrom(menu.text), menu.sceneId)
                           .then(() => setNotice("Remembered here."))
                           .catch((error: unknown) =>
                             setNotice(
@@ -441,6 +445,7 @@ export function EncounterPanel({
                       y: event.clientY,
                       text: turn.content,
                       free: (turn as { ai?: { kind?: string } }).ai?.kind === "free-reply",
+                      ...(turn.actionSceneId ? { sceneId: turn.actionSceneId } : {}),
                     });
                   }}
                 >

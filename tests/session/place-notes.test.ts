@@ -97,6 +97,39 @@ describe("lines the player keeps about a place", () => {
     ]);
   });
 
+  it("are kept on the place where the line was said, not the place the player stands in now", () => {
+    const { engine, eddaId } = game();
+    const said = engine.getSession().adventure!.currentSceneId;
+    const s = engine.getSession();
+    const door = Object.values(s.encounter!.state.barriers).find((b) => b.name === "Kitchen door")!;
+    engine.executeEncounterAction(
+      {
+        id: crypto.randomUUID(),
+        expectedRevision: s.encounter!.state.revision,
+        expectedSceneId: s.sceneId!,
+        action: { kind: "interact", operation: "open", barrierId: door.id },
+      },
+      () => 0,
+    );
+    const link = adventureOptions(engine.getSession()).find((l) => l.label === "Go to Kitchen")!;
+    engine.transitionAdventure({
+      id: crypto.randomUUID(),
+      linkId: link.id,
+      expectedStateVersion: engine.getSession().stateVersion,
+    });
+    const now = engine.getSession().adventure!.currentSceneId;
+    expect(now).not.toBe(said);
+
+    engine.addPlaceNote("Edda hums when she lies.", said);
+
+    const notes = engine.getSession().adventure!.notes;
+    expect(notes[said]).toEqual(["Edda hums when she lies."]);
+    expect(notes[now]).toBeUndefined();
+    expect(promptFor(engine, "player")).not.toContain("Edda hums when she lies.");
+    expect(() => engine.addPlaceNote("Nowhere.", "no-such-scene")).toThrow(/not part of this/);
+    expect(eddaId).toBeTruthy();
+  });
+
   it("can be let go of, one by one", () => {
     const { engine } = game();
     engine.addPlaceNote("One.");
