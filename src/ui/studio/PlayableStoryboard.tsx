@@ -60,6 +60,7 @@ import {
   INSPECTOR_DEFAULT,
 } from "./inspectorWidth";
 import { ManuscriptDraftBox, type DraftLibrary } from "./ManuscriptDraftBox";
+import { useTranslate } from "../i18n/LanguageProvider";
 import "./playable-storyboard.css";
 export function PlayableStoryboard({
   campaign,
@@ -104,6 +105,7 @@ export function PlayableStoryboard({
     name: string,
   ) => Promise<{ place: PlaceTemplate; campaign: CampaignTemplate } | undefined>;
 }) {
+  const t = useTranslate();
   const [sceneId, setSceneId] = useState(campaign.scenes[0]?.id ?? ""),
     [linkId, setLinkId] = useState("");
   const [newActionId, setNewActionId] = useState("");
@@ -441,7 +443,7 @@ export function PlayableStoryboard({
             </label>
           ))
         ) : (
-          <p>Add an action in a scene to create a discovery you can use here.</p>
+          <p>{t("psAddAnActionIn")}</p>
         )}
       </fieldset>
     );
@@ -486,15 +488,13 @@ export function PlayableStoryboard({
   }
   const goalEditor = (
     <details className="playable-adventure-goal" data-storyboard-field="objective">
-      <summary>Adventure objective</summary>
-      <p>
-        Choose the discoveries that complete this adventure. All selected discoveries are required.
-      </p>
+      <summary>{t("psAdventureObjective")}</summary>
+      <p>{t("psChooseTheDiscoveriesThat")}</p>
       <label>
-        Objective title
+        {t("psObjectiveTitle")}
         <input
           value={campaign.goal?.title ?? ""}
-          placeholder="What the player is trying to achieve"
+          placeholder={t("psWhatThePlayerIs")}
           onChange={(e) => {
             if (campaign.goal)
               onChange({ ...campaign, goal: { ...campaign.goal, title: e.target.value } });
@@ -503,7 +503,7 @@ export function PlayableStoryboard({
         />
       </label>
       <fieldset>
-        <legend>Complete after all of these discoveries</legend>
+        <legend>{t("psCompleteAfterAllOf")}</legend>
         {goalFacts.map((f) => (
           <label className="playable-check" key={f.id}>
             <input
@@ -532,9 +532,9 @@ export function PlayableStoryboard({
   );
   const menuItems = context?.linkId
     ? [
-        { label: "Edit connection", action: () => selectLink(context.linkId!) },
+        { label: t("psEditConnection"), action: () => selectLink(context.linkId!) },
         {
-          label: "Remove connection",
+          label: t("psRemoveConnection"),
           action: () => {
             onChange({
               ...campaign,
@@ -549,7 +549,7 @@ export function PlayableStoryboard({
           { label: "Edit scene", action: () => selectScene(context.sceneId!) },
           ...(scene?.encounter ? [{ label: "Add action", action: addAction }] : []),
           {
-            label: markedScenes.size > 1 ? "Group selected scenes" : "Group this scene",
+            label: markedScenes.size > 1 ? t("psGroupSelectedScenes") : t("psGroupThisScene"),
             action: () =>
               addSection(
                 "group",
@@ -558,13 +558,13 @@ export function PlayableStoryboard({
               ),
           },
           ...(campaign.scenes.length > 1
-            ? [{ label: "Connect to another scene", action: addLink }]
+            ? [{ label: t("psConnectToAnotherScene"), action: addLink }]
             : []),
           ...(scene && issues.length === 0
-            ? [{ label: "Test this scene", action: () => onPlay(scene) }]
+            ? [{ label: t("psTestThisScene2"), action: () => onPlay(scene) }]
             : []),
           ...(campaign.scenes.length > 1
-            ? [{ label: "Remove scene", action: () => removeScene(context.sceneId!) }]
+            ? [{ label: t("psRemoveScene"), action: () => removeScene(context.sceneId!) }]
             : []),
         ]
       : context?.sectionId && section
@@ -573,17 +573,20 @@ export function PlayableStoryboard({
               label: section.collapsed ? "Expand" : "Collapse",
               action: () => toggleSection(section.id),
             },
-            { label: "Add scene to this part", action: () => addScene(undefined, section.id) },
+            { label: t("psAddSceneToThis"), action: () => addScene(undefined, section.id) },
             ...(section.kind === "act"
-              ? [{ label: "Add scene group", action: () => addSection("group") }]
+              ? [{ label: t("psAddSceneGroup"), action: () => addSection("group") }]
               : []),
-            { label: "Remove this part", action: () => removeSection(section.id) },
+            { label: t("psRemoveThisPart"), action: () => removeSection(section.id) },
           ]
         : [
-            { label: "Add scene here", action: () => addScene(context?.position) },
-            { label: "Add act here", action: () => addSection("act", context?.position) },
-            { label: "Add scene group here", action: () => addSection("group", context?.position) },
-            ...(onSave ? [{ label: "Save adventure", action: onSave }] : []),
+            { label: t("psAddSceneHere"), action: () => addScene(context?.position) },
+            { label: t("psAddActHere"), action: () => addSection("act", context?.position) },
+            {
+              label: t("psAddSceneGroupHere"),
+              action: () => addSection("group", context?.position),
+            },
+            ...(onSave ? [{ label: t("psSaveAdventure"), action: onSave }] : []),
           ];
 
   const sectionInspector = section && (
@@ -599,7 +602,7 @@ export function PlayableStoryboard({
       </label>
       {section.kind === "group" && (
         <label>
-          Parent act
+          {t("psParentAct")}
           <select
             value={hierarchy.parentAct(section) ?? ""}
             onChange={(event) => {
@@ -613,7 +616,7 @@ export function PlayableStoryboard({
               });
             }}
           >
-            <option value="">Adventure</option>
+            <option value="">{t("psAdventure")}</option>
             {acts.map((act) => (
               <option key={act.id} value={act.id}>
                 {storyboardSectionTitle(act)}
@@ -627,40 +630,40 @@ export function PlayableStoryboard({
         to” field to move it here.
       </p>
       <button type="button" onClick={() => addScene(undefined, section.id)}>
-        Add scene to this part
+        {t("psAddSceneToThis")}
       </button>
       {section.kind === "act" && (
         <button type="button" onClick={() => addSection("group")}>
-          Add scene group to this act
+          {t("psAddSceneGroupTo")}
         </button>
       )}
       <button type="button" onClick={() => toggleSection(section.id)}>
-        {section.collapsed ? "Expand on board" : "Collapse on board"}
+        {section.collapsed ? t("psExpandOnBoard") : t("psCollapseOnBoard")}
       </button>
       {section.kind === "group" && section.size && (
         <button type="button" onClick={() => patchSection({ ...section, size: undefined })}>
-          Fit frame to scenes
+          {t("psFitFrameToScenes")}
         </button>
       )}
       <button
         type="button"
         className="playable-remove"
-        title="Keep the scenes and their connections"
+        title={t("psKeepTheScenesAnd")}
         onClick={() => removeSection(section.id)}
       >
-        {section.kind === "act" ? "Remove act" : "Ungroup scenes"}
+        {section.kind === "act" ? t("psRemoveAct") : t("psUngroupScenes")}
       </button>
     </>
   );
 
   const sceneSectionField = scene && sections.length > 0 && (
     <label>
-      Belongs to
+      {t("psBelongsTo")}
       <select
         value={hierarchy.byId.has(scene.storyboardSectionId ?? "") ? scene.storyboardSectionId : ""}
         onChange={(event) => moveSceneToSection(scene, event.target.value)}
       >
-        <option value="">Adventure</option>
+        <option value="">{t("psAdventure")}</option>
         {sections.map((item) => {
           const parentId = hierarchy.parentAct(item);
           const parent = parentId ? hierarchy.byId.get(parentId) : undefined;
@@ -678,8 +681,8 @@ export function PlayableStoryboard({
   const sceneInspector = scene && (
     <>
       <div className="storyboard-panel-heading">
-        <small>SCENE</small>
-        <h3>{scene.name || "Untitled scene"}</h3>
+        <small>{t("psScene")}</small>
+        <h3>{scene.name || t("psUntitledScene")}</h3>
       </div>
       {sceneIssue && (
         <p className="storyboard-next" role="status">
@@ -700,7 +703,7 @@ export function PlayableStoryboard({
       )}
       <div className="storyboard-form-block">
         <label>
-          Scene name
+          {t("psSceneName")}
           <input
             data-storyboard-field="name"
             value={scene.name}
@@ -728,7 +731,7 @@ export function PlayableStoryboard({
             <SceneMapPlaceField scene={scene} entries={mapPlaces} onChange={patchScene} />
           ) : (
             <label>
-              Place
+              {t("psPlace")}
               <select
                 aria-label="Place"
                 value={scene.placeId}
@@ -739,7 +742,7 @@ export function PlayableStoryboard({
                   );
                 }}
               >
-                <option value="">Choose a place</option>
+                <option value="">{t("psChooseAPlace")}</option>
                 {places.map((place) => (
                   <option key={place.id} value={place.id}>
                     {place.name}
@@ -757,7 +760,7 @@ export function PlayableStoryboard({
                   value={newPlaceName}
                   maxLength={120}
                   disabled={busy || creatingPlace}
-                  placeholder="For example: The village square"
+                  placeholder={t("psForExampleTheVillage")}
                   onChange={(event) => setNewPlaceName(event.target.value)}
                 />
               </label>
@@ -766,14 +769,14 @@ export function PlayableStoryboard({
                 disabled={busy || creatingPlace || !newPlaceName.trim()}
                 onClick={() => void createPlaceForScene(scene)}
               >
-                Create a place
+                {t("psCreateAPlace")}
               </button>
             </div>
           )}
         </div>
         {scene.encounter && (
           <label>
-            What the player sees on arrival
+            {t("psWhatThePlayerSees")}
             <textarea
               data-storyboard-field="arrival"
               rows={4}
@@ -840,22 +843,22 @@ export function PlayableStoryboard({
             setFocus("arrival");
           }}
         >
-          Make scene playable
+          {t("psMakeScenePlayable")}
         </button>
       )}
       <div className="storyboard-panel-actions">
         {campaign.scenes.length > 1 && (
           <button type="button" disabled={busy} onClick={() => setStep("connections")}>
-            Connections →
+            {t("psConnections")}
           </button>
         )}
         <button type="button" onClick={showTest}>
-          Review & test →
+          {t("psReviewTest")}
         </button>
       </div>
       {campaign.scenes.length > 1 && (
         <button type="button" className="playable-remove" onClick={() => removeScene(scene.id)}>
-          Remove scene
+          {t("psRemoveScene")}
         </button>
       )}
     </>
@@ -864,35 +867,35 @@ export function PlayableStoryboard({
   const connectionsPanel = (
     <>
       <div className="storyboard-panel-heading">
-        <small>STEP 2</small>
-        <h3>{link ? link.label.trim() || "Edit connection" : "Connect scenes"}</h3>
+        <small>{t("psStep2")}</small>
+        <h3>{link ? link.label.trim() || t("psEditConnection") : t("psConnectScenes")}</h3>
       </div>
       {connectionFromId ? (
         <div className="storyboard-next">
-          <strong>Choose a destination on the board</strong>
+          <strong>{t("psChooseADestinationOn")}</strong>
           <p>
             Connect from{" "}
             {campaign.scenes.find((item) => item.id === connectionFromId)?.name || "this scene"}.
           </p>
           <button type="button" onClick={() => setConnectionFromId(null)}>
-            Cancel
+            {t("psCancel")}
           </button>
         </div>
       ) : link ? (
         <>
           <button type="button" className="storyboard-back" onClick={() => selectLink(null)}>
-            ← All connections
+            {t("psAllConnections")}
           </button>
           <div className="storyboard-form-block">
             <label>
-              From
+              {t("psFrom")}
               <select
                 aria-label="From"
                 value={link.fromSceneId}
                 onChange={(event) => patchLink({ fromSceneId: event.target.value })}
               >
                 {!campaign.scenes.some((item) => item.id === link.fromSceneId) && (
-                  <option value={link.fromSceneId}>Missing scene</option>
+                  <option value={link.fromSceneId}>{t("psMissingScene")}</option>
                 )}
                 {campaign.scenes
                   .filter((item) => item.id !== link.toSceneId || item.id === link.fromSceneId)
@@ -904,14 +907,14 @@ export function PlayableStoryboard({
               </select>
             </label>
             <label>
-              To
+              {t("psTo")}
               <select
                 aria-label="To"
                 value={link.toSceneId}
                 onChange={(event) => patchLink({ toSceneId: event.target.value })}
               >
                 {!campaign.scenes.some((item) => item.id === link.toSceneId) && (
-                  <option value={link.toSceneId}>Missing scene</option>
+                  <option value={link.toSceneId}>{t("psMissingScene")}</option>
                 )}
                 {campaign.scenes
                   .filter((item) => item.id !== link.fromSceneId || item.id === link.toSceneId)
@@ -923,21 +926,19 @@ export function PlayableStoryboard({
               </select>
             </label>
             <label>
-              What the player chooses
+              {t("psWhatThePlayerChooses")}
               <input
                 value={link.label}
                 onChange={(event) => patchLink({ label: event.target.value })}
               />
             </label>
           </div>
-          {flags("requiresFlags", "Open after all of these discoveries")}
-          <p className="playable-hint">
-            With no conditions, this connection is available on arrival in the starting scene.
-          </p>
+          {flags("requiresFlags", t("psOpenAfterAllOf"))}
+          <p className="playable-hint">{t("psWithNoConditionsThis")}</p>
           <details>
-            <summary>More conditions & consequences</summary>
-            {flags("requiresAbsentFlags", "Keep closed after these discoveries")}
-            {flags("setsFlags", "Record these facts on arrival")}
+            <summary>{t("psMoreConditionsConsequences")}</summary>
+            {flags("requiresAbsentFlags", t("psKeepClosedAfterThese"))}
+            {flags("setsFlags", t("psRecordTheseFactsOn"))}
           </details>
           <button
             type="button"
@@ -950,30 +951,27 @@ export function PlayableStoryboard({
               selectLink(null);
             }}
           >
-            Remove connection
+            {t("psRemoveConnection")}
           </button>
         </>
       ) : (
         <>
-          <p>
-            Choose where the player can go next. Use discoveries from actions to decide when a route
-            opens.
-          </p>
+          <p>{t("psChooseWhereThePlayer")}</p>
           {campaign.scenes.length < 2 ? (
             <button type="button" disabled={busy} onClick={() => addScene()}>
-              Add a scene
+              {t("psAddAScene")}
             </button>
           ) : (
             <>
               <label>
-                Connect from
+                {t("psConnectFrom")}
                 <select
                   value={connectionSource?.id ?? ""}
                   onChange={(event) => setConnectionSourceId(event.target.value)}
                 >
                   {campaign.scenes.map((item) => (
                     <option key={item.id} value={item.id}>
-                      {item.name || "Untitled scene"}
+                      {item.name || t("psUntitledScene")}
                     </option>
                   ))}
                 </select>
@@ -1000,10 +998,10 @@ export function PlayableStoryboard({
                 <strong>{item.label || "Continue"}</strong>
                 <span>
                   {campaign.scenes.find((scene) => scene.id === item.fromSceneId)?.name ||
-                    "Missing scene"}{" "}
+                    t("psMissingScene")}{" "}
                   →{" "}
                   {campaign.scenes.find((scene) => scene.id === item.toSceneId)?.name ||
-                    "Missing scene"}
+                    t("psMissingScene")}
                 </span>
               </button>
             ))}
@@ -1012,7 +1010,7 @@ export function PlayableStoryboard({
       )}
       {!connectionFromId && (
         <button type="button" onClick={showTest}>
-          Review & test →
+          {t("psReviewTest")}
         </button>
       )}
     </>
@@ -1021,8 +1019,8 @@ export function PlayableStoryboard({
   const testPanel = (
     <>
       <div className="storyboard-panel-heading">
-        <small>STEP 3</small>
-        <h3>Review & test</h3>
+        <small>{t("psStep3")}</small>
+        <h3>{t("psReviewTest2")}</h3>
       </div>
       {openWorldNote && (
         <p className="playable-hint" role="note">
@@ -1046,19 +1044,17 @@ export function PlayableStoryboard({
         </div>
       ) : testScene ? (
         <p className="storyboard-next" role="status">
-          Ready to test. Choose where the playthrough begins.
+          {t("psReadyToTestChoose")}
         </p>
       ) : (
-        <p>Add a scene to start building the adventure.</p>
+        <p>{t("psAddASceneTo")}</p>
       )}
       {warnings.length > 0 && (
         <div className="storyboard-review storyboard-review--warnings">
           <strong>
             {warnings.length} {warnings.length === 1 ? "thing" : "things"} worth checking
           </strong>
-          <p className="playable-hint">
-            These do not stop you testing. You can start from any scene.
-          </p>
+          <p className="playable-hint">{t("psTheseDoNotStop")}</p>
           <ul>
             {warnings.map((issue, index) => (
               <li key={index}>
@@ -1072,7 +1068,7 @@ export function PlayableStoryboard({
       )}
       {testScene && (
         <label>
-          Start from
+          {t("psStartFrom")}
           <select
             aria-label="Start from"
             value={testScene.id}
@@ -1080,7 +1076,7 @@ export function PlayableStoryboard({
           >
             {buildable.map((item) => (
               <option key={item.id} value={item.id}>
-                {item.name || "Untitled scene"}
+                {item.name || t("psUntitledScene")}
               </option>
             ))}
           </select>
@@ -1092,7 +1088,7 @@ export function PlayableStoryboard({
         disabled={busy || !testScene || issues.length > 0}
         onClick={() => testScene && onPlay(testScene)}
       >
-        Test this scene →
+        {t("psTestThisScene")}
       </button>
       {goalEditor}
     </>
@@ -1125,12 +1121,9 @@ export function PlayableStoryboard({
         />
       )}
       <header className="playable-storyboard__intro">
-        <small>BUILD · CONNECT · PLAY</small>
-        <h2>Your adventure, one possibility at a time</h2>
-        <p>
-          Choose a scene, describe what can happen, then connect it to the next situation.
-          Conditions use the discoveries your actions create.
-        </p>
+        <small>{t("psBuildConnectPlay")}</small>
+        <h2>{t("psYourAdventureOnePossibility")}</h2>
+        <p>{t("psChooseASceneDescribe")}</p>
       </header>
       <div className="playable-storyboard__toolbar">
         <nav className="storyboard-workflow" aria-label="Adventure workflow">
@@ -1142,7 +1135,7 @@ export function PlayableStoryboard({
           >
             <span className="storyboard-workflow__number">1</span>
             <span>
-              <strong>Scenes</strong>
+              <strong>{t("psScenes")}</strong>
               <small>
                 {buildable.length - unfinishedScenes.size} of {buildable.length} ready
               </small>
@@ -1156,7 +1149,7 @@ export function PlayableStoryboard({
           >
             <span className="storyboard-workflow__number">2</span>
             <span>
-              <strong>Connections</strong>
+              <strong>{t("psConnections2")}</strong>
               <small>{campaign.sceneLinks.length} routes</small>
             </span>
           </button>
@@ -1168,7 +1161,7 @@ export function PlayableStoryboard({
           >
             <span className="storyboard-workflow__number">3</span>
             <span>
-              <strong>Test</strong>
+              <strong>{t("psTest")}</strong>
               <small>
                 {issues.length
                   ? issues.length + " to finish"
@@ -1183,7 +1176,7 @@ export function PlayableStoryboard({
         </nav>
         {onSave && (
           <button type="button" disabled={busy} onClick={onSave}>
-            Save adventure
+            {t("psSaveAdventure")}
           </button>
         )}
       </div>
@@ -1197,7 +1190,7 @@ export function PlayableStoryboard({
         }
       >
         <aside className="playable-storyboard__list">
-          <h3>Story outline</h3>
+          <h3>{t("psStoryOutline")}</h3>
           <div className="storyboard-outline__tools">
             <button type="button" disabled={busy} onClick={() => addSection("act")}>
               + Act
@@ -1207,9 +1200,7 @@ export function PlayableStoryboard({
             </button>
           </div>
           {campaign.scenes.length > 1 && (
-            <p className="playable-hint storyboard-outline__hint">
-              Shift-click to select several scenes.
-            </p>
+            <p className="playable-hint storyboard-outline__hint">{t("psShiftClickToSelect")}</p>
           )}
           {markedScenes.size > 1 && (
             <button
@@ -1273,7 +1264,7 @@ export function PlayableStoryboard({
             aria-valuemax={INSPECTOR_MAX}
             aria-valuenow={inspectorWidth}
             tabIndex={0}
-            title="Drag, or use the arrow keys, to make the details panel wider or narrower. Double-click to reset."
+            title={t("psDragOrUseThe")}
             onPointerDown={startResize}
             onDoubleClick={() => resizeInspector(INSPECTOR_DEFAULT)}
             onKeyDown={(event) => {
@@ -1300,7 +1291,7 @@ export function PlayableStoryboard({
           ) : (
             <>
               <div className="storyboard-panel-heading">
-                <small>STEP 1</small>
+                <small>{t("psStep1")}</small>
                 <h3>{campaign.scenes.length ? "Choose a scene" : "Create the opening scene"}</h3>
               </div>
               <p>
@@ -1314,7 +1305,7 @@ export function PlayableStoryboard({
                 disabled={busy}
                 onClick={() => addScene()}
               >
-                Add a scene
+                {t("psAddAScene")}
               </button>
             </>
           )}
@@ -1340,6 +1331,7 @@ function SceneActions({
   onAdd: () => void;
   busy: boolean;
 }) {
+  const t = useTranslate();
   const actionFields = useRef<HTMLDivElement>(null);
   const [fightMessage, setFightMessage] = useState("");
   const someoneHostile = Object.values(scene.encounter?.state.actors ?? {}).some(
@@ -1394,21 +1386,19 @@ function SceneActions({
   return (
     <div ref={actionFields} className="playable-actions storyboard-form-block">
       <div className="storyboard-actions-heading">
-        <h4>Player actions</h4>
+        <h4>{t("psPlayerActions")}</h4>
         <button type="button" disabled={busy} onClick={onAdd}>
           + Action
         </button>
       </div>
       {!game.definition.interactions.length && (
-        <p className="playable-hint">
-          Add an action when the player can discover or change something here.
-        </p>
+        <p className="playable-hint">{t("psAddAnActionWhen")}</p>
       )}
       {game.definition.interactions.map((action) => (
         <details key={action.id} data-action-id={action.id} className="playable-action">
-          <summary>{action.label || "Untitled action"}</summary>
+          <summary>{action.label || t("psUntitledAction")}</summary>
           <label>
-            Action label
+            {t("psActionLabel")}
             <input
               data-action-field="label"
               value={action.label}
@@ -1416,7 +1406,7 @@ function SceneActions({
             />
           </label>
           <label>
-            What happens on success
+            {t("psWhatHappensOnSuccess")}
             <textarea
               data-action-field="success"
               rows={3}
@@ -1446,13 +1436,9 @@ function SceneActions({
               checked={fightBreaksOut(scene, action.id, "success")}
               onChange={(event) => toggleFight(action.id, "success", event.target.checked)}
             />
-            A fight breaks out
+            {t("psAFightBreaksOut")}
           </label>
-          {!someoneHostile && (
-            <p className="playable-hint">
-              A fight needs someone hostile. Make a person hostile in “Who and what is here”.
-            </p>
-          )}
+          {!someoneHostile && <p className="playable-hint">{t("psAFightNeedsSomeone")}</p>}
           {fightMessage && (
             <p role="alert" className="storyboard-scene-parts__error">
               {fightMessage}
@@ -1470,7 +1456,7 @@ function SceneActions({
                     }
                     onChange={(event) => changeDoor(action.id, what, event.target.value)}
                   >
-                    <option value="">Nothing</option>
+                    <option value="">{t("psNothing")}</option>
                     {doorsHere(scene).map((door) => (
                       <option key={door.id} value={door.id}>
                         {door.name}
@@ -1493,12 +1479,12 @@ function SceneActions({
                 })
               }
             />
-            Requires a skill roll
+            {t("psRequiresASkillRoll")}
           </label>
           {action.check && (
             <>
               <label>
-                Skill
+                {t("psSkill")}
                 <select
                   aria-label="Skill"
                   value={action.check.stat}
@@ -1519,7 +1505,7 @@ function SceneActions({
                 </select>
               </label>
               <label>
-                Difficulty
+                {t("psDifficulty")}
                 <select
                   aria-label="Difficulty"
                   value={action.check.modifier}
@@ -1545,7 +1531,7 @@ function SceneActions({
                 )}
               </p>
               <label>
-                What happens on failure
+                {t("psWhatHappensOnFailure")}
                 <textarea
                   data-action-field="failure"
                   rows={2}
@@ -1563,14 +1549,14 @@ function SceneActions({
                   checked={fightBreaksOut(scene, action.id, "failure")}
                   onChange={(event) => toggleFight(action.id, "failure", event.target.checked)}
                 />
-                A fight breaks out
+                {t("psAFightBreaksOut")}
               </label>
             </>
           )}
           <details className="storyboard-action-options">
-            <summary>People, conversation & conditions</summary>
+            <summary>{t("psPeopleConversationConditions")}</summary>
             <label>
-              Who this action concerns
+              {t("psWhoThisActionConcerns")}
               <select
                 aria-label="Who this action concerns"
                 value={action.counterpartyId ?? ""}
@@ -1578,7 +1564,7 @@ function SceneActions({
                   patch(action.id, { counterpartyId: event.target.value || undefined })
                 }
               >
-                <option value="">The scene / an object</option>
+                <option value="">{t("psTheSceneAnObject")}</option>
                 {Object.values(game.state.actors)
                   .filter((actor) => actor.id !== game.definition.playerId)
                   .map((actor) => (
@@ -1589,7 +1575,7 @@ function SceneActions({
               </select>
             </label>
             <label>
-              Conversation type
+              {t("psConversationType")}
               <select
                 aria-label="Conversation type"
                 value={action.dialogueMode ?? "question"}
@@ -1597,12 +1583,12 @@ function SceneActions({
                   patch(action.id, { dialogueMode: event.target.value as "question" | "report" })
                 }
               >
-                <option value="question">Question</option>
-                <option value="report">Share a discovery</option>
+                <option value="question">{t("psQuestion")}</option>
+                <option value="report">{t("psShareADiscovery")}</option>
               </select>
             </label>
             <label>
-              Conversation topics
+              {t("psConversationTopics")}
               <input
                 key={dialogueTopics(action).join(";")}
                 defaultValue={dialogueTopics(action).join("; ")}
@@ -1615,16 +1601,13 @@ function SceneActions({
                       .slice(0, 12),
                   })
                 }
-                placeholder="messenger; courier"
+                placeholder={t("psMessengerCourier")}
                 maxLength={960}
               />
             </label>
-            <p className="playable-hint">
-              Separate topics with semicolons. Speech uses the same outcome and skill roll as the
-              action.
-            </p>
+            <p className="playable-hint">{t("psSeparateTopicsWithSemicolons")}</p>
             <fieldset>
-              <legend>Available after these discoveries</legend>
+              <legend>{t("psAvailableAfterTheseDiscoveries")}</legend>
               {facts
                 .filter(
                   (fact) =>
@@ -1668,7 +1651,7 @@ function SceneActions({
               })
             }
           >
-            Remove action
+            {t("psRemoveAction")}
           </button>
         </details>
       ))}

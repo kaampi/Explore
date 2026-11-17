@@ -33,18 +33,15 @@ describe("the interface languages", () => {
   });
 
   it("do not leave English text in the Swedish or Norwegian lists for the start page, the world dialog and the play panel", () => {
-    // Words that really are the same in the other language.
-    const same: Record<string, ("sv" | "nb")[]> = {
-      sceneOne: ["nb"],
-      spNormal: ["sv", "nb"],
-      spNeutral: ["sv"],
-    };
+    // Words that really are the same in Swedish or Norwegian as in English.
+    const sameWord = new Set(["scene", "{count} scene", "test", "normal", "neutral"]);
     const added = keys.slice(keys.indexOf("voiceInstructionPlaceholder") + 1);
 
     expect(added.length).toBeGreaterThan(40);
     for (const key of added)
       for (const language of ["sv", "nb"] as const) {
-        if (same[key]?.includes(language)) continue;
+        if (sameWord.has(((allLabels.en as Record<string, string>)[key] ?? "").toLowerCase()))
+          continue;
         expect((allLabels[language] as Record<string, string>)[key], `${language}.${key}`).not.toBe(
           (allLabels.en as Record<string, string>)[key],
         );
