@@ -1,6 +1,7 @@
 import {
   emptyCampaignScene,
   type CampaignScene,
+  type CampaignTemplate,
   type CharacterTemplate,
   type ObjectTemplate,
   type PlaceTemplate,
@@ -82,4 +83,71 @@ export function draftFromEvent(
     suggestedObjectIds,
   };
   return { ...emptyCampaignScene(), name: event.name.trim() || "Untitled event", draft };
+}
+
+export type DraftImport = {
+  campaign: CampaignTemplate;
+  /** Drafts added, in the order the events stand in the manuscript. */
+  added: number;
+  /** Events that already have a draft in this adventure, by name. */
+  alreadyThere: string[];
+  /** Chosen events beyond the limit of one import, which were left out. */
+  clipped: number;
+};
+
+const sameEvent = (scene: CampaignScene, source: DraftSource, entityRef: string) =>
+  scene.draft?.origin.workspaceId === source.workspaceId &&
+  scene.draft.origin.projectId === source.projectId &&
+  scene.draft.origin.entityRef === entityRef;
+
+/**
+ * Add drafts for the chosen events last in an adventure, in manuscript order, grouped in an act
+ * named after the manuscript. An event that already has a draft here is skipped and reported, and
+ * nothing already in the adventure is changed. At most 100 events are taken at a time.
+ */
+export function addEventDrafts(args: {
+  campaign: CampaignTemplate;
+  title: string;
+  events: readonly CoreBibleEntity[];
+  chosen: ReadonlySet<string>;
+  source: DraftSource;
+  library: DraftLibrary;
+}): DraftImport {
+  const { campaign, source } = args;
+  const picked = args.events.filter((event) => args.chosen.has(event.entity_ref));
+  const taken = picked.slice(0, MAX_EVENTS_PER_IMPORT);
+  const alreadyThere: string[] = [];
+  const fresh = taken.filter((event) => {
+    if (!campaign.scenes.some((scene) => sameEvent(scene, source, event.entity_ref))) return true;
+    alreadyThere.push(event.name.trim() || event.entity_ref);
+    return false;
+  });
+  const result: DraftImport = {
+    campaign,
+    added: 0,
+    alreadyThere,
+    clipped: picked.length - taken.length,
+  };
+  if (fresh.length === 0) return result;
+  const title = args.title.trim() || "Manuscript";
+  const act = campaign.chapters.find((chapter) => chapter.title === title);
+  const chapter = act ?? { id: crypto.randomUUID(), title };
+  const lowest = campaign.scenes.reduce(
+    (most, scene) => Math.max(most, scene.position?.y ?? 0),
+    -220,
+  );
+  const scenes = fresh.map((event, index) => ({
+    ...draftFromEvent(event, source, args.library),
+    chapterId: chapter.id,
+    position: { x: (index % 6) * 300, y: lowest + 220 + Math.floor(index / 6) * 220 },
+  }));
+  return {
+    ...result,
+    added: scenes.length,
+    campaign: {
+      ...campaign,
+      chapters: act ? campaign.chapters : [...campaign.chapters, chapter],
+      scenes: [...campaign.scenes, ...scenes],
+    },
+  };
 }

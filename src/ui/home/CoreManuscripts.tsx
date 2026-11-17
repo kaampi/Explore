@@ -8,6 +8,8 @@ import type { CoreBibleSection, CoreBibleEntity } from "../../integrations/coreB
 import { portraitSrc } from "../studio/portrait";
 import type { CharacterTemplate, ObjectTemplate, PlaceTemplate } from "@library/LibrarySchema";
 import type { Faction } from "@library/factions";
+import { addEventDrafts } from "../../integrations/coreEvents";
+import { newCampaignTemplate, type CampaignTemplate } from "@library/LibrarySchema";
 import {
   IMPORTABLE_KINDS,
   importManuscriptBatch,
@@ -75,6 +77,9 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
   } | null>(null);
   const [approved, setApproved] = useState<string[]>([]);
   const [chosen, setChosen] = useState<Set<string> | null>(null);
+  const [draftEvents, setDraftEvents] = useState<Set<string> | null>(null);
+  const [draftTarget, setDraftTarget] = useState("new");
+  const [adventures, setAdventures] = useState<CampaignTemplate[]>([]);
 
   async function refresh() {
     setBusy(true);
@@ -186,6 +191,53 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
       }
     } catch (reason) {
       setImportNotice(reason instanceof Error ? reason.message : "Could not copy this.");
+    } finally {
+      setImporting(false);
+    }
+  }
+  /** Turn the chosen events into scene drafts, last in an adventure the author chooses. */
+  async function createDrafts() {
+    if (!selected || !draftEvents || importing) return;
+    setImporting(true);
+    setImportNotice("");
+    try {
+      const [campaigns, characters, places, objects] = await Promise.all([
+        repo.listCampaigns(),
+        repo.listCharacters(),
+        repo.listPlaces(),
+        repo.listObjects(),
+      ]);
+      const events = selected.manuscript.bible
+        .filter((section) => section.kind === "events")
+        .flatMap((section) => section.entities);
+      const target =
+        draftTarget === "new"
+          ? newCampaignTemplate({ name: selected.manuscript.title.trim() || "Manuscript" })
+          : campaigns.find((item) => item.id === draftTarget);
+      if (!target) throw new Error("That adventure is gone. Choose another.");
+      const result = addEventDrafts({
+        campaign: target,
+        title: selected.manuscript.title,
+        events,
+        chosen: draftEvents,
+        source: {
+          workspaceId: selected.workspaceId,
+          projectId: selected.projectId,
+          revision: selected.revision,
+        },
+        library: { characters, places, objects },
+      });
+      if (result.added > 0 || draftTarget === "new") await repo.saveCampaign(result.campaign);
+      setImportNotice(
+        `${result.added} scene draft${result.added === 1 ? "" : "s"} added to “${result.campaign.name}”.${
+          result.alreadyThere.length
+            ? ` Already there, left as they are: ${result.alreadyThere.join(", ")}.`
+            : ""
+        }${result.clipped ? ` ${result.clipped} more were left out; one import takes 100.` : ""} kaampi Write was not changed.`,
+      );
+      setDraftEvents(null);
+    } catch (reason) {
+      setImportNotice(reason instanceof Error ? reason.message : "Could not create the drafts.");
     } finally {
       setImporting(false);
     }
@@ -359,6 +411,7 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
             setSelected(null);
             setReview(null);
             setChosen(null);
+            setDraftEvents(null);
           }}
           wide
         >
@@ -395,6 +448,83 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
               >
                 Create world from this manuscript…
               </button>
+            )}
+            {selected.manuscript.bible.some(
+              (section) => section.kind === "events" && section.entities.length > 0,
+            ) &&
+              !draftEvents && (
+                <button
+                  type="button"
+                  disabled={importing || !!review}
+                  onClick={() => {
+                    void repo.listCampaigns().then(setAdventures);
+                    setDraftTarget("new");
+                    setDraftEvents(
+                      new Set(
+                        selected.manuscript.bible
+                          .filter((section) => section.kind === "events")
+                          .flatMap((section) =>
+                            section.entities.map((entity) => entity.entity_ref),
+                          ),
+                      ),
+                    );
+                  }}
+                >
+                  Create scene drafts…
+                </button>
+              )}
+            {draftEvents && (
+              <section aria-label="Create scene drafts">
+                <h3>Create scene drafts from the events</h3>
+                <p>
+                  Each chosen event becomes a scene with no game content: its name and what the
+                  manuscript says about it, with suggestions of who, where and what it mentions. You
+                  write the actions and outcomes. Nothing is written to kaampi Write.
+                </p>
+                <label>
+                  Add them to
+                  <select
+                    aria-label="Adventure for the drafts"
+                    value={draftTarget}
+                    onChange={(event) => setDraftTarget(event.target.value)}
+                  >
+                    <option value="new">A new adventure named after the manuscript</option>
+                    {adventures.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <fieldset>
+                  <legend>Events</legend>
+                  {selected.manuscript.bible
+                    .filter((section) => section.kind === "events")
+                    .flatMap((section) => section.entities)
+                    .map((entity) => (
+                      <label key={entity.entity_ref}>
+                        <input
+                          type="checkbox"
+                          checked={draftEvents.has(entity.entity_ref)}
+                          disabled={importing}
+                          onChange={(event) => {
+                            const next = new Set(draftEvents);
+                            if (event.target.checked) next.add(entity.entity_ref);
+                            else next.delete(entity.entity_ref);
+                            setDraftEvents(next);
+                          }}
+                        />
+                        {entity.name}
+                      </label>
+                    ))}
+                </fieldset>
+                <button type="button" disabled={importing} onClick={() => void createDrafts()}>
+                  Add drafts ({draftEvents.size})
+                </button>
+                <button type="button" disabled={importing} onClick={() => setDraftEvents(null)}>
+                  Cancel
+                </button>
+              </section>
             )}
             {chosen && (
               <section aria-label="Create world from manuscript">
