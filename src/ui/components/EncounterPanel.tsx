@@ -359,7 +359,11 @@ export function EncounterPanel({
                       label: "Remember this",
                       action: () => {
                         rememberPlaceNote(noteFrom(menu.text), menu.sceneId)
-                          .then(() => setNotice("Remembered here."))
+                          .then(() =>
+                            setNotice(
+                              `Remembered at ${session.adventure?.scenes.find((scene) => scene.id === (menu.sceneId ?? session.adventure!.currentSceneId))?.name ?? "this place"}.`,
+                            ),
+                          )
                           .catch((error: unknown) =>
                             setNotice(
                               error instanceof Error ? error.message : "Could not remember this.",

@@ -621,32 +621,44 @@ export function CastPanel() {
 
   return (
     <div className="panel panel--left">
-      {session.adventure &&
-        (session.adventure.notes[session.adventure.currentSceneId] ?? []).length > 0 && (
-          <div style={{ marginBottom: 18 }} aria-label="Remembered here">
-            <p className="panel-heading">Remembered here</p>
-            <p className="sheet-note">
-              Lines you chose to keep. The story AI is told them whenever you are in this place.
-            </p>
-            {(session.adventure.notes[session.adventure.currentSceneId] ?? []).map(
-              (note, index) => (
-                <div className="sheet-fact" key={note}>
-                  <span>{note}</span>
-                  <button
-                    type="button"
-                    className="setup-text-btn"
-                    aria-label={`Forget: ${note.slice(0, 40)}`}
-                    onClick={() =>
-                      void forgetPlaceNote(session.adventure!.currentSceneId, index).catch(() => {})
-                    }
-                  >
-                    Forget
-                  </button>
-                </div>
-              ),
-            )}
-          </div>
-        )}
+      {session.adventure && Object.keys(session.adventure.notes).length > 0 && (
+        <div style={{ marginBottom: 18 }} aria-label="Remembered lines">
+          <p className="panel-heading">Remembered</p>
+          <p className="sheet-note">
+            Lines you chose to keep. The story AI is told them whenever you are in that place.
+          </p>
+          {Object.entries(session.adventure.notes)
+            .map(([sceneId, notes]) => ({
+              sceneId,
+              notes,
+              name:
+                session.adventure!.scenes.find((scene) => scene.id === sceneId)?.name ?? "A place",
+              here: sceneId === session.adventure!.currentSceneId,
+            }))
+            .sort((a, b) => Number(b.here) - Number(a.here))
+            .map((place) => (
+              <div key={place.sceneId} aria-label={`Remembered at ${place.name}`}>
+                <p className="panel-subheading">
+                  {place.name}
+                  {place.here ? " · here" : ""}
+                </p>
+                {place.notes.map((note, index) => (
+                  <div className="sheet-fact" key={note}>
+                    <span>{note}</span>
+                    <button
+                      type="button"
+                      className="setup-text-btn"
+                      aria-label={`Forget: ${note.slice(0, 40)}`}
+                      onClick={() => void forgetPlaceNote(place.sceneId, index).catch(() => {})}
+                    >
+                      Forget
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ))}
+        </div>
+      )}
       {pendingReview.length > 0 && (
         <div style={{ marginBottom: 18 }}>
           <div className="setup-section__head">

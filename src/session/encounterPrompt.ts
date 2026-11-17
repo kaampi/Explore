@@ -10,26 +10,40 @@ import { estimateTokens } from "../context/tokenEstimate";
 import { itemRevealed } from "../game/itemVisibility";
 import { formatGameTime, gameTimeOfDay } from "../state/gameClock";
 
-/** Target size of one prompt. Older turns, then extra known facts, then looks are trimmed first. */
+/**
+ * Target size of one prompt. Older turns, then extra known facts, then looks, then the story
+ * text are trimmed first, and last the lines the player kept (the newest are kept longest).
+ */
 export const ENCOUNTER_PROMPT_TOKEN_TARGET = 1500;
 
 const MAX_RECENT_TURNS = 6;
 const MAX_KNOWN_FACTS = 12;
 
-/** `story` is the most characters kept of the narrator voice and of the background, each. */
-type Trim = { turns: number; facts: number; appearance: boolean; story: number };
+/**
+ * `story` is the most characters kept of the narrator voice and of the background, each, and
+ * `notes` the most lines the player kept about the place.
+ */
+type Trim = { turns: number; facts: number; appearance: boolean; story: number; notes: number };
 
 const FULL_STORY = 6000;
 
+const MAX_NOTES = 8;
+
 const TRIM_STEPS: Trim[] = [
-  { turns: MAX_RECENT_TURNS, facts: MAX_KNOWN_FACTS, appearance: true, story: FULL_STORY },
-  { turns: 4, facts: MAX_KNOWN_FACTS, appearance: true, story: FULL_STORY },
-  { turns: 2, facts: MAX_KNOWN_FACTS, appearance: true, story: FULL_STORY },
-  { turns: 2, facts: 6, appearance: true, story: FULL_STORY },
-  { turns: 0, facts: 6, appearance: true, story: FULL_STORY },
-  { turns: 0, facts: 6, appearance: false, story: FULL_STORY },
-  { turns: 0, facts: 6, appearance: false, story: 800 },
-  { turns: 0, facts: 3, appearance: false, story: 300 },
+  {
+    turns: MAX_RECENT_TURNS,
+    facts: MAX_KNOWN_FACTS,
+    appearance: true,
+    story: FULL_STORY,
+    notes: MAX_NOTES,
+  },
+  { turns: 4, facts: MAX_KNOWN_FACTS, appearance: true, story: FULL_STORY, notes: MAX_NOTES },
+  { turns: 2, facts: MAX_KNOWN_FACTS, appearance: true, story: FULL_STORY, notes: MAX_NOTES },
+  { turns: 2, facts: 6, appearance: true, story: FULL_STORY, notes: MAX_NOTES },
+  { turns: 0, facts: 6, appearance: true, story: FULL_STORY, notes: MAX_NOTES },
+  { turns: 0, facts: 6, appearance: false, story: FULL_STORY, notes: 6 },
+  { turns: 0, facts: 6, appearance: false, story: 800, notes: 4 },
+  { turns: 0, facts: 3, appearance: false, story: 300, notes: 2 },
 ];
 
 const FREE_REPLY_RULES = [
@@ -194,9 +208,9 @@ function untrusted(label: string, text: string): string {
 }
 
 /** Lines the player chose to keep about this place. */
-function noteLines(session: Session): string[] {
+function noteLines(session: Session, limit: number): string[] {
   const run = session.adventure;
-  const notes = run?.notes[run.currentSceneId] ?? [];
+  const notes = (run?.notes[run.currentSceneId] ?? []).slice(-limit);
   if (notes.length === 0) return [];
   return ["Established here, kept by the player:", ...notes.map((note) => `- ${note}`)];
 }
@@ -223,7 +237,7 @@ function trustedBlock(session: Session, game: EncounterGame, trim: Trim, persona
     narration?.background && `Background: ${narration.background.slice(0, trim.story)}`,
     `Scene: ${d.title}`,
     ...timeLines(session),
-    ...noteLines(session),
+    ...noteLines(session, trim.notes),
     encounterDescription(d, s),
     `The player is ${player.name}, at ${placeName(game, player.position)}.`,
     ...peopleHereLines(game),

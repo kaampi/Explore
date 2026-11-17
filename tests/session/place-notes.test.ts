@@ -11,8 +11,10 @@ import { emptyCampaignPlayer, newCharacterTemplate } from "../../src/library/Lib
 import { buildFreeReplyMessages } from "../../src/session/encounterPrompt";
 import { IndexedDBRepository } from "../../src/persistence/IndexedDBRepository";
 import { noteFrom } from "../../src/ui/components/EncounterPanel";
+import { estimateTokens } from "../../src/context/tokenEstimate";
+import { ENCOUNTER_PROMPT_TOKEN_TARGET } from "../../src/session/encounterPrompt";
 
-function game() {
+function game(narration?: { background: string; voice: string }) {
   const inn = innVisitExample();
   const world = structuredClone(inn.realm);
   const common = world.worldMap!.nodes.find((n) => n.name === "Common room")!;
@@ -24,6 +26,7 @@ function game() {
     { player: { ...emptyCampaignPlayer(), name: "Traveller" }, startNodeId: common.id },
     "notes",
   );
+  if (narration) session.adventure!.narration = { ...narration, freeReplies: true };
   return { engine: new StateEngine(session, new EventLog()), eddaId: `npc:${edda.id}` };
 }
 
@@ -128,6 +131,29 @@ describe("lines the player keeps about a place", () => {
     expect(promptFor(engine, "player")).not.toContain("Edda hums when she lies.");
     expect(() => engine.addPlaceNote("Nowhere.", "no-such-scene")).toThrow(/not part of this/);
     expect(eddaId).toBeTruthy();
+  });
+
+  it("are shortened last when the prompt is too big, newest kept, and the prompt still fits", () => {
+    const small = game();
+    const big = game({ background: "A long tale. ".repeat(600), voice: "Quiet. ".repeat(200) });
+    const full = (i: number) => `Note ${i}: ${"word ".repeat(55)}`.slice(0, 300);
+    for (let i = 0; i < 8; i++) {
+      small.engine.addPlaceNote(full(i));
+      big.engine.addPlaceNote(full(i));
+    }
+
+    const roomy = promptFor(small.engine, small.eddaId);
+    const tight = promptFor(big.engine, big.eddaId);
+
+    expect(roomy.match(/- Note \d/g)).toHaveLength(8);
+    const kept = tight.match(/- Note (\d)/g) ?? [];
+    expect(kept.length).toBeGreaterThan(0);
+    expect(kept.length).toBeLessThan(8);
+    expect(kept.at(-1)).toContain("Note 7");
+    const total = buildFreeReplyMessages(big.engine.getSession(), big.eddaId, "Hello", [])
+      .map((m) => estimateTokens(m.content))
+      .reduce((sum, n) => sum + n, 0);
+    expect(total).toBeLessThanOrEqual(ENCOUNTER_PROMPT_TOKEN_TARGET);
   });
 
   it("can be let go of, one by one", () => {
