@@ -38,3 +38,39 @@ Questions to revisit:
 - [ ] Verify a complete revisit: meet a resident, change something in the house, leave, save/load and return later. The same resident and house changes must remain, without altering another playthrough or overwriting the author's source material.
 
 Intent: a house should remain the same house throughout a saved game, even when it is not part of the planned adventure. Stable map IDs already exist; automatic population and reliable place-specific continuity are future work.
+
+## Explore 2.0
+
+Ideas agreed for after the current plan (phases 1–6). Not designed yet: each item needs a design decision before it is built.
+
+### Share an adventure so others can play it
+
+The game engine works without AI, so a shared adventure can be played with its written texts even by someone with no local model. AI adds free replies and reading of free text when a model is connected.
+
+- [ ] **Adventure file.** "Export adventure" in Adventure Builder writes one file with the adventure and everything it uses: people, places, the world and its map, things, rule-set, narrator voice, body plans, factions and pictures. "Import adventure" shows a summary first and then adds the adventure, playable and editable.
+  - Imported cards get new IDs and never overwrite the recipient's own cards.
+  - The file has a version. Importing a newer version of the same adventure offers "Replace" or "Keep both". Games already started are not changed, since they keep their own copy.
+  - Pictures are embedded. Export shows the file size and can compress pictures.
+- [ ] **Play without spoilers.** A "play only" import opens the adventure straight into play and keeps it out of Adventure Builder until the player chooses "Open in builder". This prevents accidental spoilers but is not a lock, since the file can always be opened; say so in the interface.
+- [ ] **Stand-alone web game.** Export to a single web page with the game and no editor, for example to publish on itch.io. Saving happens in the player's browser. AI works only with the player's own local model. The page must link to the source code, since Explore is AGPL-licensed.
+
+Decisions to make first:
+
+- [ ] Safety on import: the adventure's background and person descriptions are sent to the AI as trusted text. Show what an imported adventure contains before it is added, and mark it as imported. The engine still protects the game state, since the AI can never change it.
+- [ ] Rights: pictures and cards may come from elsewhere (SillyTavern import, Codex manuscripts). Remind the author to share only what they may share, and decide whether a licence can be stated in the file.
+- [ ] Personal content: the player's portrait and name from the You step are included unless the author chooses otherwise.
+- [ ] A shared gallery with accounts and moderation is a separate project. Start with files.
+
+Suggested order: adventure file → play without spoilers → web game.
+
+### Ideas from RPG in a Box
+
+Compared with [RPG in a Box](https://rpginabox.com/), a tool for making graphical role-playing games.
+
+- [ ] **Dialogue as a flowchart.** A conversation tree per person in a scene: what they say, the player's choices, conditions and effects. The tree decides; the AI gives voice to free talk around it.
+- [ ] **When / If / Then rules.** Effects can today only be the outcome of an action. Let the author also attach them to events: "when the player arrives here", "when this discovery is made". The idea is already described in [rule-based-play-plan.sv.md](rule-based-play-plan.sv.md). Built from ready blocks; no scripting language.
+- [ ] **Encounters on the map.** Map places and routes already have an encounter setup (frequency, participants, tone) that nothing reads. Let the engine decide whether and who, and the AI narrate. Fits "encounters along the way" in free play (phase 5) and [game-time-and-journeys-ideas.md](game-time-and-journeys-ideas.md).
+- [ ] Equipment that adds to values (rings, armour), and more than one currency.
+- [ ] Abilities with effects that can be used in combat, besides weapons. Needs a rules decision on what an ability may do.
+
+Not for Explore: voxel art, grid maps, real-time combat, a scripting language of its own.
