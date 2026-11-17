@@ -2,7 +2,7 @@ import { AdventureLinkSchema, AdventureGoalSchema } from "../game/AdventureSchem
 import { upgradeMissingMessengerCampaign } from "../scenarios/missingMessenger";
 import { EncounterGameSchema } from "../game/EncounterSchema";
 import { ObjectLocationSchema } from "./objectLocation";
-import { CoreEntitySnapshotSchema, CoreOriginSchema } from "./coreOrigin";
+import { CoreEntitySnapshotSchema, CoreOriginSchema, SceneDraftSchema } from "./coreOrigin";
 import { WorldMapSchema } from "./worldMap";
 import {
   ApproximateAgeSchema,
@@ -438,6 +438,8 @@ export const CampaignSceneSchema = z.preprocess(
     storyboardSectionId: z.string().min(1).optional(),
     /** Which Storyboard chapter this scene is grouped into, if any. */
     chapterId: z.string().min(1).optional(),
+    /** Notes from a manuscript event this scene was started from. Never played. */
+    draft: SceneDraftSchema.optional(),
   }),
 );
 export type CampaignScene = z.infer<typeof CampaignSceneSchema>;
