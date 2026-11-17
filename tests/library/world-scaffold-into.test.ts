@@ -349,7 +349,7 @@ describe("a way round the author's conditions", () => {
       const line = describeOpenWorld({ ...campaign, openWorld: "map" }, world, library)!;
 
       expect(line).toBe(
-        "With “Beyond the story” on, 1 more place get scenes when a game starts; 1 way left out.",
+        "With “Beyond the story” on, 1 more place gets a scene when a game starts; 1 way left out.",
       );
     });
   });

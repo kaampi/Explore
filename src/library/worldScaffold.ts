@@ -615,9 +615,11 @@ export function describeOpenWorld(
   const left = [ways ? count(ways, "way") : "", places ? count(places, "place") : ""].filter(
     Boolean,
   );
-  return `With “Beyond the story” on, ${
+  const adds =
     result.added === 0
       ? "no more places get scenes"
-      : `${count(result.added, "more place")} get scenes`
-  } when a game starts${left.length ? `; ${left.join(" and ")} left out` : ""}.`;
+      : result.added === 1
+        ? "1 more place gets a scene"
+        : `${result.added} more places get scenes`;
+  return `With “Beyond the story” on, ${adds} when a game starts${left.length ? `; ${left.join(" and ")} left out` : ""}.`;
 }
