@@ -1,3 +1,4 @@
+import { useTranslate } from "../i18n/LanguageProvider";
 import { PlayerInventory } from "../components/PlayerInventory";
 import { ChatBackdrop } from "../components/ChatBackdrop";
 import { sceneBackdrop } from "../../state/sceneBackdrop";
@@ -43,6 +44,7 @@ export function PlayWorkspace({
   onHome: (session: Session) => void;
   onAppearance: () => void;
 }) {
+  const t = useTranslate();
   const { useSession, phase, setOllamaModel } = useEngine();
   const { discovery, refresh, chooseModel } = useConnection();
   const [connectionOpen, setConnectionOpen] = useState(false);
@@ -105,7 +107,7 @@ export function PlayWorkspace({
             aria-pressed={castOpen}
             onClick={() => setCastOpen(!castOpen)}
           >
-            Cast
+            {t("pwCast")}
           </button>
           <button type="button" className="sb-link" onClick={onAppearance}>
             ◐ Appearance
@@ -116,7 +118,7 @@ export function PlayWorkspace({
             aria-expanded={settingsOpen}
             onClick={() => setSettingsOpen(!settingsOpen)}
           >
-            Settings
+            {t("settings")}
           </button>
           <button
             type="button"
@@ -124,7 +126,7 @@ export function PlayWorkspace({
             aria-pressed={inspectorOpen}
             onClick={() => setInspectorOpen(!inspectorOpen)}
           >
-            Inspector
+            {t("pwInspector")}
           </button>
           <button
             type="button"
@@ -176,7 +178,7 @@ export function PlayWorkspace({
                 : "Your conversation is ready. Connect local AI to hear a reply."}
           </span>
           <button type="button" className="sb-link" onClick={() => setConnectionOpen(true)}>
-            Set up AI
+            {t("pwSetUpAi")}
           </button>
         </div>
       )}
@@ -232,14 +234,12 @@ export function PlayWorkspace({
                     <>
                       <header>
                         <span className="sb-game-toolbox__eyebrow">YOUR ADVENTURE</span>
-                        <h2>At your fingertips</h2>
+                        <h2>{t("pwAtYourFingertips")}</h2>
                         <p>{session.ruleset?.name}</p>
                       </header>
                       <section className="sb-game-toolbox__checks">
-                        <h3>Take a chance</h3>
-                        <p>
-                          Describe what you want to try, choose a stat, and let the dice decide.
-                        </p>
+                        <h3>{t("pwTakeAChance")}</h3>
+                        <p>{t("pwDescribeWhatYouWant")}</p>
                         <button
                           type="button"
                           className="sb-game-toolbox__roll"
@@ -248,14 +248,11 @@ export function PlayWorkspace({
                           }
                           onClick={() => setCheckRequest((value) => value + 1)}
                         >
-                          <span aria-hidden="true">◇</span> Roll the dice
+                          <span aria-hidden="true">◇</span>
+                          {t("pwRollTheDice")}
                         </button>
-                        {checkStats.length === 0 && (
-                          <small>Add numeric stats to your player sheet to make a check.</small>
-                        )}
-                        {!!session.journey && (
-                          <small>Finish or pause your journey before making a check.</small>
-                        )}
+                        {checkStats.length === 0 && <small>{t("pwAddNumericStatsTo")}</small>}
+                        {!!session.journey && <small>{t("pwFinishOrPauseYour")}</small>}
                       </section>
                       <section>
                         <h3>{session.player?.name || "Your character"}</h3>
@@ -275,8 +272,8 @@ export function PlayWorkspace({
                         ref={setPartyTarget}
                       />
                       <section className="sb-game-toolbox__session">
-                        <h3>Your story stays with you</h3>
-                        <p>Your conversation and resolved rolls are saved as you play.</p>
+                        <h3>{t("pwYourStoryStaysWith")}</h3>
+                        <p>{t("pwYourConversationAndResolved")}</p>
                         <button
                           type="button"
                           className="sb-link"
@@ -296,7 +293,7 @@ export function PlayWorkspace({
         {inspectorOpen && <InspectorPanel />}
       </div>
       {connectionOpen && (
-        <Modal title="Your local AI" onClose={() => setConnectionOpen(false)}>
+        <Modal title={t("pwYourLocalAi")} onClose={() => setConnectionOpen(false)}>
           <ConnectionHelp
             model={session.runtime.model}
             disabled={streaming}

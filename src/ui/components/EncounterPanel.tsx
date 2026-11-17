@@ -536,7 +536,7 @@ export function EncounterPanel({
                   }
                 }}
               >
-                Retry save
+                {t("epRetrySave")}
               </button>
             </p>
           )}
@@ -549,10 +549,7 @@ export function EncounterPanel({
               {pendingInteraction && <p>{pendingInteraction.description}</p>}
               {pending.action.kind === "attack" &&
                 s.actors[pending.action.targetId]?.disposition === "surrendered" && (
-                  <p>
-                    This opponent has surrendered. Attacking breaks the surrender and resumes
-                    combat. Other hostile participants can intervene.
-                  </p>
+                  <p>{t("epThisOpponentHasSurrendered")}</p>
                 )}
               {preview && <p role="status">{preview}</p>}
               <div>
@@ -561,10 +558,10 @@ export function EncounterPanel({
                   disabled={busy || !!preview}
                   onClick={() => void run(pending.action, pending)}
                 >
-                  Attempt
+                  {t("epAttempt")}
                 </button>
                 <button type="button" onClick={() => setPending(null)}>
-                  Change
+                  {t("epChange")}
                 </button>
               </div>
             </div>
@@ -580,25 +577,25 @@ export function EncounterPanel({
                 </p>
               )}
               <label>
-                Say something
+                {t("epSaySomething")}
                 <textarea
                   rows={3}
                   disabled={busy}
                   value={say}
                   maxLength={1000}
                   onChange={(event) => setSay(event.target.value)}
-                  placeholder="Your character’s words…"
+                  placeholder={t("epYourCharacterSWords")}
                 />
                 <button
                   type="button"
                   disabled={busy || !say.trim()}
                   onClick={() => void submitSay()}
                 >
-                  Say
+                  {t("epSay")}
                 </button>
               </label>
               <label>
-                Do something
+                {t("epDoSomething")}
                 <textarea
                   rows={3}
                   disabled={busy}
@@ -608,19 +605,19 @@ export function EncounterPanel({
                     setText(event.target.value);
                     setPending(null);
                   }}
-                  placeholder="Describe the target and action, or use an action name from the panel…"
+                  placeholder={t("epDescribeTheTargetAnd")}
                 />
                 <button
                   type="button"
                   disabled={busy || !text.trim()}
                   onClick={() => void submitDo()}
                 >
-                  Review action
+                  {t("epReviewAction")}
                 </button>
               </label>
             </div>
           ) : (
-            <p>This encounter has ended. Your history is saved.</p>
+            <p>{t("epThisEncounterHasEnded")}</p>
           )}
         </div>
         <CombatPlaybackOverlay
@@ -632,7 +629,7 @@ export function EncounterPanel({
       <aside className="sb-game-toolbox gate-scene-toolbox" aria-label="Encounter game tools">
         {mapView && <section className="sb-game-toolbox__map">{mapView}</section>}
         <header>
-          <span className="sb-game-toolbox__eyebrow">YOUR NEXT MOVE</span>
+          <span className="sb-game-toolbox__eyebrow">{t("epYourNextMove")}</span>
           <h2>{d.title}</h2>
           <p>
             {session.adventure
@@ -670,9 +667,7 @@ export function EncounterPanel({
                   {adventureCompleted(session) ? "✓ Adventure completed" : "Your objective"}
                 </strong>
                 <p>{session.adventure.goal.title}</p>
-                {adventureCompleted(session) && (
-                  <small>Your progress is saved. You can keep exploring or return home.</small>
-                )}
+                {adventureCompleted(session) && <small>{t("epYourProgressIsSaved")}</small>}
               </div>
             )}
             <div className="gate-command-list">
@@ -710,7 +705,7 @@ export function EncounterPanel({
               ))}
             </div>
             {!adventureOptions(session).length && !adventureCompleted(session) && (
-              <p>Explore this scene to discover what comes next.</p>
+              <p>{t("epExploreThisSceneTo")}</p>
             )}
           </section>
         )}
@@ -718,7 +713,7 @@ export function EncounterPanel({
           (id) => s.itemLocations[id] === player.position && itemRevealed(d, s, id),
         ) && (
           <section>
-            <h3>Objects here</h3>
+            <h3>{t("epObjectsHere")}</h3>
             <p>
               {d.items
                 .filter(
@@ -731,22 +726,17 @@ export function EncounterPanel({
           </section>
         )}
         <section>
-          <h3>People & opportunities</h3>
+          <h3>{t("epPeopleOpportunities")}</h3>
           <div className="gate-command-list">
             {commands.filter((a) => a.kind === "look" || a.kind === "interaction").map(button)}
           </div>
           {d.interactions.some((i) =>
             i.success.effects.some((e) => e.kind === "transfer-resource"),
-          ) && (
-            <p>
-              Agreements and purchases are separate choices. An agreed price does not spend your
-              credits.
-            </p>
-          )}
+          ) && <p>{t("epAgreementsAndPurchasesAre")}</p>}
         </section>
         {commands.some((a) => a.kind === "move" || a.kind === "interact") && (
           <section>
-            <h3>Movement & passages</h3>
+            <h3>{t("epMovementPassages")}</h3>
             <div className="gate-command-list">
               {commands.filter((a) => a.kind === "move" || a.kind === "interact").map(button)}
             </div>
@@ -754,7 +744,7 @@ export function EncounterPanel({
         )}
         {Object.keys(s.actors).length > 1 && (
           <section>
-            <h3>People nearby</h3>
+            <h3>{t("epPeopleNearby")}</h3>
             {Object.values(s.actors)
               .filter((a) => a.id !== d.playerId)
               .map((actor) => (
@@ -788,9 +778,7 @@ export function EncounterPanel({
                 .filter((a) => a.kind === "attack" || a.kind === "defend" || a.kind === "end-turn")
                 .map(button)}
             </div>
-            {combatOver(d, s) && (
-              <p>No opponents are still fighting. You can continue exploring.</p>
-            )}
+            {combatOver(d, s) && <p>{t("epNoOpponentsAreStill")}</p>}
           </section>
         )}
         {!playback.active && (
@@ -809,7 +797,7 @@ export function EncounterPanel({
               }
             }}
           >
-            Save & return home ↗
+            {t("epSaveReturnHome")}
           </button>
         </section>
       </aside>

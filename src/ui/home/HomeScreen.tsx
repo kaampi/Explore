@@ -275,9 +275,10 @@ export function HomeScreen({
         <div className="sb-hero__shade" />
         <div className="sb-hero__content">
           <h1>
-            A familiar face. <em>A world of possibilities.</em>
+            {t("hsAFamiliarFace")}
+            <em>{t("hsAWorldOfPossibilities")}</em>
           </h1>
-          <p>Every story has more to discover.</p>
+          <p>{t("tagline")}</p>
           <CheckUpdates />
         </div>
       </section>
@@ -300,7 +301,7 @@ export function HomeScreen({
       />
       {!ready ? (
         <p className="sb-muted" role="status">
-          Opening your worlds…
+          {t("hsOpeningYourWorlds")}
         </p>
       ) : (
         <>
@@ -308,19 +309,17 @@ export function HomeScreen({
           <CoreManuscripts repo={repo} />
           <section className="sb-home-section">
             <div className="sb-section-heading">
-              <h2>Someone to talk to</h2>
+              <h2>{t("hsSomeoneToTalkTo")}</h2>
               <div className="sb-section-links">
                 <button type="button" className="sb-link" onClick={openCreate}>
                   ＋ Create
                 </button>
                 <button type="button" className="sb-link" onClick={() => onStudio("characters")}>
-                  Import card ↗
+                  {t("hsImportCard")}
                 </button>
               </div>
             </div>
-            <p className="sb-section-description">
-              No destination required. Choose a character and begin.
-            </p>
+            <p className="sb-section-description">{t("hsNoDestinationRequiredChoose")}</p>
             <div className="sb-character-grid">
               {characters.map((character) => (
                 <button
@@ -349,17 +348,17 @@ export function HomeScreen({
                         character.mood ||
                         "A conversation waiting to happen."}
                     </small>
-                    <b>Start a conversation ↗</b>
+                    <b>{t("hsStartAConversation")}</b>
                   </span>
                 </button>
               ))}
               {characters.length === 0 && (
                 <div className="sb-empty-card">
                   <span aria-hidden="true">♧</span>
-                  <h3>A character is enough.</h3>
-                  <p>Create someone new or import a SillyTavern card. No world setup needed.</p>
+                  <h3>{t("hsACharacterIsEnough")}</h3>
+                  <p>{t("hsCreateSomeoneNewOr")}</p>
                   <button type="button" className="sb-button" onClick={openCreate}>
-                    Add a character
+                    {t("hsAddACharacter")}
                   </button>
                 </div>
               )}
@@ -373,7 +372,8 @@ export function HomeScreen({
                 <h3>Meet Emma at the Aurora Room</h3>
                 <p>A quiet venue, a familiar face, and the beginning of a conversation.</p>
                 <span>
-                  Try a conversation <b>→</b>
+                  {t("hsTryAConversation")}
+                  <b>→</b>
                 </span>
               </button>
             </div>
@@ -452,13 +452,12 @@ export function HomeScreen({
           <div className="sb-ecosystem-note">
             <span aria-hidden="true">✧</span>
             <p>
-              <strong>One imagination. More ways to create.</strong>
+              <strong>{t("hsOneImaginationMoreWays")}</strong>
               <br />
-              Write in kaampi Write. Explore in kaampi Explore. Bring scenes to life in kaampi
-              Comic.
+              {t("hsWriteInKaampiWrite")}
             </p>
             <button type="button" className="sb-link" onClick={() => onStudio("campaigns")}>
-              Open your studio →
+              {t("hsOpenYourStudio")}
             </button>
           </div>
         </>
@@ -470,15 +469,12 @@ export function HomeScreen({
       )}
       {rulesTest && (
         <Modal
-          title="Try a game with rules"
+          title={t("hsTryAGameWith")}
           onClose={() => {
             if (!busy) setRulesTest(false);
           }}
         >
-          <p>
-            Choose a short scenario. Explore at your own pace, talk to the people you meet, and let
-            the rules resolve uncertain actions.
-          </p>
+          <p>{t("hsChooseAShortScenario")}</p>
           <div className="sb-rules-scenarios">
             {[
               {
@@ -536,11 +532,7 @@ export function HomeScreen({
               </section>
             ))}
           </div>
-          <p>
-            Uncertain checks use d100: roll at or below the target to succeed. Use Say for your
-            character’s words, and Do or the action buttons to attempt something. The inn needs no
-            dice rolls. Your progress and rolls are saved.
-          </p>
+          <p>{t("hsUncertainChecksUseD100")}</p>
           <div className="sb-dialog__actions">
             <button
               type="button"
@@ -550,18 +542,15 @@ export function HomeScreen({
                 onStudio("rulesets");
               }}
             >
-              Manage rule-sets
+              {t("hsManageRuleSets")}
             </button>
           </div>
           {error && <p role="alert">{error}</p>}
         </Modal>
       )}
       {freePicker && (
-        <Modal title="Choose someone to meet" wide onClose={() => setFreePicker(false)}>
-          <p className="sb-muted">
-            Start freely with a character from your library, try an example, or create someone new.
-            No rule-set is required.
-          </p>
+        <Modal title={t("hsChooseSomeoneToMeet")} wide onClose={() => setFreePicker(false)}>
+          <p className="sb-muted">{t("hsStartFreelyWithA")}</p>
           <div className="sb-free-character-picker">
             {mergeWithExamples(characters, [exampleCharacterTemplate()]).map((character) => (
               <button
@@ -591,7 +580,7 @@ export function HomeScreen({
           </div>
           <div className="sb-dialog__actions">
             <button type="button" className="sb-link" onClick={() => setFreePicker(false)}>
-              Cancel
+              {t("psCancel")}
             </button>
             <button
               type="button"
@@ -602,7 +591,7 @@ export function HomeScreen({
                 openCreate();
               }}
             >
-              Create a new character
+              {t("hsCreateANewCharacter")}
             </button>
           </div>
         </Modal>
@@ -614,9 +603,7 @@ export function HomeScreen({
             if (!busy) setChatCharacter(null);
           }}
         >
-          <p className="sb-muted">
-            Choose a setting, or leave everything as None and begin. All three choices are optional.
-          </p>
+          <p className="sb-muted">{t("hsChooseASettingOr")}</p>
           {chatFields}
           {error && (
             <p className="sb-error" role="alert">
@@ -630,7 +617,7 @@ export function HomeScreen({
               disabled={busy}
               onClick={() => setChatCharacter(null)}
             >
-              Cancel
+              {t("psCancel")}
             </button>
             <button
               type="button"
@@ -647,10 +634,8 @@ export function HomeScreen({
         </Modal>
       )}
       {creating && (
-        <Modal title="Someone new to meet" onClose={() => setCreating(false)}>
-          <p className="sb-muted">
-            A name is enough to begin. A little personality makes the conversation yours.
-          </p>
+        <Modal title={t("hsSomeoneNewToMeet")} onClose={() => setCreating(false)}>
+          <p className="sb-muted">{t("hsANameIsEnough")}</p>
           <form
             onSubmit={(event) => {
               event.preventDefault();
@@ -658,23 +643,24 @@ export function HomeScreen({
             }}
           >
             <label className="sb-field">
-              Name
+              {t("hsName")}
               <input
                 required
                 maxLength={100}
                 value={quickName}
                 onChange={(event) => setQuickName(event.target.value)}
-                placeholder="What are they called?"
+                placeholder={t("hsWhatAreTheyCalled")}
               />
             </label>
             <label className="sb-field">
-              Personality <span>optional</span>
+              {t("hsPersonality")}
+              <span>{t("optional")}</span>
               <textarea
                 maxLength={5000}
                 rows={4}
                 value={quickPersonality}
                 onChange={(event) => setQuickPersonality(event.target.value)}
-                placeholder="A curious cartographer with a dry sense of humor…"
+                placeholder={t("hsACuriousCartographerWith")}
               />
             </label>
             {chatFields}
@@ -685,7 +671,7 @@ export function HomeScreen({
             )}
             <div className="sb-dialog__actions">
               <button type="button" className="sb-link" onClick={() => onStudio("characters")}>
-                Open full character studio ↗
+                {t("hsOpenFullCharacterStudio")}
               </button>
               <button type="submit" className="sb-button" disabled={busy || !quickName.trim()}>
                 {busy ? "Opening…" : "Create & chat →"}
@@ -696,13 +682,11 @@ export function HomeScreen({
       )}
       {world && (
         <Modal title={world.name} onClose={() => setWorld(null)}>
-          <p className="sb-muted">
-            Choose a place and someone to meet. The rest can unfold as you go.
-          </p>
+          <p className="sb-muted">{t("hsChooseAPlaceAnd")}</p>
           <label className="sb-field">
-            Visit a place
+            {t("hsVisitAPlace")}
             <select value={placeId} onChange={(event) => setPlaceId(event.target.value)}>
-              <option value="">Choose a place</option>
+              <option value="">{t("psChooseAPlace")}</option>
               {places
                 .filter((place) => place.realmId === world.id)
                 .map((place) => (
@@ -713,9 +697,9 @@ export function HomeScreen({
             </select>
           </label>
           <label className="sb-field">
-            Meet a character
+            {t("hsMeetACharacter")}
             <select value={characterId} onChange={(event) => setCharacterId(event.target.value)}>
-              <option value="">Choose a character</option>
+              <option value="">{t("hsChooseACharacter")}</option>
               {characters.map((character) => (
                 <option key={character.id} value={character.id}>
                   {formatPersonName(character.name, character.familyName, character.middleName)}
@@ -724,9 +708,7 @@ export function HomeScreen({
             </select>
           </label>
           {!places.some((place) => place.realmId === world.id) && (
-            <p className="sb-muted">
-              This world needs a place to visit. Add one in Worlds & places.
-            </p>
+            <p className="sb-muted">{t("hsThisWorldNeedsA")}</p>
           )}
           <ChatSetupFields
             places={chatPlaces}
@@ -741,9 +723,7 @@ export function HomeScreen({
             disabled={busy}
             includePlace={false}
           />
-          {characters.length === 0 && (
-            <p className="sb-muted">Add a character to start a meeting in this world.</p>
-          )}
+          {characters.length === 0 && <p className="sb-muted">{t("hsAddACharacterTo")}</p>}
           {error && (
             <p role="alert" className="sb-error">
               {error}
@@ -751,7 +731,7 @@ export function HomeScreen({
           )}
           <div className="sb-dialog__actions">
             <button type="button" className="sb-link" onClick={() => onStudio("places")}>
-              Worlds & places ↗
+              {t("hsWorldsPlaces")}
             </button>
             {world.worldMap && world.worldMap.nodes.length > 0 && (
               <button
@@ -812,22 +792,18 @@ export function HomeScreen({
                     places.find((place) => place.id === scene.placeId)?.name ||
                     "Untitled scene"}
                 </strong>
-                <span>Enter scene →</span>
+                <span>{t("hsEnterScene")}</span>
               </button>
             ))}
           </div>
-          {campaign.scenes.length === 0 && (
-            <p className="sb-muted">
-              This adventure has no scenes yet. Open the studio to create one.
-            </p>
-          )}
+          {campaign.scenes.length === 0 && <p className="sb-muted">{t("hsThisAdventureHasNo")}</p>}
           {error && (
             <p role="alert" className="sb-error">
               {error}
             </p>
           )}
           <button type="button" className="sb-link" onClick={() => onStudio("campaigns")}>
-            Open adventure studio ↗
+            {t("hsOpenAdventureStudio")}
           </button>
         </Modal>
       )}
