@@ -88,7 +88,7 @@ describe("build scenes from this map, into an adventure", () => {
       ),
     ).toBe(false);
     expect(result.skipped.join(" ")).toContain(
-      "The way from “Kitchen” to “Common room” was left out, because the ways into “Common room” have conditions",
+      "The way from “Kitchen” to “Common room” was left out, because “Common room” can only be reached through conditions or doors",
     );
   });
 
@@ -214,7 +214,7 @@ describe("a way round the author's conditions", () => {
     expect(freeReach(result.campaign).has(city.id)).toBe(false);
     expect(free.has(city.id)).toBe(false);
     expect(result.skipped.join(" ")).toContain(
-      "The way from “Farm” to “City” was left out, because the ways into “City” have conditions; add it yourself if you want it",
+      "The way from “Farm” to “City” was left out, because “City” can only be reached through conditions or doors; add it yourself if you want it",
     );
     expect(result.reconnected).toContain("Gate");
   });
@@ -242,5 +242,84 @@ describe("a way round the author's conditions", () => {
         (l) => l.fromSceneId === scene("Farm").id && l.toSceneId === scene("City").id,
       ),
     ).toBe(true);
+  });
+
+  /** Gate → Square → Palace, only the first step needing “admitted”; then a Farm with paths to Gate and Palace. */
+  function chain() {
+    const piece = (name: string, x: number) => ({ ...settlementPiece("cottage", "", x, 50), name });
+    const gate = piece("Gate", 10),
+      square = piece("Square", 40),
+      palace = piece("Palace", 80),
+      farm = piece("Farm", 50);
+    const route = (id: string, from: string, to: string) => ({
+      id,
+      from,
+      to,
+      type: "path" as const,
+      mode: "Walk",
+      duration: "10 minutes",
+      bothWays: true,
+      access: "open" as const,
+      description: "",
+    });
+    const before = newRealmTemplate({
+      name: "Highmark",
+      source: "player",
+      note: "",
+      worldMap: WorldMapSchema.parse({
+        background: "#d8e3ba",
+        mapType: "world",
+        nodes: [gate, square, palace],
+        routes: [route("a", gate.id, square.id), route("b", square.id, palace.id)],
+      }),
+    });
+    const campaign = scaffoldFromWorld(
+      before,
+      { characters: [], objects: [], places: [], rulesets: [] },
+      { player: { ...emptyCampaignPlayer(), name: "Traveller" }, startNodeId: gate.id },
+    ).campaign;
+    const id = (name: string) => campaign.scenes.find((s) => s.name === name)!.id;
+    for (const link of campaign.sceneLinks)
+      if (link.fromSceneId === id("Gate") && link.toSceneId === id("Square"))
+        link.requiresFlags = ["admitted"];
+    const world = structuredClone(before);
+    world.worldMap!.nodes.push(farm);
+    world.worldMap!.routes.push(
+      route("to-gate", farm.id, gate.id),
+      route("to-palace", farm.id, palace.id),
+    );
+    return { campaign, world };
+  }
+
+  it("is not opened when the condition sits a step further back: the palace is still only reached through the square", () => {
+    const { campaign, world } = chain();
+    const before = freeReach(campaign);
+
+    const result = scaffoldIntoAdventure(campaign, world, library);
+
+    const scene = (name: string) => result.campaign.scenes.find((s) => s.name === name)!;
+    expect(result.campaign.scenes.map((s) => s.name)).toContain("Farm");
+    expect(
+      result.campaign.sceneLinks.some(
+        (l) => l.fromSceneId === scene("Farm").id && l.toSceneId === scene("Palace").id,
+      ),
+    ).toBe(false);
+    const after = freeReach(result.campaign);
+    expect(before.has(scene("Palace").id)).toBe(false);
+    expect(after.has(scene("Palace").id)).toBe(false);
+    expect(after.has(scene("Square").id)).toBe(false);
+    for (const old of campaign.scenes) expect(after.has(old.id)).toBe(before.has(old.id));
+    expect(result.skipped.join(" ")).toContain(
+      "The way from “Farm” to “Palace” was left out, because “Palace” can only be reached through conditions or doors",
+    );
+  });
+
+  it("still lets the new place be reached freely from the gate, and leads on to nothing it should not", () => {
+    const { campaign, world } = chain();
+
+    const result = scaffoldIntoAdventure(campaign, world, library);
+
+    const farm = result.campaign.scenes.find((s) => s.name === "Farm")!;
+    expect(freeReach(result.campaign).has(farm.id)).toBe(true);
   });
 });

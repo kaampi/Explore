@@ -467,6 +467,7 @@ export function scaffoldIntoAdventure(
     built.campaign.scenes.find((scene) => scene.id === id)?.name ??
     campaign.scenes.find((scene) => scene.id === id)?.name ??
     "a place";
+  const freely = reachableFreely(campaign);
   const links: Link[] = [];
   const stillNeeded = new Set<string>();
   const reconnected = new Set<string>();
@@ -478,9 +479,9 @@ export function scaffoldIntoAdventure(
     const touchesOld = oldIds.has(from) || oldIds.has(to);
     // A new way into a scene that is already there could be a detour round the author's own
     // conditions and doors, so it is only added when nothing guards the ways into that scene.
-    if (oldIds.has(to) && guarded(campaign, to)) {
+    if (oldIds.has(to) && !freely.has(to)) {
       skipped.push(
-        `The way from “${nameOf(from)}” to “${nameOf(to)}” was left out, because the ways into “${nameOf(to)}” have conditions; add it yourself if you want it`,
+        `The way from “${nameOf(from)}” to “${nameOf(to)}” was left out, because “${nameOf(to)}” can only be reached through conditions or doors; add it yourself if you want it`,
       );
       continue;
     }
@@ -548,13 +549,29 @@ export function scaffoldIntoAdventure(
   };
 }
 
-/** Whether any way into the scene has a condition or a door, as the author wrote it. */
-function guarded(campaign: CampaignTemplate, sceneId: string): boolean {
-  return campaign.sceneLinks.some(
-    (link) =>
-      link.toSceneId === sceneId &&
-      (link.requiresFlags.length > 0 ||
-        link.requiresAbsentFlags.length > 0 ||
-        (link.requiresOpenBarriers ?? []).length > 0),
-  );
+/**
+ * The scenes the player can reach from the first one over the author's own ways that have no
+ * condition and no door. A new way into a scene outside this set could be a detour round a
+ * condition or a door anywhere further back, not only on the last way in.
+ */
+function reachableFreely(campaign: CampaignTemplate): Set<string> {
+  const seen = new Set<string>();
+  const first = campaign.scenes[0];
+  if (!first) return seen;
+  seen.add(first.id);
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const link of campaign.sceneLinks) {
+      const free =
+        link.requiresFlags.length === 0 &&
+        link.requiresAbsentFlags.length === 0 &&
+        (link.requiresOpenBarriers ?? []).length === 0;
+      if (free && seen.has(link.fromSceneId) && !seen.has(link.toSceneId)) {
+        seen.add(link.toSceneId);
+        grew = true;
+      }
+    }
+  }
+  return seen;
 }
