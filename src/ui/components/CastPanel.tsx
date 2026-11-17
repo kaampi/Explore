@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useEngine } from "../EngineStore";
+import { useTranslate } from "../i18n/LanguageProvider";
 import { Dot } from "./Dot";
 import { isEffectivelyActive } from "@layers/LayerEngine";
 import { formatKeywordList, layerHasKeywordGate, parseKeywordList } from "@layers/keywords";
@@ -576,6 +577,7 @@ function CharacterSheet({
 }
 
 export function CastPanel() {
+  const t = useTranslate();
   const {
     useSession,
     toggleLayer,
@@ -623,10 +625,8 @@ export function CastPanel() {
     <div className="panel panel--left">
       {session.adventure && Object.keys(session.adventure.notes).length > 0 && (
         <div style={{ marginBottom: 18 }} aria-label="Remembered lines">
-          <p className="panel-heading">Remembered</p>
-          <p className="sheet-note">
-            Lines you chose to keep. The story AI is told them whenever you are in that place.
-          </p>
+          <p className="panel-heading">{t("rememberedHeading")}</p>
+          <p className="sheet-note">{t("rememberedHint")}</p>
           {Object.entries(session.adventure.notes)
             .map(([sceneId, notes]) => ({
               sceneId,
@@ -640,7 +640,7 @@ export function CastPanel() {
               <div key={place.sceneId} aria-label={`Remembered at ${place.name}`}>
                 <p className="panel-subheading">
                   {place.name}
-                  {place.here ? " · here" : ""}
+                  {place.here ? ` · ${t("hereMark")}` : ""}
                 </p>
                 {place.notes.map((note, index) => (
                   <div className="sheet-fact" key={note}>
@@ -651,7 +651,7 @@ export function CastPanel() {
                       aria-label={`Forget: ${note.slice(0, 40)}`}
                       onClick={() => void forgetPlaceNote(place.sceneId, index).catch(() => {})}
                     >
-                      Forget
+                      {t("forget")}
                     </button>
                   </div>
                 ))}

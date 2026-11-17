@@ -4,6 +4,7 @@ import type { RealmTemplate, RulesetTemplate, PlaceTemplate } from "@library/Lib
 import { emptyCampaignPlayer } from "@library/LibrarySchema";
 import type { Session } from "@state/StateSchema";
 import { Modal } from "../components/Modal";
+import { useTranslate } from "../i18n/LanguageProvider";
 import { startablePlaces, startWorldExploration } from "@session/worldStart";
 
 /**
@@ -29,6 +30,7 @@ export function ExploreWorldDialog({
   onStart: (session: Session) => Promise<void>;
   onClose: () => void;
 }) {
+  const t = useTranslate();
   const choices = startablePlaces(world, places);
   const [name, setName] = useState("Traveller");
   const [appearance, setAppearance] = useState("");
@@ -74,17 +76,14 @@ export function ExploreWorldDialog({
   }
 
   return (
-    <Modal title={`Explore ${world.name}`} onClose={onClose}>
-      <p className="sb-muted">
-        Every place on the map becomes somewhere you can go, and the world remembers what you do
-        there. Nothing is added to your library.
-      </p>
+    <Modal title={t("exploreTitle", { name: world.name })} onClose={onClose}>
+      <p className="sb-muted">{t("exploreIntro")}</p>
       <label className="sb-field">
-        Your name
+        {t("yourName")}
         <input value={name} onChange={(event) => setName(event.target.value)} />
       </label>
       <label className="sb-field">
-        How you look <span className="sb-muted">optional</span>
+        {t("howYouLook")} <span className="sb-muted">{t("optional")}</span>
         <textarea
           rows={2}
           value={appearance}
@@ -92,7 +91,7 @@ export function ExploreWorldDialog({
         />
       </label>
       <label className="sb-field">
-        Who you are <span className="sb-muted">optional</span>
+        {t("whoYouAre")} <span className="sb-muted">{t("optional")}</span>
         <textarea
           rows={2}
           value={personality}
@@ -100,9 +99,9 @@ export function ExploreWorldDialog({
         />
       </label>
       <label className="sb-field">
-        Start at
+        {t("startAt")}
         <select
-          aria-label="Start at"
+          aria-label={t("startAt")}
           value={startNodeId}
           onChange={(event) => setStartNodeId(event.target.value)}
         >
@@ -115,13 +114,13 @@ export function ExploreWorldDialog({
       </label>
       {withNumbers.length > 0 && (
         <label className="sb-field">
-          Rule-set <span className="sb-muted">optional</span>
+          {t("ruleSet")} <span className="sb-muted">{t("optional")}</span>
           <select
-            aria-label="Rule-set"
+            aria-label={t("ruleSet")}
             value={rulesetId}
             onChange={(event) => setRulesetId(event.target.value)}
           >
-            <option value="">Basic rules</option>
+            <option value="">{t("basicRules")}</option>
             {withNumbers.map((set) => (
               <option key={set.id} value={set.id}>
                 {set.name}
@@ -130,9 +129,7 @@ export function ExploreWorldDialog({
           </select>
         </label>
       )}
-      {choices.length === 0 && (
-        <p className="sb-muted">This world has no places on its map yet. Draw some first.</p>
-      )}
+      {choices.length === 0 && <p className="sb-muted">{t("noPlacesOnMap")}</p>}
       {error && (
         <p role="alert" className="sb-error">
           {error}
@@ -145,7 +142,7 @@ export function ExploreWorldDialog({
           disabled={busy || !startNodeId}
           onClick={() => void begin()}
         >
-          {busy ? "Opening…" : "Explore this world →"}
+          {busy ? t("opening") : t("exploreButton")}
         </button>
       </div>
     </Modal>

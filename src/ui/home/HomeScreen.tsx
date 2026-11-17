@@ -5,6 +5,7 @@ import { loadingBayScenario } from "./encounterScenario";
 import { PlayStartPaths } from "./PlayStartPaths";
 import { CheckUpdates } from "./CheckUpdates";
 import { useEffect, useState } from "react";
+import { useTranslate } from "../i18n/LanguageProvider";
 import conversationsWorld from "../assets/conversations-world.webp";
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 import {
@@ -61,6 +62,7 @@ export function HomeScreen({
   onStart: (session: Session) => Promise<void>;
   onStudio: (view: StudioView) => void;
 }) {
+  const t = useTranslate();
   const [characters, setCharacters] = useState<CharacterTemplate[]>([]);
   const [realms, setRealms] = useState<RealmTemplate[]>([]);
   const [places, setPlaces] = useState<PlaceTemplate[]>([]);
@@ -378,14 +380,12 @@ export function HomeScreen({
           </section>
           <section className="sb-home-section">
             <div className="sb-section-heading">
-              <h2>Your worlds, waiting</h2>
+              <h2>{t("worldsWaiting")}</h2>
               <button type="button" className="sb-link" onClick={() => onStudio("places")}>
-                Manage worlds & places ↗
+                {t("manageWorlds")}
               </button>
             </div>
-            <p className="sb-section-description">
-              Step into a place you've imagined, or follow a prepared adventure.
-            </p>
+            <p className="sb-section-description">{t("worldsIntro")}</p>
             <div className="sb-world-grid">
               {realms.map((realm, index) => (
                 <button
@@ -400,13 +400,16 @@ export function HomeScreen({
                     ) : (
                       <WorldArtwork variant={index} />
                     )}
-                    <span>WORLD</span>
+                    <span>{t("worldBadge")}</span>
                   </div>
                   <div>
                     <h3>{realm.name}</h3>
-                    <p>{realm.note || "There is more to discover here."}</p>
+                    <p>{realm.note || t("worldNoteEmpty")}</p>
                     <small>
-                      {places.filter((place) => place.realmId === realm.id).length} places <b>↗</b>
+                      {t("placeCount", {
+                        count: places.filter((place) => place.realmId === realm.id).length,
+                      })}{" "}
+                      <b>↗</b>
                     </small>
                   </div>
                 </button>
@@ -421,11 +424,14 @@ export function HomeScreen({
                     setError(null);
                   }}
                 >
-                  <span className="sb-eyebrow">PREPARED ADVENTURE</span>
+                  <span className="sb-eyebrow">{t("preparedAdventure")}</span>
                   <h3>{item.name}</h3>
-                  <p>{item.playerIntro || "Choose a scene and enter the story."}</p>
+                  <p>{item.playerIntro || t("adventureIntroEmpty")}</p>
                   <small>
-                    {item.scenes.length} scenes <b>↗</b>
+                    {t(item.scenes.length === 1 ? "sceneOne" : "sceneMany", {
+                      count: item.scenes.length,
+                    })}{" "}
+                    <b>↗</b>
                   </small>
                 </button>
               ))}
@@ -433,11 +439,11 @@ export function HomeScreen({
                 <div className="sb-empty-world">
                   <span aria-hidden="true">⌖</span>
                   <div>
-                    <h3>A world can come later.</h3>
-                    <p>Start with a conversation, or build a setting in your library.</p>
+                    <h3>{t("worldLater")}</h3>
+                    <p>{t("worldLaterHint")}</p>
                   </div>
                   <button type="button" className="sb-link" onClick={() => onStudio("places")}>
-                    Create a world →
+                    {t("createWorld")}
                   </button>
                 </div>
               )}
@@ -757,7 +763,7 @@ export function HomeScreen({
                   setWorld(null);
                 }}
               >
-                Explore this world…
+                {t("exploreWorldLink")}
               </button>
             )}
             <button

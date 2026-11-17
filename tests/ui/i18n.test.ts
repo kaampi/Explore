@@ -32,6 +32,23 @@ describe("the interface languages", () => {
     }
   });
 
+  it("do not leave English text in the Swedish or Norwegian lists for the start page, the world dialog and the play panel", () => {
+    // Norwegian "scene" is the same word as English.
+    const added = keys
+      .slice(keys.indexOf("voiceInstructionPlaceholder") + 1)
+      .filter((key) => key !== "sceneOne");
+
+    expect(added.length).toBeGreaterThan(40);
+    for (const key of added) {
+      expect(allLabels.sv[key as keyof typeof allLabels.sv], `sv.${key}`).not.toBe(
+        allLabels.en[key as keyof typeof allLabels.en],
+      );
+      expect(allLabels.nb[key as keyof typeof allLabels.nb], `nb.${key}`).not.toBe(
+        allLabels.en[key as keyof typeof allLabels.en],
+      );
+    }
+  });
+
   it("do not leave English text in the Swedish or Norwegian lists for the new picture texts", () => {
     for (const key of ["showPictureArchive", "pictureArchive", "noPicturesYet"] as const) {
       expect(allLabels.sv[key]).not.toBe(allLabels.en[key]);

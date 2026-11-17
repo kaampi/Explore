@@ -1,5 +1,6 @@
 import { formatGameTime, formatTravelTime } from "../../state/gameClock";
 import { useArrivalResidents } from "./useArrivalResidents";
+import { useTranslate } from "../i18n/LanguageProvider";
 import { PlayerInventory } from "./PlayerInventory";
 import { itemRevealed } from "../../game/itemVisibility";
 import {
@@ -48,6 +49,7 @@ export function EncounterPanel({
   mapView?: ReactNode;
   backdrop?: ReactNode;
 }) {
+  const t = useTranslate();
   const {
       useSession,
       executeEncounterAction,
@@ -371,12 +373,19 @@ export function EncounterPanel({
               ...(menu.free && session.adventure
                 ? [
                     {
-                      label: "Remember this",
+                      label: t("rememberThis"),
                       action: () => {
                         rememberPlaceNote(noteFrom(menu.text), menu.sceneId)
                           .then(() =>
                             setNotice(
-                              `Remembered at ${session.adventure?.scenes.find((scene) => scene.id === (menu.sceneId ?? session.adventure!.currentSceneId))?.name ?? "this place"}.`,
+                              t("rememberedAt", {
+                                place:
+                                  session.adventure?.scenes.find(
+                                    (scene) =>
+                                      scene.id ===
+                                      (menu.sceneId ?? session.adventure!.currentSceneId),
+                                  )?.name ?? "this place",
+                              }),
                             ),
                           )
                           .catch((error: unknown) =>
@@ -508,7 +517,7 @@ export function EncounterPanel({
         <div className="gate-scene-composer">
           {populating && (
             <p role="status" className="playable-hint">
-              Looking around…
+              {t("lookingAround")}
             </p>
           )}
           {notice && <p role="status">{notice}</p>}
@@ -629,7 +638,7 @@ export function EncounterPanel({
             {session.adventure
               ? session.adventure.goal
                 ? "Explore the scene through its actions. Discoveries can open new connections, and your progress is saved."
-                : "Look around, talk to people and move on when you like. The places you leave remember what happened, and your progress is saved."
+                : t("freePlayHint")
               : "Talk, negotiate, explore or fight. Your choices and their consequences are saved."}
           </p>
         </header>
@@ -639,7 +648,7 @@ export function EncounterPanel({
         <PlayerInventory session={session} busy={busy} onAction={choose} />
         {session.adventure && (
           <section className="adventure-path">
-            <small>{session.adventure.goal ? "YOUR ADVENTURE" : "YOUR WORLD"}</small>
+            <small>{session.adventure.goal ? t("yourAdventureEyebrow") : t("yourWorld")}</small>
             <h3>{session.adventure.title}</h3>
             {session.adventure.links.some((link) => link.minutes !== undefined) && (
               <p aria-label="Game time">{formatGameTime(session.adventure.clockMinutes)}</p>
