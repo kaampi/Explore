@@ -12,6 +12,10 @@ import { startPlayableCampaign } from "../../src/session/adventureStart";
 import { validateAdventure } from "../../src/game/AdventureEngine";
 import { storyboardIssues } from "../../src/ui/studio/storyboardReadiness";
 import { MAX_WORLD_SCENES } from "../../src/library/worldScaffold";
+import { generateSettlement, applySettlement, settlementPiece } from "../../src/library/settlement";
+import { WorldMapSchema } from "../../src/library/worldMap";
+import { newRealmTemplate } from "../../src/library/LibrarySchema";
+import { reachableFromStart } from "../../src/ui/studio/storyboardReadiness";
 
 function scaffold() {
   const inn = innVisitExample();
@@ -310,5 +314,86 @@ describe("ways through crossings, and people and things on the map", () => {
     const scene = built.campaign.scenes.find((s) => s.name === "Common room")!;
 
     expect(scene.encounter!.state.actors[`npc:${edda.id}`]!.inventory).toContain(ring.id);
+  });
+});
+
+describe("a generated village on a larger map", () => {
+  function villageWorld() {
+    const village = { ...settlementPiece("settlement", "", 30, 40), name: "Ashford" };
+    const harbour = { ...settlementPiece("settlement", "", 80, 40), name: "Harbour" };
+    let map = WorldMapSchema.parse({
+      background: "#d8e3ba",
+      mapType: "world",
+      nodes: [village, harbour],
+      routes: [
+        {
+          id: "coast-road",
+          from: village.id,
+          to: harbour.id,
+          type: "road",
+          mode: "Walk",
+          duration: "",
+          bothWays: true,
+          access: "open",
+          description: "",
+        },
+      ],
+    });
+    map = applySettlement(
+      map,
+      village.id,
+      generateSettlement({ size: "village", layout: "crossroads", landmark: "hall" }, village.id),
+    );
+    const world = newRealmTemplate({
+      name: "Ashford world",
+      source: "player",
+      note: "",
+      worldMap: map,
+    });
+    return { world, village, harbour };
+  }
+
+  it("reaches every place from the square, the village itself and the harbour beyond it included", () => {
+    const { world, village, harbour } = villageWorld();
+    const square = world.worldMap!.nodes.find((n) => n.name === "Market square")!;
+
+    const built = scaffoldFromWorld(world, empty, { player, startNodeId: square.id });
+    const reach = reachableFromStart(built.campaign);
+
+    const names = built.campaign.scenes.map((s) => s.name);
+    expect(names).toContain(village.name);
+    expect(names).toContain(harbour.name);
+    expect(names.length).toBeGreaterThan(5);
+    expect(built.campaign.scenes.filter((s) => !reach.scenes.has(s.id)).map((s) => s.name)).toEqual(
+      [],
+    );
+  });
+
+  it("gets the way out of the village from the square, which has the most ways", () => {
+    const { world, village } = villageWorld();
+    const square = world.worldMap!.nodes.find((n) => n.name === "Market square")!;
+    const built = scaffoldFromWorld(world, empty, { player, startNodeId: square.id });
+    const scene = (id: string) => built.campaign.scenes.find((s) => s.mapNodeId === id)!;
+
+    const out = built.campaign.sceneLinks.filter(
+      (l) => l.fromSceneId === scene(square.id).id && l.toSceneId === scene(village.id).id,
+    );
+
+    expect(out.map((l) => l.label)).toEqual(["Leave Ashford"]);
+  });
+
+  it("gives the generated roads a travel time from the map, so the clock moves", () => {
+    const { world } = villageWorld();
+    const square = world.worldMap!.nodes.find((n) => n.name === "Market square")!;
+    const built = scaffoldFromWorld(world, empty, { player, startNodeId: square.id });
+
+    const timed = built.campaign.sceneLinks.filter((l) => (l.minutes ?? 0) > 0);
+
+    expect(timed.length).toBeGreaterThan(0);
+    expect(
+      built.campaign.sceneLinks.every(
+        (l) => l.minutes === undefined || Number.isInteger(l.minutes),
+      ),
+    ).toBe(true);
   });
 });

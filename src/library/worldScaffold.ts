@@ -16,6 +16,7 @@ import { actorIdFor, addPickUp, placeItem } from "./sceneParts";
 import { syncAdventure } from "./sceneSync";
 import type { MapNode } from "./worldMap";
 import { parseTravelMinutes } from "../state/gameClock";
+import { travelGap } from "./mapTravel";
 
 /** Most scenes one free-play game is built with. A bigger world is played from a town or a building. */
 export const MAX_WORLD_SCENES = 300;
@@ -232,6 +233,30 @@ function label(from: MapNode, to: MapNode) {
   return `Go to ${to.name}`;
 }
 
+/**
+ * How long a road takes when no time is written on it: the gap between its ends on the map, in
+ * the map's own scale, at walking pace. A way blocked by terrain or too short to measure has none.
+ */
+function estimatedMinutes(
+  map: NonNullable<RealmTemplate["worldMap"]>,
+  nodes: Map<string, MapNode>,
+  route: Route,
+): number | undefined {
+  if (/blocked/i.test(route.duration) || route.mode.toLowerCase() === "door") return undefined;
+  const a = nodes.get(route.from),
+    b = nodes.get(route.to);
+  if (!a || !b) return undefined;
+  const cells = travelGap(a, b);
+  if (cells < 0.01) return undefined;
+  const level = a.parentId ? nodes.get(a.parentId) : undefined;
+  const scale = level?.distanceScale ?? map.distanceScale;
+  const speed = route.speedKmh ?? 5;
+  const minutes = scale
+    ? ((cells * scale.value * scale.kmPerUnit) / speed) * 60
+    : cells * (map.minutesPerCell ?? 5);
+  return Math.max(1, Math.round(minutes));
+}
+
 function routeLinks(
   map: NonNullable<RealmTemplate["worldMap"]>,
   byNode: Map<string, AdventureMapPlace>,
@@ -309,7 +334,9 @@ function routeLinks(
           if (!insideOf(target, a)) routed.add(target.id);
           const locked = next.find((hop) => hop.access === "locked");
           const id = locked?.id ?? next.map((hop) => hop.id).sort()[0]!;
-          const times = next.map((hop) => parseTravelMinutes(hop.duration));
+          const times = next.map(
+            (hop) => parseTravelMinutes(hop.duration) ?? estimatedMinutes(map, nodeById, hop),
+          );
           const minutes = times.every((time) => time !== undefined)
             ? Math.round(times.reduce((sum, time) => sum + time!, 0))
             : undefined;
@@ -330,6 +357,56 @@ function routeLinks(
       [parent, node],
       [node, parent],
     ]);
+  }
+  // A place that holds other places can be left for it from one of them. If no way does that,
+  // the place inside with the most ways gets the entrance and the exit.
+  const withinPlace = (node: MapNode, container: MapNode) => {
+    const seen = new Set<string>();
+    let at = node.parentId;
+    while (at && !seen.has(at)) {
+      if (at === container.id) return true;
+      seen.add(at);
+      at = nodeById.get(at)?.parentId;
+    }
+    return false;
+  };
+  const entries = [...byNode.values()].map((entry) => entry.node);
+  for (const container of entries) {
+    const inside = entries.filter((node) => withinPlace(node, container));
+    if (inside.length === 0) continue;
+    const containerScene = sceneOf.get(container.id)!.id;
+    const insideScenes = new Set(inside.map((node) => sceneOf.get(node.id)!.id));
+    if (links.some((l) => l.toSceneId === containerScene && insideScenes.has(l.fromSceneId)))
+      continue;
+    const doorways = inside.filter(
+      (node) =>
+        node.parentId === container.id && node.entrance !== "none" && node.entrance !== "hidden",
+    );
+    if (doorways.length === 0) continue;
+    const ways = (node: MapNode) => {
+      const scene = sceneOf.get(node.id)!.id;
+      return links.filter((l) => l.fromSceneId === scene || l.toSceneId === scene).length;
+    };
+    const best = doorways.reduce((chosen, node) => (ways(node) > ways(chosen) ? node : chosen));
+    const missing = (
+      [
+        [container, best],
+        [best, container],
+      ] as [MapNode, MapNode][]
+    ).filter(
+      ([from, to]) =>
+        !links.some(
+          (l) =>
+            l.fromSceneId === sceneOf.get(from.id)!.id && l.toSceneId === sceneOf.get(to.id)!.id,
+        ),
+    );
+    connect(
+      `entrance:${best.id}`,
+      best.entrance === "locked" ? "locked" : "open",
+      container,
+      best,
+      missing,
+    );
   }
   return { links, doors };
 }
