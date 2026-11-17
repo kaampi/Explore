@@ -85,12 +85,66 @@ export function draftFromEvent(
   return { ...emptyCampaignScene(), name: event.name.trim() || "Untitled event", draft };
 }
 
+/** A draft the manuscript has newer words for: what it said, and what it says now. */
+export type DraftChange = {
+  sceneId: string;
+  name: string;
+  before: SceneDraft["facts"];
+  after: SceneDraft["facts"];
+  event: CoreBibleEntity;
+};
+
+const sameJson = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+
+/**
+ * What a newer manuscript changes in a draft, if anything: its facts or what it seems to mention.
+ * Undefined when the draft is not from this event, the version is not newer, or nothing differs.
+ */
+export function reviewEventDraft(
+  scene: CampaignScene,
+  event: CoreBibleEntity,
+  source: DraftSource,
+  library: DraftLibrary,
+): DraftChange | undefined {
+  const draft = scene.draft;
+  if (!draft || !sameEvent(scene, source, event.entity_ref)) return undefined;
+  if (source.revision <= draft.origin.revision) return undefined;
+  const next = draftFromEvent(event, source, library).draft!;
+  const unchanged =
+    sameJson(draft.facts, next.facts) &&
+    sameJson(draft.suggestedCharacterIds, next.suggestedCharacterIds) &&
+    draft.suggestedPlaceId === next.suggestedPlaceId &&
+    sameJson(draft.otherPlaceIds, next.otherPlaceIds) &&
+    sameJson(draft.suggestedObjectIds, next.suggestedObjectIds);
+  if (unchanged) return undefined;
+  return { sceneId: scene.id, name: scene.name, before: draft.facts, after: next.facts, event };
+}
+
+/**
+ * Bring a draft's notes up to date. Only its facts, its version and its suggestions change:
+ * the scene's name, actions, people, things and doors, which the author wrote, are left alone.
+ */
+export function updateEventDraft(
+  scene: CampaignScene,
+  event: CoreBibleEntity,
+  source: DraftSource,
+  library: DraftLibrary,
+): CampaignScene {
+  if (!scene.draft || !sameEvent(scene, source, event.entity_ref))
+    throw new Error("This scene was not made from that event.");
+  if (source.revision < scene.draft.origin.revision)
+    throw new Error("This manuscript version is older than the notes.");
+  return { ...scene, draft: draftFromEvent(event, source, library).draft! };
+}
+
 export type DraftImport = {
   campaign: CampaignTemplate;
   /** Drafts added, in the order the events stand in the manuscript. */
   added: number;
   /** Events that already have a draft in this adventure, by name. */
   alreadyThere: string[];
+  /** Drafts the manuscript now says something different about, to review before they are updated. */
+  changed: DraftChange[];
   /** Chosen events beyond the limit of one import, which were left out. */
   clipped: number;
 };
@@ -117,15 +171,20 @@ export function addEventDrafts(args: {
   const picked = args.events.filter((event) => args.chosen.has(event.entity_ref));
   const taken = picked.slice(0, MAX_EVENTS_PER_IMPORT);
   const alreadyThere: string[] = [];
+  const changed: DraftChange[] = [];
   const fresh = taken.filter((event) => {
-    if (!campaign.scenes.some((scene) => sameEvent(scene, source, event.entity_ref))) return true;
-    alreadyThere.push(event.name.trim() || event.entity_ref);
+    const old = campaign.scenes.find((scene) => sameEvent(scene, source, event.entity_ref));
+    if (!old) return true;
+    const change = reviewEventDraft(old, event, source, args.library);
+    if (change) changed.push(change);
+    else alreadyThere.push(event.name.trim() || event.entity_ref);
     return false;
   });
   const result: DraftImport = {
     campaign,
     added: 0,
     alreadyThere,
+    changed,
     clipped: picked.length - taken.length,
   };
   if (fresh.length === 0) return result;

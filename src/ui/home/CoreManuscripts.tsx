@@ -8,7 +8,7 @@ import type { CoreBibleSection, CoreBibleEntity } from "../../integrations/coreB
 import { portraitSrc } from "../studio/portrait";
 import type { CharacterTemplate, ObjectTemplate, PlaceTemplate } from "@library/LibrarySchema";
 import type { Faction } from "@library/factions";
-import { addEventDrafts } from "../../integrations/coreEvents";
+import { addEventDrafts, updateEventDraft, type DraftChange } from "../../integrations/coreEvents";
 import { newCampaignTemplate, type CampaignTemplate } from "@library/LibrarySchema";
 import {
   IMPORTABLE_KINDS,
@@ -80,6 +80,10 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
   const [draftEvents, setDraftEvents] = useState<Set<string> | null>(null);
   const [draftTarget, setDraftTarget] = useState("new");
   const [adventures, setAdventures] = useState<CampaignTemplate[]>([]);
+  const [changedDrafts, setChangedDrafts] = useState<{
+    campaignId: string;
+    items: DraftChange[];
+  } | null>(null);
 
   async function refresh() {
     setBusy(true);
@@ -233,11 +237,55 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
           result.alreadyThere.length
             ? ` Already there, left as they are: ${result.alreadyThere.join(", ")}.`
             : ""
-        }${result.clipped ? ` ${result.clipped} more were left out; one import takes 100.` : ""} kaampi Write was not changed.`,
+        }${result.changed.length ? ` ${result.changed.length} changed in the manuscript; review them below.` : ""}${
+          result.clipped ? ` ${result.clipped} more were left out; one import takes 100.` : ""
+        } kaampi Write was not changed.`,
+      );
+      setChangedDrafts(
+        result.changed.length ? { campaignId: result.campaign.id, items: result.changed } : null,
       );
       setDraftEvents(null);
     } catch (reason) {
       setImportNotice(reason instanceof Error ? reason.message : "Could not create the drafts.");
+    } finally {
+      setImporting(false);
+    }
+  }
+  /** Bring one draft's notes up to date from the newer manuscript, or keep them as they are. */
+  async function updateDraft(change: DraftChange, update: boolean) {
+    if (!selected || !changedDrafts || importing) return;
+    setImporting(true);
+    try {
+      if (update) {
+        const [campaigns, characters, places, objects] = await Promise.all([
+          repo.listCampaigns(),
+          repo.listCharacters(),
+          repo.listPlaces(),
+          repo.listObjects(),
+        ]);
+        const target = campaigns.find((item) => item.id === changedDrafts.campaignId);
+        const scene = target?.scenes.find((item) => item.id === change.sceneId);
+        if (!target || !scene) throw new Error("That scene is gone.");
+        const updated = updateEventDraft(
+          scene,
+          change.event,
+          {
+            workspaceId: selected.workspaceId,
+            projectId: selected.projectId,
+            revision: selected.revision,
+          },
+          { characters, places, objects },
+        );
+        await repo.saveCampaign({
+          ...target,
+          scenes: target.scenes.map((item) => (item.id === scene.id ? updated : item)),
+        });
+        setImportNotice(`The notes for “${change.name}” were updated.`);
+      }
+      const rest = changedDrafts.items.filter((item) => item.sceneId !== change.sceneId);
+      setChangedDrafts(rest.length ? { ...changedDrafts, items: rest } : null);
+    } catch (reason) {
+      setImportNotice(reason instanceof Error ? reason.message : "Could not update the notes.");
     } finally {
       setImporting(false);
     }
@@ -412,6 +460,7 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
             setReview(null);
             setChosen(null);
             setDraftEvents(null);
+            setChangedDrafts(null);
           }}
           wide
         >
@@ -473,6 +522,54 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
                   Create scene drafts…
                 </button>
               )}
+            {changedDrafts && (
+              <section aria-label="The manuscript has changed">
+                <h3>The manuscript has changed</h3>
+                <p>
+                  The events below have new notes. Updating changes only the notes and the
+                  suggestions: your scene, its actions, people and doors stay as they are.
+                </p>
+                {changedDrafts.items.map((change) => (
+                  <div key={change.sceneId}>
+                    <h4>{change.name}</h4>
+                    <div>
+                      <strong>Before</strong>
+                      <ul>
+                        {change.before.map((fact, index) => (
+                          <li key={index}>
+                            {fact.label}: {fact.value}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <strong>Now</strong>
+                      <ul>
+                        {change.after.map((fact, index) => (
+                          <li key={index}>
+                            {fact.label}: {fact.value}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={importing}
+                      onClick={() => void updateDraft(change, true)}
+                    >
+                      Update notes
+                    </button>
+                    <button
+                      type="button"
+                      disabled={importing}
+                      onClick={() => void updateDraft(change, false)}
+                    >
+                      Keep
+                    </button>
+                  </div>
+                ))}
+              </section>
+            )}
             {draftEvents && (
               <section aria-label="Create scene drafts">
                 <h3>Create scene drafts from the events</h3>

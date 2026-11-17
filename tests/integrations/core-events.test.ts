@@ -261,3 +261,115 @@ describe("adding drafts to an adventure", () => {
     expect(sceneFormat(result.campaign.scenes[0]!)).toBe("blank");
   });
 });
+
+import { reviewEventDraft, updateEventDraft } from "../../src/integrations/coreEvents";
+import { makePlayableScene } from "../../src/library/playableCampaign";
+import { addPerson } from "../../src/library/sceneParts";
+
+describe("when the manuscript changes", () => {
+  const older = { ...source, revision: 2 };
+  const newer = { ...source, revision: 5 };
+  const place1 = place("The mill");
+  const edda = person("Edda");
+  const lib = library({ characters: [edda], places: [place1] });
+  const first = draftFromEvent(event("The flood", [["When", "Spring"]]), older, lib);
+
+  it("finds nothing to review when the version is not newer, the notes are the same, or it is another event", () => {
+    const same = event("The flood", [["When", "Spring"]]);
+
+    expect(reviewEventDraft(first, same, newer, lib)).toBeUndefined();
+    expect(
+      reviewEventDraft(first, event("The flood", [["When", "Autumn"]]), older, lib),
+    ).toBeUndefined();
+    expect(
+      reviewEventDraft(
+        first,
+        event("The flood", [["When", "Autumn"]]),
+        { ...source, revision: 1 },
+        lib,
+      ),
+    ).toBeUndefined();
+    expect(
+      reviewEventDraft(first, event("The flood", [["When", "Autumn"]], "other"), newer, lib),
+    ).toBeUndefined();
+  });
+
+  it("shows the old and the new notes side by side when they differ, or when it now mentions someone", () => {
+    const changed = event("The flood", [["When", "Autumn, at the mill"]]);
+
+    const change = reviewEventDraft(first, changed, newer, lib)!;
+
+    expect(change.before).toEqual([{ label: "When", value: "Spring" }]);
+    expect(change.after).toEqual([{ label: "When", value: "Autumn, at the mill" }]);
+    const mentionsEdda = event("The flood", [
+      ["When", "Spring"],
+      ["Who", "Edda wades in."],
+    ]);
+    expect(reviewEventDraft(first, mentionsEdda, newer, lib)).toBeDefined();
+  });
+
+  it("updates only the notes, the version and the suggestions, and leaves what the author wrote", () => {
+    const author = person("Orla", null);
+    const base = {
+      ...first,
+      name: "The great flood",
+      placeId: place1.id,
+    };
+    const built = makePlayableScene(
+      newCampaignTemplate({ name: "M", scenes: [base] }),
+      base,
+      [place1],
+      [author],
+      [],
+    );
+    const withPerson = addPerson(built, author);
+    const changed = event("The flood", [
+      ["When", "Autumn"],
+      ["Who", "Edda wades in."],
+    ]);
+
+    const updated = updateEventDraft(withPerson, changed, newer, lib);
+
+    const { draft: _a, ...restBefore } = withPerson;
+    const { draft: _b, ...restAfter } = updated;
+    expect(restAfter).toEqual(restBefore);
+    expect(updated.draft!.origin.revision).toBe(5);
+    expect(updated.draft!.facts).toEqual([
+      { label: "When", value: "Autumn" },
+      { label: "Who", value: "Edda wades in." },
+    ]);
+    expect(updated.draft!.suggestedCharacterIds).toEqual([edda.id]);
+    expect(updated.name).toBe("The great flood");
+  });
+
+  it("refuses to update from another event or from an older version", () => {
+    expect(() => updateEventDraft(first, event("x", [], "other"), newer, lib)).toThrow(
+      /not made from/,
+    );
+    expect(() =>
+      updateEventDraft(first, event("The flood", []), { ...source, revision: 1 }, lib),
+    ).toThrow(/older/);
+  });
+
+  it("is reported by an import instead of being called 'already there', and the scene is not touched", () => {
+    const campaign = newCampaignTemplate({ name: "M", scenes: [first] });
+    const before = structuredClone(campaign);
+    const changed = event("The flood", [["When", "Autumn"]]);
+
+    const result = addEventDrafts({
+      campaign,
+      title: "Night Keys",
+      events: [changed],
+      chosen: new Set([changed.entity_ref]),
+      source: newer,
+      library: lib,
+    });
+
+    expect(result.added).toBe(0);
+    expect(result.alreadyThere).toEqual([]);
+    expect(result.changed).toHaveLength(1);
+    expect(result.changed[0]!.sceneId).toBe(first.id);
+    expect(result.campaign).toBe(campaign);
+    expect(campaign).toEqual(before);
+  });
+});
