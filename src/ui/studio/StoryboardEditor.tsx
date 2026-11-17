@@ -4,6 +4,7 @@ import type { RealmTemplate } from "../../library/LibrarySchema";
 import { adventureMapPlaces, chooseAdventureMap } from "../../library/adventureMap";
 import { describeOpenWorld, scaffoldIntoAdventure } from "../../library/worldScaffold";
 import { Modal } from "../components/Modal";
+import { useTranslate } from "../i18n/LanguageProvider";
 import { PlayableStoryboard } from "./PlayableStoryboard";
 import { WorldMapStudio } from "./WorldMapStudio";
 
@@ -23,6 +24,7 @@ export function StoryboardEditor({
   repo?: IndexedDBRepository;
   onRefresh?: () => Promise<unknown>;
 }) {
+  const t = useTranslate();
   const [mapOpen, setMapOpen] = useState(false),
     [mapDirty, setMapDirty] = useState(false),
     [confirmMapClose, setConfirmMapClose] = useState(false),
@@ -48,7 +50,7 @@ export function StoryboardEditor({
     try {
       await onRefresh();
     } catch (e) {
-      setMapError(e instanceof Error ? e.message : "Could not refresh the map.");
+      setMapError(e instanceof Error ? e.message : t("seCouldNotRefresh"));
     } finally {
       setRefreshing(false);
     }
@@ -72,15 +74,15 @@ export function StoryboardEditor({
       if (result.added > 0) props.onChange(result.campaign);
       setBuilt(
         result.added > 0
-          ? `Added ${result.added} ${result.added === 1 ? "scene" : "scenes"} from the map.${
+          ? `${t(result.added === 1 ? "seAddedOne" : "seAddedMany", { count: result.added })}${
               result.reconnected.length
-                ? ` New ways out were added from: ${result.reconnected.join(", ")}.`
+                ? t("seNewWaysOut", { names: result.reconnected.join(", ") })
                 : ""
-            }${result.skipped.length ? ` Left out: ${result.skipped.join("; ")}.` : ""}`
-          : (result.skipped[0] ?? "Nothing to add."),
+            }${result.skipped.length ? t("seLeftOut", { list: result.skipped.join("; ") }) : ""}`
+          : (result.skipped[0] ?? t("seNothingToAdd")),
       );
     } catch (e) {
-      setMapError(e instanceof Error ? e.message : "Could not build scenes from the map.");
+      setMapError(e instanceof Error ? e.message : t("seCouldNotBuild"));
     } finally {
       setRefreshing(false);
     }
@@ -94,7 +96,7 @@ export function StoryboardEditor({
   }
   return (
     <Modal
-      title={`Storyboard Editor · ${props.campaign.name}`}
+      title={t("seTitle", { name: props.campaign.name })}
       wide
       onClose={() => {
         if (!props.busy && !refreshing) onClose();
@@ -104,7 +106,7 @@ export function StoryboardEditor({
         {worlds && (
           <div className="storyboard-map-toolbar">
             <label>
-              Adventure map
+              {t("seAdventureMap")}
               <select
                 aria-label="Adventure map"
                 value={props.campaign.mapWorldId ?? ""}
@@ -116,12 +118,10 @@ export function StoryboardEditor({
                 }}
               >
                 <option value="" disabled={!!props.campaign.mapWorldId}>
-                  Not linked · choose a saved world map
+                  {t("seNotLinked")}
                 </option>
                 {props.campaign.mapWorldId && !world && (
-                  <option value={props.campaign.mapWorldId}>
-                    Map unavailable — choose another
-                  </option>
+                  <option value={props.campaign.mapWorldId}>{t("seMapUnavailable")}</option>
                 )}
                 {worlds
                   .filter((w) => w.worldMap || w.id === props.campaign.mapWorldId)
@@ -142,7 +142,7 @@ export function StoryboardEditor({
                   setMapOpen(true);
                 }}
               >
-                Open Map Studio
+                {t("seOpenMapStudio")}
               </button>
             )}
             {onRefresh && (
@@ -151,24 +151,20 @@ export function StoryboardEditor({
                 disabled={props.busy || refreshing}
                 onClick={() => void refresh()}
               >
-                {refreshing ? "Refreshing…" : "Refresh map places"}
+                {refreshing ? t("seRefreshing") : t("seRefreshPlaces")}
               </button>
             )}
             {world?.worldMap && (
               <button
                 type="button"
                 disabled={props.busy || refreshing}
-                title="Adds a scene for every place on the map that has none, and the ways between them. Scenes you have already made are not changed."
+                title={t("seBuildTitle")}
                 onClick={() => void buildFromMap()}
               >
-                Build scenes from this map
+                {t("seBuildScenes")}
               </button>
             )}
-            <span>
-              {entries
-                ? `${entries.length} map places · includes places inside other places`
-                : "Link a map to choose the world’s actual locations."}
-            </span>
+            <span>{entries ? t("seMapPlaces", { count: entries.length }) : t("seLinkMap")}</span>
           </div>
         )}
         <PlayableStoryboard
@@ -183,17 +179,15 @@ export function StoryboardEditor({
           {error || mapError ? (
             <span role="alert">{error || mapError}</span>
           ) : (
-            <span role="status">
-              {built ||
-                notice ||
-                "Right-click a scene, connection or empty workspace for actions. Closing keeps your draft; Save adventure stores it."}
-            </span>
+            <span role="status">{built || notice || t("seFooterHint")}</span>
           )}
         </footer>
       </div>
       {mapOpen && repo && mapWorldId && (
         <Modal
-          title={`Map Studio · ${worlds?.find((w) => w.id === mapWorldId)?.name ?? "World"}`}
+          title={t("seMapStudioTitle", {
+            name: worlds?.find((w) => w.id === mapWorldId)?.name ?? t("seWorld"),
+          })}
           wide
           onClose={() => {
             if (mapDirty) setConfirmMapClose(true);
@@ -212,12 +206,12 @@ export function StoryboardEditor({
       )}
       {confirmMapClose && (
         <Modal
-          title="Unsaved map changes"
+          title={t("seUnsaved")}
           onClose={() => {
             if (!refreshing) setConfirmMapClose(false);
           }}
         >
-          <p>Save the map before returning to Storyboard?</p>
+          <p>{t("seSaveBefore")}</p>
           <div className="map-library__close-actions">
             <button
               disabled={refreshing}
@@ -226,19 +220,19 @@ export function StoryboardEditor({
                 try {
                   if (await mapSave.current?.()) await closeMap();
                 } catch (e) {
-                  setMapError(e instanceof Error ? e.message : "Could not save the map.");
+                  setMapError(e instanceof Error ? e.message : t("seCouldNotSave"));
                 } finally {
                   setRefreshing(false);
                 }
               }}
             >
-              Save & return
+              {t("seSaveReturn")}
             </button>
             <button disabled={refreshing} onClick={() => void closeMap()}>
-              Discard map changes
+              {t("seDiscard")}
             </button>
             <button disabled={refreshing} onClick={() => setConfirmMapClose(false)}>
-              Keep editing
+              {t("seKeepEditing")}
             </button>
           </div>
         </Modal>

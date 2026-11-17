@@ -7,6 +7,7 @@ import type {
   PlaceTemplate,
 } from "../../library/LibrarySchema";
 import { actorIdFor, addPerson, placeItem } from "../../library/sceneParts";
+import { useTranslate } from "../i18n/LanguageProvider";
 
 export type DraftLibrary = {
   characters: CharacterTemplate[];
@@ -39,6 +40,7 @@ export function ManuscriptDraftBox({
   onCampaign: (campaign: CampaignTemplate) => void;
   onUsePlace: (place: PlaceTemplate) => void;
 }) {
+  const t = useTranslate();
   const [message, setMessage] = useState("");
   const draft = scene.draft;
   if (!draft) return null;
@@ -79,56 +81,52 @@ export function ManuscriptDraftBox({
         });
       else onScene(next);
     } catch (reason) {
-      setMessage(reason instanceof Error ? reason.message : "Could not do that.");
+      setMessage(reason instanceof Error ? reason.message : t("mdbCouldNot"));
     }
   }
 
   return (
     <section className="storyboard-manuscript" aria-label="From the manuscript">
       <div className="storyboard-panel-heading">
-        <small>FROM THE MANUSCRIPT</small>
-        <h4>{scene.name || "Untitled event"}</h4>
+        <small>{t("mdbEyebrow")}</small>
+        <h4>{scene.name || t("mdbUntitled")}</h4>
       </div>
       {draft.facts.length > 0 ? (
         <ul>
           {draft.facts.map((fact, index) => (
             <li key={index}>
-              <strong>{fact.label || "Note"}:</strong> {fact.value}
+              <strong>{fact.label || t("mdbNote")}:</strong> {fact.value}
             </li>
           ))}
         </ul>
       ) : (
-        <p className="playable-hint">The manuscript says nothing more about this event.</p>
+        <p className="playable-hint">{t("mdbNothingMore")}</p>
       )}
       {(people.length > 0 || things.length > 0 || places.length > 0) && (
         <>
           <p className="playable-hint">
-            Suggestions from the names in the notes. Nothing is added until you choose it.
-            {!game && people.length + things.length > 0
-              ? " Make the scene playable to add people and things."
-              : ""}
+            {t("mdbHint")}
+            {!game && people.length + things.length > 0 ? t("mdbMakePlayable") : ""}
           </p>
           <div className="storyboard-manuscript__suggestions">
             {places.map((place) =>
               scene.placeId === place.id ? (
-                <span key={place.id}>{place.name} is the place</span>
+                <span key={place.id}>{t("mdbIsPlace", { name: place.name })}</span>
               ) : (
                 <button
                   key={place.id}
                   type="button"
                   disabled={busy || mapped}
-                  title={
-                    mapped ? "This adventure uses a map. Choose the place on the map." : undefined
-                  }
+                  title={mapped ? t("mdbMapped") : undefined}
                   onClick={() => onUsePlace(place)}
                 >
-                  Use {place.name} as the place
+                  {t("mdbUsePlace", { name: place.name })}
                 </button>
               ),
             )}
             {people.map((person) =>
               game?.state.actors[actorIdFor(person.id)] ? (
-                <span key={person.id}>{person.name} is in this scene</span>
+                <span key={person.id}>{t("mdbInScene", { name: person.name })}</span>
               ) : (
                 <button
                   key={person.id}
@@ -138,13 +136,13 @@ export function ManuscriptDraftBox({
                     attempt(() => addPerson(scene, person), { characterId: person.id })
                   }
                 >
-                  Add {person.name} to this scene
+                  {t("mdbAddPerson", { name: person.name })}
                 </button>
               ),
             )}
             {things.map((thing) =>
               scene.objectIds.includes(thing.id) ? (
-                <span key={thing.id}>{thing.name} is here</span>
+                <span key={thing.id}>{t("mdbIsHere", { name: thing.name })}</span>
               ) : (
                 <button
                   key={thing.id}
@@ -160,7 +158,7 @@ export function ManuscriptDraftBox({
                     )
                   }
                 >
-                  Place {thing.name} here
+                  {t("mdbPlaceThing", { name: thing.name })}
                 </button>
               ),
             )}
@@ -181,7 +179,7 @@ export function ManuscriptDraftBox({
           onScene(rest);
         }}
       >
-        Dismiss manuscript notes
+        {t("mdbDismiss")}
       </button>
     </section>
   );
