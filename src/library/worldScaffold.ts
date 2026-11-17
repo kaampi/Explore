@@ -423,6 +423,7 @@ export function scaffoldIntoAdventure(
   campaign: CampaignTemplate,
   world: RealmTemplate,
   library: ScaffoldLibrary,
+  options: { startSceneId?: string | undefined } = {},
 ): { campaign: CampaignTemplate; added: number; skipped: string[]; reconnected: string[] } {
   if (!world.worldMap) throw new Error("This world has no map to build scenes from.");
   const places = adventureMapPlaces(world, library.places);
@@ -467,7 +468,7 @@ export function scaffoldIntoAdventure(
     built.campaign.scenes.find((scene) => scene.id === id)?.name ??
     campaign.scenes.find((scene) => scene.id === id)?.name ??
     "a place";
-  const freely = reachableFreely(campaign);
+  const freely = reachableFreely(campaign, options.startSceneId);
   const links: Link[] = [];
   const stillNeeded = new Set<string>();
   const reconnected = new Set<string>();
@@ -549,16 +550,9 @@ export function scaffoldIntoAdventure(
   };
 }
 
-/**
- * The scenes the player can reach from the first one over the author's own ways that have no
- * condition and no door. A new way into a scene outside this set could be a detour round a
- * condition or a door anywhere further back, not only on the last way in.
- */
-function reachableFreely(campaign: CampaignTemplate): Set<string> {
-  const seen = new Set<string>();
-  const first = campaign.scenes[0];
-  if (!first) return seen;
-  seen.add(first.id);
+/** The scenes reachable from one scene over the author's ways that have no condition and no door. */
+function freelyFrom(campaign: CampaignTemplate, startId: string): Set<string> {
+  const seen = new Set<string>([startId]);
   let grew = true;
   while (grew) {
     grew = false;
@@ -574,4 +568,56 @@ function reachableFreely(campaign: CampaignTemplate): Set<string> {
     }
   }
   return seen;
+}
+
+/**
+ * The scenes a new way may lead into: those the player reaches without any condition or door
+ * from where the game starts. A new way into any other scene could be a detour round a condition
+ * or a door anywhere further back. When the start is not known, any scene could be it, so only
+ * the scenes that are freely reachable from every one of them count.
+ */
+function reachableFreely(campaign: CampaignTemplate, startSceneId?: string): Set<string> {
+  if (startSceneId && campaign.scenes.some((scene) => scene.id === startSceneId))
+    return freelyFrom(campaign, startSceneId);
+  const [first, ...rest] = campaign.scenes;
+  if (!first) return new Set();
+  let allowed = freelyFrom(campaign, first.id);
+  for (const scene of rest) {
+    const reach = freelyFrom(campaign, scene.id);
+    allowed = new Set([...allowed].filter((id) => reach.has(id)));
+  }
+  return allowed;
+}
+
+/**
+ * One line for the author about what "Beyond the story" does to this adventure: how many more
+ * places get scenes, and how many ways and places are left out. It cannot know where a game will
+ * start, so it assumes any scene could be the start and leaves out what that would make unsafe.
+ */
+export function describeOpenWorld(
+  campaign: CampaignTemplate,
+  world: RealmTemplate,
+  library: ScaffoldLibrary,
+): string | undefined {
+  if (campaign.openWorld !== "map" || !world.worldMap) return undefined;
+  let result: ReturnType<typeof scaffoldIntoAdventure>;
+  try {
+    result = scaffoldIntoAdventure(campaign, world, library);
+  } catch (reason) {
+    return reason instanceof Error ? `Beyond the story: ${reason.message}` : undefined;
+  }
+  const ways = result.skipped.filter((line) => /^The (locked )?way /.test(line)).length;
+  const places = result.skipped.filter(
+    (line) =>
+      !/^The (locked )?way /.test(line) && !/already has a scene|Nothing in range/.test(line),
+  ).length;
+  const count = (n: number, noun: string) => `${n} ${noun}${n === 1 ? "" : "s"}`;
+  const left = [ways ? count(ways, "way") : "", places ? count(places, "place") : ""].filter(
+    Boolean,
+  );
+  return `With “Beyond the story” on, ${
+    result.added === 0
+      ? "no more places get scenes"
+      : `${count(result.added, "more place")} get scenes`
+  } when a game starts${left.length ? `; ${left.join(" and ")} left out` : ""}.`;
 }

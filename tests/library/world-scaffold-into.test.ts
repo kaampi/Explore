@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { innVisitExample } from "../../src/scenarios/innVisit";
-import { scaffoldIntoAdventure } from "../../src/library/worldScaffold";
+import { describeOpenWorld, scaffoldIntoAdventure } from "../../src/library/worldScaffold";
 import { adventureMapPlaces } from "../../src/library/adventureMap";
 import { adventureFacts } from "../../src/library/playableCampaign";
 import { storyboardIssues } from "../../src/ui/studio/storyboardReadiness";
@@ -321,5 +321,36 @@ describe("a way round the author's conditions", () => {
 
     const farm = result.campaign.scenes.find((s) => s.name === "Farm")!;
     expect(freeReach(result.campaign).has(farm.id)).toBe(true);
+  });
+
+  describe("when the start is not known", () => {
+    it("only leads into scenes that are freely reachable from every scene that could be the start", () => {
+      const { campaign, world } = chain();
+      // Palace first, so a count from the first scene alone would let everything through.
+      const reordered = { ...campaign, scenes: [...campaign.scenes].reverse() };
+
+      const result = scaffoldIntoAdventure(reordered, world, library);
+
+      const scene = (name: string) => result.campaign.scenes.find((s) => s.name === name)!;
+      for (const guarded of ["Square", "Palace"])
+        expect(
+          result.campaign.sceneLinks.some(
+            (l) => l.fromSceneId === scene("Farm").id && l.toSceneId === scene(guarded).id,
+          ),
+        ).toBe(false);
+    });
+
+    it("tells the author in one line what Beyond the story does", () => {
+      const { campaign, world } = chain();
+
+      expect(
+        describeOpenWorld({ ...campaign, openWorld: "scenes" }, world, library),
+      ).toBeUndefined();
+      const line = describeOpenWorld({ ...campaign, openWorld: "map" }, world, library)!;
+
+      expect(line).toBe(
+        "With “Beyond the story” on, 1 more place get scenes when a game starts; 1 way left out.",
+      );
+    });
   });
 });
