@@ -1,3 +1,4 @@
+import { useTranslate } from "../i18n/LanguageProvider";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { createCoreManuscriptReader } from "../../integrations/coreManuscriptReader";
 import { useState } from "react";
@@ -63,6 +64,7 @@ async function read<T>(path: string): Promise<T> {
 }
 
 export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
+  const t = useTranslate();
   const [entries, setEntries] = useState<Entry[] | null>(null);
   const [selected, setSelected] = useState<SharedManuscript | null>(null);
   const [busy, setBusy] = useState(false);
@@ -426,18 +428,15 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
       aria-label="Manuscripts shared with kaampi Explore"
     >
       <div className="sb-section-heading">
-        <h2>Manuscripts from kaampi Write</h2>
+        <h2>{t("cmManuscriptsFromKaampiWrite")}</h2>
         <button type="button" className="sb-link" disabled={busy} onClick={() => void refresh()}>
           {entries ? "Refresh" : "Find shared manuscripts"}
         </button>
       </div>
-      <p className="sb-section-description">
-        Only manuscripts explicitly shared with kaampi Explore appear here. Reading one does not
-        change your local sessions or kaampi Write's manuscript.
-      </p>
+      <p className="sb-section-description">{t("cmOnlyManuscriptsExplicitlyShared")}</p>
       {error && <p role="alert">{error}</p>}
-      {busy && <p role="status">Reading from kaampi Codex…</p>}
-      {entries?.length === 0 && <p>No manuscripts are currently shared with kaampi Explore.</p>}
+      {busy && <p role="status">{t("cmReadingFromKaampiCodex")}</p>}
+      {entries?.length === 0 && <p>{t("cmNoManuscriptsAreCurrently")}</p>}
       {entries && entries.length > 0 && (
         <ul className="sb-core-list">
           {entries.map((entry) => (
@@ -469,7 +468,7 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
               Read-only kaampi Write manuscript · {selected.language || "Language not specified"} ·
               Revision {selected.revision}
             </p>
-            <h3>Synopsis</h3>
+            <h3>{t("cmSynopsis")}</h3>
             <p>{selected.manuscript.synopsis || "No synopsis yet."}</p>
             {selected.manuscript.chapters.map((chapter) => (
               <section key={chapter.id}>
@@ -477,14 +476,12 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
                 <p className="sb-core-prose">{chapter.prose}</p>
               </section>
             ))}
-            <h3>Story Bible</h3>
+            <h3>{t("cmStoryBible")}</h3>
             <p className="sb-section-description">
               Only kaampi Write's approved, visible information is shared. This is a read-only view;
               copying a character, place, thing or faction makes an independent kaampi Explore card.
             </p>
-            {selected.manuscript.bible.length === 0 && (
-              <p>No shared Story Bible entries in this manuscript.</p>
-            )}
+            {selected.manuscript.bible.length === 0 && <p>{t("cmNoSharedStoryBible")}</p>}
             {importableEntries(selected.manuscript.bible).length > 0 && !chosen && (
               <button
                 type="button"
@@ -495,7 +492,7 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
                   )
                 }
               >
-                Create world from this manuscript…
+                {t("cmCreateWorldFromThis")}
               </button>
             )}
             {selected.manuscript.bible.some(
@@ -519,21 +516,18 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
                     );
                   }}
                 >
-                  Create scene drafts…
+                  {t("cmCreateSceneDrafts")}
                 </button>
               )}
             {changedDrafts && (
               <section aria-label="The manuscript has changed">
-                <h3>The manuscript has changed</h3>
-                <p>
-                  The events below have new notes. Updating changes only the notes and the
-                  suggestions: your scene, its actions, people and doors stay as they are.
-                </p>
+                <h3>{t("cmTheManuscriptHasChanged")}</h3>
+                <p>{t("cmTheEventsBelowHave")}</p>
                 {changedDrafts.items.map((change) => (
                   <div key={change.sceneId}>
                     <h4>{change.name}</h4>
                     <div>
-                      <strong>Before</strong>
+                      <strong>{t("cmBefore")}</strong>
                       <ul>
                         {change.before.map((fact, index) => (
                           <li key={index}>
@@ -543,7 +537,7 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
                       </ul>
                     </div>
                     <div>
-                      <strong>Now</strong>
+                      <strong>{t("cmNow")}</strong>
                       <ul>
                         {change.after.map((fact, index) => (
                           <li key={index}>
@@ -557,14 +551,14 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
                       disabled={importing}
                       onClick={() => void updateDraft(change, true)}
                     >
-                      Update notes
+                      {t("cmUpdateNotes")}
                     </button>
                     <button
                       type="button"
                       disabled={importing}
                       onClick={() => void updateDraft(change, false)}
                     >
-                      Keep
+                      {t("cmKeep")}
                     </button>
                   </div>
                 ))}
@@ -572,20 +566,16 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
             )}
             {draftEvents && (
               <section aria-label="Create scene drafts">
-                <h3>Create scene drafts from the events</h3>
-                <p>
-                  Each chosen event becomes a scene with no game content: its name and what the
-                  manuscript says about it, with suggestions of who, where and what it mentions. You
-                  write the actions and outcomes. Nothing is written to kaampi Write.
-                </p>
+                <h3>{t("cmCreateSceneDraftsFrom")}</h3>
+                <p>{t("cmEachChosenEventBecomes")}</p>
                 <label>
-                  Add them to
+                  {t("cmAddThemTo")}
                   <select
                     aria-label="Adventure for the drafts"
                     value={draftTarget}
                     onChange={(event) => setDraftTarget(event.target.value)}
                   >
-                    <option value="new">A new adventure named after the manuscript</option>
+                    <option value="new">{t("cmANewAdventureNamed")}</option>
                     {adventures.map((item) => (
                       <option key={item.id} value={item.id}>
                         {item.name}
@@ -594,7 +584,7 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
                   </select>
                 </label>
                 <fieldset>
-                  <legend>Events</legend>
+                  <legend>{t("cmEvents")}</legend>
                   {selected.manuscript.bible
                     .filter((section) => section.kind === "events")
                     .flatMap((section) => section.entities)
@@ -619,7 +609,7 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
                   Add drafts ({draftEvents.size})
                 </button>
                 <button type="button" disabled={importing} onClick={() => setDraftEvents(null)}>
-                  Cancel
+                  {t("psCancel")}
                 </button>
               </section>
             )}
@@ -677,16 +667,16 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
                     )
                   }
                 >
-                  Choose all
+                  {t("cmChooseAll")}
                 </button>
                 <button type="button" disabled={importing} onClick={() => setChosen(new Set())}>
-                  Choose none
+                  {t("cmChooseNone")}
                 </button>
                 <button type="button" disabled={importing} onClick={() => void createWorld()}>
                   Create world ({chosen.size})
                 </button>
                 <button type="button" disabled={importing} onClick={() => setChosen(null)}>
-                  Cancel
+                  {t("psCancel")}
                 </button>
               </section>
             )}
@@ -710,7 +700,7 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
                               void copy(entity, section.kind as "characters" | CoreEntityKind)
                             }
                           >
-                            Copy to kaampi Explore library / Review updates
+                            {t("cmCopyToKaampiExplore")}
                           </button>
                         )}
                       </div>
@@ -742,10 +732,7 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
             {review && (
               <section aria-label="Review updates">
                 <h3>Review updates for {review.character.name}</h3>
-                <p>
-                  Only selected changes will be saved. Unselected changes and your other local
-                  fields are preserved.
-                </p>
+                <p>{t("cmOnlySelectedChangesWill")}</p>
                 {review.changes.map((change) => (
                   <div key={change.key}>
                     <label>
@@ -766,12 +753,7 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
                     <p>Previously shared: {change.previous || "(empty)"}</p>
                     <p>Your local value: {change.local || "(empty)"}</p>
                     <p>New shared value: {change.incoming || "(empty)"}</p>
-                    {change.conflict && (
-                      <p role="note">
-                        You edited this locally. Selecting this change will replace your local
-                        value.
-                      </p>
-                    )}
+                    {change.conflict && <p role="note">{t("cmYouEditedThisLocally")}</p>}
                   </div>
                 ))}
                 <button
@@ -779,10 +761,10 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
                   disabled={importing || !approved.length}
                   onClick={() => void saveReview()}
                 >
-                  Apply selected updates
+                  {t("cmApplySelectedUpdates")}
                 </button>
                 <button type="button" disabled={importing} onClick={() => setReview(null)}>
-                  Cancel review
+                  {t("cmCancelReview")}
                 </button>
               </section>
             )}

@@ -1,3 +1,4 @@
+import { useTranslate } from "../i18n/LanguageProvider";
 import { plannerRoutes, samplePlannerRoute, type PlannerRoute } from "@library/plannerRoutes";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
@@ -32,6 +33,7 @@ export function RoutePlanner({
   onClose: () => void;
   onStart: (destinationId: string, destinationName: string, plan: RoutePlan) => void;
 }) {
+  const tr = useTranslate();
   const dialog = useRef<HTMLDialogElement>(null),
     svg = useRef<SVGSVGElement>(null);
   const dragging = useRef<string | null>(null),
@@ -197,21 +199,18 @@ export function RoutePlanner({
     >
       <header>
         <div>
-          <span className="route-planner__eyebrow">YOUR NEXT JOURNEY</span>
-          <h2 id="route-planner-title">Plan your route</h2>
-          <p>
-            Drag from your position to a connected destination. Add stops on the selected route and
-            drag them to adjust each stage.
-          </p>
+          <span className="route-planner__eyebrow">{tr("rpYourNextJourney")}</span>
+          <h2 id="route-planner-title">{tr("rpPlanYourRoute")}</h2>
+          <p>{tr("rpDragFromYourPosition")}</p>
         </div>
         <button type="button" onClick={onClose} aria-label="Close route planner">
-          Close ×
+          {tr("rpClose")}
         </button>
       </header>
       {!loaded ? (
-        <p>Loading map…</p>
+        <p>{tr("rpLoadingMap")}</p>
       ) : !map || !origin ? (
-        <p>No saved map is connected to your current place.</p>
+        <p>{tr("rpNoSavedMapIs")}</p>
       ) : (
         <div className="route-planner__layout">
           <div className="route-planner__canvas">
@@ -397,7 +396,7 @@ export function RoutePlanner({
                   stroke="#fff"
                   strokeWidth="3"
                 />
-                <title>You are here — drag to a connected destination</title>
+                <title>{tr("rpYouAreHereDrag")}</title>
               </g>
               {stops.map((s, i) => {
                 const p = pointOnPlannedRoute(samples, s.fraction);
@@ -446,9 +445,9 @@ export function RoutePlanner({
           </div>
           <aside>
             <label>
-              Destination
+              {tr("rpDestination")}
               <select value={routeId} onChange={(e) => chooseRoute(e.target.value)}>
-                <option value="">Choose a connected route</option>
+                <option value="">{tr("rpChooseAConnectedRoute")}</option>
                 {routes.map((r) => {
                   const target = map.nodes.find(
                     (n) => n.id === (r.from === origin.id ? r.to : r.from),
@@ -473,9 +472,9 @@ export function RoutePlanner({
             </label>
             {allCrossings.length > 0 && (
               <label>
-                Add a crossing stop
+                {tr("rpAddACrossingStop")}
                 <select value="" onChange={(e) => addCrossing(e.target.value)}>
-                  <option value="">Choose a bridge, ferry or crossing</option>
+                  <option value="">{tr("rpChooseABridgeFerry")}</option>
                   {allCrossings.map((c) => (
                     <option key={c.id} value={c.id}>
                       {map.crossings?.find((info) => info.id === c.id)?.type === "ferry"
@@ -489,23 +488,19 @@ export function RoutePlanner({
                 </select>
               </label>
             )}
-            {!routes.length && (
-              <p>
-                No visible connections at this map level. Add and save a connection in Map Studio
-                first.
-              </p>
-            )}
+            {!routes.length && <p>{tr("rpNoVisibleConnectionsAt")}</p>}
             {route && (
               <>
                 <p>
-                  Departure: <strong>{formatGameTime(start)}</strong>
+                  {tr("rpDeparture")}
+                  <strong>{formatGameTime(start)}</strong>
                 </p>
                 <p>{route.description || "No surroundings have been described for this route."}</p>
                 {selectedStop && (
                   <fieldset>
-                    <legend>Edit stop</legend>
+                    <legend>{tr("rpEditStop")}</legend>
                     <label>
-                      Name
+                      {tr("hsName")}
                       <input
                         value={selectedStop.label}
                         maxLength={120}
@@ -513,17 +508,17 @@ export function RoutePlanner({
                       />
                     </label>
                     <label>
-                      Stop type
+                      {tr("rpStopType")}
                       <select
                         value={selectedStop.kind}
                         onChange={(e) => updateStop({ kind: e.target.value as RouteStop["kind"] })}
                       >
-                        <option value="pause">Pause — continue when ready</option>
-                        <option value="overnight">Overnight — rest before continuing</option>
+                        <option value="pause">{tr("rpPauseContinueWhenReady")}</option>
+                        <option value="overnight">{tr("rpOvernightRestBeforeContinuing")}</option>
                       </select>
                     </label>
                     <label>
-                      Position along route
+                      {tr("rpPositionAlongRoute")}
                       <input
                         type="range"
                         aria-label="Stop position"
@@ -547,7 +542,7 @@ export function RoutePlanner({
                         setSelected("");
                       }}
                     >
-                      Remove stop
+                      {tr("rpRemoveStop")}
                     </button>
                   </fieldset>
                 )}
@@ -564,9 +559,7 @@ export function RoutePlanner({
                           <span>Overnight · depart {formatGameTime(t.departure)}</span>
                         )}
                         {t.travelMinutes > 480 && (
-                          <span className="route-planner__warning">
-                            Long stage: over 8 hours without a planned stop
-                          </span>
+                          <span className="route-planner__warning">{tr("rpLongStageOver8")}</span>
                         )}
                       </button>
                       {stops[i] && (
@@ -581,7 +574,7 @@ export function RoutePlanner({
                             if (selected === stops[i]?.key) setSelected("");
                           }}
                         >
-                          Remove stop
+                          {tr("rpRemoveStop")}
                         </button>
                       )}
                     </li>
@@ -604,12 +597,9 @@ export function RoutePlanner({
                     }
                   }}
                 >
-                  Suggest daily stops
+                  {tr("rpSuggestDailyStops")}
                 </button>
-                <p className="route-planner__note">
-                  Times are estimates. Overnight estimates include rest until 08:00, with at least 8
-                  hours of rest. Waiting or talking at a stop can change the actual schedule.
-                </p>
+                <p className="route-planner__note">{tr("rpTimesAreEstimatesOvernight")}</p>
                 {route.access !== "open" && (
                   <p role="alert">
                     This route is {route.access}. Change its access in Map Studio before travelling.
@@ -640,7 +630,7 @@ export function RoutePlanner({
                 });
               }}
             >
-              Start journey
+              {tr("rpStartJourney")}
             </button>
           </aside>
         </div>
