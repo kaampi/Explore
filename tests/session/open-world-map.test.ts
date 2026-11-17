@@ -180,3 +180,112 @@ describe("an adventure that opens onto the map", () => {
     ).not.toThrow(/map/);
   });
 });
+
+describe("starting from a scene other than the first", () => {
+  /** City written first, then Gate; Gate → City needs “admitted”, the way back is free; a Farm with paths to both. */
+  function cityThenGate() {
+    const piece = (name: string, x: number) => ({ ...settlementPiece("cottage", "", x, 50), name });
+    const city = piece("City", 80),
+      gate = piece("Gate", 10),
+      farm = piece("Farm", 50);
+    const route = (id: string, from: string, to: string) => ({
+      id,
+      from,
+      to,
+      type: "path" as const,
+      mode: "Walk",
+      duration: "10 minutes",
+      bothWays: true,
+      access: "open" as const,
+      description: "",
+    });
+    const before = newRealmTemplate({
+      name: "Highmark",
+      source: "player",
+      note: "",
+      worldMap: WorldMapSchema.parse({
+        background: "#d8e3ba",
+        mapType: "world",
+        nodes: [city, gate],
+        routes: [route("main", gate.id, city.id)],
+      }),
+    });
+    const authored = scaffoldFromWorld(before, library, {
+      player: { ...emptyCampaignPlayer(), name: "Traveller" },
+      startNodeId: city.id,
+    }).campaign;
+    const id = (name: string) => authored.scenes.find((s) => s.name === name)!.id;
+    expect(authored.scenes[0]!.name).toBe("City");
+    for (const link of authored.sceneLinks)
+      if (link.fromSceneId === id("Gate") && link.toSceneId === id("City"))
+        link.requiresFlags = ["admitted"];
+    const world = structuredClone(before);
+    world.worldMap!.nodes.push(farm);
+    world.worldMap!.routes.push(
+      route("to-gate", farm.id, gate.id),
+      route("to-city", farm.id, city.id),
+    );
+    const places = adventureMapPlaces(world, []).map((e) => e.place);
+    return { authored: { ...authored, openWorld: "map" as const }, world, places, id };
+  }
+
+  const freeFrom = (
+    run: {
+      links: {
+        fromSceneId: string;
+        toSceneId: string;
+        requiresFlags: string[];
+        requiresAbsentFlags: string[];
+        requiresOpenBarriers?: string[] | undefined;
+      }[];
+    },
+    start: string,
+  ) => {
+    const free = new Set([start]);
+    for (let again = true; again;) {
+      again = false;
+      for (const l of run.links)
+        if (
+          !l.requiresFlags.length &&
+          !l.requiresAbsentFlags.length &&
+          !(l.requiresOpenBarriers ?? []).length &&
+          free.has(l.fromSceneId) &&
+          !free.has(l.toSceneId)
+        ) {
+          free.add(l.toSceneId);
+          again = true;
+        }
+    }
+    return free;
+  };
+
+  it("counts what is freely reachable from where the game really starts, so no way round the condition is added", () => {
+    const { authored, world, places, id } = cityThenGate();
+    const gate = authored.scenes.find((s) => s.name === "Gate")!;
+
+    const session = startPlayableCampaign(authored, gate, places, "from-gate", [world]);
+
+    const run = session.adventure!;
+    const free = freeFrom(run, id("Gate"));
+    const farm = run.scenes.find((s) => s.name === "Farm")!;
+    expect(free.has(farm.id)).toBe(true);
+    expect(free.has(id("City"))).toBe(false);
+    expect(run.links.some((l) => l.fromSceneId === farm.id && l.toSceneId === id("City"))).toBe(
+      false,
+    );
+  });
+
+  it("allows the new ways when starting at the city, where they cannot get round anything", () => {
+    const { authored, world, places, id } = cityThenGate();
+
+    const session = startPlayableCampaign(authored, authored.scenes[0]!, places, "from-city", [
+      world,
+    ]);
+
+    const run = session.adventure!;
+    const farm = run.scenes.find((s) => s.name === "Farm")!;
+    expect(run.links.some((l) => l.fromSceneId === farm.id && l.toSceneId === id("City"))).toBe(
+      true,
+    );
+  });
+});

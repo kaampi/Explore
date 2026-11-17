@@ -74,6 +74,7 @@ export function PlayableStoryboard({
   onCreatePlace,
   onOpenLibrary,
   rulesets,
+  openWorldNote,
   initialStep = "scenes",
 }: {
   campaign: CampaignTemplate;
@@ -88,6 +89,8 @@ export function PlayableStoryboard({
   mapPlaces?: AdventureMapPlace[] | undefined;
   /** The saved rule-sets, for the values a new scene is made with. */
   rulesets?: RulesetTemplate[];
+  /** What "Beyond the story" adds when a game starts, shown with the test. */
+  openWorldNote?: string | undefined;
   /** Opens the Cast or Things step, for when there is nothing to choose from. */
   onOpenLibrary?: ((what: "people" | "things") => void) | undefined;
   /** Which step to show first. */
@@ -1005,6 +1008,11 @@ export function PlayableStoryboard({
         <small>STEP 3</small>
         <h3>Review & test</h3>
       </div>
+      {openWorldNote && (
+        <p className="playable-hint" role="note">
+          {openWorldNote}
+        </p>
+      )}
       {issues.length > 0 ? (
         <div className="storyboard-review">
           <strong>

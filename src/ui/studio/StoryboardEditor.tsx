@@ -2,7 +2,7 @@ import { useRef, useState, type ComponentProps } from "react";
 import type { IndexedDBRepository } from "../../persistence/IndexedDBRepository";
 import type { RealmTemplate } from "../../library/LibrarySchema";
 import { adventureMapPlaces, chooseAdventureMap } from "../../library/adventureMap";
-import { scaffoldIntoAdventure } from "../../library/worldScaffold";
+import { describeOpenWorld, scaffoldIntoAdventure } from "../../library/worldScaffold";
 import { Modal } from "../components/Modal";
 import { PlayableStoryboard } from "./PlayableStoryboard";
 import { WorldMapStudio } from "./WorldMapStudio";
@@ -33,6 +33,14 @@ export function StoryboardEditor({
     world = worlds?.find((w) => w.id === props.campaign.mapWorldId),
     entries = props.campaign.mapWorldId ? adventureMapPlaces(world, props.places) : undefined;
   const mapWorldId = props.campaign.mapWorldId || props.campaign.realmId;
+  const openWorldNote = world
+    ? describeOpenWorld(props.campaign, world, {
+        characters: props.characters,
+        objects: props.objects,
+        places: props.places,
+        rulesets: props.rulesets ?? [],
+      })
+    : undefined;
   async function refresh() {
     if (!onRefresh) return;
     setRefreshing(true);
@@ -168,6 +176,7 @@ export function StoryboardEditor({
           busy={props.busy || refreshing}
           places={entries ? entries.map((entry) => entry.place) : props.places}
           mapPlaces={entries}
+          openWorldNote={openWorldNote}
           expanded
         />
         <footer className="storyboard-editor-status">

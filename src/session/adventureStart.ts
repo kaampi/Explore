@@ -116,12 +116,17 @@ export function startPlayableCampaign(
   // An adventure that opens onto the map gets scenes for the rest of the map, for this game only.
   const campaign =
     written.openWorld === "map" && world?.worldMap
-      ? scaffoldIntoAdventure(written, world, {
-          characters: sources.characters ?? [],
-          objects: sources.objects ?? [],
-          places,
-          rulesets: sources.rulesets ?? [],
-        }).campaign
+      ? scaffoldIntoAdventure(
+          written,
+          world,
+          {
+            characters: sources.characters ?? [],
+            objects: sources.objects ?? [],
+            places,
+            rulesets: sources.rulesets ?? [],
+          },
+          { startSceneId: scene.id },
+        ).campaign
       : written;
   const mapped = campaign.mapWorldId ? adventureMapPlaces(world, places) : undefined;
   const scenes = campaign.scenes.map((s) => {
