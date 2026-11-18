@@ -25,9 +25,12 @@ jobs:
   build-windows:
     runs-on: windows-latest
     timeout-minutes: 40
+    # Only this job may write: it publishes the installer as a release (see the last step).
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -46,9 +49,42 @@ jobs:
           New-Item -ItemType Directory -Path installer-output -Force | Out-Null
           Copy-Item -LiteralPath $installers[0].FullName -Destination installer-output/kaampi-Explore-Setup.exe
       - name: Upload Windows installer
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: kaampi-explore-windows-installer
           path: installer-output/kaampi-Explore-Setup.exe
           if-no-files-found: error
-          retention-days: 90
+          retention-days: 14
+      # The installer for everyone: a pre-release with a fixed tag, so the download address never
+      # changes and needs no sign-in. Only from main, and only after the tests and the build passed.
+      # The file goes up first and the tag moves last, so there is always a file to download.
+      - name: Publish the installer as the pre-release alpha-latest
+        if: github.ref == 'refs/heads/main'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          function Invoke-Native {
+            & $args[0] $args[1..($args.Count - 1)]
+            if ($LASTEXITCODE -ne 0) { throw "$($args -join ' ') failed with exit code $LASTEXITCODE" }
+          }
+          $tag = "alpha-latest"
+          $date = (Get-Date).ToUniversalTime().ToString("yyyy-MM-dd")
+          $notes = @(
+            "Revision: ${{ github.sha }}",
+            "Built: $date",
+            "",
+            "This build is not signed yet, so Windows may warn that the app is not recognised. Choose More information, then Run anyway."
+          ) -join "`n"
+          $ErrorActionPreference = "Continue"
+          gh release view $tag *> $null
+          $exists = ($LASTEXITCODE -eq 0)
+          $ErrorActionPreference = "Stop"
+          if (-not $exists) {
+            Invoke-Native gh release create $tag --prerelease --title "Senaste alfa" --notes $notes --target ${{ github.sha }}
+          }
+          Invoke-Native gh release upload $tag installer-output/kaampi-Explore-Setup.exe --clobber
+          Invoke-Native gh release edit $tag --prerelease --title "Senaste alfa" --notes $notes
+          Invoke-Native git tag -f $tag ${{ github.sha }}
+          Invoke-Native git push -f origin $tag
