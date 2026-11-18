@@ -4,14 +4,8 @@ import { OllamaModelPicker } from "./OllamaModelPicker";
 import { ReplyLengthPicker } from "./ReplyLengthPicker";
 
 export function StatusBar() {
-  const {
-    useSession,
-    phase,
-    ollamaModel,
-    setOllamaModel,
-    setMaxReplyTokens,
-    resetSession,
-  } = useEngine();
+  const { useSession, phase, ollamaModel, setOllamaModel, setMaxReplyTokens, resetSession } =
+    useEngine();
   const session = useSession();
 
   const budget = inspectPromptBudget(session);
@@ -21,8 +15,7 @@ export function StatusBar() {
       : phase === "error"
         ? "chip__dot--error"
         : "chip__dot--idle";
-  const phaseLabel =
-    phase === "streaming" ? "streaming" : phase === "error" ? "error" : "idle";
+  const phaseLabel = phase === "streaming" ? "streaming" : phase === "error" ? "error" : "idle";
 
   return (
     <div className="status-bar">
@@ -35,7 +28,7 @@ export function StatusBar() {
 
       <span
         className="chip"
-        title="Estimated Pass 1 prompt tokens vs. the 3,500 target"
+        title="Estimated size of the next prompt, in tokens, against the 3,500 target"
       >
         ctx {budget.promptTokens} / {budget.targetTokens}
         {budget.overTarget ? " (over target)" : ""}
@@ -69,10 +62,7 @@ export function StatusBar() {
       <span style={{ flex: 1 }} />
 
       <OllamaModelPicker model={ollamaModel} onChange={setOllamaModel} />
-      <ReplyLengthPicker
-        tokens={session.runtime.maxReplyTokens}
-        onChange={setMaxReplyTokens}
-      />
+      <ReplyLengthPicker tokens={session.runtime.maxReplyTokens} onChange={setMaxReplyTokens} />
 
       <button
         className="chip"

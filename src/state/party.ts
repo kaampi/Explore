@@ -21,7 +21,10 @@ function escapeRegExp(value: string): string {
 }
 
 function placeKey(session: Session, pos: string): string {
-  if (/^(?:here|här)$/i.test(pos.trim())) { const location=session.scene?.location?.trim(); if(location&&!/^(?:here|här)$/i.test(location)) return placeKey(session,location); }
+  if (/^(?:here|här)$/i.test(pos.trim())) {
+    const location = session.scene?.location?.trim();
+    if (location && !/^(?:here|här)$/i.test(location)) return placeKey(session, location);
+  }
   const room = matchRoomMention(pos, session);
   if (room) return foldPlace(room);
   if (isVenueFloor(pos, session) || isBarishPlace(pos)) return "__floor__";
@@ -43,15 +46,17 @@ export function isLeftBehind(session: Session, characterId: string): boolean {
   const here = session.player?.position.value?.trim() ?? "";
   if (!character || !here) return false;
   if (travelingPartyIds(session).includes(characterId)) return false;
-  const playerRef=session.player?.locationRef,characterRef=character.locationRef;
-  if(playerRef&&characterRef)return playerRef.placeId!==characterRef.placeId||playerRef.side!==characterRef.side;
+  const playerRef = session.player?.locationRef,
+    characterRef = character.locationRef;
+  if (playerRef && characterRef)
+    return playerRef.placeId !== characterRef.placeId || playerRef.side !== characterRef.side;
   return !sameHere(session, character.position.value);
 }
 
 export function isPartyLeave(text: string): boolean {
   const stripped = text.replace(/\*+/g, " ");
   return /\b(?:go(?:ing)? alone|by myself|without (?:you|her|him|them)|leave (?:her|him|them)|leave the (?:party|group)|stay behind|wait here|stay here|ensam|utan (?:dig|henne|honom|dem)|vänta här|stanna här|lämna (?:gruppen|sällskapet))\b/i.test(
-    stripped
+    stripped,
   );
 }
 
@@ -66,7 +71,7 @@ export function wantsToJoinPlayerParty(text: string): boolean {
     }
   }
   return /\b(?:i(?:'ll| will) come(?!\s+back)|i(?:'m| am) coming\b|i(?:'ll| will) (?:come|go) with you|i(?:'ll| will) follow(?: you)?|i(?:'m| am) coming with you|come with you|go with you|comes with you|come along|follow(?:s|ing)? you|i(?:'m| am) with you|i(?:'m| am) interested|count me in|count on (?:it|us|me)|i(?:'m| am) in\b(?!\s+(?:the|a|this|that|here|there)\b)|i(?:'ll| will) join(?: you)?|take me with you|tag along|scare me off|doesn'?t scare me|make our own way|break free|in this together|where you go.{0,24}we go|we(?:'re| are) with you|got your back|watch your (?:six|back)|jag (?:följer|kommer) med(?: dig)?|jag kommer(?!\s+tillbaka)|jag följer dig|jag är intresserad|jag hänger (?:på|med)|jag är med|vi följer(?: dig)?|vi hänger (?:på|med))\b/i.test(
-    stripped
+    stripped,
   );
 }
 
@@ -188,7 +193,7 @@ function slotFor(session: Session, id: string, kind: "pending" | "member"): Part
     name: displayName(session, id),
     ...(session.characters[id]?.portraitDataUrl
       ? { portrait: session.characters[id]?.portraitDataUrl }
-      : {})
+      : {}),
   };
 }
 
@@ -210,7 +215,7 @@ export function waitlistSlots(session: Session): PartySlot[] {
 export function nextPartyAfterPlayerText(
   session: Session,
   playerMessage: string,
-  focusId: string
+  focusId: string,
 ): { partyIds: string[]; partyPendingIds: string[] } {
   const partyIds = acceptedPartyIds(session);
   let partyPendingIds = pendingPartyIds(session);
@@ -227,7 +232,7 @@ export function nextPartyAfterPlayerText(
 export function nextPendingAfterOffer(
   session: Session,
   characterId: string,
-  reply: string
+  reply: string,
 ): string[] | undefined {
   return nextPendingAfterIds(session, partyOfferIds(session, characterId, reply));
 }
@@ -273,12 +278,12 @@ export function nextPendingAfterIds(session: Session, ids: string[]): string[] |
 
 export function nextPartyAfterLeave(
   session: Session,
-  characterId: string
+  characterId: string,
 ): { partyIds: string[]; partyPendingIds: string[] } | undefined {
   const id = characterId.trim();
   if (!acceptedPartyIds(session).includes(id)) return undefined;
   return {
     partyIds: acceptedPartyIds(session).filter((item) => item !== id),
-    partyPendingIds: enqueueWaitlist(pendingPartyIds(session), id)
+    partyPendingIds: enqueueWaitlist(pendingPartyIds(session), id),
   };
 }

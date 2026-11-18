@@ -9,17 +9,20 @@ import path from "node:path";
 // Module boundaries mirror Master Spec §55. UI depends on engines;
 // engines never import from ui/. Enforce this socially for now,
 // consider an eslint import-boundary rule once the surface stabilizes.
-let exploreRevision='';try{exploreRevision=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();}catch{}
+let exploreRevision = "";
+try {
+  exploreRevision = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+} catch {}
 export default defineConfig({
-  define: { 'import.meta.env.VITE_EXPLORE_REVISION': JSON.stringify(exploreRevision) },
+  define: { "import.meta.env.VITE_EXPLORE_REVISION": JSON.stringify(exploreRevision) },
   plugins: [react(), localAppsPlugin(), coreManuscriptsPlugin()],
   server: {
     watch: {
       // Windows can briefly lock copied assets and crash native file watchers.
       usePolling: true,
       interval: 500,
-      ignored: ["**/src-tauri/**", "**/temp/**"]
-    }
+      ignored: ["**/src-tauri/**", "**/temp/**"],
+    },
   },
   resolve: {
     alias: {
@@ -34,13 +37,12 @@ export default defineConfig({
       "@library": path.resolve(__dirname, "src/library"),
       "@crypto": path.resolve(__dirname, "src/crypto"),
       "@diagnostics": path.resolve(__dirname, "src/diagnostics"),
-      "@ui": path.resolve(__dirname, "src/ui")
-    }
+      "@ui": path.resolve(__dirname, "src/ui"),
+    },
   },
   test: {
     exclude: [...configDefaults.exclude, "temp/**"],
     environment: "node",
-    globals: true
-  }
+    globals: true,
+  },
 });
-

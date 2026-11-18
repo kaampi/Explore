@@ -6,11 +6,10 @@ import {
   isWhatNowStay,
   resolveWhatNowRoom,
   sideRoomStage,
-  WHAT_NOW_STAY
+  WHAT_NOW_STAY,
 } from "./playerDestination";
 
-const OFF_RAILS =
-  /\b(?:sleep|slept|sova|sovit|somna(?:de)?|hotel|alley|gränd|street|gatan)\b/i;
+const OFF_RAILS = /\b(?:sleep|slept|sova|sovit|somna(?:de)?|hotel|alley|gränd|street|gatan)\b/i;
 
 const MOTION =
   /\b(?:walk(?:s|ed|ing)?|go(?:es|ing)?|went|enter(?:s|ed|ing)?|come[sd]?|coming|head(?:s|ed|ing)?|step(?:s|ped|ping)?|sneak(?:s|ed|ing)?|slip(?:s|ped|ping)?|follow(?:s|ed|ing)?|climb(?:s|ed|ing)?|take me|gå(?:r)?|kommer|kom|klättr(?:ar|a))\b/i;
@@ -22,8 +21,7 @@ const TOGETHER =
 const INVITE =
   /\b(?:follow me|come with me|come with us|come on(?: back)?|come upstairs|come up(?:stairs)?|this way|show you|show it to you|let me show|i(?:'ll| will) show|i(?:'ll| will) take you|följ med|kom med(?: mig)?|ta med dig|visa dig|jag visar)\b/i;
 
-const DENIAL =
-  /\b(?:don'?t|do not|doesn't|no)\b.{0,48}\b(?:guest room|rooms? here|a room)\b/i;
+const DENIAL = /\b(?:don'?t|do not|doesn't|no)\b.{0,48}\b(?:guest room|rooms? here|a room)\b/i;
 
 const HOTEL_PITCH = /\b(?:local hotels?|recommend\w*.{0,24}hotel|hotels? that might)\b/i;
 
@@ -34,12 +32,10 @@ export type WhatNowSetLive = {
 };
 
 export type WhatNowIntercept =
-  | { kind: "pass"; goTo?: string }
-  | { kind: "open"; setId: string }
-  | { kind: "blocked" };
+  { kind: "pass"; goTo?: string } | { kind: "open"; setId: string } | { kind: "blocked" };
 
 export function copyWhatNowChoices(
-  items: Array<{ id: string; label: string; room: string }> | undefined
+  items: Array<{ id: string; label: string; room: string }> | undefined,
 ): Array<{ id: string; label: string; room: string }> {
   return (items ?? [])
     .filter((item) => item.label.trim())
@@ -47,18 +43,24 @@ export function copyWhatNowChoices(
     .map((item) => ({
       id: item.id,
       label: item.label.trim(),
-      room: !item.room.trim() || isWhatNowStay(item.room) ? WHAT_NOW_STAY : item.room.trim()
+      room: !item.room.trim() || isWhatNowStay(item.room) ? WHAT_NOW_STAY : item.room.trim(),
     }));
 }
 
 export function copyWhatNowSets(
-  sets: Array<{ id: string; keywords?: string[]; choices?: Array<{ id: string; label: string; room: string }> }> | undefined
+  sets:
+    | Array<{
+        id: string;
+        keywords?: string[];
+        choices?: Array<{ id: string; label: string; room: string }>;
+      }>
+    | undefined,
 ): WhatNowSetLive[] {
   return (sets ?? [])
     .map((set) => ({
       id: set.id,
       keywords: (set.keywords ?? []).map((word) => word.trim()).filter(Boolean),
-      choices: copyWhatNowChoices(set.choices)
+      choices: copyWhatNowChoices(set.choices),
     }))
     .filter((set) => set.choices.length > 0);
 }
@@ -73,8 +75,8 @@ export function sessionWhatNowSets(session: Session): WhatNowSetLive[] {
     {
       id: session.whatNowActiveSetId?.trim() || "replies",
       keywords: (session.whatNowKeywords ?? []).map((word) => word.trim()).filter(Boolean),
-      choices
-    }
+      choices,
+    },
   ];
 }
 
@@ -111,10 +113,12 @@ export function listedWhatNowDest(session: Session, room: string | undefined): s
 
 export function setIdListingDest(session: Session, room: string | undefined): string | undefined {
   if (!listedWhatNowDest(session, room)) return undefined;
-  if (session.whatNowOpen && session.whatNowActiveSetId?.trim()) return session.whatNowActiveSetId.trim();
+  if (session.whatNowOpen && session.whatNowActiveSetId?.trim())
+    return session.whatNowActiveSetId.trim();
   const dest = listedWhatNowDest(session, room);
   for (const set of sessionWhatNowSets(session)) {
-    if (dest && listedWhatNowDest({ ...session, whatNowOpen: true, whatNow: set.choices }, dest)) return set.id;
+    if (dest && listedWhatNowDest({ ...session, whatNowOpen: true, whatNow: set.choices }, dest))
+      return set.id;
   }
   return sessionWhatNowSets(session)[0]?.id;
 }
@@ -163,7 +167,10 @@ function setIdFromCharacterLine(session: Session): string | undefined {
   const stripped = lastCharacterText(session).replace(/\*+/g, " ");
   if (!stripped.trim()) return undefined;
   if (DENIAL.test(stripped) || HOTEL_PITCH.test(stripped)) return undefined;
-  return setIdMatchingKeywords(sets, stripped) ?? (INVITE.test(stripped) ? fallbackSetId(sets) : undefined);
+  return (
+    setIdMatchingKeywords(sets, stripped) ??
+    (INVITE.test(stripped) ? fallbackSetId(sets) : undefined)
+  );
 }
 
 /**
@@ -174,9 +181,10 @@ function setIdFromCharacterLine(session: Session): string | undefined {
 export function resolveWhatNowIntercept(
   session: Session,
   playerMessage: string,
-  goTo?: string
+  goTo?: string,
 ): WhatNowIntercept {
-  if (!whatNowOnFloor(session)) return { kind: "pass", ...(goTo?.trim() ? { goTo: goTo.trim() } : {}) };
+  if (!whatNowOnFloor(session))
+    return { kind: "pass", ...(goTo?.trim() ? { goTo: goTo.trim() } : {}) };
 
   const tapped = listedWhatNowDest(session, goTo);
   if (tapped) return { kind: "pass", goTo: tapped };
@@ -188,8 +196,7 @@ export function resolveWhatNowIntercept(
   if (listed) return { kind: "pass", goTo: listed };
 
   const sets = sessionWhatNowSets(session);
-  const keyed =
-    !/\?/.test(playerMessage) ? setIdMatchingKeywords(sets, playerMessage) : undefined;
+  const keyed = !/\?/.test(playerMessage) ? setIdMatchingKeywords(sets, playerMessage) : undefined;
   if (keyed) return { kind: "open", setId: keyed };
 
   if (offRailsLeave(session, playerMessage, dest)) {

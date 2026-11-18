@@ -5,7 +5,7 @@ import {
   collectPlacePictures,
   picturePlayOf,
   type PlacePicture,
-  type PicturePlay
+  type PicturePlay,
 } from "./placePictures";
 
 export { matchSceneRoom } from "./roomMatch";
@@ -17,18 +17,22 @@ export type SceneBackdrop = {
   picturePlay: PicturePlay;
 };
 
-function fromVisual(visual: {
-  thumbDataUrl?: string | undefined;
-  imageDataUrl?: string | undefined;
-  gallery?: PlacePicture[] | undefined;
-  picturePlay?: PicturePlay | undefined;
-} | undefined): SceneBackdrop {
+function fromVisual(
+  visual:
+    | {
+        thumbDataUrl?: string | undefined;
+        imageDataUrl?: string | undefined;
+        gallery?: PlacePicture[] | undefined;
+        picturePlay?: PicturePlay | undefined;
+      }
+    | undefined,
+): SceneBackdrop {
   const pictures = collectPlacePictures(visual);
   const first = pictures[0];
   return {
     pictures,
     picturePlay: pictures.length > 1 ? picturePlayOf(visual) : "fade",
-    ...(first ? { thumbDataUrl: first.thumbDataUrl, imageDataUrl: first.imageDataUrl } : {})
+    ...(first ? { thumbDataUrl: first.thumbDataUrl, imageDataUrl: first.imageDataUrl } : {}),
   };
 }
 

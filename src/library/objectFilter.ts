@@ -14,7 +14,10 @@ export type ObjectFilter = string | null;
 
 function effectiveTags(item: { tags?: string[]; source?: string }): string[] {
   const tags = item.tags ?? [];
-  if (item.source === "sillytavern" && !tags.some((tag) => tag.toLowerCase() === IMPORTED_TAG.toLowerCase())) {
+  if (
+    item.source === "sillytavern" &&
+    !tags.some((tag) => tag.toLowerCase() === IMPORTED_TAG.toLowerCase())
+  ) {
     return [...tags, IMPORTED_TAG];
   }
   return tags;
@@ -31,7 +34,10 @@ export function uniqueTags(items: Array<{ tags?: string[]; source?: string }>): 
   return [...seen.values()].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
 }
 
-export function matchesTagFilter(item: { tags?: string[]; source?: string }, filter: TagFilter): boolean {
+export function matchesTagFilter(
+  item: { tags?: string[]; source?: string },
+  filter: TagFilter,
+): boolean {
   const tags = effectiveTags(item);
   if (filter === TAG_FILTER_ALL) return true;
   if (filter === TAG_FILTER_UNSORTED) return tags.length === 0;
@@ -46,10 +52,12 @@ export function uniqueObjectTags(items: Array<{ tags: string[] }>): string[] {
 export function objectMatchesFilter(
   item: Pick<ObjectTemplate, "tags" | "storyId" | "placeId">,
   filter: ObjectFilter,
-  context: { storyId?: string | null; placeId?: string | null } = {}
+  context: { storyId?: string | null; placeId?: string | null } = {},
 ): boolean {
-  if (filter === OBJECT_FILTER_STORY) return Boolean(context.storyId && item.storyId === context.storyId);
-  if (filter === OBJECT_FILTER_PLACE) return Boolean(context.placeId && item.placeId === context.placeId);
+  if (filter === OBJECT_FILTER_STORY)
+    return Boolean(context.storyId && item.storyId === context.storyId);
+  if (filter === OBJECT_FILTER_PLACE)
+    return Boolean(context.placeId && item.placeId === context.placeId);
   return matchesTagFilter(item, filter);
 }
 

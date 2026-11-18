@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { evaluateTrigger, isEffectivelyActive, getEffectiveActiveLayers, buildLayerBlocks } from "@layers/LayerEngine";
+import {
+  evaluateTrigger,
+  isEffectivelyActive,
+  getEffectiveActiveLayers,
+  buildLayerBlocks,
+} from "@layers/LayerEngine";
 import type { Session, Layer } from "@state/StateSchema";
 
 function makeSession(overrides: Partial<Session> = {}): Session {
@@ -16,8 +21,8 @@ function makeSession(overrides: Partial<Session> = {}): Session {
     characters: {
       emma: {
         position: { value: "bar", lock: "unlocked" },
-        mood: { value: "angry", lock: "unlocked" }
-      }
+        mood: { value: "angry", lock: "unlocked" },
+      },
     },
     relationships: {},
     layers: [],
@@ -26,12 +31,20 @@ function makeSession(overrides: Partial<Session> = {}): Session {
     events: [],
     snapshots: [],
     diagnostics: [],
-    ...overrides
+    ...overrides,
   };
 }
 
 function layer(overrides: Partial<Layer> & Pick<Layer, "id" | "type">): Layer {
-  return { priority: 0, content: "layer content", active: false, aiGenerated: false, once: false, spent: false, ...overrides };
+  return {
+    priority: 0,
+    content: "layer content",
+    active: false,
+    aiGenerated: false,
+    once: false,
+    spent: false,
+    ...overrides,
+  };
 }
 
 describe("evaluateTrigger", () => {
@@ -61,8 +74,12 @@ describe("evaluateTrigger", () => {
 describe("isEffectivelyActive", () => {
   it("core/relationship/environment layers use the persisted active flag directly", () => {
     const session = makeSession();
-    expect(isEffectivelyActive(session, layer({ id: "l1", type: "core", active: true }))).toBe(true);
-    expect(isEffectivelyActive(session, layer({ id: "l2", type: "core", active: false }))).toBe(false);
+    expect(isEffectivelyActive(session, layer({ id: "l1", type: "core", active: true }))).toBe(
+      true,
+    );
+    expect(isEffectivelyActive(session, layer({ id: "l2", type: "core", active: false }))).toBe(
+      false,
+    );
   });
 
   it("a state_trigger layer becomes active when its trigger matches, even if persisted active=false", () => {
@@ -71,7 +88,7 @@ describe("isEffectivelyActive", () => {
       id: "l3",
       type: "state_trigger",
       active: false,
-      trigger: "characters.emma.mood==angry"
+      trigger: "characters.emma.mood==angry",
     });
     expect(isEffectivelyActive(session, triggerLayer)).toBe(true);
   });
@@ -82,14 +99,16 @@ describe("isEffectivelyActive", () => {
       id: "l4",
       type: "state_trigger",
       active: false,
-      trigger: "characters.emma.mood==happy"
+      trigger: "characters.emma.mood==happy",
     });
     expect(isEffectivelyActive(session, triggerLayer)).toBe(false);
   });
 
   it("a state_trigger layer with no trigger falls back to its persisted flag", () => {
     const session = makeSession();
-    expect(isEffectivelyActive(session, layer({ id: "l5", type: "state_trigger", active: true }))).toBe(true);
+    expect(
+      isEffectivelyActive(session, layer({ id: "l5", type: "state_trigger", active: true })),
+    ).toBe(true);
   });
 
   it("an approved keyword layer is in play only when recent chat hits a keyword", () => {
@@ -98,16 +117,16 @@ describe("isEffectivelyActive", () => {
       type: "environment",
       active: true,
       keywords: ["cellar"],
-      content: "SECRET CELLAR LORE"
+      content: "SECRET CELLAR LORE",
     });
     expect(isEffectivelyActive(makeSession(), lore)).toBe(false);
     expect(
       isEffectivelyActive(
         makeSession({
-          conversation: [{ turn: 1, role: "player", content: "What's in the cellar?" }]
+          conversation: [{ turn: 1, role: "player", content: "What's in the cellar?" }],
         }),
-        lore
-      )
+        lore,
+      ),
     ).toBe(true);
   });
 
@@ -117,10 +136,10 @@ describe("isEffectivelyActive", () => {
       type: "environment",
       active: false,
       keywords: ["cellar"],
-      content: "SECRET CELLAR LORE"
+      content: "SECRET CELLAR LORE",
     });
     const session = makeSession({
-      conversation: [{ turn: 1, role: "player", content: "What's in the cellar?" }]
+      conversation: [{ turn: 1, role: "player", content: "What's in the cellar?" }],
     });
     expect(isEffectivelyActive(session, lore)).toBe(false);
   });
@@ -129,7 +148,9 @@ describe("isEffectivelyActive", () => {
 describe("§51 invariant: inactive layers never affect context", () => {
   it("buildLayerBlocks produces no block at all for an inactive layer", () => {
     const session = makeSession({
-      layers: [layer({ id: "inactive-1", type: "core", active: false, content: "should never appear" })]
+      layers: [
+        layer({ id: "inactive-1", type: "core", active: false, content: "should never appear" }),
+      ],
     });
     const blocks = buildLayerBlocks(session);
     expect(blocks).toHaveLength(0);
@@ -139,8 +160,8 @@ describe("§51 invariant: inactive layers never affect context", () => {
     const session = makeSession({
       layers: [
         layer({ id: "inactive-1", type: "core", active: false, content: "hidden content" }),
-        layer({ id: "active-1", type: "core", active: true, content: "visible content" })
-      ]
+        layer({ id: "active-1", type: "core", active: true, content: "visible content" }),
+      ],
     });
     const blocks = buildLayerBlocks(session);
     expect(blocks).toHaveLength(1);
@@ -159,15 +180,18 @@ describe("§51 invariant: inactive layers never affect context", () => {
           type: "state_trigger",
           active: false,
           trigger: "characters.emma.mood==furious",
-          content: "Emma is furious content"
-        })
-      ]
+          content: "Emma is furious content",
+        }),
+      ],
     });
     expect(buildLayerBlocks(inactiveSession)).toHaveLength(0);
 
     const matchingSession = makeSession({
       characters: {
-        emma: { position: { value: "bar", lock: "unlocked" }, mood: { value: "furious", lock: "unlocked" } }
+        emma: {
+          position: { value: "bar", lock: "unlocked" },
+          mood: { value: "furious", lock: "unlocked" },
+        },
       },
       layers: [
         layer({
@@ -175,9 +199,9 @@ describe("§51 invariant: inactive layers never affect context", () => {
           type: "state_trigger",
           active: false,
           trigger: "characters.emma.mood==furious",
-          content: "Emma is furious content"
-        })
-      ]
+          content: "Emma is furious content",
+        }),
+      ],
     });
     const blocks = buildLayerBlocks(matchingSession);
     expect(blocks).toHaveLength(1);
@@ -190,16 +214,22 @@ describe("§51 invariant: inactive layers never affect context", () => {
       type: "environment",
       active: true,
       keywords: ["cellar"],
-      content: "SECRET CELLAR LORE"
+      content: "SECRET CELLAR LORE",
     });
-    expect(buildLayerBlocks(makeSession({ layers: [lore] })).map((b) => b.content).join("")).not.toContain(
-      "SECRET CELLAR LORE"
-    );
+    expect(
+      buildLayerBlocks(makeSession({ layers: [lore] }))
+        .map((b) => b.content)
+        .join(""),
+    ).not.toContain("SECRET CELLAR LORE");
     const woke = makeSession({
       layers: [lore],
-      conversation: [{ turn: 1, role: "player", content: "Show me the cellar." }]
+      conversation: [{ turn: 1, role: "player", content: "Show me the cellar." }],
     });
-    expect(buildLayerBlocks(woke).map((b) => b.content).join("")).toContain("SECRET CELLAR LORE");
+    expect(
+      buildLayerBlocks(woke)
+        .map((b) => b.content)
+        .join(""),
+    ).toContain("SECRET CELLAR LORE");
   });
 });
 
@@ -208,8 +238,8 @@ describe("getEffectiveActiveLayers ordering", () => {
     const session = makeSession({
       layers: [
         layer({ id: "b", type: "core", active: true, priority: 5 }),
-        layer({ id: "a", type: "core", active: true, priority: 1 })
-      ]
+        layer({ id: "a", type: "core", active: true, priority: 1 }),
+      ],
     });
     const active = getEffectiveActiveLayers(session);
     expect(active.map((l) => l.id)).toEqual(["a", "b"]);
@@ -219,8 +249,8 @@ describe("getEffectiveActiveLayers ordering", () => {
     const session = makeSession({
       layers: [
         layer({ id: "core-1", type: "core", active: true, priority: 0 }),
-        layer({ id: "env-1", type: "environment", active: true, priority: 0 })
-      ]
+        layer({ id: "env-1", type: "environment", active: true, priority: 0 }),
+      ],
     });
     const blocks = buildLayerBlocks(session);
     const core = blocks.find((b) => b.id === "layer-core-1")!;
@@ -239,9 +269,9 @@ describe("getEffectiveActiveLayers ordering", () => {
           type: "core",
           active: true,
           keywords: ["brooch"],
-          content: "If he shows the brooch"
-        })
-      ]
+          content: "If he shows the brooch",
+        }),
+      ],
     });
     const blocks = buildLayerBlocks(session);
     expect(blocks[0]?.required).toBe(false);
@@ -253,23 +283,23 @@ describe("getEffectiveActiveLayers ordering", () => {
         location: "The Aurora Room",
         environment: {},
         note: "A long typewriter intro.",
-        brief: "A hidden jazz bar."
+        brief: "A hidden jazz bar.",
       },
       layers: [
         layer({
           id: "layer-place",
           type: "environment",
           active: true,
-          content: "A hidden jazz bar."
+          content: "A hidden jazz bar.",
         }),
         layer({
           id: "layer-place-lore-1",
           type: "environment",
           active: true,
           keywords: ["cellar"],
-          content: "A locked cellar door."
-        })
-      ]
+          content: "A locked cellar door.",
+        }),
+      ],
     });
     const blocks = buildLayerBlocks(session);
     expect(blocks.some((block) => block.id === "layer-layer-place")).toBe(false);
@@ -284,31 +314,35 @@ describe("once beats", () => {
     once: true,
     trigger: "return_to_bar",
     keywords: ["brooch"],
-    content: "TWO STRANGERS ENTER"
+    content: "TWO STRANGERS ENTER",
   });
 
   function barSession(overrides: Partial<Session> = {}): Session {
     return makeSession({
       player: {
         position: { value: "at the bar", lock: "unlocked" },
-        status: { value: "awake", lock: "unlocked" }
+        status: { value: "awake", lock: "unlocked" },
       },
       layers: [hunters],
-      ...overrides
+      ...overrides,
     });
   }
 
   it("does not fire on the first night at the bar", () => {
     const session = barSession({
-      conversation: [{ turn: 1, role: "player", content: "I show her the brooch" }]
+      conversation: [{ turn: 1, role: "player", content: "I show her the brooch" }],
     });
     expect(isEffectivelyActive(session, hunters)).toBe(false);
-    expect(buildLayerBlocks(session).map((b) => b.content).join("")).not.toContain("TWO STRANGERS ENTER");
+    expect(
+      buildLayerBlocks(session)
+        .map((b) => b.content)
+        .join(""),
+    ).not.toContain("TWO STRANGERS ENTER");
   });
 
   it("fires on return to the bar once the brooch has been seen or held", () => {
     const session = barSession({
-      conversation: [{ turn: 1, role: "player", content: "I show her the brooch" }]
+      conversation: [{ turn: 1, role: "player", content: "I show her the brooch" }],
     });
     expect(isEffectivelyActive(session, hunters, { continuation: true })).toBe(true);
     const blocks = buildLayerBlocks(session, { continuation: true });
@@ -322,9 +356,9 @@ describe("once beats", () => {
         emma: {
           position: { value: "behind the bar", lock: "unlocked" },
           mood: { value: "wary", lock: "unlocked" },
-          holding: { value: "the woman's brooch", lock: "unlocked" }
-        }
-      }
+          holding: { value: "the woman's brooch", lock: "unlocked" },
+        },
+      },
     });
     expect(isEffectivelyActive(session, hunters, { continuation: true })).toBe(true);
   });
@@ -338,17 +372,23 @@ describe("once beats", () => {
     const session = barSession({
       player: {
         position: { value: "Emma's room", lock: "unlocked" },
-        status: { value: "awake", lock: "unlocked" }
+        status: { value: "awake", lock: "unlocked" },
       },
       scene: {
         location: "The Aurora Room",
         environment: {},
-        rooms: [{
-          fromRoomIds: [],
-          gate: "open" as const,
-          id: "emmas-room", label: "Emma's room", description: "", keywords: [] }]
+        rooms: [
+          {
+            fromRoomIds: [],
+            gate: "open" as const,
+            id: "emmas-room",
+            label: "Emma's room",
+            description: "",
+            keywords: [],
+          },
+        ],
       },
-      conversation: [{ turn: 1, role: "player", content: "I show her the brooch" }]
+      conversation: [{ turn: 1, role: "player", content: "I show her the brooch" }],
     });
     expect(isEffectivelyActive(session, hunters, { continuation: true })).toBe(false);
   });
@@ -357,7 +397,7 @@ describe("once beats", () => {
     const spent = { ...hunters, spent: true };
     const session = barSession({
       layers: [spent],
-      conversation: [{ turn: 1, role: "player", content: "I show her the brooch" }]
+      conversation: [{ turn: 1, role: "player", content: "I show her the brooch" }],
     });
     expect(isEffectivelyActive(session, spent, { continuation: true })).toBe(false);
   });
@@ -369,9 +409,9 @@ describe("once beats", () => {
         ...Array.from({ length: 10 }, (_, i) => ({
           turn: i + 2,
           role: "player" as const,
-          content: "We talk about the weather."
-        }))
-      ]
+          content: "We talk about the weather.",
+        })),
+      ],
     });
     expect(isEffectivelyActive(session, hunters, { continuation: true })).toBe(true);
   });
@@ -379,9 +419,16 @@ describe("once beats", () => {
 
 describe("story flag gates", () => {
   it("requiresFlags: stays inactive until the flag is set", () => {
-    const gated = layer({ id: "g1", type: "core", active: true, requiresFlags: ["met_the_stranger"] });
+    const gated = layer({
+      id: "g1",
+      type: "core",
+      active: true,
+      requiresFlags: ["met_the_stranger"],
+    });
     expect(isEffectivelyActive(makeSession(), gated)).toBe(false);
-    expect(isEffectivelyActive(makeSession({ storyFlags: ["met_the_stranger"] }), gated)).toBe(true);
+    expect(isEffectivelyActive(makeSession({ storyFlags: ["met_the_stranger"] }), gated)).toBe(
+      true,
+    );
   });
 
   it("requiresAbsentFlags: the brooch dream never fires once the brooch was given away", () => {
@@ -392,13 +439,16 @@ describe("story flag gates", () => {
       once: true,
       trigger: "player.status==asleep",
       requiresAbsentFlags: ["brosch_given"],
-      content: "The fallen comrade and the old woman: Emma should have the brooch."
+      content: "The fallen comrade and the old woman: Emma should have the brooch.",
     });
     const asleep = (overrides: Partial<Session> = {}) =>
       makeSession({
-        player: { position: { value: "Emma's room", lock: "unlocked" }, status: { value: "asleep", lock: "unlocked" } },
+        player: {
+          position: { value: "Emma's room", lock: "unlocked" },
+          status: { value: "asleep", lock: "unlocked" },
+        },
         layers: [dream],
-        ...overrides
+        ...overrides,
       });
 
     // Kept the brooch: the dream is free to fire.
@@ -414,7 +464,7 @@ describe("story flag gates", () => {
       type: "state_trigger",
       active: false,
       trigger: "characters.emma.mood==angry",
-      requiresFlags: ["armed"]
+      requiresFlags: ["armed"],
     });
     // Trigger matches but the flag is missing.
     expect(isEffectivelyActive(makeSession(), layerWithBoth)).toBe(false);
@@ -423,19 +473,28 @@ describe("story flag gates", () => {
       isEffectivelyActive(
         makeSession({
           storyFlags: ["armed"],
-          characters: { emma: { position: { value: "bar", lock: "unlocked" }, mood: { value: "calm", lock: "unlocked" } } }
+          characters: {
+            emma: {
+              position: { value: "bar", lock: "unlocked" },
+              mood: { value: "calm", lock: "unlocked" },
+            },
+          },
         }),
-        layerWithBoth
-      )
+        layerWithBoth,
+      ),
     ).toBe(false);
     // Both satisfied.
     expect(isEffectivelyActive(makeSession({ storyFlags: ["armed"] }), layerWithBoth)).toBe(true);
   });
 
   it("a flag gate applies even to a spent-checked, otherwise-always-on core layer", () => {
-    const gated = layer({ id: "g3", type: "core", active: true, requiresAbsentFlags: ["curse_lifted"] });
+    const gated = layer({
+      id: "g3",
+      type: "core",
+      active: true,
+      requiresAbsentFlags: ["curse_lifted"],
+    });
     expect(isEffectivelyActive(makeSession(), gated)).toBe(true);
     expect(isEffectivelyActive(makeSession({ storyFlags: ["curse_lifted"] }), gated)).toBe(false);
   });
 });
-

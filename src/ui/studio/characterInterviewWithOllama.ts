@@ -3,7 +3,7 @@ import {
   completeOllamaChat,
   DEFAULT_OLLAMA_MODEL,
   listOllamaModels,
-  pickListedOllamaModel
+  pickListedOllamaModel,
 } from "@llm/providers/OllamaProvider";
 
 function isAbort(err: unknown): boolean {
@@ -13,7 +13,7 @@ function isAbort(err: unknown): boolean {
 /** Ask the local model to shape the card. A miss falls back inside conductCharacterInterview. */
 export async function conductCharacterInterviewWithOllama(
   input: { messages: readonly string[]; seed: number },
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<ConductedInterview> {
   let model = DEFAULT_OLLAMA_MODEL;
   try {
@@ -28,7 +28,7 @@ export async function conductCharacterInterviewWithOllama(
       messages,
       temperature: 0.4,
       maxTokens: 700,
-      ...(signal ? { signal } : {})
-    })
+      ...(signal ? { signal } : {}),
+    }),
   );
 }

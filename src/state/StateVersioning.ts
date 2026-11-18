@@ -31,7 +31,7 @@ function stableStringify(value: unknown): string {
   }
   const keys = Object.keys(value as Record<string, unknown>).sort();
   const entries = keys.map(
-    (k) => `${JSON.stringify(k)}:${stableStringify((value as Record<string, unknown>)[k])}`
+    (k) => `${JSON.stringify(k)}:${stableStringify((value as Record<string, unknown>)[k])}`,
   );
   return `{${entries.join(",")}}`;
 }
@@ -43,7 +43,12 @@ function stableStringify(value: unknown): string {
  * crypto.subtle.digest("SHA-256", ...) at the call site; the interface
  * here stays the same.
  */
-export function hashState(session: Pick<Session, "characters" | "scene" | "player" | "relationships" | "layers" | "stateVersion">): string {
+export function hashState(
+  session: Pick<
+    Session,
+    "characters" | "scene" | "player" | "relationships" | "layers" | "stateVersion"
+  >,
+): string {
   const input = stableStringify(session);
   let hash = 0x811c9dc5;
   for (let i = 0; i < input.length; i++) {
@@ -64,6 +69,6 @@ export function createSnapshot(session: Session): StateSnapshot {
   return {
     stateVersion: session.stateVersion,
     hash: hashState(session),
-    takenAt: new Date().toISOString()
+    takenAt: new Date().toISOString(),
   };
 }

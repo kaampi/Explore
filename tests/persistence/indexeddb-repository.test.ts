@@ -5,7 +5,7 @@ import {
   IndexedDBRepository,
   SessionNotFoundError,
   SchemaValidationError,
-  LibraryItemNotFoundError
+  LibraryItemNotFoundError,
 } from "@persistence/IndexedDBRepository";
 import type { Session } from "@state/StateSchema";
 import type { CharacterTemplate } from "@library/LibrarySchema";
@@ -20,7 +20,7 @@ function makeSession(id: string): Session {
     characters: {},
     player: {
       position: { value: "here", lock: "unlocked" },
-      status: { value: "awake", lock: "unlocked" }
+      status: { value: "awake", lock: "unlocked" },
     },
     relationships: {},
     layers: [],
@@ -33,7 +33,7 @@ function makeSession(id: string): Session {
     partyIds: [],
     partyHoldIds: [],
     partyPendingIds: [],
-    storyFlags: []
+    storyFlags: [],
   };
 }
 
@@ -133,7 +133,7 @@ describe("IndexedDBRepository", () => {
       conversation: [],
       events: [],
       snapshots: [],
-      diagnostics: []
+      diagnostics: [],
     };
 
     await new Promise<void>((resolve, reject) => {
@@ -171,7 +171,7 @@ describe("IndexedDBRepository library", () => {
       tags: [],
       source: "player",
       createdAt: stamp,
-      updatedAt: stamp
+      updatedAt: stamp,
     };
     const place = {
       id: "p1",
@@ -185,7 +185,7 @@ describe("IndexedDBRepository library", () => {
       realmId: "example-realm-dunbaar",
       source: "player" as const,
       createdAt: stamp,
-      updatedAt: stamp
+      updatedAt: stamp,
     };
     const story = {
       id: "st1",
@@ -193,7 +193,7 @@ describe("IndexedDBRepository library", () => {
       premise: "Sauron's life-force is bound to the One Ring.",
       source: "player" as const,
       createdAt: stamp,
-      updatedAt: stamp
+      updatedAt: stamp,
     };
     const voice = {
       id: "v1",
@@ -201,7 +201,7 @@ describe("IndexedDBRepository library", () => {
       instruction: "Du är Spelledare.",
       source: "player" as const,
       createdAt: stamp,
-      updatedAt: stamp
+      updatedAt: stamp,
     };
     const ruleset = {
       id: "r1",
@@ -218,12 +218,12 @@ describe("IndexedDBRepository library", () => {
           lowMeaning: "",
           midMeaning: "",
           options: [],
-          maxShift: 0
-        }
+          maxShift: 0,
+        },
       ],
       source: "player" as const,
       createdAt: stamp,
-      updatedAt: stamp
+      updatedAt: stamp,
     };
 
     await repo.saveCharacter(character);
@@ -250,7 +250,7 @@ describe("IndexedDBRepository library", () => {
       tags: ["Fantasy"],
       source: "player" as const,
       createdAt: stamp,
-      updatedAt: stamp
+      updatedAt: stamp,
     };
     await repo.saveObject(object);
     expect(await repo.loadObject("o1")).toEqual(object);
@@ -282,7 +282,7 @@ describe("IndexedDBRepository library", () => {
       source: "player",
       portraitDataUrl,
       createdAt: stamp,
-      updatedAt: stamp
+      updatedAt: stamp,
     });
 
     expect((await repo.loadCharacter("c1")).portraitDataUrl).toBe(portraitDataUrl);
@@ -301,31 +301,33 @@ describe("IndexedDBRepository library", () => {
       music: false,
       note: "",
       brief: "A hidden jazz bar. Weathered wood, dark doors, a bartender who leaves you be.",
-        rooms: [
-          {
-            fromRoomIds: [],
-            gate: "open" as const,
-            id: "room-emmas",
-            label: "Emma's room",
-            keywords: ["staff room"],
-            description: "A narrow bed.",
-            brief: "A staff room. Bed, chair, curtains.",
-            thumbDataUrl: "data:thumb-emma",
-            imageDataUrl: "data:image-emma"
-          }
-        ],
+      rooms: [
+        {
+          fromRoomIds: [],
+          gate: "open" as const,
+          id: "room-emmas",
+          label: "Emma's room",
+          keywords: ["staff room"],
+          description: "A narrow bed.",
+          brief: "A staff room. Bed, chair, curtains.",
+          thumbDataUrl: "data:thumb-emma",
+          imageDataUrl: "data:image-emma",
+        },
+      ],
       thumbDataUrl: "data:thumb-venue",
       imageDataUrl: "data:image-venue",
       tags: [],
       realmId: "example-realm-dunbaar",
       source: "player",
       createdAt: stamp,
-      updatedAt: stamp
+      updatedAt: stamp,
     });
     const loaded = await repo.loadPlace("p1");
     expect(loaded.thumbDataUrl).toBe("data:thumb-venue");
     expect(loaded.imageDataUrl).toBe("data:image-venue");
-    expect(loaded.brief).toBe("A hidden jazz bar. Weathered wood, dark doors, a bartender who leaves you be.");
+    expect(loaded.brief).toBe(
+      "A hidden jazz bar. Weathered wood, dark doors, a bartender who leaves you be.",
+    );
     expect(loaded.rooms[0]?.imageDataUrl).toBe("data:image-emma");
     expect(loaded.rooms[0]?.description).toBe("A narrow bed.");
     expect(loaded.rooms[0]?.brief).toBe("A staff room. Bed, chair, curtains.");
@@ -346,8 +348,8 @@ describe("IndexedDBRepository library", () => {
         imageDataUrl: "data:image-bar",
         rooms: [],
         tags: [],
-        source: "player"
-      })
+        source: "player",
+      }),
     );
     await repo.savePlace(
       newPlaceTemplate({
@@ -361,8 +363,8 @@ describe("IndexedDBRepository library", () => {
         imageDataUrl: "data:image-hotel",
         rooms: [],
         tags: [],
-        source: "player"
-      })
+        source: "player",
+      }),
     );
     const bar = await repo.loadPlace("bar");
     const hotel = await repo.loadPlace("hotel");
@@ -390,10 +392,12 @@ describe("IndexedDBRepository library", () => {
       imageDataUrl: "data:image-bar",
       gallery: [{ oops: true }, { thumbDataUrl: "data:thumb-2", imageDataUrl: "data:image-2" }],
       createdAt: "2026-01-01T00:00:00.000Z",
-      updatedAt: "2026-01-01T00:00:00.000Z"
+      updatedAt: "2026-01-01T00:00:00.000Z",
     });
     expect(loaded.thumbDataUrl).toBe("data:thumb-bar");
-    expect(loaded.gallery).toEqual([{ thumbDataUrl: "data:thumb-2", imageDataUrl: "data:image-2" }]);
+    expect(loaded.gallery).toEqual([
+      { thumbDataUrl: "data:thumb-2", imageDataUrl: "data:image-2" },
+    ]);
     expect(loaded.realmId).toBe("example-realm-dunbaar");
   });
 
@@ -429,7 +433,7 @@ describe("IndexedDBRepository library", () => {
       lore: [],
       source: "player",
       createdAt: "2026-01-01T00:00:00.000Z",
-      updatedAt: "2026-01-01T00:00:00.000Z"
+      updatedAt: "2026-01-01T00:00:00.000Z",
     });
 
     expect((await repo.loadSession("kept")).id).toBe("kept");
@@ -442,7 +446,15 @@ describe("IndexedDBRepository library", () => {
       const request = factory.open("voice-upgrade-db", 6);
       request.onupgradeneeded = () => {
         const db = request.result;
-        for (const name of ["sessions", "characters", "places", "stories", "voices", "rulesets", "objects"]) {
+        for (const name of [
+          "sessions",
+          "characters",
+          "places",
+          "stories",
+          "voices",
+          "rulesets",
+          "objects",
+        ]) {
           db.createObjectStore(name, { keyPath: "id" });
         }
       };
@@ -455,7 +467,7 @@ describe("IndexedDBRepository library", () => {
           instruction: "Neon rain on wet streets.",
           source: "player",
           createdAt: "2026-01-01T00:00:00.000Z",
-          updatedAt: "2026-01-01T00:00:00.000Z"
+          updatedAt: "2026-01-01T00:00:00.000Z",
         });
         tx.oncomplete = () => {
           db.close();
@@ -494,12 +506,12 @@ describe("IndexedDBRepository library", () => {
                 id: "t1",
                 content: "Two strangers ask about a brooch.",
                 keywords: ["brooch"],
-                when: "return_to_bar"
-              }
-            ]
-          }
-        ]
-      })
+                when: "return_to_bar",
+              },
+            ],
+          },
+        ],
+      }),
     );
     const loaded = await campaignRepo.loadCampaign("camp-1");
     expect(loaded.scenes[0]?.triggers[0]?.keywords).toEqual(["brooch"]);
@@ -514,12 +526,12 @@ describe("IndexedDBRepository library", () => {
     await repo.saveStudioResume({
       campaignId: "camp-1",
       sceneId: "sc1",
-      handoff: "He asked to sleep. No sex."
+      handoff: "He asked to sleep. No sex.",
     });
     expect(await repo.loadStudioResume()).toEqual({
       campaignId: "camp-1",
       sceneId: "sc1",
-      handoff: "He asked to sleep. No sex."
+      handoff: "He asked to sleep. No sex.",
     });
     await repo.clearStudioResume();
     expect(await repo.loadStudioResume()).toBeNull();
@@ -532,7 +544,16 @@ describe("IndexedDBRepository library", () => {
       const request = factory.open("resume-upgrade-db", 7);
       request.onupgradeneeded = () => {
         const db = request.result;
-        for (const name of ["sessions", "characters", "places", "stories", "voices", "rulesets", "objects", "campaigns"]) {
+        for (const name of [
+          "sessions",
+          "characters",
+          "places",
+          "stories",
+          "voices",
+          "rulesets",
+          "objects",
+          "campaigns",
+        ]) {
           if (!db.objectStoreNames.contains(name)) db.createObjectStore(name, { keyPath: "id" });
         }
       };
@@ -579,7 +600,7 @@ describe("IndexedDBRepository library", () => {
           "rulesets",
           "objects",
           "campaigns",
-          "prefs"
+          "prefs",
         ]) {
           if (!db.objectStoreNames.contains(name)) db.createObjectStore(name, { keyPath: "id" });
         }
@@ -598,7 +619,7 @@ describe("IndexedDBRepository library", () => {
           tags: [],
           source: "player",
           createdAt: "2026-01-01T00:00:00.000Z",
-          updatedAt: "2026-01-01T00:00:00.000Z"
+          updatedAt: "2026-01-01T00:00:00.000Z",
         });
         tx.oncomplete = () => {
           db.close();
@@ -617,9 +638,8 @@ describe("IndexedDBRepository library", () => {
       note: "",
       source: "example",
       createdAt: "2026-01-01T00:00:00.000Z",
-      updatedAt: "2026-01-01T00:00:00.000Z"
+      updatedAt: "2026-01-01T00:00:00.000Z",
     });
     expect((await v9.listRealms())[0]?.name).toBe("City of Dunbaar");
   });
 });
-

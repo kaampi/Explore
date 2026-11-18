@@ -18,7 +18,9 @@ export class DiceSound {
       this.context = new AudioContext();
       void this.context.resume().catch(() => {});
       void this.load();
-    } catch { /* Audio support never gates a check. */ }
+    } catch {
+      /* Audio support never gates a check. */
+    }
   }
 
   private async load() {
@@ -34,7 +36,9 @@ export class DiceSound {
       if (this.closed) return;
       this.dice = dice;
       this.table = table;
-    } catch { /* Missing clips fall back to a silent roll. */ }
+    } catch {
+      /* Missing clips fall back to a silent roll. */
+    }
   }
 
   setEnabled(enabled: boolean) {
@@ -45,24 +49,40 @@ export class DiceSound {
   hit(speed: number, diceCollision: boolean) {
     const context = this.context;
     const buffer = diceCollision ? this.dice : this.table;
-    if (!this.enabled || this.closed || !context || context.state !== "running" || !buffer || speed < 250) return;
+    if (
+      !this.enabled ||
+      this.closed ||
+      !context ||
+      context.state !== "running" ||
+      !buffer ||
+      speed < 250
+    )
+      return;
     const now = context.currentTime;
-    if (now - this.lastHit < .045) return;
+    if (now - this.lastHit < 0.045) return;
     this.lastHit = now;
     const source = context.createBufferSource();
     const gain = context.createGain();
     source.buffer = buffer;
-    source.playbackRate.value = .9 + Math.random() * .2; // sound variation only
-    gain.gain.value = Math.min(.35, speed / 12000);
+    source.playbackRate.value = 0.9 + Math.random() * 0.2; // sound variation only
+    gain.gain.value = Math.min(0.35, speed / 12000);
     source.connect(gain);
     gain.connect(context.destination);
     this.active.add(source);
-    source.onended = () => { this.active.delete(source); source.disconnect(); gain.disconnect(); };
+    source.onended = () => {
+      this.active.delete(source);
+      source.disconnect();
+      gain.disconnect();
+    };
     source.start();
   }
 
   private stop() {
-    this.active.forEach((source) => { try { source.stop(); } catch {} });
+    this.active.forEach((source) => {
+      try {
+        source.stop();
+      } catch {}
+    });
     this.active.clear();
   }
 

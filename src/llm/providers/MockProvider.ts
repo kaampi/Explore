@@ -37,7 +37,7 @@ export class MockProvider implements LLMProvider {
       streaming: true,
       structuredOutput: true,
       cancellation: true,
-      ...config.capabilities
+      ...config.capabilities,
     };
     this.responseChunks = config.responseChunks ?? ["Hello", ", ", "world", "!"];
     this.chunkDelayMs = config.chunkDelayMs ?? 0;

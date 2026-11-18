@@ -10,13 +10,21 @@ import type { AvtHistoryPreview } from "./avtHistoryPreview";
  */
 export function buildAvtArchiveSession(preview: AvtHistoryPreview): Session {
   if (!preview.lines.length) throw new Error("Cannot archive an empty transcript.");
-  if (preview.lines.some(line => line.role === "other"))
+  if (preview.lines.some((line) => line.role === "other"))
     throw new Error("Unrecognized Aventuras message roles require manual review before archiving.");
-  const session = createSessionFromSetup({
-    location: "Imported Aventuras archive",
-    lighting: "", noise: "", music: false, placeNote: "",
-    characters: [{ name: "Imported narrator", personality: "", mood: "neutral", position: "here" }],
-  }, preview.idPlan.storyId);
+  const session = createSessionFromSetup(
+    {
+      location: "Imported Aventuras archive",
+      lighting: "",
+      noise: "",
+      music: false,
+      placeNote: "",
+      characters: [
+        { name: "Imported narrator", personality: "", mood: "neutral", position: "here" },
+      ],
+    },
+    preview.idPlan.storyId,
+  );
   return parseSession({
     ...session,
     conversation: preview.lines.map((line, turn) => ({

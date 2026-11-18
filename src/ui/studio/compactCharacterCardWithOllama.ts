@@ -2,14 +2,14 @@ import {
   CompactCardError,
   compactCharacterMessages,
   parseCompactCardJson,
-  type CompactCardFields
+  type CompactCardFields,
 } from "@library/compactCharacterCard";
 import {
   completeOllamaChat,
   DEFAULT_OLLAMA_MODEL,
   listOllamaModels,
   OllamaRequestError,
-  pickListedOllamaModel
+  pickListedOllamaModel,
 } from "@llm/providers/OllamaProvider";
 
 export function compactFailureMessage(err: unknown): string {
@@ -32,7 +32,7 @@ export async function compactCharacterCardWithOllama(
     personality: string;
     rawText?: string;
   },
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<CompactCardFields> {
   let model = DEFAULT_OLLAMA_MODEL;
   try {
@@ -46,7 +46,7 @@ export async function compactCharacterCardWithOllama(
     messages: compactCharacterMessages(input),
     temperature: 0.2,
     maxTokens: 500,
-    ...(signal ? { signal } : {})
+    ...(signal ? { signal } : {}),
   });
   return parseCompactCardJson(content);
 }

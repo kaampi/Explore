@@ -31,8 +31,8 @@ const STOP = new Set(
     "han",
     "hon",
     "den",
-    "det"
-  ].map((word) => word.toLowerCase())
+    "det",
+  ].map((word) => word.toLowerCase()),
 );
 
 const MALE_POINTER =
@@ -79,11 +79,7 @@ function namedFocus(session: Session, text: string): string | undefined {
     for (const term of aliases(id, session)) {
       const index = lastMatchIndex(text, term);
       if (index < 0) continue;
-      if (
-        !best ||
-        index > best.index ||
-        (index === best.index && term.length > best.length)
-      ) {
+      if (!best || index > best.index || (index === best.index && term.length > best.length)) {
         best = { id, index, length: term.length };
       }
     }
@@ -103,7 +99,15 @@ function genderedFocus(session: Session, text: string): string | undefined {
 export function lastCharacterSpeaker(session: Session): string | undefined {
   for (let i = session.conversation.length - 1; i >= 0; i--) {
     const turn = session.conversation[i];
-    if (turn && typeof turn === "object" && "role" in turn && turn.role === "character" && "speaker" in turn && typeof turn.speaker === "string" && session.characters[turn.speaker]) {
+    if (
+      turn &&
+      typeof turn === "object" &&
+      "role" in turn &&
+      turn.role === "character" &&
+      "speaker" in turn &&
+      typeof turn.speaker === "string" &&
+      session.characters[turn.speaker]
+    ) {
       return turn.speaker;
     }
   }
@@ -119,7 +123,7 @@ export function charactersHere(session: Session): string[] {
 
 export function othersInScene(
   session: Session,
-  focusId: string
+  focusId: string,
 ): { name: string; position: string }[] {
   const focus = session.characters[focusId];
   const leftover =
@@ -131,11 +135,11 @@ export function othersInScene(
   return Object.entries(session.characters)
     .filter(([id]) => id !== focusId)
     .filter(([, character]) =>
-      anchor ? samePlace(session, character.position.value, anchor) : false
+      anchor ? samePlace(session, character.position.value, anchor) : false,
     )
     .map(([id, character]) => ({
       name: narrationCallName(session, id),
-      position: character.position.value
+      position: character.position.value,
     }));
 }
 
@@ -159,4 +163,3 @@ export function focusCharacterId(session: Session, playerText: string): string |
   if (here.length > 0) return here[0];
   return last ?? ids[0];
 }
-

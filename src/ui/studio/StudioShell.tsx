@@ -28,7 +28,7 @@ const NAV: { id: StudioView; label: string; group: "library" | "play" }[] = [
   { id: "voices", label: "Voices", group: "library" },
   { id: "stories", label: "Stories", group: "library" },
   { id: "rulesets", label: "Rule-sets", group: "library" },
-  { id: "campaigns", label: "Campaigns", group: "play" }
+  { id: "campaigns", label: "Adventures", group: "play" },
 ];
 
 export function StudioShell({
@@ -37,7 +37,7 @@ export function StudioShell({
   resume,
   onStart,
   onViewChange,
-  initialView = "campaigns"
+  initialView = "campaigns",
 }: {
   initialView?: StudioView;
   onViewChange?: (view: StudioView) => void;
@@ -47,8 +47,14 @@ export function StudioShell({
   onStart: (session: Session) => void;
 }) {
   const [view, updateView] = useState<StudioView>(initialView === "places" ? "maps" : initialView);
-  const [templateDirty,setTemplateDirty]=useState(false);
-  function setView(next: StudioView) { if(next!==view&&templateDirty&&!confirm("Discard unsaved changes?"))return;if(next!==view)setTemplateDirty(false); const destination = next === "places" ? "maps" : next; updateView(destination); onViewChange?.(destination); }
+  const [templateDirty, setTemplateDirty] = useState(false);
+  function setView(next: StudioView) {
+    if (next !== view && templateDirty && !confirm("Discard unsaved changes?")) return;
+    if (next !== view) setTemplateDirty(false);
+    const destination = next === "places" ? "maps" : next;
+    updateView(destination);
+    onViewChange?.(destination);
+  }
   const [catalogTick, setCatalogTick] = useState(0);
 
   return (
@@ -58,11 +64,37 @@ export function StudioShell({
           { title: "Characters & creatures", ids: ["characters", "anatomy"] },
           { title: "World", ids: ["place-templates", "maps", "factions", "objects", "lorebooks"] },
           { title: "Story & play", ids: ["voices", "stories", "rulesets"] },
-        ].map(group => <div className="studio-nav-group" role="group" aria-label={group.title} key={group.title}>
-          <span className="studio-nav-group__title">{group.title}</span>
-          <div>{group.ids.map(id => { const item = NAV.find(entry => entry.id === id)!; return <button key={item.id} type="button" className={`studio-nav__tab ${view === item.id ? "studio-nav__tab--active" : ""}`} aria-current={view === item.id ? "page" : undefined} onClick={() => setView(item.id)}>{item.label}</button>; })}</div>
-        </div>)}
-        {["campaigns", "adventure"].includes(view) && <button type="button" className="studio-nav__tab studio-nav__tab--active" aria-current="page" onClick={() => setView("campaigns")}>Adventures</button>}
+        ].map((group) => (
+          <div className="studio-nav-group" role="group" aria-label={group.title} key={group.title}>
+            <span className="studio-nav-group__title">{group.title}</span>
+            <div>
+              {group.ids.map((id) => {
+                const item = NAV.find((entry) => entry.id === id)!;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={`studio-nav__tab ${view === item.id ? "studio-nav__tab--active" : ""}`}
+                    aria-current={view === item.id ? "page" : undefined}
+                    onClick={() => setView(item.id)}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+        {["campaigns", "adventure"].includes(view) && (
+          <button
+            type="button"
+            className="studio-nav__tab studio-nav__tab--active"
+            aria-current="page"
+            onClick={() => setView("campaigns")}
+          >
+            Adventures
+          </button>
+        )}
         <LibraryBackupBar repo={repo} onRestored={() => setCatalogTick((tick) => tick + 1)} />
       </nav>
       <div className="studio-body">
@@ -82,12 +114,19 @@ export function StudioShell({
             />
           )}
           {view === "adventure" && (
-            <AdventureStudio sessionId={sessionId} repo={repo} onStart={onStart} onOpenShelf={setView} />
+            <AdventureStudio
+              sessionId={sessionId}
+              repo={repo}
+              onStart={onStart}
+              onOpenShelf={setView}
+            />
           )}
           {view === "lorebooks" && <LoreStudio repo={repo} />}
           {view === "characters" && <CharacterStudio repo={repo} />}
           {view === "anatomy" && <AnatomyStudio repo={repo} />}
-          {view === "place-templates" && <PlaceBlueprintStudio repo={repo} onDirtyChange={setTemplateDirty} />}
+          {view === "place-templates" && (
+            <PlaceBlueprintStudio repo={repo} onDirtyChange={setTemplateDirty} />
+          )}
           {view === "factions" && <FactionStudio repo={repo} onDirtyChange={setTemplateDirty} />}
           {view === "maps" && <MapLibrary repo={repo} />}
           {view === "objects" && <ObjectStudio repo={repo} />}
@@ -99,4 +138,3 @@ export function StudioShell({
     </div>
   );
 }
-

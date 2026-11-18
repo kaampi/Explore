@@ -18,8 +18,8 @@ function makeSession(overrides: Partial<Session> = {}): Session {
       emma: {
         name: "Emma",
         position: { value: "bar", lock: "unlocked" },
-        mood: { value: "curious", lock: "unlocked" }
-      }
+        mood: { value: "curious", lock: "unlocked" },
+      },
     },
     scene: { location: "downtown bar", environment: { lighting: "dim" } },
     relationships: {},
@@ -29,7 +29,7 @@ function makeSession(overrides: Partial<Session> = {}): Session {
     events: [],
     snapshots: [],
     diagnostics: [],
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -52,10 +52,14 @@ describe("inspectPromptBudget", () => {
     const withChat = inspectPromptBudget(
       makeSession({
         conversation: [
-          { turn: 1, role: "player", content: "Hello there, Emma. I wanted to talk for a while about the evening." },
-          { turn: 2, role: "character", speaker: "Emma", content: "She wipes a glass. \"Go on.\"" }
-        ]
-      })
+          {
+            turn: 1,
+            role: "player",
+            content: "Hello there, Emma. I wanted to talk for a while about the evening.",
+          },
+          { turn: 2, role: "character", speaker: "Emma", content: 'She wipes a glass. "Go on."' },
+        ],
+      }),
     );
     const emptyChat = empty.parts.find((part) => part.id === "chat")?.tokens ?? 0;
     const keptChat = withChat.parts.find((part) => part.id === "chat")?.tokens ?? 0;
@@ -63,4 +67,3 @@ describe("inspectPromptBudget", () => {
     expect(withChat.promptTokens).toBeGreaterThan(empty.promptTokens);
   });
 });
-

@@ -22,7 +22,11 @@ describe("retryWithBackoff", () => {
       .mockRejectedValueOnce(new Error("second fail"))
       .mockResolvedValueOnce("ok");
 
-    const result = await retryWithBackoff(fn, { maxAttempts: 5, baseDelayMs: 0, sleepImpl: instantSleep });
+    const result = await retryWithBackoff(fn, {
+      maxAttempts: 5,
+      baseDelayMs: 0,
+      sleepImpl: instantSleep,
+    });
 
     expect(result).toBe("ok");
     expect(fn).toHaveBeenCalledTimes(3);
@@ -32,7 +36,7 @@ describe("retryWithBackoff", () => {
     const fn = vi.fn().mockRejectedValue(new Error("always fails"));
 
     await expect(
-      retryWithBackoff(fn, { maxAttempts: 3, baseDelayMs: 0, sleepImpl: instantSleep })
+      retryWithBackoff(fn, { maxAttempts: 3, baseDelayMs: 0, sleepImpl: instantSleep }),
     ).rejects.toThrow(RetryExhaustedError);
     expect(fn).toHaveBeenCalledTimes(3);
   });
@@ -42,7 +46,7 @@ describe("retryWithBackoff", () => {
     const fn = vi.fn().mockRejectedValue(new Error("nope"));
 
     await expect(
-      retryWithBackoff(fn, { maxAttempts: 3, baseDelayMs: 0, sleepImpl: instantSleep, onRetry })
+      retryWithBackoff(fn, { maxAttempts: 3, baseDelayMs: 0, sleepImpl: instantSleep, onRetry }),
     ).rejects.toThrow();
 
     expect(onRetry).toHaveBeenCalledTimes(3);
@@ -55,7 +59,7 @@ describe("retryWithBackoff", () => {
     const fn = vi.fn().mockRejectedValue(new Error("fail"));
 
     await expect(
-      retryWithBackoff(fn, { maxAttempts: 4, baseDelayMs: 100, sleepImpl })
+      retryWithBackoff(fn, { maxAttempts: 4, baseDelayMs: 100, sleepImpl }),
     ).rejects.toThrow();
 
     // 3 sleeps between 4 attempts: 100, 200, 400
@@ -64,10 +68,7 @@ describe("retryWithBackoff", () => {
 
   it("preserves the last error on RetryExhaustedError", async () => {
     const lastError = new Error("final failure");
-    const fn = vi
-      .fn()
-      .mockRejectedValueOnce(new Error("first"))
-      .mockRejectedValueOnce(lastError);
+    const fn = vi.fn().mockRejectedValueOnce(new Error("first")).mockRejectedValueOnce(lastError);
 
     try {
       await retryWithBackoff(fn, { maxAttempts: 2, baseDelayMs: 0, sleepImpl: instantSleep });

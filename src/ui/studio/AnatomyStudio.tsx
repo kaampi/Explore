@@ -1,3 +1,4 @@
+import { useTranslate } from "../i18n/LanguageProvider";
 import { openGuide } from "../guide/GuidePanel";
 import { useEffect, useState } from "react";
 import "./anatomy.css";
@@ -7,12 +8,24 @@ import { AnatomyTemplateSchema, type AnatomyTemplate } from "@state/StateSchema"
 import { BUILTIN_ANATOMY_TEMPLATES, isBuiltInAnatomy } from "@state/builtinAnatomy";
 
 type Part = AnatomyTemplate["parts"][number];
-const CAPABILITY_LABELS = { grasp: "Grip and hold", support: "Bear weight", locomote: "Move the body", sense: "Sense surroundings", manipulate: "Handle objects" };
+const CAPABILITY_LABELS = {
+  grasp: "Grip and hold",
+  support: "Bear weight",
+  locomote: "Move the body",
+  sense: "Sense surroundings",
+  manipulate: "Handle objects",
+};
 const CAPABILITIES = ["grasp", "support", "locomote", "sense", "manipulate"] as const;
-const emptyPart = (id: string, group: string): Part => ({ id, label: id.replaceAll("_", " "), group, capabilities: [] });
+const emptyPart = (id: string, group: string): Part => ({
+  id,
+  label: id.replaceAll("_", " "),
+  group,
+  capabilities: [],
+});
 const groupsOf = (parts: Part[]) => [...new Set(parts.map((part) => part.group || "Other"))];
 
 export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
+  const t = useTranslate();
   const [custom, setCustom] = useState<AnatomyTemplate[]>([]);
   const [draft, setDraft] = useState<AnatomyTemplate | null>(null);
   const [expanded, setExpanded] = useState("");
@@ -21,9 +34,14 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
   const [notice, setNotice] = useState("");
   const [uploading, setUploading] = useState(false);
   const refresh = async () => setCustom(await repo.listAnatomyTemplates());
-  useEffect(() => { void refresh().catch((e: unknown) => setError(String(e))); }, [repo]);
+  useEffect(() => {
+    void refresh().catch((e: unknown) => setError(String(e)));
+  }, [repo]);
 
-  const templates = [...BUILTIN_ANATOMY_TEMPLATES, ...custom.filter((item) => !isBuiltInAnatomy(item.id))];
+  const templates = [
+    ...BUILTIN_ANATOMY_TEMPLATES,
+    ...custom.filter((item) => !isBuiltInAnatomy(item.id)),
+  ];
   const current = draft?.parts.find((part) => part.id === partId);
   function open(item: AnatomyTemplate) {
     setDraft(structuredClone(item));
@@ -33,25 +51,36 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
     setNotice("");
   }
   function patch(update: Partial<AnatomyTemplate>) {
-    setDraft((value) => value ? { ...value, ...update } : value);
+    setDraft((value) => (value ? { ...value, ...update } : value));
   }
   async function upload(file: File) {
     if (!draft || uploading) return;
     const id = draft.id;
-    setUploading(true); setError("");
+    setUploading(true);
+    setError("");
     try {
       const imageDataUrl = await anatomyImageFromFile(file);
-      setDraft(value => value?.id === id ? { ...value, imageDataUrl } : value);
-    } catch (reason) { setError(reason instanceof Error ? reason.message : "Could not read this image."); }
-    finally { setUploading(false); }
+      setDraft((value) => (value?.id === id ? { ...value, imageDataUrl } : value));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Could not read this image.");
+    } finally {
+      setUploading(false);
+    }
   }
   function patchPart(update: Partial<Part>) {
     if (!draft || !current) return;
-    patch({ parts: draft.parts.map((part) => part.id === partId ? { ...part, ...update } : part) });
+    patch({
+      parts: draft.parts.map((part) => (part.id === partId ? { ...part, ...update } : part)),
+    });
   }
   function duplicate() {
     if (!draft) return;
-    const copy = { ...structuredClone(draft), id: crypto.randomUUID(), name: `${draft.name} (Custom)`, version: 1 };
+    const copy = {
+      ...structuredClone(draft),
+      id: crypto.randomUUID(),
+      name: `${draft.name} (Custom)`,
+      version: 1,
+    };
     setDraft(copy);
     setNotice("Custom copy ready to edit.");
   }
@@ -59,20 +88,28 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
     if (!draft || isBuiltInAnatomy(draft.id)) return;
     try {
       const previous = custom.find((item) => item.id === draft.id);
-      const parsed = AnatomyTemplateSchema.parse({ ...draft, version: previous ? previous.version + 1 : 1 });
+      const parsed = AnatomyTemplateSchema.parse({
+        ...draft,
+        version: previous ? previous.version + 1 : 1,
+      });
       await repo.saveAnatomyTemplate(parsed);
       await refresh();
       open(parsed);
       setNotice("Anatomy template saved.");
-    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
   }
   async function remove() {
-    if (!draft || isBuiltInAnatomy(draft.id) || !window.confirm("Delete this anatomy template?")) return;
+    if (!draft || isBuiltInAnatomy(draft.id) || !window.confirm("Delete this anatomy template?"))
+      return;
     try {
       await repo.deleteAnatomyTemplate(draft.id);
       await refresh();
       setDraft(null);
-    } catch (e) { setError(String(e)); }
+    } catch (e) {
+      setError(String(e));
+    }
   }
   function addPart(group: string) {
     if (!draft) return;
@@ -85,66 +122,354 @@ export function AnatomyStudio({ repo }: { repo: IndexedDBRepository }) {
   }
 
   const builtIn = !!draft && isBuiltInAnatomy(draft.id);
-  return <section className="anatomy" aria-label="Anatomy library">
-    <nav aria-label="Anatomy help" style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:20}}>{[["anatomy-intro","What is Anatomy?"],["anatomy-choose","Choose a body plan"],["anatomy-custom","Customize a body plan"],["anatomy-use","Use Anatomy on a character"]].map(([id,label])=><button className="anatomy-button" key={id} type="button" onClick={()=>openGuide(id)}>Help: {label}</button>)}</nav>
-    <header className="anatomy-header">
-      <div><span className="anatomy-eyebrow">CHARACTER FOUNDATIONS</span><h2>{draft ? draft.name : "Anatomy Library"}</h2>
-      <p>{draft ? "Explore the body, one part at a time." : "A shared structure for different kinds of bodies."}</p>
-      {!draft && <p>Explore uses body plans to identify body parts and track physical interactions in a scene.</p>}</div>
-      {draft ? <button className="anatomy-button" onClick={() => { setDraft(null); setError(""); setNotice(""); }}>← All body plans</button> :
-      <button className="anatomy-button anatomy-primary" onClick={() => open({ id: crypto.randomUUID(), name: "New anatomy", version: 1, parts: [emptyPart("head", "Head")] })}>+ New body plan</button>}
-    </header>
-    {draft ? <>
-      <div className="anatomy-summary"><div><span className="anatomy-badge">{builtIn ? "Built-in body plan" : "Custom body plan"}</span><span>{draft.parts.length} parts · {groupsOf(draft.parts).length} groups</span></div>
-        <button className="anatomy-button" onClick={duplicate}>Customize a copy</button>
-      </div>
-      {draft.id === "builtin-humanoid" && <aside className="anatomy-tip"><strong>One structure. Many characters.</strong><p>Humans, elves and dwarves share this body plan. Describe appearance and size on the character; customize anatomy when the body structure changes.</p></aside>}
-      {!builtIn && <label className="anatomy-field">Body plan name<input value={draft.name} onChange={e => patch({ name: e.target.value })}/></label>}
-      {!builtIn && <section className="anatomy-upload" aria-label="Body plan illustration">
-        <div><h3>Illustration</h3><p>PNG, JPEG or WebP · up to 10 MB. Larger images are scaled to a maximum of 1600 × 1600 pixels. Transparency is preserved.</p>
-        <label className="anatomy-field">{draft.imageDataUrl ? "Replace image" : "Upload image"}<input type="file" accept="image/png,image/jpeg,image/webp" disabled={uploading} onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void upload(file); }}/></label>
-        {uploading && <p role="status">Preparing image…</p>}
-        {draft.imageDataUrl && <button className="anatomy-button" disabled={uploading} onClick={() => { const { imageDataUrl: omitted, ...rest } = draft; setDraft(rest); }}>Remove image</button>}
+  return (
+    <section className="anatomy" aria-label="Anatomy library">
+      <nav
+        aria-label="Anatomy help"
+        style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 20 }}
+      >
+        {[
+          ["anatomy-intro", "What is Anatomy?"],
+          ["anatomy-choose", "Choose a body plan"],
+          ["anatomy-custom", "Customize a body plan"],
+          ["anatomy-use", "Use Anatomy on a character"],
+        ].map(([id, label]) => (
+          <button className="anatomy-button" key={id} type="button" onClick={() => openGuide(id)}>
+            Help: {label}
+          </button>
+        ))}
+      </nav>
+      <header className="anatomy-header">
+        <div>
+          <span className="anatomy-eyebrow">{t("ansCharacterFoundations")}</span>
+          <h2>{draft ? draft.name : "Anatomy Library"}</h2>
+          <p>
+            {draft
+              ? "Explore the body, one part at a time."
+              : "A shared structure for different kinds of bodies."}
+          </p>
+          {!draft && <p>{t("ansExploreUsesBodyPlans")}</p>}
         </div>
-        {draft.imageDataUrl && <span className="anatomy-card-illustration"><img src={draft.imageDataUrl} alt={`${draft.name} illustration`} /></span>}
-      </section>}
-      <div className="anatomy-workspace">
-        <nav className="anatomy-navigation" aria-label="Body parts"><div className="anatomy-nav-title">BODY REGIONS <span>Select a part to explore</span></div>
-          {groupsOf(draft.parts).map(group => <div className="anatomy-region" key={group}>
-            <button className="anatomy-region-button" aria-expanded={expanded === group} onClick={() => { setExpanded(expanded === group ? "" : group); const first = draft.parts.find(part => (part.group || "Other") === group); if (first) setPartId(first.id); }}><span>{group}</span><span>{draft.parts.filter(part => (part.group || "Other") === group).length} {expanded === group ? "−" : "+"}</span></button>
-            {expanded === group && <div className="anatomy-part-list">{draft.parts.filter(part => (part.group || "Other") === group).map(part => <button key={part.id} className="anatomy-part" aria-pressed={partId === part.id} onClick={() => setPartId(part.id)}><span>{part.label}</span><span aria-hidden="true">→</span></button>)}
-              {!builtIn && <button className="anatomy-add" onClick={() => addPart(group)}>+ Add part</button>}
-            </div>}
-          </div>)}
-        </nav>
-        <section className="anatomy-detail" aria-label="Selected body part">
-          {current ? <><span className="anatomy-eyebrow">{current.group || "Other"}</span><h3>{current.label}</h3>
-            {builtIn ? <>
-              <p>Attached to: {draft.parts.find(part => part.id === current.parentId)?.label || "Independent part"}</p>
-              {current.description && <p className="anatomy-description">{current.description}</p>}
-              <h4>Functions in a scene</h4>
-              {current.capabilities.length ? <div className="anatomy-functions">{current.capabilities.map(capability => <span className="anatomy-function" key={capability}><span aria-hidden="true">✓</span> {CAPABILITY_LABELS[capability]}</span>)}</div> : <p className="anatomy-muted">No additional action functions are configured for this part.</p>}
-            </> : <div className="anatomy-editor">
-              <label className="anatomy-field">Part name<input value={current.label} onChange={e => patchPart({ label: e.target.value })}/></label>
-              <label className="anatomy-field">Body region<input value={current.group || ""} onChange={e => patchPart({ group: e.target.value })}/></label>
-              <label className="anatomy-field">Attached to<select value={current.parentId || ""} onChange={e => patchPart({ parentId: e.target.value || undefined })}><option value="">Independent part</option>{draft.parts.filter(part => part.id !== current.id).map(part => <option key={part.id} value={part.id}>{part.label}</option>)}</select></label>
-              <p>If the attached part is lost, this part and its attached parts become unavailable too.</p>
-              <label className="anatomy-field">Description<textarea rows={3} value={current.description || ""} onChange={e => patchPart({ description: e.target.value })}/></label>
-              <fieldset className="anatomy-capabilities"><legend>Functions in a scene</legend>{CAPABILITIES.map(capability => <label key={capability}><input type="checkbox" checked={current.capabilities.includes(capability)} onChange={e => patchPart({ capabilities: e.target.checked ? [...current.capabilities, capability] : current.capabilities.filter(value => value !== capability) })}/>{CAPABILITY_LABELS[capability]}</label>)}</fieldset>
-              <button className="anatomy-button anatomy-danger" onClick={() => { patch({ parts: draft.parts.filter(part => part.id !== partId).map(part => part.parentId === partId ? { ...part, parentId: undefined } : part) }); setPartId(""); }}>Remove part</button>
-            </div>}
-          </> : <div className="anatomy-empty"><h3>Select a body part</h3><p>Choose a region on the left, then a part to see its functions.</p></div>}
-        </section>
-      </div>
-      {!builtIn && <footer className="anatomy-footer"><button className="anatomy-button anatomy-danger" disabled={uploading} onClick={() => void remove()}>Delete body plan</button><button className="anatomy-button anatomy-primary" disabled={uploading} onClick={() => void save()}>Save body plan</button></footer>}
-    </> : <>
-      <aside className="anatomy-tip"><strong>Choose a structure, not an appearance.</strong><p>A body plan defines parts and physical functions. Characters with the same structure can share a plan.</p></aside>
-      <p className="anatomy-muted">Built-in body plans are ready to use. To adapt one to your needs, open the plan you want to change and select “Customize a copy”. You can then edit and save your own version.</p>
-      <div className="anatomy-library">{templates.map(item => <button className="anatomy-card" key={item.id} onClick={() => open(item)}>
-        {(item.imageDataUrl || BUILTIN_ANATOMY_TEMPLATES.some(template => template.id === item.id)) && <span className="anatomy-card-illustration"><img src={item.imageDataUrl || `/anatomy/${item.id.replace("builtin-", "")}.png`} alt="" loading="lazy" /></span>}
-        <span className="anatomy-badge">{isBuiltInAnatomy(item.id) ? "Built-in" : "Custom"}</span><strong>{item.name}</strong><span>{item.parts.length} parts · {groupsOf(item.parts).length} regions</span><span className="anatomy-card-link">Explore body plan →</span></button>)}</div>
-    </>}
-    {error && <p className="anatomy-feedback anatomy-danger" role="alert">{error}</p>}
-    {notice && <p className="anatomy-feedback" role="status">{notice}</p>}
-  </section>;
+        {draft ? (
+          <button
+            className="anatomy-button"
+            onClick={() => {
+              setDraft(null);
+              setError("");
+              setNotice("");
+            }}
+          >
+            {t("ansAllBodyPlans")}
+          </button>
+        ) : (
+          <button
+            className="anatomy-button anatomy-primary"
+            onClick={() =>
+              open({
+                id: crypto.randomUUID(),
+                name: "New anatomy",
+                version: 1,
+                parts: [emptyPart("head", "Head")],
+              })
+            }
+          >
+            + New body plan
+          </button>
+        )}
+      </header>
+      {draft ? (
+        <>
+          <div className="anatomy-summary">
+            <div>
+              <span className="anatomy-badge">
+                {builtIn ? "Built-in body plan" : "Custom body plan"}
+              </span>
+              <span>
+                {draft.parts.length} parts · {groupsOf(draft.parts).length} groups
+              </span>
+            </div>
+            <button className="anatomy-button" onClick={duplicate}>
+              {t("ansCustomizeACopy")}
+            </button>
+          </div>
+          {draft.id === "builtin-humanoid" && (
+            <aside className="anatomy-tip">
+              <strong>{t("ansOneStructureManyCharacters")}</strong>
+              <p>
+                Humans, elves and dwarves share this body plan. Describe appearance and size on the
+                character; customize anatomy when the body structure changes.
+              </p>
+            </aside>
+          )}
+          {!builtIn && (
+            <label className="anatomy-field">
+              {t("ansBodyPlanName")}
+              <input value={draft.name} onChange={(e) => patch({ name: e.target.value })} />
+            </label>
+          )}
+          {!builtIn && (
+            <section className="anatomy-upload" aria-label="Body plan illustration">
+              <div>
+                <h3>{t("ansIllustration")}</h3>
+                <p>{t("ansPngJpegOrWebp")}</p>
+                <label className="anatomy-field">
+                  {draft.imageDataUrl ? "Replace image" : "Upload image"}
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    disabled={uploading}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      event.target.value = "";
+                      if (file) void upload(file);
+                    }}
+                  />
+                </label>
+                {uploading && <p role="status">{t("ansPreparingImage")}</p>}
+                {draft.imageDataUrl && (
+                  <button
+                    className="anatomy-button"
+                    disabled={uploading}
+                    onClick={() => {
+                      const { imageDataUrl: omitted, ...rest } = draft;
+                      setDraft(rest);
+                    }}
+                  >
+                    {t("ansRemoveImage")}
+                  </button>
+                )}
+              </div>
+              {draft.imageDataUrl && (
+                <span className="anatomy-card-illustration">
+                  <img src={draft.imageDataUrl} alt={`${draft.name} illustration`} />
+                </span>
+              )}
+            </section>
+          )}
+          <div className="anatomy-workspace">
+            <nav className="anatomy-navigation" aria-label="Body parts">
+              <div className="anatomy-nav-title">
+                {t("ansBodyRegions")}
+                <span>{t("ansSelectAPartTo")}</span>
+              </div>
+              {groupsOf(draft.parts).map((group) => (
+                <div className="anatomy-region" key={group}>
+                  <button
+                    className="anatomy-region-button"
+                    aria-expanded={expanded === group}
+                    onClick={() => {
+                      setExpanded(expanded === group ? "" : group);
+                      const first = draft.parts.find((part) => (part.group || "Other") === group);
+                      if (first) setPartId(first.id);
+                    }}
+                  >
+                    <span>{group}</span>
+                    <span>
+                      {draft.parts.filter((part) => (part.group || "Other") === group).length}{" "}
+                      {expanded === group ? "−" : "+"}
+                    </span>
+                  </button>
+                  {expanded === group && (
+                    <div className="anatomy-part-list">
+                      {draft.parts
+                        .filter((part) => (part.group || "Other") === group)
+                        .map((part) => (
+                          <button
+                            key={part.id}
+                            className="anatomy-part"
+                            aria-pressed={partId === part.id}
+                            onClick={() => setPartId(part.id)}
+                          >
+                            <span>{part.label}</span>
+                            <span aria-hidden="true">→</span>
+                          </button>
+                        ))}
+                      {!builtIn && (
+                        <button className="anatomy-add" onClick={() => addPart(group)}>
+                          + Add part
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </nav>
+            <section className="anatomy-detail" aria-label="Selected body part">
+              {current ? (
+                <>
+                  <span className="anatomy-eyebrow">{current.group || "Other"}</span>
+                  <h3>{current.label}</h3>
+                  {builtIn ? (
+                    <>
+                      <p>
+                        Attached to:{" "}
+                        {draft.parts.find((part) => part.id === current.parentId)?.label ||
+                          "Independent part"}
+                      </p>
+                      {current.description && (
+                        <p className="anatomy-description">{current.description}</p>
+                      )}
+                      <h4>{t("ansFunctionsInAScene")}</h4>
+                      {current.capabilities.length ? (
+                        <div className="anatomy-functions">
+                          {current.capabilities.map((capability) => (
+                            <span className="anatomy-function" key={capability}>
+                              <span aria-hidden="true">✓</span> {CAPABILITY_LABELS[capability]}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="anatomy-muted">{t("ansNoAdditionalActionFunctions")}</p>
+                      )}
+                    </>
+                  ) : (
+                    <div className="anatomy-editor">
+                      <label className="anatomy-field">
+                        {t("ansPartName")}
+                        <input
+                          value={current.label}
+                          onChange={(e) => patchPart({ label: e.target.value })}
+                        />
+                      </label>
+                      <label className="anatomy-field">
+                        {t("ansBodyRegion")}
+                        <input
+                          value={current.group || ""}
+                          onChange={(e) => patchPart({ group: e.target.value })}
+                        />
+                      </label>
+                      <label className="anatomy-field">
+                        {t("ansAttachedTo")}
+                        <select
+                          value={current.parentId || ""}
+                          onChange={(e) => patchPart({ parentId: e.target.value || undefined })}
+                        >
+                          <option value="">{t("ansIndependentPart")}</option>
+                          {draft.parts
+                            .filter((part) => part.id !== current.id)
+                            .map((part) => (
+                              <option key={part.id} value={part.id}>
+                                {part.label}
+                              </option>
+                            ))}
+                        </select>
+                      </label>
+                      <p>{t("ansIfTheAttachedPart")}</p>
+                      <label className="anatomy-field">
+                        {t("osDescription")}
+                        <textarea
+                          rows={3}
+                          value={current.description || ""}
+                          onChange={(e) => patchPart({ description: e.target.value })}
+                        />
+                      </label>
+                      <fieldset className="anatomy-capabilities">
+                        <legend>{t("ansFunctionsInAScene")}</legend>
+                        {CAPABILITIES.map((capability) => (
+                          <label key={capability}>
+                            <input
+                              type="checkbox"
+                              checked={current.capabilities.includes(capability)}
+                              onChange={(e) =>
+                                patchPart({
+                                  capabilities: e.target.checked
+                                    ? [...current.capabilities, capability]
+                                    : current.capabilities.filter((value) => value !== capability),
+                                })
+                              }
+                            />
+                            {CAPABILITY_LABELS[capability]}
+                          </label>
+                        ))}
+                      </fieldset>
+                      <button
+                        className="anatomy-button anatomy-danger"
+                        onClick={() => {
+                          patch({
+                            parts: draft.parts
+                              .filter((part) => part.id !== partId)
+                              .map((part) =>
+                                part.parentId === partId ? { ...part, parentId: undefined } : part,
+                              ),
+                          });
+                          setPartId("");
+                        }}
+                      >
+                        {t("ansRemovePart")}
+                      </button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="anatomy-empty">
+                  <h3>{t("ansSelectABodyPart")}</h3>
+                  <p>{t("ansChooseARegionOn")}</p>
+                </div>
+              )}
+            </section>
+          </div>
+          {!builtIn && (
+            <footer className="anatomy-footer">
+              <button
+                className="anatomy-button anatomy-danger"
+                disabled={uploading}
+                onClick={() => void remove()}
+              >
+                {t("ansDeleteBodyPlan")}
+              </button>
+              <button
+                className="anatomy-button anatomy-primary"
+                disabled={uploading}
+                onClick={() => void save()}
+              >
+                {t("ansSaveBodyPlan")}
+              </button>
+            </footer>
+          )}
+        </>
+      ) : (
+        <>
+          <aside className="anatomy-tip">
+            <strong>{t("ansChooseAStructureNot")}</strong>
+            <p>{t("ansABodyPlanDefines")}</p>
+          </aside>
+          <p className="anatomy-muted">{t("ansBuiltInBodyPlans")}</p>
+          <div className="anatomy-library">
+            {templates.map((item) => (
+              <button className="anatomy-card" key={item.id} onClick={() => open(item)}>
+                {(item.imageDataUrl ||
+                  BUILTIN_ANATOMY_TEMPLATES.some((template) => template.id === item.id)) && (
+                  <span className="anatomy-card-illustration">
+                    <img
+                      src={item.imageDataUrl || `/anatomy/${item.id.replace("builtin-", "")}.png`}
+                      alt=""
+                      loading="lazy"
+                    />
+                  </span>
+                )}
+                <span className="anatomy-badge">
+                  {isBuiltInAnatomy(item.id) ? "Built-in" : "Custom"}
+                </span>
+                <strong>{item.name}</strong>
+                <span>
+                  {item.parts.length} parts · {groupsOf(item.parts).length} regions
+                </span>
+                <span className="anatomy-card-link">{t("ansExploreBodyPlan")}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+      {error && (
+        <p className="anatomy-feedback anatomy-danger" role="alert">
+          {error}
+        </p>
+      )}
+      {notice && (
+        <p className="anatomy-feedback" role="status">
+          {notice}
+        </p>
+      )}
+    </section>
+  );
 }

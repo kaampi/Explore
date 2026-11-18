@@ -47,57 +47,57 @@ const TEMPERAMENTS: Temperament[] = [
     keys: ["wary", "cautious", "guarded", "vaksam", "försiktig", "forsiktig"],
     mood: "wary",
     core: "slow to offer anything personal",
-    trust: "Trust is earned in small steps, and silence is not an invitation."
+    trust: "Trust is earned in small steps, and silence is not an invitation.",
   },
   {
     id: "quiet",
     keys: ["quiet", "reserved", "still", "tyst", "fåordig", "faordig"],
     mood: "quiet",
     core: "content to listen longer than most people can stand",
-    trust: "Warmth shows up late, and only for someone already let in."
+    trust: "Warmth shows up late, and only for someone already let in.",
   },
   {
     id: "dry",
     keys: ["dry", "witty", "sardonic", "torr", "kvick"],
     mood: "dry",
     core: "quick to notice absurdity and slow to explain the joke",
-    trust: "Affection sounds like teasing, and it stops if someone is actually hurt."
+    trust: "Affection sounds like teasing, and it stops if someone is actually hurt.",
   },
   {
     id: "warm",
     keys: ["warm", "kind", "gentle", "varm", "snäll", "snall", "vänlig"],
     mood: "warm",
     core: "easy to be around and hard to fool",
-    trust: "People get a second chance, and a third has to be earned."
+    trust: "People get a second chance, and a third has to be earned.",
   },
   {
     id: "direct",
     keys: ["direct", "blunt", "frank", "rak", "direkt"],
     mood: "direct",
     core: "unwilling to dress a fact up",
-    trust: "Rudeness is not honesty, but honesty still arrives without a cushion."
+    trust: "Rudeness is not honesty, but honesty still arrives without a cushion.",
   },
   {
     id: "bright",
     keys: ["bright", "cheerful", "glad", "gladlynt", "munter"],
     mood: "bright",
     core: "inclined to make a room lighter without taking it over",
-    trust: "The cheer is real, and it is not a request to be cheered up in return."
+    trust: "The cheer is real, and it is not a request to be cheered up in return.",
   },
   {
     id: "stern",
     keys: ["stern", "severe", "strict", "sträng", "strang"],
     mood: "stern",
     core: "hard to impress and harder to rush",
-    trust: "Approval is quiet, and disappointment is quieter."
+    trust: "Approval is quiet, and disappointment is quieter.",
   },
   {
     id: "cheeky",
     keys: ["cheeky", "playful", "mischievous", "lekfull", "busig"],
     mood: "cheeky",
     core: "unable to leave a straight line entirely straight",
-    trust: "The joke stops at the edge of someone's actual fear."
-  }
+    trust: "The joke stops at the edge of someone's actual fear.",
+  },
 ];
 
 export const SPEECH_STYLES = [
@@ -105,38 +105,38 @@ export const SPEECH_STYLES = [
     id: "clipped",
     label: "Clipped",
     line: "Speech is clipped. Few words, and no padding.",
-    keys: ["korthugget", "korthuggen", "clipped", "terse", "curt"]
+    keys: ["korthugget", "korthuggen", "clipped", "terse", "curt"],
   },
   {
     id: "rambling",
     label: "Rambling",
     line: "Speech wanders. One thought picks up the next before the first one lands.",
-    keys: ["svävande", "svavande", "rambling", "wandering", "meandering"]
+    keys: ["svävande", "svavande", "rambling", "wandering", "meandering"],
   },
   {
     id: "precise",
     label: "Precise",
     line: "Speech is exact. Each word is chosen.",
-    keys: ["precise", "exakt"]
+    keys: ["precise", "exakt"],
   },
   {
     id: "plain",
     label: "Plain",
     line: "Speech is plain. Nothing is dressed up.",
-    keys: ["plain", "enkel"]
+    keys: ["plain", "enkel"],
   },
   {
     id: "formal",
     label: "Formal",
     line: "Speech is formal. Full sentences, and no slang.",
-    keys: ["formal", "formell"]
+    keys: ["formal", "formell"],
   },
   {
     id: "halting",
     label: "Halting",
     line: "Speech stops and starts. The next word is not always ready.",
-    keys: ["halting", "hackig", "stammande"]
-  }
+    keys: ["halting", "hackig", "stammande"],
+  },
 ] as const;
 
 export type SpeechStyleId = (typeof SPEECH_STYLES)[number]["id"];
@@ -157,24 +157,79 @@ const ROLES: { keys: string[]; tag: string }[] = [
   { keys: ["musician", "musiker"], tag: "musician" },
   { keys: ["librarian", "bibliotekarie"], tag: "librarian" },
   { keys: ["cook", "kock", "chef"], tag: "cook" },
-  { keys: ["dockworker", "hamnarbetare"], tag: "dockworker" }
+  { keys: ["dockworker", "hamnarbetare"], tag: "dockworker" },
 ];
 
-const GIVEN_SHE = ["Lena", "Mira", "Sable", "Nora", "Edith", "Freya", "Inez", "Ruth", "Anouk", "Petra", "Hana", "Ylva"];
-const GIVEN_HE = ["Elias", "Marek", "Jonas", "Oscar", "Henrik", "Tomas", "Nils", "Pavel", "Adrian", "Leo", "Soren", "Amir"];
+const GIVEN_SHE = [
+  "Lena",
+  "Mira",
+  "Sable",
+  "Nora",
+  "Edith",
+  "Freya",
+  "Inez",
+  "Ruth",
+  "Anouk",
+  "Petra",
+  "Hana",
+  "Ylva",
+];
+const GIVEN_HE = [
+  "Elias",
+  "Marek",
+  "Jonas",
+  "Oscar",
+  "Henrik",
+  "Tomas",
+  "Nils",
+  "Pavel",
+  "Adrian",
+  "Leo",
+  "Soren",
+  "Amir",
+];
 const GIVEN_THEY = ["Noel", "Remy", "Mika", "Ari", "Soren", "Ash", "Jules", "Robin"];
 const MIDDLES = ["Lee", "Jean", "Ann", "Jo", "Marie"];
-const FAMILIES = ["Holm", "Berg", "Voss", "Keller", "Lind", "Moreau", "Adler", "Quinn", "Sato", "Navarro", "Okonkwo", "Rahman"];
+const FAMILIES = [
+  "Holm",
+  "Berg",
+  "Voss",
+  "Keller",
+  "Lind",
+  "Moreau",
+  "Adler",
+  "Quinn",
+  "Sato",
+  "Navarro",
+  "Okonkwo",
+  "Rahman",
+];
 
-const BUILDS = ["slight", "athletic", "stocky", "broad-shouldered", "petite", "tall and spare", "thick through the middle"];
-const HAIR = ["dark hair", "silvering hair", "close-cropped hair", "curly hair", "straight black hair", "auburn hair", "blonde hair"];
+const BUILDS = [
+  "slight",
+  "athletic",
+  "stocky",
+  "broad-shouldered",
+  "petite",
+  "tall and spare",
+  "thick through the middle",
+];
+const HAIR = [
+  "dark hair",
+  "silvering hair",
+  "close-cropped hair",
+  "curly hair",
+  "straight black hair",
+  "auburn hair",
+  "blonde hair",
+];
 const EYES = ["grey eyes", "dark eyes", "pale eyes", "green eyes", "brown eyes"];
 const MARKS = [
   "A thin scar through one eyebrow.",
   "Weathered hands.",
   "A calm, unlined face.",
   "A crooked nose.",
-  "Freckles across the nose."
+  "Freckles across the nose.",
 ];
 
 const BUILD_HINTS: { keys: string[]; value: string }[] = [
@@ -184,18 +239,21 @@ const BUILD_HINTS: { keys: string[]; value: string }[] = [
   { keys: ["stocky", "kraftig"], value: "stocky" },
   { keys: ["athletic", "atletisk"], value: "athletic" },
   { keys: ["tall and spare", "tall", "lång", "lang"], value: "tall and spare" },
-  { keys: ["slight", "späd", "spad"], value: "slight" }
+  { keys: ["slight", "späd", "spad"], value: "slight" },
 ];
 
 const HAIR_HINTS: { keys: string[]; value: string }[] = [
   { keys: ["close-cropped", "snaggad"], value: "close-cropped hair" },
-  { keys: ["auburn", "red hair", "rödhår", "rodhar", "rött hår", "rott har"], value: "auburn hair" },
+  {
+    keys: ["auburn", "red hair", "rödhår", "rodhar", "rött hår", "rott har"],
+    value: "auburn hair",
+  },
   { keys: ["blonde", "blond"], value: "blonde hair" },
   { keys: ["curly", "lockig"], value: "curly hair" },
   { keys: ["grey hair", "gray hair", "grått hår", "gratt har"], value: "grey hair" },
   { keys: ["silver"], value: "silvering hair" },
   { keys: ["black hair", "svart hår", "svart har"], value: "straight black hair" },
-  { keys: ["dark hair", "mörkt hår", "morkt har"], value: "dark hair" }
+  { keys: ["dark hair", "mörkt hår", "morkt har"], value: "dark hair" },
 ];
 
 const EYE_HINTS: { keys: string[]; value: string }[] = [
@@ -203,14 +261,14 @@ const EYE_HINTS: { keys: string[]; value: string }[] = [
   { keys: ["grey eyes", "gray eyes", "grå ögon", "gra ogon"], value: "grey eyes" },
   { keys: ["brown eyes", "bruna ögon", "bruna ogon"], value: "brown eyes" },
   { keys: ["pale eyes"], value: "pale eyes" },
-  { keys: ["dark eyes", "mörka ögon", "morka ogon"], value: "dark eyes" }
+  { keys: ["dark eyes", "mörka ögon", "morka ogon"], value: "dark eyes" },
 ];
 
 const MARK_HINTS: { keys: string[]; value: string }[] = [
   { keys: ["scarred hands", "ärriga händer", "arriga hander"], value: "Scarred hands." },
   { keys: ["freckle", "fräkn", "frakn"], value: "Freckles across the nose." },
   { keys: ["crooked nose", "sned näsa", "sned nasa"], value: "A crooked nose." },
-  { keys: ["scar", "ärr", "arr"], value: "A thin scar through one eyebrow." }
+  { keys: ["scar", "ärr", "arr"], value: "A thin scar through one eyebrow." },
 ];
 
 function mulberry32(seed: number): () => number {
@@ -239,7 +297,10 @@ function hasKey(text: string, key: string): boolean {
   return new RegExp(`(?:^|[^\\p{L}])${escaped}(?=[^\\p{L}]|$)`, "iu").test(text);
 }
 
-function firstMatch<T extends { keys: readonly string[] }>(text: string, rows: readonly T[]): T | undefined {
+function firstMatch<T extends { keys: readonly string[] }>(
+  text: string,
+  rows: readonly T[],
+): T | undefined {
   let best: { row: T; at: number } | undefined;
   for (const row of rows) {
     for (const key of row.keys) {
@@ -262,10 +323,22 @@ function allTags(text: string): string[] {
 function readPronoun(brief: string): string | undefined {
   const text = haystack(brief);
   if (hasKey(text, "they") || hasKey(text, "them") || hasKey(text, "hen")) return "they";
-  if (hasKey(text, "she") || hasKey(text, "her") || hasKey(text, "woman") || hasKey(text, "hon") || hasKey(text, "kvinna")) {
+  if (
+    hasKey(text, "she") ||
+    hasKey(text, "her") ||
+    hasKey(text, "woman") ||
+    hasKey(text, "hon") ||
+    hasKey(text, "kvinna")
+  ) {
     return "she";
   }
-  if (hasKey(text, "he") || hasKey(text, "him") || hasKey(text, "man") || hasKey(text, "han") || hasKey(text, "man")) {
+  if (
+    hasKey(text, "he") ||
+    hasKey(text, "him") ||
+    hasKey(text, "man") ||
+    hasKey(text, "han") ||
+    hasKey(text, "man")
+  ) {
     return "he";
   }
   if (hasKey(text, "it") || hasKey(text, "den")) return "it";
@@ -309,7 +382,9 @@ function givenPool(pronoun: string): readonly string[] {
 }
 
 function personalityFor(name: string, temperament: Temperament, observant: boolean): string {
-  const second = observant ? "Notices what changed in a room, and rarely mentions it." : temperament.trust;
+  const second = observant
+    ? "Notices what changed in a room, and rarely mentions it."
+    : temperament.trust;
   return `${name} is ${temperament.core}. ${second}`;
 }
 
@@ -356,30 +431,35 @@ export function readCastingCues(brief: string): CastingCues {
     ...(hair ? { hair } : {}),
     ...(eyes ? { eyes } : {}),
     ...(mark ? { mark } : {}),
-    tags: allTags(text)
+    tags: allTags(text),
   };
 }
 
 export function cuesMentionCasting(cues: CastingCues): boolean {
   return Boolean(
     cues.speechLine ||
-      cues.pronoun ||
-      cues.approximateAge != null ||
-      cues.mood ||
-      cues.observant ||
-      cues.build ||
-      cues.hair ||
-      cues.eyes ||
-      cues.mark ||
-      cues.tags.length > 0
+    cues.pronoun ||
+    cues.approximateAge != null ||
+    cues.mood ||
+    cues.observant ||
+    cues.build ||
+    cues.hair ||
+    cues.eyes ||
+    cues.mark ||
+    cues.tags.length > 0,
   );
 }
 
 export function generateCharacter(request: CharacterGeneratorRequest): GeneratedCharacter {
   const text = haystack(request.brief);
   const rng = mulberry32(request.seed);
-  const pronoun = (request.pronoun?.trim() || readPronoun(text) || (rng() < 0.5 ? "she" : "he")).toLowerCase();
-  const approximateAge = clampAge(request.approximateAge) ?? readAge(text) ?? 22 + Math.floor(rng() * 37);
+  const pronoun = (
+    request.pronoun?.trim() ||
+    readPronoun(text) ||
+    (rng() < 0.5 ? "she" : "he")
+  ).toLowerCase();
+  const approximateAge =
+    clampAge(request.approximateAge) ?? readAge(text) ?? 22 + Math.floor(rng() * 37);
   const name = pick(rng, givenPool(pronoun));
   const middleName = rng() < 0.25 ? pick(rng, MIDDLES) : "";
   const familyName = pick(rng, FAMILIES);
@@ -409,12 +489,15 @@ export function generateCharacter(request: CharacterGeneratorRequest): Generated
     mood: temperament.mood,
     speech: speech.line,
     personality: personalityFor(name, temperament, observant),
-    tags: tags.slice(0, 3)
+    tags: tags.slice(0, 3),
   };
 }
 
 /** Archive card. Same fields Save writes from the character sheet. */
-export function characterTemplateFromGenerated(generated: GeneratedCharacter, id?: string): CharacterTemplate {
+export function characterTemplateFromGenerated(
+  generated: GeneratedCharacter,
+  id?: string,
+): CharacterTemplate {
   return newCharacterTemplate({
     ...(id ? { id } : {}),
     name: generated.name,
@@ -429,6 +512,6 @@ export function characterTemplateFromGenerated(generated: GeneratedCharacter, id
     tags: generated.tags,
     position: "",
     scenario: "",
-    source: "player"
+    source: "player",
   });
 }

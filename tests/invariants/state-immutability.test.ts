@@ -17,8 +17,8 @@ function makeSession(): Session {
     characters: {
       emma: {
         position: { value: "table", lock: "unlocked" },
-        mood: { value: "angry", lock: "player_locked" }
-      }
+        mood: { value: "angry", lock: "player_locked" },
+      },
     },
     relationships: {},
     layers: [],
@@ -26,7 +26,7 @@ function makeSession(): Session {
     conversation: [],
     events: [],
     snapshots: [],
-    diagnostics: []
+    diagnostics: [],
   };
 }
 
@@ -73,11 +73,10 @@ describe("Invariant: UI may not mutate canonical state without going through Sta
       path: "characters.emma.position",
       value: "bar",
       source: "player_manual_state",
-      expectedStateVersion: 0
+      expectedStateVersion: 0,
     });
 
     expect(result.committed).toBe(true);
     expect(engine.getSession().characters.emma?.position.value).toBe("bar");
   });
 });
-

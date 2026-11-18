@@ -37,7 +37,7 @@ const THEY_FALLBACK = {
   them: "them",
   their: "their",
   theirs: "theirs",
-  themselves: "themselves"
+  themselves: "themselves",
 } as const;
 
 function matchCase(token: string, replacement: string): string {
@@ -59,11 +59,14 @@ export function applyTraitTokens(text: string, voice?: TraitVoice): string {
   return text
     .replace(/\{\{char\}\}/gi, () => name || "they")
     .replace(/\{\{(they|them|their|theirs|themselves)\}\}/gi, (full, key: string) =>
-      matchCase(full.replace(/[{}]/g, ""), forms[key.toLowerCase() as keyof typeof forms])
+      matchCase(full.replace(/[{}]/g, ""), forms[key.toLowerCase() as keyof typeof forms]),
     );
 }
 
-export function attributeRange(def: { min?: number | undefined; max?: number | undefined }): { min: number; max: number } {
+export function attributeRange(def: { min?: number | undefined; max?: number | undefined }): {
+  min: number;
+  max: number;
+} {
   const min = typeof def.min === "number" && Number.isFinite(def.min) ? def.min : 0;
   const max = typeof def.max === "number" && Number.isFinite(def.max) ? def.max : 100;
   if (max <= min) return { min: 0, max: 100 };
@@ -74,7 +77,10 @@ export function attributeRange(def: { min?: number | undefined; max?: number | u
  * Band against this field's own min–max. Low is the bottom 30% of the
  * range, high the top 30% (70–100 on a 0–100 scale).
  */
-export function traitBand(value: number, def: { min?: number | undefined; max?: number | undefined }): TraitBand {
+export function traitBand(
+  value: number,
+  def: { min?: number | undefined; max?: number | undefined },
+): TraitBand {
   const { min, max } = attributeRange(def);
   if (value <= min) return "low";
   if (value >= max) return "high";
@@ -85,13 +91,15 @@ export function traitBand(value: number, def: { min?: number | undefined; max?: 
 }
 
 /** The number field marked as this rule-set's closeness/desire signal. */
-export function desireAttribute(attributes: readonly AttributeDef[] | undefined): AttributeDef | undefined {
+export function desireAttribute(
+  attributes: readonly AttributeDef[] | undefined,
+): AttributeDef | undefined {
   return (attributes ?? []).find((def) => def.kind === "number" && def.role === "desire");
 }
 
 export function liveTraitBand(
   def: { min?: number | undefined; max?: number | undefined; kind?: AttributeDef["kind"] },
-  value: string | number
+  value: string | number,
 ): TraitBand | undefined {
   if (def.kind === "text") return undefined;
   const n = numericValue(value);
@@ -102,7 +110,7 @@ export function liveTraitBand(
 /** Live band of the marked desire field, or undefined if none is marked or the value is missing. */
 export function desireBandFromStats(
   attributes: readonly AttributeDef[] | undefined,
-  stats: Record<string, { value: string | number }> | undefined
+  stats: Record<string, { value: string | number }> | undefined,
 ): TraitBand | undefined {
   const def = desireAttribute(attributes);
   if (!def || !stats) return undefined;
@@ -124,7 +132,11 @@ function numericValue(value: string | number): number | undefined {
  * What the model should treat as true at this live value.
  * Prefers high/low/mid authoring; falls back to a single `description`.
  */
-export function liveTraitBody(def: MeaningFields, value: string | number, voice?: TraitVoice): string | undefined {
+export function liveTraitBody(
+  def: MeaningFields,
+  value: string | number,
+  voice?: TraitVoice,
+): string | undefined {
   const fallback = text(def.description);
   const pick = (() => {
     if (def.kind === "text") return fallback || undefined;
@@ -140,7 +152,8 @@ export function liveTraitBody(def: MeaningFields, value: string | number, voice?
     if (band === "high") return high || fallback || undefined;
     if (band === "low") return low || fallback || undefined;
     if (mid) return mid;
-    if (high && low) return `high would mean ${high.replace(/\.*$/, "")}. low would mean ${low.replace(/\.*$/, "")}.`;
+    if (high && low)
+      return `high would mean ${high.replace(/\.*$/, "")}. low would mean ${low.replace(/\.*$/, "")}.`;
     return high || low || fallback || undefined;
   })();
   return pick ? applyTraitTokens(pick, voice) : undefined;
@@ -158,7 +171,11 @@ export function liveTraitTag(def: MeaningFields, value: string | number): string
 }
 
 /** Cast / Adventure caption for the current number. */
-export function liveTraitNote(def: MeaningFields, value: string | number, voice?: TraitVoice): string | undefined {
+export function liveTraitNote(
+  def: MeaningFields,
+  value: string | number,
+  voice?: TraitVoice,
+): string | undefined {
   const body = liveTraitBody(def, value, voice);
   if (!body) return undefined;
   const n = numericValue(value);
@@ -169,7 +186,12 @@ export function liveTraitNote(def: MeaningFields, value: string | number, voice?
 }
 
 /** Required state-summary line. */
-export function liveTraitLine(who: string, def: MeaningFields, value: string | number, voice?: TraitVoice): string | undefined {
+export function liveTraitLine(
+  who: string,
+  def: MeaningFields,
+  value: string | number,
+  voice?: TraitVoice,
+): string | undefined {
   const body = liveTraitBody(def, value, voice ?? { char: who });
   if (!body) return undefined;
   const n = numericValue(value);

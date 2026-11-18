@@ -32,7 +32,11 @@ function getByPath(obj: unknown, path: string): unknown {
     current = (current as Record<string, unknown>)[part];
   }
   // Lockable fields are stored as {value, lock} — unwrap for comparison.
-  if (current !== null && typeof current === "object" && "value" in (current as Record<string, unknown>)) {
+  if (
+    current !== null &&
+    typeof current === "object" &&
+    "value" in (current as Record<string, unknown>)
+  ) {
     return (current as { value: unknown }).value;
   }
   return current;
@@ -41,7 +45,7 @@ function getByPath(obj: unknown, path: string): unknown {
 export function evaluateTrigger(
   session: Session,
   trigger: string | undefined,
-  hints: TriggerHints = {}
+  hints: TriggerHints = {},
 ): boolean {
   if (!trigger) return false;
   const named = trigger.trim();
@@ -71,12 +75,16 @@ export function evaluateTrigger(
  *    top of the above — never active while unsatisfied, whatever the
  *    layer's own trigger/keyword state says.
  */
-export function isEffectivelyActive(session: Session, layer: Layer, hints: TriggerHints = {}): boolean {
+export function isEffectivelyActive(
+  session: Session,
+  layer: Layer,
+  hints: TriggerHints = {},
+): boolean {
   if (layer.spent) return false;
   if (!storyFlagsSatisfied(session, layer.requiresFlags, layer.requiresAbsentFlags)) return false;
   if (layer.once) {
     if (!layer.active) return false;
-    if (!layer.trigger && !(layer.keywords?.length)) return false;
+    if (!layer.trigger && !layer.keywords?.length) return false;
     if (layer.trigger && !evaluateTrigger(session, layer.trigger, hints)) return false;
     if (layer.keywords?.length && !tokenKnownInPlay(session, layer.keywords)) return false;
     return true;
@@ -97,7 +105,9 @@ export function getEffectiveActiveLayers(session: Session, hints: TriggerHints =
 }
 
 export function onceLayersFiring(session: Session, hints: TriggerHints = {}): Layer[] {
-  return session.layers.filter((layer) => layer.once && !layer.spent && isEffectivelyActive(session, layer, hints));
+  return session.layers.filter(
+    (layer) => layer.once && !layer.spent && isEffectivelyActive(session, layer, hints),
+  );
 }
 
 function priorityFor(layer: Layer): number {
@@ -119,7 +129,7 @@ function priorityFor(layer: Layer): number {
 export function buildLayerBlocks(session: Session, hints: TriggerHints = {}): ContextBlock[] {
   let importedTokens = 0;
   return getEffectiveActiveLayers(session, hints)
-    .filter(layer => {
+    .filter((layer) => {
       if (!layer.loreSource) return true;
       const tokens = estimateTokens(layer.content);
       if (importedTokens + tokens > 1200) return false;
@@ -132,7 +142,9 @@ export function buildLayerBlocks(session: Session, hints: TriggerHints = {}): Co
       source: "active_layer" as const,
       content: layer.content,
       priority: priorityFor(layer),
-      required: !layer.loreSource && ((layer.type === "core" && !layerHasKeywordGate(layer)) || Boolean(layer.once))
+      required:
+        !layer.loreSource &&
+        ((layer.type === "core" && !layerHasKeywordGate(layer)) || Boolean(layer.once)),
     }));
 }
 
@@ -146,4 +158,3 @@ function isDuplicatePlaceLayer(session: Session, layer: Layer): boolean {
   const note = session.scene?.note?.trim();
   return Boolean((brief && text === brief) || (note && text === note));
 }
-

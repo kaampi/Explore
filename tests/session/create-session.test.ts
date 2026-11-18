@@ -3,7 +3,7 @@ import {
   createSessionFromSetup,
   slugifyCharacterId,
   displayCharacterName,
-  primaryCharacter
+  primaryCharacter,
 } from "@session/createSession";
 
 describe("createSessionFromSetup", () => {
@@ -20,12 +20,12 @@ describe("createSessionFromSetup", () => {
             name: "Dr. Chen",
             personality: "Precise, tired, still kind.",
             mood: "weary",
-            position: "at the table"
+            position: "at the table",
           },
-          { name: "", personality: "ignored", mood: "", position: "" }
-        ]
+          { name: "", personality: "ignored", mood: "", position: "" },
+        ],
       },
-      "scene-1"
+      "scene-1",
     );
 
     expect(session.id).toBe("scene-1");
@@ -35,9 +35,13 @@ describe("createSessionFromSetup", () => {
     expect(session.characters["dr-chen"]?.mood.value).toBe("weary");
     expect(session.layers).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ type: "core", content: "Precise, tired, still kind.", active: true }),
-        expect.objectContaining({ type: "environment", content: "Everyone talks quieter here." })
-      ])
+        expect.objectContaining({
+          type: "core",
+          content: "Precise, tired, still kind.",
+          active: true,
+        }),
+        expect.objectContaining({ type: "environment", content: "Everyone talks quieter here." }),
+      ]),
     );
     expect(primaryCharacter(session)).toEqual({ id: "dr-chen", name: "Dr. Chen" });
   });
@@ -56,19 +60,20 @@ describe("createSessionFromSetup", () => {
             personality: "Slow to offer anything personal.",
             speech: "Speech is clipped. Few words, and no padding.",
             mood: "wary",
-            position: "here"
-          }
-        ]
+            position: "here",
+          },
+        ],
       },
-      "scene-speech"
+      "scene-speech",
     );
     expect(session.layers).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           type: "core",
-          content: "Slow to offer anything personal.\n\nHow they speak: Speech is clipped. Few words, and no padding."
-        })
-      ])
+          content:
+            "Slow to offer anything personal.\n\nHow they speak: Speech is clipped. Few words, and no padding.",
+        }),
+      ]),
     );
   });
 
@@ -83,20 +88,27 @@ describe("createSessionFromSetup", () => {
         storyTitle: "The War of the Ring",
         storyPremise:
           "In the Second Age, the Dark Lord Sauron secretly forged the One Ring in order to control all the other Rings of Power.",
-        characters: [{ name: "Frodo", personality: "Kind, reluctant.", mood: "uneasy", position: "by the hearth" }]
+        characters: [
+          {
+            name: "Frodo",
+            personality: "Kind, reluctant.",
+            mood: "uneasy",
+            position: "by the hearth",
+          },
+        ],
       },
-      "lotr-1"
+      "lotr-1",
     );
 
     expect(session.story).toEqual({
       title: "The War of the Ring",
       premise:
-        "In the Second Age, the Dark Lord Sauron secretly forged the One Ring in order to control all the other Rings of Power."
+        "In the Second Age, the Dark Lord Sauron secretly forged the One Ring in order to control all the other Rings of Power.",
     });
     expect(session.layers).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ type: "environment", content: "A round green door." })
-      ])
+        expect.objectContaining({ type: "environment", content: "A round green door." }),
+      ]),
     );
     expect(session.layers.some((layer) => layer.content.includes("Sauron"))).toBe(false);
   });
@@ -112,19 +124,21 @@ describe("createSessionFromSetup", () => {
         placeLore: [
           {
             content: "A locked cellar door sits behind the bar.",
-            keywords: ["cellar", "källare"]
-          }
+            keywords: ["cellar", "källare"],
+          },
         ],
-        characters: [{ name: "Emma", personality: "Dry.", mood: "reserved", position: "behind the bar" }]
+        characters: [
+          { name: "Emma", personality: "Dry.", mood: "reserved", position: "behind the bar" },
+        ],
       },
-      "aurora-1"
+      "aurora-1",
     );
 
     const lore = session.layers.find((layer) => layer.content.includes("cellar door"));
     expect(lore).toMatchObject({
       type: "environment",
       active: true,
-      keywords: ["cellar", "källare"]
+      keywords: ["cellar", "källare"],
     });
   });
 
@@ -141,15 +155,15 @@ describe("createSessionFromSetup", () => {
         voiceTitle: "Tolkien-äventyr",
         voiceInstruction: "Du är Spelledare. Berättarrösten är storslagen.",
         model: "stheno:latest",
-        characters: [{ name: "Frodo", personality: "", mood: "", position: "" }]
+        characters: [{ name: "Frodo", personality: "", mood: "", position: "" }],
       },
-      "lotr-2"
+      "lotr-2",
     );
 
     expect(session.runtime.model).toBe("stheno:latest");
     expect(session.voice).toEqual({
       title: "Tolkien-äventyr",
-      instruction: "Du är Spelledare. Berättarrösten är storslagen."
+      instruction: "Du är Spelledare. Berättarrösten är storslagen.",
     });
     expect(session.story?.premise).toContain("Ring");
   });
@@ -171,15 +185,25 @@ describe("createSessionFromSetup", () => {
               midMeaning: "",
               options: [],
               maxShift: 0,
-              id: "wisdom", name: "Visdom", kind: "number", min: 1, max: 18, description: "" },
+              id: "wisdom",
+              name: "Visdom",
+              kind: "number",
+              min: 1,
+              max: 18,
+              description: "",
+            },
             {
               highMeaning: "",
               lowMeaning: "",
               midMeaning: "",
               options: [],
               maxShift: 0,
-              id: "oath", name: "Ed", kind: "text", description: "" }
-          ]
+              id: "oath",
+              name: "Ed",
+              kind: "text",
+              description: "",
+            },
+          ],
         },
         characters: [
           {
@@ -187,17 +211,17 @@ describe("createSessionFromSetup", () => {
             personality: "",
             mood: "wary",
             position: "by the door",
-            stats: { wisdom: "14", oath: "keep the ring hidden" }
-          }
-        ]
+            stats: { wisdom: "14", oath: "keep the ring hidden" },
+          },
+        ],
       },
-      "ruleset-1"
+      "ruleset-1",
     );
 
     expect(session.ruleset?.name).toBe("Klassisk fantasy");
     expect(session.characters.emma?.stats).toEqual({
       wisdom: { value: 14, lock: "unlocked" },
-      oath: { value: "keep the ring hidden", lock: "unlocked" }
+      oath: { value: "keep the ring hidden", lock: "unlocked" },
     });
   });
 
@@ -217,16 +241,16 @@ describe("createSessionFromSetup", () => {
             position: "Emma's room",
             trust: "100",
             familiarity: "100",
-            tension: "0"
-          }
-        ]
+            tension: "0",
+          },
+        ],
       },
-      "meters-1"
+      "meters-1",
     );
     expect(session.relationships.emma).toEqual({
       trust: { value: 100, lock: "unlocked" },
       familiarity: { value: 100, lock: "unlocked" },
-      tension: { value: 0, lock: "unlocked" }
+      tension: { value: 0, lock: "unlocked" },
     });
   });
 
@@ -244,14 +268,14 @@ describe("createSessionFromSetup", () => {
             id: "ring",
             name: "The One Ring",
             note: "A plain gold band.",
-            tags: ["Fantasy"]
-          }
-        ]
+            tags: ["Fantasy"],
+          },
+        ],
       },
-      "objects-1"
+      "objects-1",
     );
     expect(session.objects).toEqual([
-      { id: "ring", name: "The One Ring", note: "A plain gold band.", tags: ["Fantasy"] }
+      { id: "ring", name: "The One Ring", note: "A plain gold band.", tags: ["Fantasy"] },
     ]);
   });
 
@@ -265,10 +289,10 @@ describe("createSessionFromSetup", () => {
         placeNote: "",
         characters: [
           { name: "Emma", personality: "", mood: "", position: "", pronoun: "she" },
-          { name: "Ernold", personality: "", mood: "", position: "", pronoun: "he" }
-        ]
+          { name: "Ernold", personality: "", mood: "", position: "", pronoun: "he" },
+        ],
       },
-      "pronouns-1"
+      "pronouns-1",
     );
     expect(session.characters.emma?.pronoun).toBe("she");
     expect(session.characters.ernold?.pronoun).toBe("he");
@@ -288,11 +312,11 @@ describe("createSessionFromSetup", () => {
             familyName: "Knucklewood",
             personality: "",
             mood: "",
-            position: "behind the bar"
-          }
-        ]
+            position: "behind the bar",
+          },
+        ],
       },
-      "names-1"
+      "names-1",
     );
     expect(session.characters["emma-knucklewood"]?.name).toBe("Emma");
     expect(session.characters["emma-knucklewood"]?.familyName).toBe("Knucklewood");
@@ -312,11 +336,11 @@ describe("createSessionFromSetup", () => {
             name: "Emma",
             personality: "",
             mood: "",
-            position: "behind the bar"
-          }
-        ]
+            position: "behind the bar",
+          },
+        ],
       },
-      "no-nickname-1"
+      "no-nickname-1",
     );
     expect(session.characters.emma?.knownAs).toBeUndefined();
   });
@@ -336,16 +360,16 @@ describe("createSessionFromSetup", () => {
             familyName: "Knucklewood",
             personality: "",
             mood: "",
-            position: ""
-          }
-        ]
+            position: "",
+          },
+        ],
       },
-      "names-2"
+      "names-2",
     );
     expect(session.characters["emma-therese-knucklewood"]?.middleName).toBe("Therese");
     expect(primaryCharacter(session)).toEqual({
       id: "emma-therese-knucklewood",
-      name: "Emma Therese Knucklewood"
+      name: "Emma Therese Knucklewood",
     });
   });
 
@@ -373,18 +397,21 @@ describe("createSessionFromSetup", () => {
                 id: "ring",
                 title: "The ring",
                 content: "She keeps a plain gold band in her apron pocket.",
-                keywords: ["ring", "gold band"]
-              }
-            ]
-          }
-        ]
+                keywords: ["ring", "gold band"],
+              },
+            ],
+          },
+        ],
       },
-      "looks-1"
+      "looks-1",
     );
 
     expect(session.characters.emma?.appearance).toBe("Dark hair, sharp features.");
     expect(session.characters.emma?.approximateAge).toBe(28);
-    expect(session.characters.emma?.clothing).toEqual({ value: "a bartender's apron", lock: "unlocked" });
+    expect(session.characters.emma?.clothing).toEqual({
+      value: "a bartender's apron",
+      lock: "unlocked",
+    });
     expect(session.characters.emma?.holding).toEqual({ value: "a dish towel", lock: "unlocked" });
     expect(session.characters.emma?.portraitDataUrl).toBe("data:image/jpeg;base64,AAAA");
     expect(session.layers).toEqual(
@@ -394,9 +421,9 @@ describe("createSessionFromSetup", () => {
           type: "core",
           active: true,
           keywords: ["ring", "gold band"],
-          content: "The ring\n\nShe keeps a plain gold band in her apron pocket."
-        })
-      ])
+          content: "The ring\n\nShe keeps a plain gold band in her apron pocket.",
+        }),
+      ]),
     );
   });
 
@@ -430,17 +457,21 @@ describe("createSessionFromSetup", () => {
               picturePlay: "random",
               audioDataUrl: "data:audio-emma",
               audioGallery: ["data:audio-emma-2"],
-              audioPlay: "random"
-            }
-          ]
+              audioPlay: "random",
+            },
+          ],
         },
-        characters: [{ name: "Emma", personality: "Dry.", mood: "reserved", position: "behind the bar" }]
+        characters: [
+          { name: "Emma", personality: "Dry.", mood: "reserved", position: "behind the bar" },
+        ],
       },
-      "pix-1"
+      "pix-1",
     );
     expect(session.scene?.thumbDataUrl).toBe("data:thumb-venue");
     expect(session.scene?.imageDataUrl).toBe("data:image-venue");
-    expect(session.scene?.gallery).toEqual([{ thumbDataUrl: "data:thumb-venue-2", imageDataUrl: "data:image-venue-2" }]);
+    expect(session.scene?.gallery).toEqual([
+      { thumbDataUrl: "data:thumb-venue-2", imageDataUrl: "data:image-venue-2" },
+    ]);
     expect(session.scene?.picturePlay).toBe("fade");
     expect(session.scene?.audioDataUrl).toBe("data:audio-venue");
     expect(session.scene?.audioGallery).toEqual(["data:audio-venue-2"]);
@@ -459,11 +490,13 @@ describe("createSessionFromSetup", () => {
         picturePlay: "random",
         audioDataUrl: "data:audio-emma",
         audioGallery: ["data:audio-emma-2"],
-        audioPlay: "random"
-      }
+        audioPlay: "random",
+      },
     ]);
     expect(session.scene?.note).toBe("Adjoining the bar: Emma's room.");
-    expect(session.layers.some((layer) => String(layer.content).includes("data:image"))).toBe(false);
+    expect(session.layers.some((layer) => String(layer.content).includes("data:image"))).toBe(
+      false,
+    );
   });
 
   it("copies the compact place prompt for the model, not the long intro, onto the always-on layer", () => {
@@ -488,19 +521,21 @@ describe("createSessionFromSetup", () => {
               label: "Emma's room",
               keywords: ["staff room"],
               description: "A long walk-in intro for the picture.",
-              brief: "A narrow staff room. Bed, chair, curtains drawn."
-            }
-          ]
+              brief: "A narrow staff room. Bed, chair, curtains drawn.",
+            },
+          ],
         },
-        characters: [{ name: "Emma", personality: "Dry.", mood: "reserved", position: "behind the bar" }]
+        characters: [
+          { name: "Emma", personality: "Dry.", mood: "reserved", position: "behind the bar" },
+        ],
       },
-      "brief-1"
+      "brief-1",
     );
     expect(session.scene?.note).toBe(longIntro);
     expect(session.scene?.brief).toBe(compact);
     expect(session.scene?.rooms?.[0]).toMatchObject({
       description: "A long walk-in intro for the picture.",
-      brief: "A narrow staff room. Bed, chair, curtains drawn."
+      brief: "A narrow staff room. Bed, chair, curtains drawn.",
     });
     const placeLayer = session.layers.find((layer) => layer.id === "layer-place");
     expect(placeLayer?.content).toBe(compact);
@@ -517,10 +552,10 @@ describe("createSessionFromSetup", () => {
         placeNote: "",
         characters: [
           { name: "Alex", personality: "", mood: "", position: "" },
-          { name: "Alex", personality: "", mood: "", position: "" }
-        ]
+          { name: "Alex", personality: "", mood: "", position: "" },
+        ],
       },
-      "s"
+      "s",
     );
     expect(Object.keys(session.characters).sort()).toEqual(["alex", "alex-2"]);
   });
@@ -531,10 +566,11 @@ describe("slugifyCharacterId / displayCharacterName", () => {
     expect(slugifyCharacterId("Dr. Chen")).toBe("dr-chen");
     expect(displayCharacterName("dr-chen")).toBe("Dr Chen");
     expect(displayCharacterName("dr-chen", "Dr. Chen")).toBe("Dr. Chen");
-    expect(displayCharacterName("emma-knucklewood", "Emma", "Knucklewood")).toBe("Emma Knucklewood");
+    expect(displayCharacterName("emma-knucklewood", "Emma", "Knucklewood")).toBe(
+      "Emma Knucklewood",
+    );
     expect(displayCharacterName("emma-therese-knucklewood", "Emma", "Knucklewood", "Therese")).toBe(
-      "Emma Therese Knucklewood"
+      "Emma Therese Knucklewood",
     );
   });
 });
-

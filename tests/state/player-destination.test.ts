@@ -1,5 +1,20 @@
 import { describe, it, expect } from "vitest";
-import { destinationRoomFromPlayerText, destinationPlaceFromPlayerText, dropAiPlayerPosition, filterUninvitedFollowProposals, sideRoomStage, spatialWritesForTurn, beatLocation, venueBuildingName, venueFloorToken, WHAT_NOW_FLOOR, WHAT_NOW_STAY, sceneStageKey, sceneStageLabel, sceneContinuesAfterNight } from "@state/playerDestination";
+import {
+  destinationRoomFromPlayerText,
+  destinationPlaceFromPlayerText,
+  dropAiPlayerPosition,
+  filterUninvitedFollowProposals,
+  sideRoomStage,
+  spatialWritesForTurn,
+  beatLocation,
+  venueBuildingName,
+  venueFloorToken,
+  WHAT_NOW_FLOOR,
+  WHAT_NOW_STAY,
+  sceneStageKey,
+  sceneStageLabel,
+  sceneContinuesAfterNight,
+} from "@state/playerDestination";
 import { matchRoomMention } from "@state/WorldCanon";
 import { EXAMPLE_AURORA_ROOMS } from "@library/exampleTemplates";
 import type { Session } from "@state/StateSchema";
@@ -18,13 +33,13 @@ function makeSession(overrides: Partial<Session> = {}): Session {
     characters: {
       emma: {
         position: { value: "behind the bar", lock: "unlocked" },
-        mood: { value: "reserved", lock: "unlocked" }
-      }
+        mood: { value: "reserved", lock: "unlocked" },
+      },
     },
     scene: { location: "The Aurora Room — a quiet late-night bar", environment: {} },
     player: {
       position: { value: "at the bar", lock: "unlocked" },
-      status: { value: "awake", lock: "unlocked" }
+      status: { value: "awake", lock: "unlocked" },
     },
     relationships: {},
     layers: [
@@ -35,32 +50,40 @@ function makeSession(overrides: Partial<Session> = {}): Session {
         content:
           "Adjoining the bar: toilets off the hall, Emma's room behind the staff door, a guest room upstairs, and a cellar door behind the bar.",
         active: true,
-        aiGenerated: false
-      }
+        aiGenerated: false,
+      },
     ],
     memory: { episodic: [], semantic: [], relational: [] },
     conversation: [],
     events: [],
     snapshots: [],
     diagnostics: [],
-    ...overrides
+    ...overrides,
   };
 }
 
 describe("destinationRoomFromPlayerText", () => {
   it("reads a walk into Emma's room, with or without the apostrophe", () => {
-    expect(destinationRoomFromPlayerText("I walk into Emma's room", makeSession())).toBe("Emma's room");
-    expect(destinationRoomFromPlayerText("I walk into Emmas room", makeSession())).toBe("Emma's room");
+    expect(destinationRoomFromPlayerText("I walk into Emma's room", makeSession())).toBe(
+      "Emma's room",
+    );
+    expect(destinationRoomFromPlayerText("I walk into Emmas room", makeSession())).toBe(
+      "Emma's room",
+    );
   });
   it("reads climbing into her bed as Emma's room", () => {
-    expect(
-      destinationRoomFromPlayerText("*I climb donw into her bed*", makeSession())
-    ).toBe("Emma's room");
+    expect(destinationRoomFromPlayerText("*I climb donw into her bed*", makeSession())).toBe(
+      "Emma's room",
+    );
   });
 
   it("reads staff room and Swedish as the same place", () => {
-    expect(destinationRoomFromPlayerText("*I walk into her staff room*", makeSession())).toBe("Emma's room");
-    expect(destinationRoomFromPlayerText("Jag går in i Emmas rum", makeSession())).toBe("Emma's room");
+    expect(destinationRoomFromPlayerText("*I walk into her staff room*", makeSession())).toBe(
+      "Emma's room",
+    );
+    expect(destinationRoomFromPlayerText("Jag går in i Emmas rum", makeSession())).toBe(
+      "Emma's room",
+    );
   });
 
   it("does not teleport on a question about the room", () => {
@@ -73,10 +96,7 @@ describe("destinationRoomFromPlayerText", () => {
 
   it("does nothing when the map has no named rooms", () => {
     expect(
-      destinationRoomFromPlayerText(
-        "I walk into Emma's room",
-        makeSession({ layers: [] })
-      )
+      destinationRoomFromPlayerText("I walk into Emma's room", makeSession({ layers: [] })),
     ).toBeUndefined();
   });
 });
@@ -88,10 +108,10 @@ describe("sideRoomStage", () => {
         makeSession({
           player: {
             position: { value: "Emma's room", lock: "unlocked" },
-            status: { value: "awake", lock: "unlocked" }
-          }
-        })
-      )
+            status: { value: "awake", lock: "unlocked" },
+          },
+        }),
+      ),
     ).toBe("Emma's room");
   });
 
@@ -105,10 +125,10 @@ describe("sideRoomStage", () => {
         makeSession({
           player: {
             position: { value: "Emmas room", lock: "unlocked" },
-            status: { value: "awake", lock: "unlocked" }
-          }
-        })
-      )
+            status: { value: "awake", lock: "unlocked" },
+          },
+        }),
+      ),
     ).toBe("Emma's room");
   });
 });
@@ -120,10 +140,10 @@ describe("beatLocation", () => {
         makeSession({
           player: {
             position: { value: "Emma's room", lock: "unlocked" },
-            status: { value: "awake", lock: "unlocked" }
-          }
-        })
-      )
+            status: { value: "awake", lock: "unlocked" },
+          },
+        }),
+      ),
     ).toBe("Emma's room");
   });
 
@@ -138,8 +158,8 @@ describe("sceneStageKey", () => {
     const behind = makeSession({
       player: {
         position: { value: "behind the bar", lock: "unlocked" },
-        status: { value: "awake", lock: "unlocked" }
-      }
+        status: { value: "awake", lock: "unlocked" },
+      },
     });
     expect(sceneStageKey(atBar)).toBe(sceneStageKey(behind));
     expect(sceneStageLabel(atBar)).toBe("The Aurora Room");
@@ -150,8 +170,8 @@ describe("sceneStageKey", () => {
     const room = makeSession({
       player: {
         position: { value: "Emma's room", lock: "unlocked" },
-        status: { value: "awake", lock: "unlocked" }
-      }
+        status: { value: "awake", lock: "unlocked" },
+      },
     });
     expect(sceneStageKey(bar)).not.toBe(sceneStageKey(room));
     expect(sceneStageLabel(room)).toBe("Emma's room");
@@ -166,20 +186,20 @@ describe("spatialWritesForTurn", () => {
           name: "Emma",
           position: { value: "behind the bar", lock: "unlocked" },
           mood: { value: "reserved", lock: "unlocked" },
-          pose: { value: "polishing a glass", lock: "unlocked" }
-        }
-      }
+          pose: { value: "polishing a glass", lock: "unlocked" },
+        },
+      },
     });
     expect(
       spatialWritesForTurn(
         session,
         "*I climb donw into her bed* *I lay in a spoon postion with Emma behind me* Can you hold me Emma.",
-        "emma"
-      )
+        "emma",
+      ),
     ).toEqual([
       { path: "player.position", value: "Emma's room" },
       { path: "characters.emma.position", value: "Emma's room" },
-      { path: "characters.emma.pose", value: "" }
+      { path: "characters.emma.pose", value: "" },
     ]);
   });
 
@@ -187,21 +207,21 @@ describe("spatialWritesForTurn", () => {
     const session = makeSession({
       player: {
         position: { value: "The Aurora Room", lock: "unlocked" },
-        status: { value: "asleep", lock: "unlocked" }
-      }
+        status: { value: "asleep", lock: "unlocked" },
+      },
     });
     expect(spatialWritesForTurn(session, "I walk into Emmas room", "emma")).toEqual(
       expect.arrayContaining([
         { path: "player.position", value: "Emma's room" },
         { path: "player.status", value: "awake" },
-        { path: "characters.emma.position", value: "Emma's room" }
-      ])
+        { path: "characters.emma.position", value: "Emma's room" },
+      ]),
     );
   });
 
   it("does not drag her to the toilets", () => {
     expect(spatialWritesForTurn(makeSession(), "I walk into the toilets", "emma")).toEqual([
-      { path: "player.position", value: "toilets" }
+      { path: "player.position", value: "toilets" },
     ]);
   });
 
@@ -211,19 +231,24 @@ describe("spatialWritesForTurn", () => {
         emma: {
           name: "Emma",
           position: { value: "behind the bar", lock: "unlocked" },
-          mood: { value: "reserved", lock: "unlocked" }
-        }
+          mood: { value: "reserved", lock: "unlocked" },
+        },
       },
       conversation: [
-        { turn: 1, role: "character", speaker: "emma", content: "You could take the guest room upstairs." },
+        {
+          turn: 1,
+          role: "character",
+          speaker: "emma",
+          content: "You could take the guest room upstairs.",
+        },
         { turn: 2, role: "player", content: "What about Emma's room?" },
         { turn: 3, role: "character", speaker: "emma", content: "You can sleep in my room." },
-        { turn: 4, role: "player", content: "Let's go." }
-      ]
+        { turn: 4, role: "player", content: "Let's go." },
+      ],
     });
     expect(spatialWritesForTurn(session, "Let's go.", "emma")).toEqual([
       { path: "player.position", value: "Emma's room" },
-      { path: "characters.emma.position", value: "Emma's room" }
+      { path: "characters.emma.position", value: "Emma's room" },
     ]);
   });
 
@@ -234,10 +259,18 @@ describe("spatialWritesForTurn", () => {
           turn: 1,
           role: "character",
           speaker: "vikky",
-          content: "Aye, I'm in. Emma's room is just through that door. She nods towards the staff door."
-        }
+          content:
+            "Aye, I'm in. Emma's room is just through that door. She nods towards the staff door.",
+        },
       ],
-      objects: [{ tags: [], id: "key", name: "Guest-house key", note: "Unlocks Emma's room behind the staff door." }]
+      objects: [
+        {
+          tags: [],
+          id: "key",
+          name: "Guest-house key",
+          note: "Unlocks Emma's room behind the staff door.",
+        },
+      ],
     });
     expect(spatialWritesForTurn(session, "Vikky are you in?", "vikky")).toEqual([]);
     expect(spatialWritesForTurn(session, "Let's go.", "vikky")).toEqual([]);
@@ -251,18 +284,22 @@ describe("spatialWritesForTurn", () => {
         emma: {
           name: "Emma",
           position: { value: "behind the bar", lock: "unlocked" },
-          mood: { value: "reserved", lock: "unlocked" }
-        }
-      }
+          mood: { value: "reserved", lock: "unlocked" },
+        },
+      },
     });
     expect(spatialWritesForTurn(session, "I follow you to the guest room", "emma")).toEqual([
-      { path: "player.position", value: "guest room" }
+      { path: "player.position", value: "guest room" },
     ]);
     expect(
-      spatialWritesForTurn({ ...session, partyIds: ["emma"] }, "I follow you to the guest room", "emma")
+      spatialWritesForTurn(
+        { ...session, partyIds: ["emma"] },
+        "I follow you to the guest room",
+        "emma",
+      ),
     ).toEqual([
       { path: "player.position", value: "guest room" },
-      { path: "characters.emma.position", value: "guest room" }
+      { path: "characters.emma.position", value: "guest room" },
     ]);
   });
 
@@ -271,14 +308,19 @@ describe("spatialWritesForTurn", () => {
       scene: {
         location: "The Aurora Room — a quiet late-night bar",
         environment: {},
-        rooms: EXAMPLE_AURORA_ROOMS
+        rooms: EXAMPLE_AURORA_ROOMS,
       },
       conversation: [
-        { turn: 1, role: "character", speaker: "emma", content: "The Ladies Room is down the hall." }
-      ]
+        {
+          turn: 1,
+          role: "character",
+          speaker: "emma",
+          content: "The Ladies Room is down the hall.",
+        },
+      ],
     });
     expect(
-      spatialWritesForTurn(session, "So who is up for it? Who wants to follow me?", "emma")
+      spatialWritesForTurn(session, "So who is up for it? Who wants to follow me?", "emma"),
     ).toEqual([]);
     expect(destinationRoomFromPlayerText("Who wants to follow me?", session)).toBeUndefined();
   });
@@ -287,8 +329,8 @@ describe("spatialWritesForTurn", () => {
     expect(
       dropAiPlayerPosition([
         { path: "player.position", value: "Emma's room" },
-        { path: "characters.emma.mood", value: "wry" }
-      ])
+        { path: "characters.emma.mood", value: "wry" },
+      ]),
     ).toEqual([{ path: "characters.emma.mood", value: "wry" }]);
   });
 });
@@ -304,8 +346,8 @@ describe("matchRoomMention", () => {
       scene: {
         location: "The Aurora Room — a quiet late-night bar",
         environment: {},
-        rooms: EXAMPLE_AURORA_ROOMS
-      }
+        rooms: EXAMPLE_AURORA_ROOMS,
+      },
     });
     expect(matchRoomMention("Show me", session)).toBeUndefined();
     expect(matchRoomMention("Show me.", session)).toBeUndefined();
@@ -318,8 +360,8 @@ describe("matchRoomMention", () => {
       scene: {
         location: "The Aurora Room — a quiet late-night bar",
         environment: {},
-        rooms: EXAMPLE_AURORA_ROOMS
-      }
+        rooms: EXAMPLE_AURORA_ROOMS,
+      },
     });
     expect(matchRoomMention("I walk into the bathroom", session)).toBe("toilets");
     expect(matchRoomMention("I go to the loo", session)).toBe("toilets");
@@ -331,15 +373,15 @@ describe("return to the bar", () => {
     return makeSession({
       player: {
         position: { value: "Emma's room", lock: "unlocked" },
-        status: { value: "awake", lock: "unlocked" }
+        status: { value: "awake", lock: "unlocked" },
       },
       characters: {
         emma: {
           name: "Emma",
           position: { value: "Emma's room", lock: "unlocked" },
-          mood: { value: "reserved", lock: "unlocked" }
-        }
-      }
+          mood: { value: "reserved", lock: "unlocked" },
+        },
+      },
     });
   }
 
@@ -350,16 +392,16 @@ describe("return to the bar", () => {
 
   it("moves the player to the bar without dragging Emma unless she is in the party", () => {
     expect(spatialWritesForTurn(inEmmasRoom(), "I walk to the bar", "emma")).toEqual([
-      { path: "player.position", value: "at the bar" }
+      { path: "player.position", value: "at the bar" },
     ]);
     expect(spatialWritesForTurn(inEmmasRoom(), "We go to the bar", "emma")).toEqual([
-      { path: "player.position", value: "at the bar" }
+      { path: "player.position", value: "at the bar" },
     ]);
     expect(
-      spatialWritesForTurn({ ...inEmmasRoom(), partyIds: ["emma"] }, "We go to the bar", "emma")
+      spatialWritesForTurn({ ...inEmmasRoom(), partyIds: ["emma"] }, "We go to the bar", "emma"),
     ).toEqual([
       { path: "player.position", value: "at the bar" },
-      { path: "characters.emma.position", value: "at the bar" }
+      { path: "characters.emma.position", value: "at the bar" },
     ]);
   });
 
@@ -370,21 +412,27 @@ describe("return to the bar", () => {
         [
           { path: "player.position", value: "at the bar" },
           { path: "characters.emma.position", value: "at the bar" },
-          { path: "characters.emma.mood", value: "quiet" }
+          { path: "characters.emma.mood", value: "quiet" },
         ],
         session,
-        "emma"
-      )
+        "emma",
+      ),
     ).toEqual([
       { path: "player.position", value: "at the bar" },
-      { path: "characters.emma.mood", value: "quiet" }
+      { path: "characters.emma.mood", value: "quiet" },
     ]);
     expect(
       filterUninvitedFollowProposals(
         [{ path: "characters.emma.position", value: "at the bar" }],
-        { ...session, player: { position: { value: "at the bar", lock: "unlocked" }, status: { value: "awake", lock: "unlocked" } } },
-        "emma"
-      )
+        {
+          ...session,
+          player: {
+            position: { value: "at the bar", lock: "unlocked" },
+            status: { value: "awake", lock: "unlocked" },
+          },
+        },
+        "emma",
+      ),
     ).toEqual([]);
   });
 
@@ -394,11 +442,13 @@ describe("return to the bar", () => {
   });
 
   it("honors a What now? room even when the button text has no walk verb", () => {
-    expect(spatialWritesForTurn(makeSession(), "Go with Emma to her room", "emma", "Emma's room")).toEqual(
+    expect(
+      spatialWritesForTurn(makeSession(), "Go with Emma to her room", "emma", "Emma's room"),
+    ).toEqual(
       expect.arrayContaining([
         { path: "player.position", value: "Emma's room" },
-        { path: "characters.emma.position", value: "Emma's room" }
-      ])
+        { path: "characters.emma.position", value: "Emma's room" },
+      ]),
     );
   });
 
@@ -409,9 +459,11 @@ describe("return to the bar", () => {
   it("treats a return to the bar after Emma's room as the same night continuing", () => {
     const session = inEmmasRoom();
     expect(
-      sceneContinuesAfterNight(session, "I walk to the bar", "emma's room", "the aurora room")
+      sceneContinuesAfterNight(session, "I walk to the bar", "emma's room", "the aurora room"),
     ).toBe(true);
-    expect(sceneContinuesAfterNight(makeSession(), "Hi", "the aurora room", "the aurora room")).toBe(false);
+    expect(
+      sceneContinuesAfterNight(makeSession(), "Hi", "the aurora room", "the aurora room"),
+    ).toBe(false);
   });
 
   it("uses the landmark name as the floor when the place is not a bar", () => {
@@ -426,26 +478,30 @@ describe("return to the bar", () => {
             id: "crypt",
             label: "the crypt",
             keywords: ["crypt"],
-            description: "Cold stone."
-          }
-        ]
+            description: "Cold stone.",
+          },
+        ],
       },
       player: {
         position: { value: "the crypt", lock: "unlocked" },
-        status: { value: "awake", lock: "unlocked" }
-      }
+        status: { value: "awake", lock: "unlocked" },
+      },
     });
     expect(venueFloorToken(hollow)).toBe("at The Hollow");
-    expect(destinationPlaceFromPlayerText("I walk back to The Hollow", hollow)).toBe("at The Hollow");
+    expect(destinationPlaceFromPlayerText("I walk back to The Hollow", hollow)).toBe(
+      "at The Hollow",
+    );
     expect(destinationPlaceFromPlayerText("Stay on the floor", hollow)).toBe("at The Hollow");
     expect(spatialWritesForTurn(hollow, "Stay on the floor", "mira", WHAT_NOW_FLOOR)).toEqual([
-      { path: "player.position", value: "at The Hollow" }
+      { path: "player.position", value: "at The Hollow" },
     ]);
   });
 
   it("does not move the body for a What now? that stays in this beat", () => {
     expect(spatialWritesForTurn(inEmmasRoom(), "I lie", "emma", WHAT_NOW_STAY)).toEqual([]);
-    expect(spatialWritesForTurn(makeSession(), "I tell her the truth", "emma", WHAT_NOW_STAY)).toEqual([]);
+    expect(
+      spatialWritesForTurn(makeSession(), "I tell her the truth", "emma", WHAT_NOW_STAY),
+    ).toEqual([]);
   });
 });
 
@@ -454,15 +510,19 @@ describe("Reachable from", () => {
     {
       fromRoomIds: [],
       gate: "open" as const,
-      id: "main", label: "Main room", keywords: [], description: "" },
+      id: "main",
+      label: "Main room",
+      keywords: [],
+      description: "",
+    },
     {
       gate: "open" as const,
       id: "cellar",
       label: "Cellar",
       keywords: ["secret hatch", "hidden hatch"],
       fromRoomIds: ["main"],
-      description: ""
-    }
+      description: "",
+    },
   ];
 
   it("does not take a hatch from outside the landmark", () => {
@@ -470,8 +530,8 @@ describe("Reachable from", () => {
       scene: { location: "Old womans cabin", environment: {}, rooms: cabinRooms },
       player: {
         position: { value: "Old womans cabin", lock: "unlocked" },
-        status: { value: "awake", lock: "unlocked" }
-      }
+        status: { value: "awake", lock: "unlocked" },
+      },
     });
     expect(destinationRoomFromPlayerText("I go through the secret hatch", session)).toBeUndefined();
   });
@@ -481,10 +541,9 @@ describe("Reachable from", () => {
       scene: { location: "Old womans cabin", environment: {}, rooms: cabinRooms },
       player: {
         position: { value: "Main room", lock: "unlocked" },
-        status: { value: "awake", lock: "unlocked" }
-      }
+        status: { value: "awake", lock: "unlocked" },
+      },
     });
     expect(destinationRoomFromPlayerText("I go through the secret hatch", session)).toBe("Cellar");
   });
 });
-

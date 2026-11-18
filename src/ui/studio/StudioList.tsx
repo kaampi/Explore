@@ -13,7 +13,7 @@ export function StudioList({
   filters,
   renderPortrait,
   layout = "rows",
-  columns = 1
+  columns = 1,
 }: {
   heading: string;
   items: { id: string; name: string; caption?: string; thumb?: string }[];
@@ -33,7 +33,7 @@ export function StudioList({
   const listClass = [
     "studio-list",
     portraits ? "studio-list--portraits" : "",
-    columns === 2 ? "studio-list--cols-2" : ""
+    columns === 2 ? "studio-list--cols-2" : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -47,13 +47,21 @@ export function StudioList({
         )}
         {secondaryAction ? (
           <div className="studio-list__head-actions">
-            <button type="button" className={portraits ? "setup-start" : "setup-text-btn"} onClick={onNew}>
+            <button
+              type="button"
+              className={portraits ? "setup-start" : "setup-text-btn"}
+              onClick={onNew}
+            >
               {newLabel}
             </button>
             {secondaryAction}
           </div>
         ) : (
-          <button type="button" className={portraits ? "setup-start" : "setup-text-btn"} onClick={onNew}>
+          <button
+            type="button"
+            className={portraits ? "setup-start" : "setup-text-btn"}
+            onClick={onNew}
+          >
             {newLabel}
           </button>
         )}
@@ -69,7 +77,9 @@ export function StudioList({
               className={`studio-list__item ${selectedId === item.id ? "studio-list__item--active" : ""} ${item.thumb || portraits ? "studio-list__item--thumb" : ""}`}
               onClick={() => onSelect(item.id)}
             >
-              {renderPortrait ? renderPortrait(item) : item.thumb ? (
+              {renderPortrait ? (
+                renderPortrait(item)
+              ) : item.thumb ? (
                 <img className="studio-list__thumb" src={item.thumb} alt="" />
               ) : portraits ? (
                 <span className="studio-list__thumb studio-list__thumb--empty" aria-hidden="true" />

@@ -1,4 +1,4 @@
-import { checkOutcomeInstruction,type CheckResult } from "../checks/CheckEngine";
+import { checkOutcomeInstruction, type CheckResult } from "../checks/CheckEngine";
 import { validatePlayerCheck } from "../checks/playerCheck";
 import { guardAbsentPositions } from "@state/npcPositionGuard";
 import { timeActionFromText } from "@state/gameClock";
@@ -6,7 +6,12 @@ import { journeyActionFromText, validateJourneyContinue, JourneyError } from "@s
 import { describePhysicalState } from "@state/physicalContinuity";
 import { StateEngine, type MutationProposal } from "@state/StateEngine";
 import type { AuthoritySource } from "@state/AuthorityResolver";
-import { assembleContext, buildPass1Messages, metersFromSession, parseConversationTurns } from "@context/ContextEngine";
+import {
+  assembleContext,
+  buildPass1Messages,
+  metersFromSession,
+  parseConversationTurns,
+} from "@context/ContextEngine";
 import { closeReplyIfCut, stripPass1InstructionLeak } from "@context/PlayerAgency";
 import { personNameTerms } from "@library/personName";
 import { maskUnheardGivenNames, pass1NameOptions, narrationCallName } from "@state/nameHeard";
@@ -19,19 +24,29 @@ import {
   standingNotesForSummarizer,
   DEFAULT_ROLLING_MEMORY_OPTIONS,
   type ConversationSummarizer,
-  type RollingMemoryOptions
+  type RollingMemoryOptions,
 } from "@memory/RollingMemory";
 import type { LayerProposalExtractor } from "@layers/LayerProposalExtraction";
 import { onceLayersFiring } from "@layers/LayerEngine";
 import { pass1PredictTokens, type Session } from "@state/StateSchema";
 import { checkFavor, rollD100 } from "@state/favorCheck";
 import { namedRoomsInCanon } from "@state/WorldCanon";
-import { destinationRoomFromPlayerText, dropAiPlayerPosition, filterUninvitedFollowProposals, sceneContinuesAfterNight, sceneStageKey, sceneStageLabel, sideRoomStage, spatialWritesForTurn, venueBuildingName } from "@state/playerDestination";
+import {
+  destinationRoomFromPlayerText,
+  dropAiPlayerPosition,
+  filterUninvitedFollowProposals,
+  sceneContinuesAfterNight,
+  sceneStageKey,
+  sceneStageLabel,
+  sideRoomStage,
+  spatialWritesForTurn,
+  venueBuildingName,
+} from "@state/playerDestination";
 import {
   listedWhatNowDest,
   resolveWhatNowIntercept,
   setIdListingDest,
-  setIdToArmAfterTurn
+  setIdToArmAfterTurn,
 } from "@state/whatNowGate";
 import { dressForPublicBarWrites } from "@state/clothing";
 import type { LandmarkTravelPatch } from "@state/landmarkTravel";
@@ -40,6 +55,7 @@ import { othersInScene } from "@state/sceneFocus";
 import { holdingPartyIds, isLeftBehind, travelingPartyIds } from "@state/party";
 import { movableStatsForCharacter, type MovableStat } from "@state/statShift";
 import { chatBeatFor, parseLiveTurns, undoIdsAfterReply, undoIdsForBeatReplay } from "./chatBeat";
+import { isGateTestSession } from "./gateTest";
 
 /**
  * Session Engine — Master Spec §2.1, §48.
@@ -83,7 +99,7 @@ export type ProposalExtractor = (
   fullText: string,
   characterId: string,
   live?: Pass2LiveSnapshot,
-  playerMessage?: string
+  playerMessage?: string,
 ) => MutationProposalInput[] | Promise<MutationProposalInput[]>;
 
 const defaultProposalExtractor: ProposalExtractor = () => [];
@@ -100,7 +116,7 @@ export interface RunTurnCallbacks {
 }
 
 export interface RunTurnOptions {
-  check?:CheckResult;
+  check?: CheckResult;
   /** Internal marker: continuation already changed the route state before dialogue. */
   journeyContinuation?: boolean;
   /** What now? destination — a listed room or the venue floor. */
@@ -132,7 +148,7 @@ export class TurnFailedError extends Error {
   constructor(
     public readonly turnId: string,
     message: string,
-    public override readonly cause?: unknown
+    public override readonly cause?: unknown,
   ) {
     super(`Turn "${turnId}" failed: ${message}`);
     this.name = "TurnFailedError";
@@ -167,7 +183,7 @@ export interface RollingMemoryConfig {
 
 /** What's needed to redo a turn's dialogue+mutations while keeping the same player message. */
 interface TurnManifest {
-  check?:CheckResult;
+  check?: CheckResult;
   turnId: string;
   characterId: string;
   playerMessage: string;
@@ -186,7 +202,7 @@ export class SessionEngine {
     private readonly eventLog: EventLog,
     private readonly proposalExtractor: ProposalExtractor = defaultProposalExtractor,
     private readonly rollingMemory?: RollingMemoryConfig,
-    private readonly layerProposalExtractor?: LayerProposalExtractor
+    private readonly layerProposalExtractor?: LayerProposalExtractor,
   ) {}
 
   getState(): SessionState {
@@ -205,9 +221,12 @@ export class SessionEngine {
     characterId: string,
     playerMessage: string,
     callbacks: RunTurnCallbacks = {},
-    options: RunTurnOptions = {}
+    options: RunTurnOptions = {},
   ): Promise<TurnResult> {
-    if(this.stateEngine.getSession().gateEncounter||this.stateEngine.getSession().encounter)throw new Error('Authored encounters resolve actions through the game engine, not generated dialogue.');
+    if (this.stateEngine.getSession().gateEncounter || this.stateEngine.getSession().encounter)
+      throw new Error(
+        "Authored encounters resolve actions through the game engine, not generated dialogue.",
+      );
     const cached = this.committedTurns.get(turnId);
     if (cached) {
       return { ...cached, idempotentReplay: true };
@@ -218,12 +237,17 @@ export class SessionEngine {
     }
 
     const journeyAction = journeyActionFromText(playerMessage);
-    if (journeyAction) validateJourneyContinue(this.stateEngine.getSession(), journeyAction === "push-on");
+    if (journeyAction)
+      validateJourneyContinue(this.stateEngine.getSession(), journeyAction === "push-on");
     if (this.stateEngine.getSession().journey && (options.travel || options.goTo)) {
       throw new JourneyError("Continue the current journey before choosing another destination.");
     }
 
-    const intercept = resolveWhatNowIntercept(this.stateEngine.getSession(), playerMessage, options.goTo);
+    const intercept = resolveWhatNowIntercept(
+      this.stateEngine.getSession(),
+      playerMessage,
+      options.goTo,
+    );
     if (intercept.kind === "open") {
       this.stateEngine.armWhatNowSet(intercept.setId);
       callbacks.onSessionUpdated?.();
@@ -233,7 +257,7 @@ export class SessionEngine {
         mutationsApplied: 0,
         mutationsRejected: 0,
         idempotentReplay: false,
-        openedWhatNow: true
+        openedWhatNow: true,
       };
     }
     if (intercept.kind === "blocked") {
@@ -244,32 +268,51 @@ export class SessionEngine {
     try {
       this.state = transition(this.state, "start_turn"); // -> awaiting_response
 
-      if(options.check){validatePlayerCheck(this.stateEngine.getSession(),options.check);if(options.check.targetId!==characterId)throw Error("Check target must match the current character.");}
+      if (options.check) {
+        validatePlayerCheck(this.stateEngine.getSession(), options.check);
+        if (options.check.targetId !== characterId)
+          throw Error("Check target must match the current character.");
+      }
       const preTurnVersion = this.stateEngine.getSession().stateVersion;
       const appendPlayerResult = this.stateEngine.appendConversationTurn(
-        { role: "player", content: playerMessage, ...(options.check?{check:options.check}:{}) },
-        preTurnVersion
+        {
+          role: "player",
+          content: playerMessage,
+          ...(options.check ? { check: options.check } : {}),
+        },
+        preTurnVersion,
       );
       if (!appendPlayerResult.committed) {
-        throw new TurnFailedError(turnId, `Could not append player message: ${appendPlayerResult.reason}`);
+        throw new TurnFailedError(
+          turnId,
+          `Could not append player message: ${appendPlayerResult.reason}`,
+        );
       }
 
       // Player-declared elapsed time is durable: regenerating the reply must not charge it again.
       if (journeyAction) this.stateEngine.continueJourney(journeyAction === "push-on");
       const clock = this.stateEngine.getSession().gameClock;
-      const timeAction = clock && !options.travel ? timeActionFromText(playerMessage, clock.totalMinutes) : undefined;
+      const timeAction =
+        clock && !options.travel
+          ? timeActionFromText(playerMessage, clock.totalMinutes)
+          : undefined;
       if (timeAction) {
         this.stateEngine.advanceGameTime(timeAction.minutes, timeAction.kind);
         const live = this.stateEngine.getSession();
         if (timeAction.kind === "sleep" && live.player?.status.lock === "unlocked") {
-          this.stateEngine.proposeMutation({path:"player.status", value:"awake", source:"player_manual_state", expectedStateVersion:live.stateVersion});
+          this.stateEngine.proposeMutation({
+            path: "player.status",
+            value: "awake",
+            source: "player_manual_state",
+            expectedStateVersion: live.stateVersion,
+          });
         }
       }
       callbacks.onPlayerMessageAppended?.();
       return await this.runDialogueAndCommit(turnId, characterId, playerMessage, callbacks, {
         ...options,
-        ...(journeyAction ? {journeyContinuation:true} : {}),
-        ...(goTo ? { goTo } : {})
+        ...(journeyAction ? { journeyContinuation: true } : {}),
+        ...(goTo ? { goTo } : {}),
       });
     } catch (err) {
       this.recoverToIdle();
@@ -292,9 +335,10 @@ export class SessionEngine {
   async regenerateLastTurn(
     newTurnId: string,
     callbacks: RunTurnCallbacks = {},
-    options: { note?: string } = {}
+    options: { note?: string } = {},
   ): Promise<TurnResult> {
-    if(this.stateEngine.getSession().gateEncounter||this.stateEngine.getSession().encounter)throw new Error('Authored encounters cannot regenerate or replay resolved actions.');
+    if (this.stateEngine.getSession().gateEncounter || this.stateEngine.getSession().encounter)
+      throw new Error("Authored encounters cannot regenerate or replay resolved actions.");
     const cached = this.committedTurns.get(newTurnId);
     if (cached) {
       return { ...cached, idempotentReplay: true };
@@ -313,24 +357,38 @@ export class SessionEngine {
       this.state = transition(this.state, "start_turn"); // -> awaiting_response
 
       const currentVersion = this.stateEngine.getSession().stateVersion;
-      const undoResult = this.stateEngine.undoEvents(manifest.eventIds, "player_manual_state", currentVersion);
+      const undoResult = this.stateEngine.undoEvents(
+        manifest.eventIds,
+        "player_manual_state",
+        currentVersion,
+      );
       if (!undoResult.committed) {
         throw new TurnFailedError(
           newTurnId,
-          `Could not undo the previous reply before regenerating: ${undoResult.reason}`
+          `Could not undo the previous reply before regenerating: ${undoResult.reason}`,
         );
       }
 
       const regenNote = options.note?.trim();
-      return await this.runDialogueAndCommit(newTurnId, manifest.characterId, manifest.playerMessage, callbacks, {
-        ...(manifest.check?{check:manifest.check}:{}),
-        ...(regenNote ? { regenNote } : {})
-      });
+      return await this.runDialogueAndCommit(
+        newTurnId,
+        manifest.characterId,
+        manifest.playerMessage,
+        callbacks,
+        {
+          ...(manifest.check ? { check: manifest.check } : {}),
+          ...(regenNote ? { regenNote } : {}),
+        },
+      );
     } catch (err) {
       this.recoverToIdle();
       throw err instanceof TurnFailedError
         ? err
-        : new TurnFailedError(newTurnId, err instanceof Error ? err.message : "Unexpected error", err);
+        : new TurnFailedError(
+            newTurnId,
+            err instanceof Error ? err.message : "Unexpected error",
+            err,
+          );
     }
   }
 
@@ -343,9 +401,10 @@ export class SessionEngine {
     newTurnId: string,
     conversationTurn: number,
     callbacks: RunTurnCallbacks = {},
-    options: { note?: string } = {}
+    options: { note?: string } = {},
   ): Promise<TurnResult> {
-    if(this.stateEngine.getSession().gateEncounter||this.stateEngine.getSession().encounter)throw new Error('Authored encounters cannot regenerate or replay resolved actions.');
+    if (this.stateEngine.getSession().gateEncounter || this.stateEngine.getSession().encounter)
+      throw new Error("Authored encounters cannot regenerate or replay resolved actions.");
     const cached = this.committedTurns.get(newTurnId);
     if (cached) {
       return { ...cached, idempotentReplay: true };
@@ -366,12 +425,12 @@ export class SessionEngine {
       const undone = this.stateEngine.undoEvents(
         later,
         "player_manual_state",
-        this.stateEngine.getSession().stateVersion
+        this.stateEngine.getSession().stateVersion,
       );
       if (!undone.committed) {
         throw new TurnFailedError(
           newTurnId,
-          `Could not rewind later chat before replaying: ${undone.reason}`
+          `Could not rewind later chat before replaying: ${undone.reason}`,
         );
       }
     }
@@ -384,8 +443,8 @@ export class SessionEngine {
       turnId: beat.reply.turn.toString(),
       characterId: beat.reply.speaker,
       playerMessage: beat.player.content,
-      ...(beat.player.check?{check:beat.player.check}:{}),
-      eventIds: beatIds
+      ...(beat.player.check ? { check: beat.player.check } : {}),
+      eventIds: beatIds,
     };
     return this.regenerateLastTurn(newTurnId, callbacks, options);
   }
@@ -402,7 +461,7 @@ export class SessionEngine {
     characterId: string,
     playerMessage: string,
     callbacks: RunTurnCallbacks,
-    options: RunTurnOptions = {}
+    options: RunTurnOptions = {},
   ): Promise<TurnResult> {
     const previousStage = sceneStageKey(this.stateEngine.getSession());
     const previousPlace = sceneStageLabel(this.stateEngine.getSession());
@@ -410,18 +469,17 @@ export class SessionEngine {
     const inTransit = Boolean(this.stateEngine.getSession().journey);
     if (!inTransit) this.stateEngine.openRoomsNamedInText(playerMessage);
     if (!inTransit && options.goTo?.trim()) this.stateEngine.openRoomAtDest(options.goTo.trim());
-    if(!options.check)this.stateEngine.syncPartyFromPlayerText(playerMessage, characterId);
+    if (!options.check) this.stateEngine.syncPartyFromPlayerText(playerMessage, characterId);
     if (options.travel) this.stateEngine.travelToLandmark(options.travel);
-    const walkedIn = options.check?undefined:destinationRoomFromPlayerText(
-      playerMessage,
-      this.stateEngine.getSession()
-    );
+    const walkedIn = options.check
+      ? undefined
+      : destinationRoomFromPlayerText(playerMessage, this.stateEngine.getSession());
     if (!options.check && !options.travel && !inTransit && !options.journeyContinuation) {
       applyPlayerDestinationOn(
         this.stateEngine,
         playerMessage,
         characterId,
-        ...(options.goTo?.trim() ? [options.goTo.trim()] : [])
+        ...(options.goTo?.trim() ? [options.goTo.trim()] : []),
       );
     }
     if (listedWhatNowDest(this.stateEngine.getSession(), options.goTo)) {
@@ -437,15 +495,20 @@ export class SessionEngine {
             currentStage,
             previousPlace,
             currentPlace,
-            standingNotes: notesBeforeMove
+            standingNotes: notesBeforeMove,
           }
-        : undefined
+        : undefined,
     );
     const session = this.stateEngine.getSession();
     const character = session.characters[characterId];
     const names = pass1NameOptions(session, characterId);
     const meters = metersFromSession(session, characterId);
-    const continuation = sceneContinuesAfterNight(session, playerMessage, previousStage, currentStage);
+    const continuation = sceneContinuesAfterNight(
+      session,
+      playerMessage,
+      previousStage,
+      currentStage,
+    );
     const plotLayers = onceLayersFiring(session, { continuation });
     const assembled = assembleContext(session, { continuation });
     const { turns } = parseConversationTurns(session, undefined);
@@ -457,89 +520,118 @@ export class SessionEngine {
       ? {
           ...intro,
           title: maskUnheardGivenNames(session, intro.title),
-          body: maskUnheardGivenNames(session, intro.body)
+          body: maskUnheardGivenNames(session, intro.body),
         }
       : undefined;
     const outOfSight = isLeftBehind(session, characterId);
     const justArrived =
       !outOfSight && (Boolean(options.travel) || Boolean(walkedIn && stageRoom === walkedIn));
-    const messages: ChatMessage[] = buildPass1Messages(assembled, turns, playerMessage, characterId, {
-      ...names,
-      ...(character?.pronoun ? { pronoun: character.pronoun } : {}),
-      ...(session.player?.status.value ? { playerStatus: session.player.status.value } : {}),
-      ...(session.player?.position.value
-        ? { playerPosition: maskUnheardGivenNames(session, session.player.position.value) }
-        : {}),
-      ...(character?.position.value
-        ? { characterPosition: maskUnheardGivenNames(session, character.position.value) }
-        : {}),
-      ...(stageRoom && !outOfSight ? { stageRoom: maskUnheardGivenNames(session, stageRoom) } : {}),
-      ...(favor ? { favor } : {}),
-      meters,
-      ...(introForModel ? { hereIntro: introForModel } : {}),
-      ...(justArrived ? { justArrived: true } : {}),
-      ...(continuation ? { continuation: true } : {}),
-      ...(plotLayers.length > 0 ? { plotBeat: true } : {}),
-      ...(character?.clothing ? { clothing: character.clothing.value } : {}),
-      ...(character?.holding ? { holding: character.holding.value } : {}),
-      namedRooms: namedRoomsInCanon(session),
-      ...(venueBuildingName(session.scene?.location)
-        ? { venueName: venueBuildingName(session.scene?.location) }
-        : {}),
-      ...(session.handoff?.trim() ? { sceneHandoff: true } : {}),
-      ...(session.player?.name?.trim() ? { playerCalled: session.player.name.trim() } : {}),
-      ...(options.regenNote?.trim() ? { regenNote: options.regenNote.trim() } : {}),
-      characterNames: Object.entries(session.characters).flatMap(([id, entry]) =>
-        entry.name ? [id, ...personNameTerms(entry.name, entry.familyName, entry.middleName)] : [id]
-      ),
-      others: othersInScene(session, characterId),
-      party: travelingPartyIds(session)
-        .map((id) => maskUnheardGivenNames(session, narrationCallName(session, id)))
-        .filter(Boolean),
-      partyPending: (session.partyPendingIds ?? [])
-        .map((id) => maskUnheardGivenNames(session, narrationCallName(session, id)))
-        .filter(Boolean),
-      partyHold: holdingPartyIds(session)
-        .map((id) => maskUnheardGivenNames(session, narrationCallName(session, id)))
-        .filter(Boolean),
-      ...(travelingPartyIds(session).includes(characterId) ? { inParty: true } : {}),
-      ...(outOfSight ? { outOfSight: true } : {})
-    });
+    const messages: ChatMessage[] = buildPass1Messages(
+      assembled,
+      turns,
+      playerMessage,
+      characterId,
+      {
+        ...names,
+        ...(character?.pronoun ? { pronoun: character.pronoun } : {}),
+        ...(session.player?.status.value ? { playerStatus: session.player.status.value } : {}),
+        ...(session.player?.position.value
+          ? { playerPosition: maskUnheardGivenNames(session, session.player.position.value) }
+          : {}),
+        ...(character?.position.value
+          ? { characterPosition: maskUnheardGivenNames(session, character.position.value) }
+          : {}),
+        ...(stageRoom && !outOfSight
+          ? { stageRoom: maskUnheardGivenNames(session, stageRoom) }
+          : {}),
+        ...(favor ? { favor } : {}),
+        meters,
+        ...(introForModel ? { hereIntro: introForModel } : {}),
+        ...(justArrived ? { justArrived: true } : {}),
+        ...(continuation ? { continuation: true } : {}),
+        ...(plotLayers.length > 0 ? { plotBeat: true } : {}),
+        ...(character?.clothing ? { clothing: character.clothing.value } : {}),
+        ...(character?.holding ? { holding: character.holding.value } : {}),
+        namedRooms: namedRoomsInCanon(session),
+        ...(venueBuildingName(session.scene?.location)
+          ? { venueName: venueBuildingName(session.scene?.location) }
+          : {}),
+        ...(session.handoff?.trim() ? { sceneHandoff: true } : {}),
+        ...(session.player?.name?.trim() ? { playerCalled: session.player.name.trim() } : {}),
+        ...(options.regenNote?.trim() ? { regenNote: options.regenNote.trim() } : {}),
+        characterNames: Object.entries(session.characters).flatMap(([id, entry]) =>
+          entry.name
+            ? [id, ...personNameTerms(entry.name, entry.familyName, entry.middleName)]
+            : [id],
+        ),
+        others: othersInScene(session, characterId),
+        party: travelingPartyIds(session)
+          .map((id) => maskUnheardGivenNames(session, narrationCallName(session, id)))
+          .filter(Boolean),
+        partyPending: (session.partyPendingIds ?? [])
+          .map((id) => maskUnheardGivenNames(session, narrationCallName(session, id)))
+          .filter(Boolean),
+        partyHold: holdingPartyIds(session)
+          .map((id) => maskUnheardGivenNames(session, narrationCallName(session, id)))
+          .filter(Boolean),
+        ...(travelingPartyIds(session).includes(characterId) ? { inParty: true } : {}),
+        ...(outOfSight ? { outOfSight: true } : {}),
+      },
+    );
 
-    if(options.check){
-      const outcome=checkOutcomeInstruction(options.check,session.ruleset?.name==='Gate test · d100'&&options.check.attributeId==='persuasion'?(options.check.success?'The guard accepts the traveller’s request, explicitly permits entry, and opens the city gate. Her decision is YES. The traveller remains outside until they choose to enter.':'The guard refuses this request and keeps the city gate closed. Her decision is NO for this attempt. The traveller remains outside.') : undefined);
+    if (options.check) {
+      const outcome = checkOutcomeInstruction(
+        options.check,
+        isGateTestSession(session) && options.check.attributeId === "persuasion"
+          ? options.check.success
+            ? "The guard accepts the traveller’s request, explicitly permits entry, and opens the city gate. Her decision is YES. The traveller remains outside until they choose to enter."
+            : "The guard refuses this request and keeps the city gate closed. Her decision is NO for this attempt. The traveller remains outside."
+          : undefined,
+      );
       // Some local chat templates honor only the initial system message.
       // Keep the resolved outcome in the same authoritative system block as the scene rules.
-      const system=messages.filter(m=>m.role==='system').map(m=>m.content).join('\n\n');
-      const dialogue=messages.filter(m=>m.role!=='system');
-      messages.splice(0,messages.length,{role:'system',content:system+'\n\n'+outcome},...dialogue);
+      const system = messages
+        .filter((m) => m.role === "system")
+        .map((m) => m.content)
+        .join("\n\n");
+      const dialogue = messages.filter((m) => m.role !== "system");
+      messages.splice(
+        0,
+        messages.length,
+        { role: "system", content: system + "\n\n" + outcome },
+        ...dialogue,
+      );
     }
     this.state = transition(this.state, "provider_responding"); // -> streaming
 
     let fullText = "";
-    const gateDecision=options.check&&session.ruleset?.name==='Gate test · d100'&&options.check.attributeId==='persuasion'
-      ? options.check.success
-        ? `${session.characters[characterId]?.name ?? 'The guard'} nods and draws back the bolt. "All right. You may enter." She opens the city gate and steps aside. You are still outside; the way into the city is now open.`
-        : `${session.characters[characterId]?.name ?? 'The guard'} shakes her head and keeps her hand on the bolt. "No. You must wait until morning." The city gate remains closed, and you remain outside.`
-      : undefined;
-    if(gateDecision){fullText=gateDecision;callbacks.onTextDelta?.(gateDecision);}
-    else for await (const chunk of this.llmAdapter.streamCompletion({
-      messages,
-      temperature: session.runtime.temperature,
-      seed: session.runtime.seed,
-      maxTokens: pass1PredictTokens(session.runtime.maxReplyTokens)
-    })) {
-      if (chunk.type === "text_delta") {
-        fullText += chunk.text;
-        callbacks.onTextDelta?.(chunk.text);
-      } else if (chunk.type === "error") {
-        throw new TurnFailedError(turnId, `Provider error: ${chunk.message}`);
-      } else if (chunk.type === "done") {
-        if (chunk.finishReason === "cancelled") {
-          throw new TurnFailedError(turnId, "Turn was cancelled before completion.");
+    const gateDecision =
+      options.check && isGateTestSession(session) && options.check.attributeId === "persuasion"
+        ? options.check.success
+          ? `${session.characters[characterId]?.name ?? "The guard"} nods and draws back the bolt. "All right. You may enter." She opens the city gate and steps aside. You are still outside; the way into the city is now open.`
+          : `${session.characters[characterId]?.name ?? "The guard"} shakes her head and keeps her hand on the bolt. "No. You must wait until morning." The city gate remains closed, and you remain outside.`
+        : undefined;
+    if (gateDecision) {
+      fullText = gateDecision;
+      callbacks.onTextDelta?.(gateDecision);
+    } else
+      for await (const chunk of this.llmAdapter.streamCompletion({
+        messages,
+        temperature: session.runtime.temperature,
+        seed: session.runtime.seed,
+        maxTokens: pass1PredictTokens(session.runtime.maxReplyTokens),
+      })) {
+        if (chunk.type === "text_delta") {
+          fullText += chunk.text;
+          callbacks.onTextDelta?.(chunk.text);
+        } else if (chunk.type === "error") {
+          throw new TurnFailedError(turnId, `Provider error: ${chunk.message}`);
+        } else if (chunk.type === "done") {
+          if (chunk.finishReason === "cancelled") {
+            throw new TurnFailedError(turnId, "Turn was cancelled before completion.");
+          }
         }
       }
-    }
 
     fullText = closeReplyIfCut(stripPass1InstructionLeak(fullText));
 
@@ -547,22 +639,32 @@ export class SessionEngine {
     this.state = transition(this.state, "stream_complete"); // -> extracting
 
     const liveSession = this.stateEngine.getSession();
-    const proposalInputs = guardAbsentPositions(filterUninvitedFollowProposals(
-      dropAiPlayerPosition(
-        (await this.proposalExtractor(
-          fullText,
-          characterId,
-          liveSnapshotFor(liveSession, characterId),
-          playerMessage
-        )).filter(proposal => {
-          // A completed sleep time skip ends awake, rather than starting a new sleep.
-          const clock = liveSession.gameClock;
-          return !(clock && timeActionFromText(playerMessage, clock.totalMinutes)?.kind === "sleep" && proposal.path === "player.status");
-        })
+    const proposalInputs = guardAbsentPositions(
+      filterUninvitedFollowProposals(
+        dropAiPlayerPosition(
+          (
+            await this.proposalExtractor(
+              fullText,
+              characterId,
+              liveSnapshotFor(liveSession, characterId),
+              playerMessage,
+            )
+          ).filter((proposal) => {
+            // A completed sleep time skip ends awake, rather than starting a new sleep.
+            const clock = liveSession.gameClock;
+            return !(
+              clock &&
+              timeActionFromText(playerMessage, clock.totalMinutes)?.kind === "sleep" &&
+              proposal.path === "player.status"
+            );
+          }),
+        ),
+        liveSession,
+        characterId,
       ),
       liveSession,
-      characterId
-    ), liveSession, {reply:fullText,focusId:characterId});
+      { reply: fullText, focusId: characterId },
+    );
 
     this.state = transition(this.state, "proposals_ready"); // -> committing
 
@@ -606,12 +708,17 @@ export class SessionEngine {
         role: "character",
         speaker: characterId,
         content: fullText,
-        ...(isLeftBehind(this.stateEngine.getSession(), characterId) ? { toldBy: "narrator" as const } : {})
+        ...(isLeftBehind(this.stateEngine.getSession(), characterId)
+          ? { toldBy: "narrator" as const }
+          : {}),
       },
-      appendReplyVersion
+      appendReplyVersion,
     );
     if (!appendReplyResult.committed) {
-      throw new TurnFailedError(turnId, `Could not append character reply: ${appendReplyResult.reason}`);
+      throw new TurnFailedError(
+        turnId,
+        `Could not append character reply: ${appendReplyResult.reason}`,
+      );
     }
     this.stateEngine.openRoomsNamedInText(fullText);
     this.stateEngine.offerPartyFromReply(characterId, fullText);
@@ -628,7 +735,7 @@ export class SessionEngine {
       const spent = this.stateEngine.markLayerSpent(
         layer.id,
         "explicit_scenario_rule",
-        this.stateEngine.getSession().stateVersion
+        this.stateEngine.getSession().stateVersion,
       );
       if (spent.committed) {
         const spentEvent = this.stateEngine.getEventLog().last();
@@ -657,7 +764,7 @@ export class SessionEngine {
           const layerResult = this.stateEngine.addLayer(
             { ...layerProposal, priority: 5 },
             "ai_approved_state_mutation",
-            versionBeforeLayer
+            versionBeforeLayer,
           );
           if (layerResult.committed) {
             const layerEvent = this.stateEngine.getEventLog().last();
@@ -672,7 +779,13 @@ export class SessionEngine {
     // Captured before Rolling Memory runs, so a condensation triggered
     // by this turn is never itself undone by a later Regenerate call —
     // condensation of *older* history is unrelated to this turn's reply.
-    this.lastTurnManifest = { turnId, characterId, playerMessage, eventIds: eventIdsThisTurn,...(options.check?{check:options.check}:{}) };
+    this.lastTurnManifest = {
+      turnId,
+      characterId,
+      playerMessage,
+      eventIds: eventIdsThisTurn,
+      ...(options.check ? { check: options.check } : {}),
+    };
 
     // Rolling Conversation Memory: opportunistic, best-effort. A
     // failure here must never fail a turn whose dialogue and
@@ -691,7 +804,7 @@ export class SessionEngine {
       text: fullText,
       mutationsApplied,
       mutationsRejected,
-      idempotentReplay: false
+      idempotentReplay: false,
     };
     this.committedTurns.set(turnId, result);
 
@@ -699,7 +812,7 @@ export class SessionEngine {
       turn: this.stateEngine.getSession().stateVersion,
       timestamp: new Date().toISOString(),
       type: "turn_committed",
-      payload: { turnId, mutationsApplied, mutationsRejected }
+      payload: { turnId, mutationsApplied, mutationsRejected },
     });
 
     return result;
@@ -709,21 +822,19 @@ export class SessionEngine {
    * Best-effort recap of beats the 8,000-token ceiling would drop, and
    * of old batches past the recent window. Never fails the turn.
    */
-  private async maybeCondenseHistory(
-    move?: {
-      previousStage: string;
-      currentStage: string;
-      previousPlace: string;
-      currentPlace: string;
-      standingNotes: string[];
-    }
-  ): Promise<void> {
+  private async maybeCondenseHistory(move?: {
+    previousStage: string;
+    currentStage: string;
+    previousPlace: string;
+    currentPlace: string;
+    standingNotes: string[];
+  }): Promise<void> {
     if (!this.rollingMemory) return;
     try {
       const base = this.rollingMemory.options ?? DEFAULT_ROLLING_MEMORY_OPTIONS;
       await runRollingMemoryUntilQuiet(this.stateEngine, this.rollingMemory.summarizer, {
         ...base,
-        ...(move ?? {})
+        ...(move ?? {}),
       });
     } catch {
       // Deliberately swallowed — condensation is housekeeping.
@@ -762,27 +873,27 @@ function liveSnapshotFor(session: Session, characterId: string): Pass2LiveSnapsh
       ? {
           trust: bond.trust.value,
           familiarity: bond.familiarity.value,
-          tension: bond.tension.value
+          tension: bond.tension.value,
         }
       : {}),
     ...(session.player
       ? {
           playerPosition: session.player.position.value,
-          playerStatus: session.player.status.value
+          playerStatus: session.player.status.value,
         }
       : {}),
     ...(namedRoomsInCanon(session).length > 0 ? { namedRooms: namedRoomsInCanon(session) } : {}),
     ...(stats.length > 0 ? { stats } : {}),
     cast: Object.entries(session.characters).map(([id, entry]) => ({
       id,
-      name: entry.name?.trim() || id
+      name: entry.name?.trim() || id,
     })),
     partyIds: session.partyIds ?? [],
     partyPendingIds: session.partyPendingIds ?? [],
     ...((session.partyIds ?? []).includes(characterId) &&
     !(session.partyHoldIds ?? []).includes(characterId)
       ? { inParty: true }
-      : {})
+      : {}),
   };
 }
 
@@ -790,7 +901,7 @@ function applyPlayerDestinationOn(
   engine: StateEngine,
   playerMessage: string,
   characterId: string,
-  goTo?: string
+  goTo?: string,
 ): void {
   const session = engine.getSession();
   const spatial = goTo?.trim()
@@ -802,7 +913,7 @@ function applyPlayerDestinationOn(
       path: write.path,
       value: write.value,
       source: "player_manual_state",
-      expectedStateVersion: session.stateVersion
+      expectedStateVersion: session.stateVersion,
     });
   }
   const dressed = dressForPublicBarWrites(engine.getSession(), playerMessage, characterId);
@@ -812,7 +923,7 @@ function applyPlayerDestinationOn(
       path: write.path,
       value: write.value,
       source: "player_manual_state",
-      expectedStateVersion: session.stateVersion
+      expectedStateVersion: session.stateVersion,
     });
   }
 }

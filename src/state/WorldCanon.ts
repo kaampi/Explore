@@ -18,7 +18,7 @@ const PLACE_CLAIMS: RegExp[] = [
   /upstairs/i,
   /'s room/i,
   /\bmy room\b/i,
-  /\byour room\b/i
+  /\byour room\b/i,
 ];
 
 /** Labels to list when lore names them and the place card has no slots yet. */
@@ -26,7 +26,7 @@ const LORE_ROOMS: { pattern: RegExp; label: string }[] = [
   { pattern: /guest room/i, label: "guest room" },
   { pattern: /spare room/i, label: "spare room" },
   { pattern: /\bcellar\b/i, label: "cellar" },
-  { pattern: /\btoilets?\b/i, label: "toilets" }
+  { pattern: /\btoilets?\b/i, label: "toilets" },
 ];
 
 const OWNED_ROOM = /([A-Za-z][A-Za-z]+(?: [A-Za-z]+)?)'s room/gi;
@@ -56,7 +56,8 @@ export function canonSettingText(session: Session): string {
     for (const keyword of room.keywords ?? []) bits.push(keyword);
   }
   for (const layer of session.layers) {
-    if (!layer.loreSource && layer.type === "environment" && isEffectivelyActive(session, layer)) bits.push(layer.content);
+    if (!layer.loreSource && layer.type === "environment" && isEffectivelyActive(session, layer))
+      bits.push(layer.content);
   }
   for (const object of session.objects ?? []) {
     bits.push(object.name);
@@ -79,7 +80,7 @@ const CREATURE_CLAIMS: RegExp[] = [
   /\b(?:stray\s+)?dogs?\b/i,
   /\b(?:stray\s+)?cats?\b/i,
   /\bpupp(?:y|ies)\b/i,
-  /\bkittens?\b/i
+  /\bkittens?\b/i,
 ];
 
 /** True when `proposed` names a creature that is not in canon. */
@@ -140,7 +141,7 @@ function uniqueOwnedRoom(session: Session, available: Set<string>): string | und
 const GENERIC_ALIASES: { pattern: RegExp; resolvesTo: string }[] = [
   { pattern: /gästrum/i, resolvesTo: "guest room" },
   { pattern: /toalett(?:en|er(?:na)?)?/i, resolvesTo: "toilets" },
-  { pattern: /källare(?:n)?/i, resolvesTo: "cellar" }
+  { pattern: /källare(?:n)?/i, resolvesTo: "cellar" },
 ];
 
 /** First canon room named in `text`, or an alias that maps to one. */
@@ -177,7 +178,7 @@ export function matchRoomMention(text: string, session: Session): string | undef
 export function collapsesNamedRoomToVenue(
   proposed: string,
   current: string,
-  session: Session
+  session: Session,
 ): boolean {
   const currentRoom = matchRoomMention(current, session);
   if (!currentRoom) return false;
@@ -189,4 +190,3 @@ export function collapsesNamedRoomToVenue(
   if (head && (p === head || p === venue)) return true;
   return /\b(?:bar|counter)\b/i.test(proposed) && !/\b(?:bar|counter)\b/i.test(currentRoom);
 }
-

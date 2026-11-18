@@ -7,7 +7,7 @@ const HOLD_MS = 14000;
 export function ChatBackdrop({
   pictures,
   play,
-  locationKey
+  locationKey,
 }: {
   pictures: PlacePicture[];
   play: PicturePlay;
@@ -52,7 +52,12 @@ export function ChatBackdrop({
       aria-hidden="true"
     >
       {urls.map((url, i) => (
-        <img key={`${locationKey}:${i}`} src={url} alt="" className={i === shown ? "is-on" : undefined} />
+        <img
+          key={`${locationKey}:${i}`}
+          src={url}
+          alt=""
+          className={i === shown ? "is-on" : undefined}
+        />
       ))}
     </div>
   );

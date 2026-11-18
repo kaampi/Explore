@@ -30,7 +30,7 @@ describe("approximate age", () => {
       source: "player",
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
-      approximateAge: 67
+      approximateAge: 67,
     });
     expect(withAge.approximateAge).toBe(67);
 
@@ -44,7 +44,7 @@ describe("approximate age", () => {
       source: "player",
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
-      approximateAge: ""
+      approximateAge: "",
     });
     expect(blank.approximateAge).toBeUndefined();
   });

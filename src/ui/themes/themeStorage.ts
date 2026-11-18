@@ -4,13 +4,11 @@ import { ThemeLibrarySchema, type ThemeLibrary } from "./theme";
 async function database(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open("sandboxai-appearance", 1);
-    request.onupgradeneeded = () =>
-      request.result.createObjectStore("preferences");
+    request.onupgradeneeded = () => request.result.createObjectStore("preferences");
     request.onsuccess = () => resolve(request.result);
     request.onerror = () =>
       reject(request.error ?? new Error("Could not open appearance storage."));
-    request.onblocked = () =>
-      reject(new Error("Appearance storage is blocked by another tab."));
+    request.onblocked = () => reject(new Error("Appearance storage is blocked by another tab."));
   });
 }
 export async function loadThemeLibrary(): Promise<ThemeLibrary | null> {
@@ -24,12 +22,7 @@ export async function loadThemeLibrary(): Promise<ThemeLibrary | null> {
         if (request.result === undefined) return;
         const parsed = ThemeLibrarySchema.safeParse(request.result);
         if (parsed.success) result = parsed.data;
-        else
-          reject(
-            new Error(
-              "Saved appearance could not be read. Your scene is unaffected.",
-            ),
-          );
+        else reject(new Error("Saved appearance could not be read. Your scene is unaffected."));
       };
       transaction.oncomplete = () => resolve(result);
       transaction.onabort = () =>
@@ -61,8 +54,7 @@ export async function backgroundFromFile(file: File): Promise<string> {
   if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
     throw new Error("Choose a PNG, JPEG, or WebP image.");
   }
-  if (file.size > 10 * 1024 * 1024)
-    throw new Error("Choose an image smaller than 10 MB.");
+  if (file.size > 10 * 1024 * 1024) throw new Error("Choose an image smaller than 10 MB.");
   const bitmap = await createImageBitmap(file);
   try {
     const scale = Math.min(1, 1920 / Math.max(bitmap.width, bitmap.height));
@@ -74,9 +66,7 @@ export async function backgroundFromFile(file: File): Promise<string> {
     context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     const dataUrl = canvas.toDataURL("image/webp", 0.85);
     if (dataUrl.length > 5_600_000)
-      throw new Error(
-        "The prepared image is too large. Choose a smaller background.",
-      );
+      throw new Error("The prepared image is too large. Choose a smaller background.");
     return dataUrl;
   } finally {
     bitmap.close();

@@ -24,7 +24,7 @@ export const DEFAULT_OLLAMA_MODEL = "stheno-custom:latest";
 export class OllamaRequestError extends Error {
   constructor(
     public readonly status: number,
-    statusText: string
+    statusText: string,
   ) {
     super(`Ollama request failed: ${status} ${statusText}`);
     this.name = "OllamaRequestError";
@@ -56,7 +56,7 @@ export async function listOllamaModels(options: ListOllamaModelsOptions = {}): P
   const fetchImpl = boundFetch(options.fetchImpl);
   const response = await fetchImpl(`${normalizeBaseUrl(options.baseUrl)}/api/tags`, {
     method: "GET",
-    signal: options.signal ?? null
+    signal: options.signal ?? null,
   });
 
   if (!response.ok) {
@@ -76,7 +76,11 @@ export async function listOllamaModels(options: ListOllamaModelsOptions = {}): P
   }
 
   const names = models
-    .map((entry) => (entry && typeof entry === "object" && "name" in entry ? (entry as { name: unknown }).name : undefined))
+    .map((entry) =>
+      entry && typeof entry === "object" && "name" in entry
+        ? (entry as { name: unknown }).name
+        : undefined,
+    )
     .filter((name): name is string => typeof name === "string" && name.length > 0);
 
   return [...new Set(names)].sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }));
@@ -90,7 +94,9 @@ export async function listOllamaModels(options: ListOllamaModelsOptions = {}): P
 export function pickListedOllamaModel(preferred: string, names: string[]): string | undefined {
   if (names.length === 0) return undefined;
   if (names.includes(preferred)) return preferred;
-  const tagged = names.find((name) => name === `${preferred}:latest` || name.startsWith(`${preferred}:`));
+  const tagged = names.find(
+    (name) => name === `${preferred}:latest` || name.startsWith(`${preferred}:`),
+  );
   return tagged ?? names[0];
 }
 
@@ -137,7 +143,7 @@ export class OllamaProvider implements LLMProvider {
     this.capabilities = {
       streaming: true,
       cancellation: true,
-      structuredOutput: config.structuredOutputSupported ?? false
+      structuredOutput: config.structuredOutputSupported ?? false,
     };
   }
 
@@ -153,9 +159,9 @@ export class OllamaProvider implements LLMProvider {
         options: {
           ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
           ...(request.seed !== null && request.seed !== undefined ? { seed: request.seed } : {}),
-          ...(request.maxTokens !== undefined ? { num_predict: request.maxTokens } : {})
-        }
-      })
+          ...(request.maxTokens !== undefined ? { num_predict: request.maxTokens } : {}),
+        },
+      }),
     });
 
     if (!response.ok) {
@@ -251,9 +257,9 @@ export async function completeOllamaChat(options: CompleteOllamaChatOptions): Pr
       stream: false,
       options: {
         ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
-        ...(options.maxTokens !== undefined ? { num_predict: options.maxTokens } : {})
-      }
-    })
+        ...(options.maxTokens !== undefined ? { num_predict: options.maxTokens } : {}),
+      },
+    }),
   });
 
   if (!response.ok) {

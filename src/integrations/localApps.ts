@@ -18,11 +18,7 @@ export type AppStatus = z.infer<typeof AppStatusSchema>;
 export function safeAppAddress(value: string): string {
   if (!value.trim()) return "";
   const url = new URL(value.trim());
-  if (
-    !["http:", "https:"].includes(url.protocol) ||
-    url.username ||
-    url.password
-  ) {
+  if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) {
     throw new Error("Use an HTTP or HTTPS app address without credentials.");
   }
   return url.href;
@@ -43,8 +39,7 @@ export async function checkCompanionApp(
   address: string,
   signal?: AbortSignal,
 ): Promise<AppStatus> {
-  const checkedAddress =
-    safeAppAddress(address) || DEFAULT_APP_ADDRESSES[appId];
+  const checkedAddress = safeAppAddress(address) || DEFAULT_APP_ADDRESSES[appId];
   const unknown: AppStatus = {
     appId,
     address: checkedAddress,
@@ -61,17 +56,10 @@ export async function checkCompanionApp(
         : AbortSignal.timeout(3000),
       credentials: "same-origin",
     });
-    if (
-      !response.ok ||
-      !response.headers.get("content-type")?.includes("application/json")
-    )
+    if (!response.ok || !response.headers.get("content-type")?.includes("application/json"))
       return unknown;
     const parsed = AppStatusSchema.safeParse(await response.json());
-    if (
-      !parsed.success ||
-      parsed.data.appId !== appId ||
-      parsed.data.address !== checkedAddress
-    )
+    if (!parsed.success || parsed.data.appId !== appId || parsed.data.address !== checkedAddress)
       return unknown;
     return parsed.data;
   } catch {

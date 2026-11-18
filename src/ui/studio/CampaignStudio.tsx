@@ -1,9 +1,18 @@
-import { installInnExample } from '../../scenarios/innVisit';
-import { EmmaInnExampleDialog } from './EmmaInnExampleDialog';
-import { chooseAdventureMap } from '../../library/adventureMap';
-import { StoryboardEditor } from './StoryboardEditor';
-import { connectedAdventureExample } from '../../library/playableCampaign';
-import { pinSessionAnatomy } from "@state/anatomy";
+import { useTranslate } from "../i18n/LanguageProvider";
+import { syncAdventure } from "../../library/sceneSync";
+import { remapAttribute } from "../../library/sceneParts";
+import { RuleSetChange } from "./RuleSetChange";
+import { BASIC_RULESET } from "../../library/basicRuleset";
+import { sceneFormat } from "../../library/sceneFormat";
+import { planNewPlace } from "../../library/campaignPlace";
+import { installInnExample } from "../../scenarios/innVisit";
+import { EmmaInnExampleDialog } from "./EmmaInnExampleDialog";
+import { adventureMapPlaces, chooseAdventureMap } from "../../library/adventureMap";
+import { StoryboardEditor } from "./StoryboardEditor";
+import { adventureFacts, connectedAdventureExample } from "../../library/playableCampaign";
+import { adventureSteps, type AdventureStepId } from "./adventureSteps";
+import { storyboardIssues, storyboardWarnings } from "./storyboardReadiness";
+import { pinSessionAnatomy, pinSessionFactions } from "@state/anatomy";
 import { useEffect, useRef, useState } from "react";
 import type { IndexedDBRepository, StudioResume } from "@persistence/IndexedDBRepository";
 import type { Session } from "@state/StateSchema";
@@ -17,12 +26,23 @@ import { HintSelect } from "./HintSelect";
 import { ShuttleList } from "./ShuttleList";
 import { LensBar } from "./LensBar";
 import { AGE_BANDS, matchesAgeBand, type AgeBand } from "@library/ageBand";
-import { filterFromLens, lensFromFilter, matchesTagFilter, uniqueTags, type TagFilter } from "@library/objectFilter";
+import {
+  filterFromLens,
+  lensFromFilter,
+  matchesTagFilter,
+  uniqueTags,
+  type TagFilter,
+} from "@library/objectFilter";
 import { SheetNameField } from "./SheetNameField";
 import { LoreEditor } from "./LoreEditor";
 import { FormSection } from "./FormSection";
 import { confirmRemove } from "./studioShared";
-import { WHAT_NOW_FLOOR, WHAT_NOW_STAY, isWhatNowStay, venueBuildingName } from "@state/playerDestination";
+import {
+  WHAT_NOW_FLOOR,
+  WHAT_NOW_STAY,
+  isWhatNowStay,
+  venueBuildingName,
+} from "@state/playerDestination";
 import type { StudioView } from "./types";
 import quill from "../assets/icon_campaign_builder.png";
 import {
@@ -46,12 +66,17 @@ import {
   type RealmTemplate,
   type RulesetTemplate,
   type SceneCast,
-  type VoiceTemplate
+  type VoiceTemplate,
 } from "@library/LibrarySchema";
 import { withOriginalTimestamps } from "@library/fromForm";
 import { removeLinksForScene } from "@library/storyboardLinks";
 import { dropOversizedPortrait } from "@library/slimPortrait";
-import { BUILTIN_PRONOUNS, isBuiltinPronoun, normalizePronoun, pronounLabel } from "@state/pronouns";
+import {
+  BUILTIN_PRONOUNS,
+  isBuiltinPronoun,
+  normalizePronoun,
+  pronounLabel,
+} from "@state/pronouns";
 import { portraitDataUrlFromFile, PortraitError, portraitSrc } from "./portrait";
 import { formatPersonName } from "@library/personName";
 import { parseKeywordList } from "@layers/keywords";
@@ -66,25 +91,16 @@ import {
   exampleRealmTemplates,
   exampleRulesetTemplates,
   exampleVoiceTemplates,
-  mergeWithExamples
+  mergeWithExamples,
 } from "@library/exampleTemplates";
 
 type Tab = "general" | "you" | "characters" | "objects" | "scenes" | "storyboard";
-
-const TABS: { id: Tab; label: string }[] = [
-  { id: "general", label: "General" },
-  { id: "you", label: "You" },
-  { id: "characters", label: "Characters" },
-  { id: "objects", label: "Objects" },
-  { id: "scenes", label: "Scenes" },
-  { id: "storyboard", label: "Storyboard" }
-];
 
 function Chip({
   active,
   label,
   thumb,
-  onPick
+  onPick,
 }: {
   active: boolean;
   label: string;
@@ -102,10 +118,11 @@ function Chip({
 }
 
 function BrandHeader() {
+  const t = useTranslate();
   return (
     <div className="campaign-brand">
       <img className="campaign-brand__quill" src={quill} alt="" />
-      <h1 className="campaign-brand__title">Campaign Builder</h1>
+      <h1 className="campaign-brand__title">{t("cstAdventureBuilder")}</h1>
     </div>
   );
 }
@@ -113,7 +130,9 @@ function BrandHeader() {
 function personLabel(template: CharacterTemplate | undefined, id: string): string {
   if (!template) return id;
   const name = formatPersonName(template.name, template.familyName, template.middleName);
-  return typeof template.approximateAge === "number" ? `${name} · ${template.approximateAge}` : name;
+  return typeof template.approximateAge === "number"
+    ? `${name} · ${template.approximateAge}`
+    : name;
 }
 
 // Spreads `draft` first, so every field — including ones this function
@@ -126,7 +145,7 @@ function sanitizeCampaign(draft: CampaignTemplate) {
   const voiceId = draft.voiceId;
   return {
     ...draft,
-    name: draft.name.trim() || "New campaign",
+    name: draft.name.trim() || "New adventure",
     scenes: draft.scenes.map((scene) => ({
       ...scene,
       name: scene.name.trim() || "Opening",
@@ -135,9 +154,9 @@ function sanitizeCampaign(draft: CampaignTemplate) {
         .map((trigger) => ({ ...trigger, content: trigger.content.trim() })),
       whatNowSets: whatNowSetsFromScene(scene).map((set) => ({
         ...set,
-        choices: set.choices.slice(0, 3)
+        choices: set.choices.slice(0, 3),
       })),
-      startRoomId: scene.startRoomId?.trim() ?? ""
+      startRoomId: scene.startRoomId?.trim() ?? "",
     })),
     ...(model ? { model } : { model: undefined }),
     ...(rulesetId ? { rulesetId } : { rulesetId: undefined }),
@@ -145,7 +164,7 @@ function sanitizeCampaign(draft: CampaignTemplate) {
     ...(draft.realmId?.trim() ? { realmId: draft.realmId.trim() } : { realmId: undefined }),
     ...(draft.lens ? { lens: draft.lens } : { lens: undefined }),
     ...(draft.objectLens ? { objectLens: draft.objectLens } : { objectLens: undefined }),
-    player: sanitizeYou(draft.player)
+    player: sanitizeYou(draft.player),
   };
 }
 
@@ -157,7 +176,7 @@ function sanitizeYou(player: CampaignPlayer | undefined): CampaignPlayer | undef
     personality: player.personality.trim(),
     stats: player.stats,
     ...(player.pronoun ? { pronoun: player.pronoun } : {}),
-    ...(player.portraitDataUrl?.trim() ? { portraitDataUrl: player.portraitDataUrl.trim() } : {})
+    ...(player.portraitDataUrl?.trim() ? { portraitDataUrl: player.portraitDataUrl.trim() } : {}),
   });
 }
 
@@ -176,7 +195,7 @@ function emptyCast(characterId: string, mood: string): SceneCast {
     holding: "",
     trust: "20",
     familiarity: "10",
-    tension: "5"
+    tension: "5",
   };
 }
 
@@ -186,7 +205,7 @@ export function CampaignStudio({
   resume,
   onStart,
   onOpenShelf,
-  onOneOff
+  onOneOff,
 }: {
   sessionId: string;
   repo: IndexedDBRepository;
@@ -195,6 +214,7 @@ export function CampaignStudio({
   onOpenShelf: (view: StudioView) => void;
   onOneOff: () => void;
 }) {
+  const t = useTranslate();
   const [campaigns, setCampaigns] = useState<CampaignTemplate[]>([]);
   const [characters, setCharacters] = useState<CharacterTemplate[]>([]);
   const [places, setPlaces] = useState<PlaceTemplate[]>([]);
@@ -204,7 +224,11 @@ export function CampaignStudio({
   const [objects, setObjects] = useState<ObjectTemplate[]>([]);
   const [draft, setDraft] = useState<CampaignTemplate | null>(null);
   const [tab, setTab] = useState<Tab>("general");
-  const [storyboardOpen,setStoryboardOpen]=useState(false);
+  const [storyboardOpen, setStoryboardOpen] = useState(false);
+  /** Places and worlds made while building. They reach the library only when the adventure is saved. */
+  const [pendingPlaces, setPendingPlaces] = useState<PlaceTemplate[]>([]);
+  const [pendingRealms, setPendingRealms] = useState<RealmTemplate[]>([]);
+  const [storyboardStep, setStoryboardStep] = useState<"scenes" | "connections" | "test">("scenes");
   const [emmaExampleOpen, setEmmaExampleOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -223,9 +247,17 @@ export function CampaignStudio({
       repo.listRealms(),
       repo.listVoices(),
       repo.listRulesets(),
-      repo.listObjects()
+      repo.listObjects(),
     ]);
-    const [nextCampaigns, nextCharacters, nextPlaces, nextRealms, nextVoices, nextRulesets, nextObjects] = results;
+    const [
+      nextCampaigns,
+      nextCharacters,
+      nextPlaces,
+      nextRealms,
+      nextVoices,
+      nextRulesets,
+      nextObjects,
+    ] = results;
     const listed = nextCampaigns.status === "fulfilled" ? nextCampaigns.value : [];
     if (nextCampaigns.status === "fulfilled") setCampaigns(nextCampaigns.value);
     if (nextCharacters.status === "fulfilled") setCharacters(nextCharacters.value);
@@ -254,7 +286,7 @@ export function CampaignStudio({
         }
         resumeApplied.current = true;
         setDraft(found);
-        setTab(found.scenes.some(scene=>scene.encounter)?"storyboard":"scenes");
+        setTab(found.scenes.some((scene) => scene.encounter) ? "storyboard" : "scenes");
         setFreshNight(true);
         setHandoffDraft(resume.handoff ?? "");
       })
@@ -270,61 +302,109 @@ export function CampaignStudio({
   const visibleRulesets = mergeWithExamples(rulesets, exampleRulesetTemplates());
   const visibleObjects = mergeWithExamples(objects, exampleObjectTemplates());
   const visibleCharacters = mergeWithExamples(characters, [exampleCharacterTemplate()]);
-  const visiblePlaces = mergeWithExamples(places, [examplePlaceTemplate()]);
-  const visibleRealms = mergeWithExamples(realms, exampleRealmTemplates());
+  const visiblePlaces = mergeWithExamples(
+    [...places, ...pendingPlaces.filter((item) => !places.some((saved) => saved.id === item.id))],
+    [examplePlaceTemplate()],
+  );
+  const visibleRealms = mergeWithExamples(
+    [...realms, ...pendingRealms.filter((item) => !realms.some((saved) => saved.id === item.id))],
+    exampleRealmTemplates(),
+  );
   const savedIds = new Set(campaigns.map((item) => item.id));
+  const openId = draft?.id;
+  useEffect(() => {
+    setPendingPlaces([]);
+    setPendingRealms([]);
+  }, [openId]);
 
   function open(id: string) {
     const found = campaigns.find((item) => item.id === id);
     if (!found) return;
     setDraft(withCampaignRealm(found, visiblePlaces));
-    setTab(found.scenes.some(scene=>scene.encounter)?"storyboard":"general");setStoryboardOpen(found.scenes.some(scene=>scene.encounter));
+    setTab(found.scenes.some((scene) => scene.encounter) ? "storyboard" : "general");
+    setStoryboardOpen(found.scenes.some((scene) => scene.encounter));
     setError(null);
     setNotice(null);
     setFreshNight(false);
-    setHandoffDraft(resume?.campaignId === found.id ? resume.handoff ?? "" : "");
+    setHandoffDraft(resume?.campaignId === found.id ? (resume.handoff ?? "") : "");
   }
 
   function createNew() {
     setDraft({
       ...newCampaignTemplate({
-        name: "New campaign",
-        scenes: [emptyCampaignScene()]
+        name: "New adventure",
+        scenes: [emptyCampaignScene()],
       }),
-      name: ""
+      name: "",
     });
     setTab("general");
     setError(null);
-    setNotice("Name it, pick who belongs, then build a scene.");
+    setNotice("Name it, pick who belongs, then build scenes in Storyboard.");
     setFreshNight(false);
     setHandoffDraft("");
   }
 
-  async function loadInnExample(){
-    setBusy(true);setError(null);try{const built=await installInnExample(repo);await refresh();setDraft(built.campaign);setTab('storyboard');setStoryboardOpen(true);setNotice('An editable inn, its rooms and adventure are saved. Choose Test this scene, or open the inn in World maps.');}catch(error){setError(error instanceof Error?error.message:'Could not load the inn.');}finally{setBusy(false);}
+  async function loadInnExample() {
+    setBusy(true);
+    setError(null);
+    try {
+      const built = await installInnExample(repo);
+      await refresh();
+      setDraft(built.campaign);
+      setTab("storyboard");
+      setStoryboardOpen(true);
+      setNotice(
+        "An editable inn, its rooms and adventure are saved. Choose Test this scene, or open the inn in World maps.",
+      );
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Could not load the inn.");
+    } finally {
+      setBusy(false);
+    }
   }
   async function loadEmmaExample(campaign: CampaignTemplate) {
     setBusy(true);
     setError(null);
     try {
       await repo.saveCampaign(campaign);
-      setCampaigns(items => [campaign, ...items]);
+      setCampaigns((items) => [campaign, ...items]);
       setEmmaExampleOpen(false);
       setDraft(campaign);
-      setTab('storyboard');
+      setTab("storyboard");
       setStoryboardOpen(true);
-      setNotice('Start with “Vid bardisken”. Select an action or connection to see what makes it available.');
+      setNotice(
+        "Start with “Vid bardisken”. Select an action or connection to see what makes it available.",
+      );
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Could not save the adventure.');
+      setError(reason instanceof Error ? reason.message : "Could not save the adventure.");
     } finally {
       setBusy(false);
     }
   }
-  async function loadConnectedExample(){
-    setBusy(true);setError(null);try{const built=connectedAdventureExample();await repo.saveRealm(built.realm);for(const p of built.places)await repo.savePlace(p);for(const c of built.characters)await repo.saveCharacter(c);for(const o of built.objects)await repo.saveObject(o);await refresh();setDraft(built.campaign);setTab('storyboard');setStoryboardOpen(true);setNotice('Explore the two scenes and their conditions, then choose Test this scene.');}catch(error){setError(error instanceof Error?error.message:'Could not load the example.');}finally{setBusy(false);}
+  async function loadConnectedExample() {
+    setBusy(true);
+    setError(null);
+    try {
+      const built = connectedAdventureExample();
+      await repo.saveRealm(built.realm);
+      for (const p of built.places) await repo.savePlace(p);
+      for (const c of built.characters) await repo.saveCharacter(c);
+      for (const o of built.objects) await repo.saveObject(o);
+      await refresh();
+      setDraft(built.campaign);
+      setTab("storyboard");
+      setStoryboardOpen(true);
+      setNotice("Explore the two scenes and their conditions, then choose Test this scene.");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Could not load the example.");
+    } finally {
+      setBusy(false);
+    }
   }
   async function loadExampleCampaign() {
-    const emma = visibleCharacters.find((item) => item.id === EXAMPLE_CHARACTER_ID) ?? exampleCharacterTemplate();
+    const emma =
+      visibleCharacters.find((item) => item.id === EXAMPLE_CHARACTER_ID) ??
+      exampleCharacterTemplate();
     const built = newCampaignTemplate({
       name: "The Aurora Room",
       playerIntro: "A quiet harbor archive, kept long after hours. Stay as long as you like.",
@@ -340,11 +420,11 @@ export function CampaignStudio({
             {
               ...emptyCast(emma.id, emma.mood || "reserved"),
               position: "behind the counter",
-              clothing: "a keeper's coat over indoor clothes"
-            }
-          ]
-        }
-      ]
+              clothing: "a keeper's coat over indoor clothes",
+            },
+          ],
+        },
+      ],
     });
     setDraft(built);
     setTab("scenes");
@@ -353,11 +433,30 @@ export function CampaignStudio({
     setFreshNight(false);
   }
 
+  /** Bring the scenes up to date now, so a new rule-set shows at once. A scene that cannot be is left as it was. */
+  function bringUpToDate(campaign: CampaignTemplate) {
+    try {
+      return syncedDraft(campaign);
+    } catch {
+      return campaign;
+    }
+  }
+
+  /** The adventure with every Storyboard scene brought up to date with the cards it uses. */
+  function syncedDraft(campaign: CampaignTemplate) {
+    return syncAdventure(campaign, {
+      characters: visibleCharacters,
+      objects: visibleObjects,
+      places: visiblePlaces,
+      rulesets: visibleRulesets,
+    });
+  }
+
   async function save() {
     if (!draft) return;
     const name = draft.name.trim();
     if (!name) {
-      setError("Name the campaign.");
+      setError("Name the adventure.");
       return;
     }
     setBusy(true);
@@ -365,12 +464,15 @@ export function CampaignStudio({
     try {
       const realmId = inferCampaignRealmId(draft, visiblePlaces);
       const built = newCampaignTemplate(
-        sanitizeCampaign({ ...draft, name, ...(realmId ? { realmId } : {}) })
+        sanitizeCampaign({ ...syncedDraft(draft), name, ...(realmId ? { realmId } : {}) }),
       );
       const previous = campaigns.find((item) => item.id === built.id);
       const saved = withOriginalTimestamps(built, previous);
+      await persistExamplesUsed(saved);
       await repo.saveCampaign(saved);
       await refresh();
+      setPendingPlaces([]);
+      setPendingRealms([]);
       setDraft(saved);
       setNotice("Saved.");
     } catch (err) {
@@ -382,7 +484,7 @@ export function CampaignStudio({
 
   async function remove() {
     if (!draft || !savedIds.has(draft.id)) return;
-    if (!confirmRemove(draft.name.trim() || "this campaign")) return;
+    if (!confirmRemove(draft.name.trim() || "this adventure")) return;
     await repo.deleteCampaign(draft.id);
     const landed = await repo.loadStudioResume();
     if (landed?.campaignId === draft.id) await repo.clearStudioResume();
@@ -390,6 +492,24 @@ export function CampaignStudio({
     setDraft(null);
     setNotice(null);
     setFreshNight(false);
+  }
+
+  /**
+   * Make a place in the adventure's world, and a world first if there is none. Nothing is
+   * written to the library until the adventure is saved or tested, so closing without
+   * saving leaves no place or world behind.
+   */
+  async function createPlace(name: string) {
+    if (!draft) return undefined;
+    try {
+      const plan = planNewPlace(draft, visiblePlaces, name);
+      if (plan.realm) setPendingRealms((items) => [...items, plan.realm!]);
+      setPendingPlaces((items) => [...items, plan.place]);
+      return { place: plan.place, campaign: plan.campaign };
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Could not create the place.");
+      return undefined;
+    }
   }
 
   async function persistExamplesUsed(next: CampaignTemplate) {
@@ -401,23 +521,28 @@ export function CampaignStudio({
         if (!places.some((item) => item.id === landmark.id)) await repo.savePlace(landmark);
       }
     }
-    const place = visiblePlaces.find((item) => next.scenes.some((scene) => scene.placeId === item.id));
+    const place = visiblePlaces.find((item) =>
+      next.scenes.some((scene) => scene.placeId === item.id),
+    );
     if (place) {
       const realm = visibleRealms.find((item) => item.id === place.realmId);
       if (realm && !realms.some((item) => item.id === realm.id)) await repo.saveRealm(realm);
       if (!places.some((item) => item.id === place.id)) await repo.savePlace(place);
     }
     const ruleset = visibleRulesets.find((item) => item.id === next.rulesetId);
-    if (ruleset && !rulesets.some((item) => item.id === ruleset.id)) await repo.saveRuleset(ruleset);
+    if (ruleset && !rulesets.some((item) => item.id === ruleset.id))
+      await repo.saveRuleset(ruleset);
     const voice = visibleVoices.find((item) => item.id === next.voiceId);
     if (voice && !voices.some((item) => item.id === voice.id)) await repo.saveVoice(voice);
     for (const member of next.people) {
       const template = visibleCharacters.find((item) => item.id === member.characterId);
-      if (template && !characters.some((item) => item.id === template.id)) await repo.saveCharacter(template);
+      if (template && !characters.some((item) => item.id === template.id))
+        await repo.saveCharacter(template);
     }
     for (const id of next.objectIds) {
       const template = visibleObjects.find((item) => item.id === id);
-      if (template && !objects.some((item) => item.id === template.id)) await repo.saveObject(template);
+      if (template && !objects.some((item) => item.id === template.id))
+        await repo.saveObject(template);
     }
   }
 
@@ -427,18 +552,25 @@ export function CampaignStudio({
     setError(null);
     try {
       await persistExamplesUsed(draft);
+      setPendingPlaces([]);
+      setPendingRealms([]);
       const realmId = inferCampaignRealmId(draft, visiblePlaces);
       const named = sanitizeCampaign({
-        ...draft,
-        name: draft.name.trim() || "New campaign",
-        ...(realmId ? { realmId } : {})
+        ...syncedDraft(draft),
+        name: draft.name.trim() || "New adventure",
+        ...(realmId ? { realmId } : {}),
       });
       const saved = withOriginalTimestamps(
         newCampaignTemplate(named),
-        campaigns.find((item) => item.id === draft.id)
+        campaigns.find((item) => item.id === draft.id),
       );
       await repo.saveCampaign(saved);
-      const [startPlaces,startRealms]=await Promise.all([repo.listPlaces(),repo.listRealms()]);
+      const [startPlaces, startRealms, anatomyLibrary, factionLibrary] = await Promise.all([
+        repo.listPlaces(),
+        repo.listRealms(),
+        repo.listAnatomyTemplates(),
+        repo.listFactions(),
+      ]);
       const result = sessionFromCampaignScene(
         {
           campaign: saved,
@@ -449,30 +581,37 @@ export function CampaignStudio({
           objects: visibleObjects,
           voices: visibleVoices,
           rulesets: visibleRulesets,
-          ...(handoffDraft.trim() ? { handoff: handoffDraft.trim() } : {})
+          anatomyTemplates: anatomyLibrary,
+          factions: factionLibrary,
+          ...(handoffDraft.trim() ? { handoff: handoffDraft.trim() } : {}),
         },
-        sessionId
+        sessionId,
       );
       if (!result.ok) {
         setError(result.reason);
         setBusy(false);
         return;
       }
-      onStart(pinSessionAnatomy(result.session, await repo.listAnatomyTemplates()));
+      onStart(
+        pinSessionFactions(pinSessionAnatomy(result.session, anatomyLibrary), factionLibrary),
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not start this scene.");
       setBusy(false);
     }
   }
 
-  function patchScene(sceneId: string, patch: Partial<CampaignScene> | ((scene: CampaignScene) => CampaignScene)) {
+  function patchScene(
+    sceneId: string,
+    patch: Partial<CampaignScene> | ((scene: CampaignScene) => CampaignScene),
+  ) {
     if (!draft) return;
     setDraft({
       ...draft,
       scenes: draft.scenes.map((scene) => {
         if (scene.id !== sceneId) return scene;
         return typeof patch === "function" ? patch(scene) : { ...scene, ...patch };
-      })
+      }),
     });
   }
 
@@ -481,7 +620,7 @@ export function CampaignStudio({
     const template = visibleCharacters.find((item) => item.id === id);
     setDraft({
       ...draft,
-      people: [...draft.people, { characterId: id, stats: {}, lore: template?.lore ?? [] }]
+      people: [...draft.people, { characterId: id, stats: {}, lore: template?.lore ?? [] }],
     });
   }
 
@@ -492,8 +631,8 @@ export function CampaignStudio({
       people: draft.people.filter((item) => item.characterId !== id),
       scenes: draft.scenes.map((scene) => ({
         ...scene,
-        people: scene.people.filter((item) => item.characterId !== id)
-      }))
+        people: scene.people.filter((item) => item.characterId !== id),
+      })),
     });
   }
 
@@ -509,8 +648,8 @@ export function CampaignStudio({
       objectIds: draft.objectIds.filter((item) => item !== id),
       scenes: draft.scenes.map((scene) => ({
         ...scene,
-        objectIds: scene.objectIds.filter((item) => item !== id)
-      }))
+        objectIds: scene.objectIds.filter((item) => item !== id),
+      })),
     });
   }
 
@@ -518,7 +657,9 @@ export function CampaignStudio({
     if (!draft) return;
     setDraft({
       ...draft,
-      people: draft.people.map((item) => (item.characterId === characterId ? { ...item, ...patch } : item))
+      people: draft.people.map((item) =>
+        item.characterId === characterId ? { ...item, ...patch } : item,
+      ),
     });
   }
 
@@ -527,8 +668,10 @@ export function CampaignStudio({
     setDraft({
       ...draft,
       people: draft.people.map((item) =>
-        item.characterId === characterId ? { ...item, stats: { ...item.stats, [statId]: value } } : item
-      )
+        item.characterId === characterId
+          ? { ...item, stats: { ...item.stats, [statId]: value } }
+          : item,
+      ),
     });
   }
 
@@ -548,53 +691,137 @@ export function CampaignStudio({
       <div className="setup-screen studio-adventure">
         <div className="setup-card campaign-builder">
           <BrandHeader />
-          <p className="setup-lede">
-            A campaign is who and where belong together. A scene is tonight — then you press Start.
-          </p>
+          <p className="setup-lede">{t("cstAnAdventureIsWho")}</p>
           {campaigns.length > 0 ? (
             <>
-              <p className="panel-heading">Your campaigns</p>
+              <p className="panel-heading">{t("yourAdventures")}</p>
               <div className="setup-chips" role="list" style={{ marginBottom: 22 }}>
                 {campaigns.map((item) => (
-                  <Chip key={item.id} active={false} label={item.name} onPick={() => open(item.id)} />
+                  <Chip
+                    key={item.id}
+                    active={false}
+                    label={item.name}
+                    onPick={() => open(item.id)}
+                  />
                 ))}
               </div>
             </>
           ) : (
             <p className="inspector-empty" style={{ marginBottom: 18 }}>
-              None yet. The library shelves still make the cards — this screen puts them together.
+              {t("cstNoneYetTheLibrary")}
             </p>
           )}
           {error && <p className="setup-error">{error}</p>}
           <div className="setup-actions">
             <button type="button" className="setup-start" onClick={createNew}>
-              New campaign
+              {t("cstNewAdventure")}
             </button>
-            <button type="button" className="setup-text-btn" disabled={busy} onClick={()=>void loadConnectedExample()}>Connected adventure example</button><button type="button" className="setup-text-btn" disabled={busy} onClick={()=>void loadInnExample()}>Inn & rooms example</button>
-            <button type="button" className="setup-text-btn" disabled={busy} onClick={() => { setError(null); setEmmaExampleOpen(true); }}>Emma och Einar</button>
-            <button type="button" className="setup-text-btn" onClick={() => void loadExampleCampaign()}>
-              Load the example campaign
+            <button
+              type="button"
+              className="setup-text-btn"
+              disabled={busy}
+              onClick={() => void loadConnectedExample()}
+            >
+              {t("cstConnectedAdventureExample")}
+            </button>
+            <button
+              type="button"
+              className="setup-text-btn"
+              disabled={busy}
+              onClick={() => void loadInnExample()}
+            >
+              {t("cstInnRoomsExample")}
+            </button>
+            <button
+              type="button"
+              className="setup-text-btn"
+              disabled={busy}
+              onClick={() => {
+                setError(null);
+                setEmmaExampleOpen(true);
+              }}
+            >
+              Emma och Einar
+            </button>
+            <button
+              type="button"
+              className="setup-text-btn"
+              onClick={() => void loadExampleCampaign()}
+            >
+              {t("cstLoadTheExampleAdventure")}
             </button>
             <button type="button" className="setup-text-btn" onClick={onOneOff}>
-              One-off scene
+              {t("cstQuickScene")}
             </button>
           </div>
-          {emmaExampleOpen && <EmmaInnExampleDialog characters={characters} worlds={realms} places={places}
-            busy={busy} error={error} onCreate={loadEmmaExample} onClose={() => setEmmaExampleOpen(false)} />}
+          {emmaExampleOpen && (
+            <EmmaInnExampleDialog
+              characters={characters}
+              worlds={realms}
+              places={places}
+              busy={busy}
+              error={error}
+              onCreate={loadEmmaExample}
+              onClose={() => setEmmaExampleOpen(false)}
+            />
+          )}
         </div>
       </div>
     );
   }
 
   const ruleset = visibleRulesets.find((item) => item.id === draft.rulesetId) ?? null;
+  const numericSkills = (ruleset?.attributes ?? []).filter((item) => item.kind === "number");
+  const setSkills = (numericSkills.length > 0 ? numericSkills : BASIC_RULESET.attributes).map(
+    (item) => ({ id: item.id, name: item.name }),
+  );
   const liveRealmId = inferCampaignRealmId(draft, visiblePlaces);
   const campaignPlaces = campaignLandmarks(
     { realmId: liveRealmId || undefined, placeIds: draft.placeIds },
-    visiblePlaces
+    visiblePlaces,
   );
-  const campaignPeople = visibleCharacters.filter((item) => draft.people.some((member) => member.characterId === item.id));
+
+  const stepPlaces = draft.mapWorldId ? visiblePlaces : campaignPlaces;
+  const stepWorld = visibleRealms.find((item) => item.id === draft.mapWorldId);
+  const stepMapPlaces = draft.mapWorldId ? adventureMapPlaces(stepWorld, stepPlaces) : undefined;
+  const stepFacts = new Set(adventureFacts(draft).map((fact) => fact.id));
+  const steps = adventureSteps(
+    draft,
+    storyboardIssues(draft, stepPlaces, stepFacts, stepMapPlaces, {
+      objects: visibleObjects,
+      rulesets: visibleRulesets,
+    }),
+    storyboardWarnings(draft, stepFacts, {
+      characters: visibleCharacters,
+      objects: visibleObjects,
+    }),
+  );
+  const activeStep: AdventureStepId =
+    tab === "general"
+      ? "world"
+      : tab === "you"
+        ? "you"
+        : tab === "characters" || tab === "objects"
+          ? "cast"
+          : tab === "storyboard"
+            ? storyboardStep
+            : "scenes";
+  function goToStep(id: AdventureStepId) {
+    if (id === "connections" || id === "test") {
+      setStoryboardStep(id);
+      setTab("storyboard");
+      setStoryboardOpen(true);
+      return;
+    }
+    setStoryboardStep("scenes");
+    setTab(id === "world" ? "general" : id === "cast" ? "characters" : id);
+  }
+  const campaignPeople = visibleCharacters.filter((item) =>
+    draft.people.some((member) => member.characterId === item.id),
+  );
   const campaignObjects = visibleObjects.filter((item) => draft.objectIds.includes(item.id));
-  const pickFilter = tab === "objects" ? filterFromLens(draft.objectLens) : filterFromLens(draft.lens);
+  const pickFilter =
+    tab === "objects" ? filterFromLens(draft.objectLens) : filterFromLens(draft.lens);
   const shelfTags = tab === "objects" ? uniqueTags(visibleObjects) : uniqueTags(visibleCharacters);
 
   function setPickFilter(next: TagFilter) {
@@ -623,19 +850,38 @@ export function CampaignStudio({
   }
 
   return (
-    <div className={`studio-split campaign-workspace${tab==='storyboard'?' campaign-workspace--flow':''}`}>
-      <nav className="campaign-nav" aria-label="Campaign parts">
-        <p className="campaign-nav__kicker">Campaign</p>
-        <p className="campaign-nav__name">{draft.name.trim() || "New campaign"}</p>
-        {TABS.map((item) => (
+    <div
+      className={`studio-split campaign-workspace${tab === "storyboard" ? " campaign-workspace--flow" : ""}`}
+    >
+      <nav className="campaign-nav" aria-label="Adventure parts">
+        <p className="campaign-nav__kicker">{t("pathAdventureTitle")}</p>
+        <p className="campaign-nav__name">{draft.name.trim() || "New adventure"}</p>
+        {steps.map((step, index) => (
           <button
-            key={item.id}
+            key={step.id}
             type="button"
-            className={tab === item.id ? "campaign-nav__btn is-on" : "campaign-nav__btn"}
-            aria-current={tab === item.id ? "page" : undefined}
-            onClick={() => {setTab(item.id);if(item.id==="storyboard")setStoryboardOpen(true);}}
+            data-step={step.id}
+            className={
+              activeStep === step.id
+                ? "campaign-nav__btn campaign-nav__step is-on"
+                : "campaign-nav__btn campaign-nav__step"
+            }
+            aria-current={activeStep === step.id ? "step" : undefined}
+            onClick={() => goToStep(step.id)}
           >
-            {item.label}
+            <span
+              className={step.done ? "campaign-nav__mark is-done" : "campaign-nav__mark"}
+              aria-hidden="true"
+            >
+              {step.done ? "✓" : index + 1}
+            </span>
+            <span className="campaign-nav__step-text">
+              <strong>{step.label}</strong>
+              <small>
+                {step.done ? "Done · " : ""}
+                {step.note}
+              </small>
+            </span>
           </button>
         ))}
         <button
@@ -646,16 +892,35 @@ export function CampaignStudio({
             setFreshNight(false);
           }}
         >
-          All campaigns
+          {t("cstAllAdventures")}
         </button>
       </nav>
       <section className="studio-sheet studio-sheet--form campaign-workspace__sheet">
         <SheetNameField
-          ariaLabel="Campaign name"
+          ariaLabel="Adventure name"
           value={draft.name}
-          placeholder="New campaign"
+          placeholder={t("cstNewAdventure")}
           onChange={(name) => setDraft({ ...draft, name })}
         />
+
+        {tab === "characters" || tab === "objects" ? (
+          <div className="campaign-cast-switch" role="group" aria-label="Cast and things">
+            <button
+              type="button"
+              aria-pressed={tab === "characters"}
+              onClick={() => setTab("characters")}
+            >
+              {t("spPeople")}
+            </button>
+            <button
+              type="button"
+              aria-pressed={tab === "objects"}
+              onClick={() => setTab("objects")}
+            >
+              {t("spThings")}
+            </button>
+          </div>
+        ) : null}
 
         {tab === "characters" || tab === "objects" ? (
           <LensBar
@@ -673,7 +938,7 @@ export function CampaignStudio({
         {tab === "general" && (
           <section className="setup-section campaign-general">
             <section className="form-section campaign-general__model-row">
-              <p className="panel-heading">Model</p>
+              <p className="panel-heading">{t("cstModel")}</p>
               <label className="campaign-general__model">
                 <span className="campaign-general__prefix">Ollama</span>
                 <OllamaModelPicker
@@ -684,10 +949,14 @@ export function CampaignStudio({
               </label>
             </section>
             <FormSection
-              title="Realm"
+              title={t("cstRealm")}
               action={
-                <button type="button" className="setup-text-btn" onClick={() => onOpenShelf("places")}>
-                  Edit locations
+                <button
+                  type="button"
+                  className="setup-text-btn"
+                  onClick={() => onOpenShelf("places")}
+                >
+                  {t("cstEditLocations")}
                 </button>
               }
               lede={
@@ -702,27 +971,45 @@ export function CampaignStudio({
                 onChange={(e) => {
                   const value = e.target.value;
                   if (!value) {
-                    const { realmId: _drop,mapWorldId:_map, ...rest } = draft;
+                    const { realmId: _drop, mapWorldId: _map, ...rest } = draft;
                     setDraft({
                       ...rest,
-                      scenes: draft.scenes.map(({mapNodeId:_node,usePlaceIntro:_intro,...scene}) => ({ ...scene, placeId: "", startRoomId: "" }))
+                      scenes: draft.scenes.map(
+                        ({ mapNodeId: _node, usePlaceIntro: _intro, ...scene }) => ({
+                          ...scene,
+                          placeId: "",
+                          startRoomId: "",
+                        }),
+                      ),
                     });
                     return;
                   }
-                  if(draft.mapWorldId){const selected=visibleRealms.find(w=>w.id===value);if(selected){setDraft(chooseAdventureMap(draft,selected,visiblePlaces));return;}}
+                  if (draft.mapWorldId) {
+                    const selected = visibleRealms.find((w) => w.id === value);
+                    if (selected) {
+                      setDraft(chooseAdventureMap(draft, selected, visiblePlaces));
+                      return;
+                    }
+                  }
                   const allowed = new Set(
-                    visiblePlaces.filter((item) => item.realmId === value).map((item) => item.id)
+                    visiblePlaces.filter((item) => item.realmId === value).map((item) => item.id),
                   );
                   setDraft({
                     ...draft,
                     realmId: value,
                     scenes: draft.scenes.map((scene) =>
-                      allowed.has(scene.placeId) ? scene : { ...scene, placeId: "", startRoomId: "" }
-                    )
+                      allowed.has(scene.placeId)
+                        ? scene
+                        : { ...scene, placeId: "", startRoomId: "" },
+                    ),
                   });
                 }}
               >
-                <option value="">{visibleRealms.length === 0 ? "Create a world in World Maps first" : "Choose a realm"}</option>
+                <option value="">
+                  {visibleRealms.length === 0
+                    ? "Create a world in World Maps first"
+                    : "Choose a realm"}
+                </option>
                 {visibleRealms.map((item) => (
                   <option key={item.id} value={item.id}>
                     {item.name}
@@ -730,78 +1017,108 @@ export function CampaignStudio({
                 ))}
               </select>
             </FormSection>
-            <div className="campaign-general__pair">
-            <FormSection
-              title="Rule-set"
-              action={
-                <button type="button" className="setup-text-btn" onClick={() => onOpenShelf("rulesets")}>
-                  Edit rule-sets
-                </button>
-              }
-            >
-              <select
-                aria-label="Rule-set"
-                value={draft.rulesetId ?? ""}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (!value) {
-                    const { rulesetId: _drop, ...rest } = draft;
-                    setDraft(rest);
-                    return;
-                  }
-                  setDraft({ ...draft, rulesetId: value });
-                }}
+            {draft.mapWorldId && (
+              <FormSection
+                title={t("cstBeyondTheStory")}
+                lede="Places on the map that have no scene of their own get one when a game starts, joined to your scenes by the map's ways. Your scenes, their ways and the goal always come first, and nothing here is added to your draft."
               >
-                <option value="">None</option>
-                {visibleRulesets.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            </FormSection>
-            <FormSection
-              title="Narrator"
-              action={
-                <button type="button" className="setup-text-btn" onClick={() => onOpenShelf("voices")}>
-                  Edit voices
-                </button>
-              }
-            >
-              <HintSelect
-                ariaLabel="Narrator"
-                value={draft.voiceId ?? ""}
-                noneLabel="None"
-                choices={visibleVoices.map((item) => ({
-                  id: item.id,
-                  label: item.name,
-                  hint: item.instruction
-                }))}
-                onChange={(id) => {
-                  if (!id) {
-                    const { voiceId: _drop, ...rest } = draft;
-                    setDraft(rest);
-                    return;
-                  }
-                  setDraft({ ...draft, voiceId: id });
-                }}
+                <label className="setup-field setup-field--row">
+                  <input
+                    type="checkbox"
+                    checked={draft.openWorld === "map"}
+                    onChange={(e) =>
+                      setDraft({ ...draft, openWorld: e.target.checked ? "map" : "scenes" })
+                    }
+                  />
+                  <span className="setup-field__label">{t("cstLetPlayersLeaveThe")}</span>
+                </label>
+              </FormSection>
+            )}
+            <div className="campaign-general__pair">
+              <FormSection
+                title={t("ruleSet")}
+                action={
+                  <button
+                    type="button"
+                    className="setup-text-btn"
+                    onClick={() => onOpenShelf("rulesets")}
+                  >
+                    {t("cstEditRuleSets")}
+                  </button>
+                }
+              >
+                <select
+                  aria-label="Rule-set"
+                  value={draft.rulesetId ?? ""}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (!value) {
+                      const { rulesetId: _drop, ...rest } = draft;
+                      setDraft(bringUpToDate(rest));
+                      return;
+                    }
+                    setDraft(bringUpToDate({ ...draft, rulesetId: value }));
+                  }}
+                >
+                  <option value="">{t("cstNone")}</option>
+                  {visibleRulesets.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </FormSection>
+              <RuleSetChange
+                campaign={draft}
+                available={setSkills}
+                onRemap={(from, to) => setDraft(bringUpToDate(remapAttribute(draft, from, to)))}
               />
-            </FormSection>
+              <FormSection
+                title={t("csNarrator")}
+                action={
+                  <button
+                    type="button"
+                    className="setup-text-btn"
+                    onClick={() => onOpenShelf("voices")}
+                  >
+                    {t("cstEditVoices")}
+                  </button>
+                }
+              >
+                <HintSelect
+                  ariaLabel="Narrator"
+                  value={draft.voiceId ?? ""}
+                  noneLabel="None"
+                  choices={visibleVoices.map((item) => ({
+                    id: item.id,
+                    label: item.name,
+                    hint: item.instruction,
+                  }))}
+                  onChange={(id) => {
+                    if (!id) {
+                      const { voiceId: _drop, ...rest } = draft;
+                      setDraft(rest);
+                      return;
+                    }
+                    setDraft({ ...draft, voiceId: id });
+                  }}
+                />
+              </FormSection>
             </div>
-            <FormSection title="Intro for the player">
+            <FormSection title={t("cstIntroForThePlayer")}>
               <textarea
                 className="setup-field__story"
                 value={draft.playerIntro}
                 onChange={(e) => setDraft({ ...draft, playerIntro: e.target.value })}
-                placeholder="The long pitch — What you tell a person sitting down to play"
+                placeholder={t("cstTheLongPitchWhat")}
               />
             </FormSection>
-            <FormSection title="Background for the story (What AI knows)">
+            <FormSection title={t("cstBackgroundForTheStory")}>
               <textarea
                 className="setup-field__story"
                 value={draft.startPrompt}
                 onChange={(e) => setDraft({ ...draft, startPrompt: e.target.value })}
-                placeholder="The world in a few lines for the AI-model to have. Player will not get this information unless told by someone in the game"
+                placeholder={t("cstTheWorldInA")}
               />
             </FormSection>
           </section>
@@ -821,19 +1138,22 @@ export function CampaignStudio({
                 void portraitDataUrlFromFile(file)
                   .then((portraitDataUrl) => patchYou({ portraitDataUrl }))
                   .catch((err) =>
-                    setError(err instanceof PortraitError ? err.message : "Could not read that image.")
+                    setError(
+                      err instanceof PortraitError ? err.message : "Could not read that image.",
+                    ),
                   );
               }}
             />
             <p className="form-section__lede">
-              Who you play tonight. Not a person on the Characters shelf. Emma sees this; the portrait is UI only.
+              Who you play tonight. Not a person on the Characters shelf. The people you meet see
+              this. Your portrait is only for you; it is never sent to the AI.
             </p>
             <label className="setup-field setup-field--row">
-              <span className="setup-field__label">Given name</span>
+              <span className="setup-field__label">{t("cstGivenName")}</span>
               <input
                 value={(draft.player ?? emptyCampaignPlayer()).name}
                 onChange={(e) => patchYou({ name: e.target.value })}
-                placeholder="Your name in this story"
+                placeholder={t("cstYourNameInThis")}
               />
             </label>
             <div className="studio-portrait studio-portrait--character">
@@ -874,18 +1194,20 @@ export function CampaignStudio({
                 disabled={busy}
                 onClick={() => youPortraitRef.current?.click()}
               >
-                {(draft.player ?? emptyCampaignPlayer()).portraitDataUrl ? "Change portrait" : "Add portrait"}
+                {(draft.player ?? emptyCampaignPlayer()).portraitDataUrl
+                  ? "Change portrait"
+                  : "Add portrait"}
               </button>
             </div>
             <div className="setup-field">
-              <span className="setup-field__label">Pronoun</span>
+              <span className="setup-field__label">{t("cstPronoun")}</span>
               <PickChips
                 ariaLabel="Pronoun"
                 choices={[
                   ...BUILTIN_PRONOUNS,
                   ...((draft.player?.pronoun && !isBuiltinPronoun(draft.player.pronoun)
                     ? [draft.player.pronoun]
-                    : []) as string[])
+                    : []) as string[]),
                 ]}
                 {...(draft.player?.pronoun ? { value: draft.player.pronoun } : {})}
                 labelFor={pronounLabel}
@@ -896,7 +1218,7 @@ export function CampaignStudio({
                 onAdd={(label) => patchYou({ pronoun: normalizePronoun(label) })}
               />
             </div>
-            <FormSection title="Looks" lede="Body and face. Not clothes.">
+            <FormSection title={t("cstLooks")} lede="Body and face. Not clothes.">
               <textarea
                 className="setup-field__story"
                 value={(draft.player ?? emptyCampaignPlayer()).appearance}
@@ -904,7 +1226,10 @@ export function CampaignStudio({
                 placeholder="Tall, dark hair, a scar at the jaw…"
               />
             </FormSection>
-            <FormSection title="Who they are" lede="A few lines Pass 1 may use. Empty is fine.">
+            <FormSection
+              title={t("csWhoTheyAre")}
+              lede="A few lines the story AI may use. Empty is fine."
+            >
               <textarea
                 className="setup-field__story"
                 value={(draft.player ?? emptyCampaignPlayer()).personality}
@@ -913,15 +1238,19 @@ export function CampaignStudio({
               />
             </FormSection>
             <FormSection
-              title="Stats"
+              title={t("cstStats")}
               action={
-                <button type="button" className="setup-text-btn" onClick={() => onOpenShelf("rulesets")}>
-                  Edit rule-sets
+                <button
+                  type="button"
+                  className="setup-text-btn"
+                  onClick={() => onOpenShelf("rulesets")}
+                >
+                  {t("cstEditRuleSets")}
                 </button>
               }
               lede={
                 ruleset
-                  ? "Same rule-set as the rest of the campaign."
+                  ? "Same rule-set as the rest of the adventure."
                   : "Pick a rule-set on General if you want numbers."
               }
             >
@@ -937,7 +1266,7 @@ export function CampaignStudio({
                         : [];
                     const voice = traitVoice({
                       char: you.name.trim() || "the player",
-                      pronoun: you.pronoun
+                      pronoun: you.pronoun,
                     });
                     return (
                       <div className="setup-field" key={def.id}>
@@ -947,25 +1276,33 @@ export function CampaignStudio({
                             ariaLabel={def.name}
                             choices={picks}
                             {...(current ? { value: current } : {})}
-                            onPick={(choice) => patchYouStat(def.id, current === choice ? "" : choice)}
+                            onPick={(choice) =>
+                              patchYouStat(def.id, current === choice ? "" : choice)
+                            }
                             onAdd={(label) => patchYouStat(def.id, label)}
                           />
                         ) : (
                           <input
                             value={current}
                             onChange={(e) => patchYouStat(def.id, e.target.value)}
-                            placeholder={def.kind === "number" ? `${def.min ?? 0}–${def.max ?? 100}` : ""}
+                            placeholder={
+                              def.kind === "number" ? `${def.min ?? 0}–${def.max ?? 100}` : ""
+                            }
                           />
                         )}
-                        {def.kind !== "text" && (def.highMeaning?.trim() || def.lowMeaning?.trim()) ? (
-                          <span className="setup-optional" style={{ display: "block", marginTop: 4, fontWeight: 400 }}>
+                        {def.kind !== "text" &&
+                        (def.highMeaning?.trim() || def.lowMeaning?.trim()) ? (
+                          <span
+                            className="setup-optional"
+                            style={{ display: "block", marginTop: 4, fontWeight: 400 }}
+                          >
                             {[
                               def.highMeaning?.trim()
                                 ? `High: ${applyTraitTokens(def.highMeaning.trim(), voice)}`
                                 : null,
                               def.lowMeaning?.trim()
                                 ? `Low: ${applyTraitTokens(def.lowMeaning.trim(), voice)}`
-                                : null
+                                : null,
                             ]
                               .filter(Boolean)
                               .join(" ")}
@@ -976,7 +1313,7 @@ export function CampaignStudio({
                   })}
                 </div>
               ) : (
-                <p className="inspector-empty">No rule-set fields yet.</p>
+                <p className="inspector-empty">{t("cstNoRuleSetFields")}</p>
               )}
             </FormSection>
           </section>
@@ -985,131 +1322,155 @@ export function CampaignStudio({
         {tab === "characters" && (
           <section className="setup-section">
             <FormSection
-              title="People in this campaign"
+              title={t("cstPeopleInThisAdventure")}
               action={
-                <button type="button" className="setup-text-btn" onClick={() => onOpenShelf("characters")}>
-                  Edit characters
+                <button
+                  type="button"
+                  className="setup-text-btn"
+                  onClick={() => onOpenShelf("characters")}
+                >
+                  {t("cstEditCharacters")}
                 </button>
               }
               lede="The left list is the shelf. Move someone across to include them. Starting numbers live here; where they stand is on the scene."
             >
-            <div className="setup-chips" role="list" style={{ marginBottom: 12 }}>
-              <button
-                type="button"
-                className={ageBand === null ? "setup-chip setup-chip--active" : "setup-chip"}
-                onClick={() => setAgeBand(null)}
-              >
-                <span className="setup-chip__pick">Any age</span>
-              </button>
-              {AGE_BANDS.map((band) => (
+              <div className="setup-chips" role="list" style={{ marginBottom: 12 }}>
                 <button
-                  key={band.id}
                   type="button"
-                  className={ageBand === band.id ? "setup-chip setup-chip--active" : "setup-chip"}
-                  onClick={() => setAgeBand(ageBand === band.id ? null : band.id)}
+                  className={ageBand === null ? "setup-chip setup-chip--active" : "setup-chip"}
+                  onClick={() => setAgeBand(null)}
                 >
-                  <span className="setup-chip__pick">{band.label}</span>
+                  <span className="setup-chip__pick">{t("cstAnyAge")}</span>
                 </button>
-              ))}
-            </div>
-            <p className="inspector-empty" style={{ marginTop: -4, marginBottom: 12 }}>
-              Young is 25 and under. Elder is 55 and up. Combines with Look for.
-            </p>
-            <ShuttleList
-              leftHeading="All characters"
-              rightHeading="In this campaign"
-              leftEmpty={shelfEmpty("Everyone is already in the campaign.")}
-              rightEmpty="None yet. Pick someone on the left, then Add."
-              left={visibleCharacters
-                .filter(
-                  (item) =>
-                    !draft.people.some((member) => member.characterId === item.id) &&
-                    matchesTagFilter(item, pickFilter) &&
-                    matchesAgeBand(item, ageBand)
-                )
-                .map((item) => ({
-                  id: item.id,
-                  label: personLabel(item, item.id),
-                  ...(item.portraitDataUrl ? { thumb: item.portraitDataUrl } : {})
-                }))}
-              right={draft.people.flatMap((member) => {
-                const template = visibleCharacters.find((item) => item.id === member.characterId);
-                if (!template) return [];
-                return [
-                  {
-                    id: template.id,
-                    label: personLabel(template, template.id),
-                    ...(template.portraitDataUrl ? { thumb: template.portraitDataUrl } : {})
-                  }
-                ];
-              })}
-              onAdd={addPerson}
-              onRemove={removePerson}
-            />
-            {draft.people.map((member) => {
-              const template = visibleCharacters.find((item) => item.id === member.characterId);
-              const voice = traitVoice({ char: template?.name, pronoun: template?.pronoun });
-              return (
-                <div key={member.characterId} className="layer-card" style={{ marginTop: 14 }}>
-                  <p className="place-card__name">{personLabel(template, member.characterId)}</p>
-                  {ruleset && ruleset.attributes.length > 0 ? (
-                    <div className="setup-row" style={{ gridTemplateColumns: "1fr 1fr", marginTop: 8 }}>
-                      {ruleset.attributes.map((def: AttributeDef) => {
-                        const current = member.stats[def.id] ?? "";
-                        const listed = def.options ?? [];
-                        const picks =
-                          def.kind === "text" && listed.length > 0
-                            ? [...listed, ...(current && !listed.includes(current) ? [current] : [])]
-                            : [];
-                        return (
-                          <div className="setup-field" key={def.id}>
-                            {def.name}
-                            {picks.length > 0 || (def.kind === "text" && listed.length > 0) ? (
-                              <PickChips
-                                ariaLabel={def.name}
-                                choices={picks}
-                                {...(current ? { value: current } : {})}
-                                onPick={(choice) =>
-                                  patchStat(member.characterId, def.id, current === choice ? "" : choice)
-                                }
-                                onAdd={(label) => patchStat(member.characterId, def.id, label)}
-                              />
-                            ) : (
-                              <input
-                                value={current}
-                                onChange={(e) => patchStat(member.characterId, def.id, e.target.value)}
-                                placeholder={def.kind === "number" ? `${def.min ?? 0}–${def.max ?? 100}` : ""}
-                              />
-                            )}
-                            {def.kind !== "text" && (def.highMeaning?.trim() || def.lowMeaning?.trim()) ? (
-                              <span className="setup-optional" style={{ display: "block", marginTop: 4, fontWeight: 400 }}>
-                                {[
-                                  def.highMeaning?.trim()
-                                    ? `High: ${applyTraitTokens(def.highMeaning.trim(), voice)}`
-                                    : null,
-                                  def.lowMeaning?.trim() ? `Low: ${applyTraitTokens(def.lowMeaning.trim(), voice)}` : null
-                                ]
-                                  .filter(Boolean)
-                                  .join(" ")}
-                              </span>
-                            ) : null}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : null}
-                  <LoreEditor
-                    entries={member.lore ?? []}
-                    onChange={(lore) => patchMember(member.characterId, { lore })}
-                  />
-                </div>
-              );
-            })}
-            {draft.people.length > 0 && !ruleset ? (
-              <p className="inspector-empty" style={{ marginTop: 12 }}>
-                Pick a rule-set above if you want starting numbers.
+                {AGE_BANDS.map((band) => (
+                  <button
+                    key={band.id}
+                    type="button"
+                    className={ageBand === band.id ? "setup-chip setup-chip--active" : "setup-chip"}
+                    onClick={() => setAgeBand(ageBand === band.id ? null : band.id)}
+                  >
+                    <span className="setup-chip__pick">{band.label}</span>
+                  </button>
+                ))}
+              </div>
+              <p className="inspector-empty" style={{ marginTop: -4, marginBottom: 12 }}>
+                {t("cstYoungIs25And")}
               </p>
-            ) : null}
+              <ShuttleList
+                leftHeading="All characters"
+                rightHeading="In this adventure"
+                leftEmpty={shelfEmpty("Everyone is already in the adventure.")}
+                rightEmpty="None yet. Pick someone on the left, then Add."
+                left={visibleCharacters
+                  .filter(
+                    (item) =>
+                      !draft.people.some((member) => member.characterId === item.id) &&
+                      matchesTagFilter(item, pickFilter) &&
+                      matchesAgeBand(item, ageBand),
+                  )
+                  .map((item) => ({
+                    id: item.id,
+                    label: personLabel(item, item.id),
+                    ...(item.portraitDataUrl ? { thumb: item.portraitDataUrl } : {}),
+                  }))}
+                right={draft.people.flatMap((member) => {
+                  const template = visibleCharacters.find((item) => item.id === member.characterId);
+                  if (!template) return [];
+                  return [
+                    {
+                      id: template.id,
+                      label: personLabel(template, template.id),
+                      ...(template.portraitDataUrl ? { thumb: template.portraitDataUrl } : {}),
+                    },
+                  ];
+                })}
+                onAdd={addPerson}
+                onRemove={removePerson}
+              />
+              {draft.people.map((member) => {
+                const template = visibleCharacters.find((item) => item.id === member.characterId);
+                const voice = traitVoice({ char: template?.name, pronoun: template?.pronoun });
+                return (
+                  <div key={member.characterId} className="layer-card" style={{ marginTop: 14 }}>
+                    <p className="place-card__name">{personLabel(template, member.characterId)}</p>
+                    {ruleset && ruleset.attributes.length > 0 ? (
+                      <div
+                        className="setup-row"
+                        style={{ gridTemplateColumns: "1fr 1fr", marginTop: 8 }}
+                      >
+                        {ruleset.attributes.map((def: AttributeDef) => {
+                          const current = member.stats[def.id] ?? "";
+                          const listed = def.options ?? [];
+                          const picks =
+                            def.kind === "text" && listed.length > 0
+                              ? [
+                                  ...listed,
+                                  ...(current && !listed.includes(current) ? [current] : []),
+                                ]
+                              : [];
+                          return (
+                            <div className="setup-field" key={def.id}>
+                              {def.name}
+                              {picks.length > 0 || (def.kind === "text" && listed.length > 0) ? (
+                                <PickChips
+                                  ariaLabel={def.name}
+                                  choices={picks}
+                                  {...(current ? { value: current } : {})}
+                                  onPick={(choice) =>
+                                    patchStat(
+                                      member.characterId,
+                                      def.id,
+                                      current === choice ? "" : choice,
+                                    )
+                                  }
+                                  onAdd={(label) => patchStat(member.characterId, def.id, label)}
+                                />
+                              ) : (
+                                <input
+                                  value={current}
+                                  onChange={(e) =>
+                                    patchStat(member.characterId, def.id, e.target.value)
+                                  }
+                                  placeholder={
+                                    def.kind === "number" ? `${def.min ?? 0}–${def.max ?? 100}` : ""
+                                  }
+                                />
+                              )}
+                              {def.kind !== "text" &&
+                              (def.highMeaning?.trim() || def.lowMeaning?.trim()) ? (
+                                <span
+                                  className="setup-optional"
+                                  style={{ display: "block", marginTop: 4, fontWeight: 400 }}
+                                >
+                                  {[
+                                    def.highMeaning?.trim()
+                                      ? `High: ${applyTraitTokens(def.highMeaning.trim(), voice)}`
+                                      : null,
+                                    def.lowMeaning?.trim()
+                                      ? `Low: ${applyTraitTokens(def.lowMeaning.trim(), voice)}`
+                                      : null,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" ")}
+                                </span>
+                              ) : null}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : null}
+                    <LoreEditor
+                      entries={member.lore ?? []}
+                      onChange={(lore) => patchMember(member.characterId, { lore })}
+                    />
+                  </div>
+                );
+              })}
+              {draft.people.length > 0 && !ruleset ? (
+                <p className="inspector-empty" style={{ marginTop: 12 }}>
+                  {t("cstPickARuleSet")}
+                </p>
+              ) : null}
             </FormSection>
           </section>
         )}
@@ -1117,105 +1478,174 @@ export function CampaignStudio({
         {tab === "objects" && (
           <section className="setup-section">
             <FormSection
-              title="Things in this campaign"
+              title={t("cstThingsInThisAdventure")}
               action={
-                <button type="button" className="setup-text-btn" onClick={() => onOpenShelf("objects")}>
-                  Edit objects
+                <button
+                  type="button"
+                  className="setup-text-btn"
+                  onClick={() => onOpenShelf("objects")}
+                >
+                  {t("cstEditObjects")}
                 </button>
               }
               lede="The left list is the shelf. Move something across if it may turn up. A scene decides if it is in the room tonight."
             >
-            <ShuttleList
-              leftHeading="All objects"
-              rightHeading="In this campaign"
-              leftEmpty={shelfEmpty("Everything is already in the campaign.")}
-              rightEmpty="None yet. Pick something on the left, then Add."
-              left={visibleObjects
-                .filter((item) => !draft.objectIds.includes(item.id) && matchesTagFilter(item, pickFilter))
-                .map((item) => ({ id: item.id, label: item.name }))}
-              right={campaignObjects.map((item) => ({ id: item.id, label: item.name }))}
-              onAdd={addObject}
-              onRemove={removeObject}
-            />
+              <ShuttleList
+                leftHeading="All objects"
+                rightHeading="In this adventure"
+                leftEmpty={shelfEmpty("Everything is already in the adventure.")}
+                rightEmpty="None yet. Pick something on the left, then Add."
+                left={visibleObjects
+                  .filter(
+                    (item) =>
+                      !draft.objectIds.includes(item.id) && matchesTagFilter(item, pickFilter),
+                  )
+                  .map((item) => ({ id: item.id, label: item.name }))}
+                right={campaignObjects.map((item) => ({ id: item.id, label: item.name }))}
+                onAdd={addObject}
+                onRemove={removeObject}
+              />
             </FormSection>
           </section>
         )}
 
         {tab === "scenes" && (
           <section className="setup-section">
-            {draft.scenes.some(scene=>scene.encounter)?<>
-              <p className="panel-heading">Playable scenes</p>
-              <p className="form-section__lede">Edit scenes, actions and their connections in Storyboard. Test creates a new playthrough; continue an existing one from My conversations.</p>
-              <button type="button" className="setup-text-btn" onClick={()=>{setTab('storyboard');setStoryboardOpen(true);}}>Open Storyboard Editor →</button>
-              {draft.scenes.map(scene=><div key={scene.id} className="setup-section"><h3>{scene.name||'New scene'}</h3><p>{scene.encounter?.definition.description||'Not yet playable.'}</p><button type="button" disabled={busy||!scene.encounter||!scene.placeId} onClick={()=>void startScene(scene)}>Test this scene →</button></div>)}
-            </>:<>
-            <div className="setup-section__head">
-              <p className="panel-heading">Scenes in this campaign</p>
-              <button
-                type="button"
-                className="setup-text-btn"
-                onClick={() => setDraft({ ...draft, scenes: [...draft.scenes, emptyCampaignScene()] })}
-              >
-                + Scene
-              </button>
-            </div>
+            <p className="panel-heading">{t("cstScenesInThisAdventure")}</p>
             <p className="form-section__lede">
-              A scene is a place the player can enter: the landmark, where they start, who is here, what is in the room. Optional Pre-defined Replies are ready-made buttons — a tap is the player's turn, not a line the cast has to speak. Several triggers, each with its own buttons. They stay hidden until that trigger's words show up in chat, or — if Triggered by is empty — someone invites them along or they try to leave the map. Optional: a one-time event if they come back.
+              Build scenes, actions and their connections in Storyboard. Test creates a new
+              playthrough; continue an existing one from My conversations.
             </p>
-            {freshNight ? (
-              <p className="form-section__lede">
-                You left play. Chat is gone. The agreement below is what the next scene knows — edit it, then Start.
-              </p>
-            ) : null}
-            <FormSection
-              title="From last scene"
-              lede="Why they arrived: the agreement, not the bar chat. Empty = a new meeting. Pass 1 honors this."
+            <button
+              type="button"
+              className="setup-text-btn"
+              onClick={() => {
+                setTab("storyboard");
+                setStoryboardOpen(true);
+              }}
             >
-              <textarea
-                className="setup-field__story"
-                value={handoffDraft}
-                onChange={(e) => {
-                  const text = e.target.value;
-                  setHandoffDraft(text);
-                  if (!draft) return;
-                  void repo.saveStudioResume({
-                    campaignId: draft.id,
-                    ...(resume?.sceneId ? { sceneId: resume.sceneId } : {}),
-                    ...(text.trim() ? { handoff: text.trim() } : {})
-                  });
-                }}
-                placeholder="He asked to sleep. Nothing else happened."
-              />
-            </FormSection>
-            {draft.scenes.map((scene) => (
-              <SceneCard
-                key={scene.id}
-                scene={scene}
-                lastPlayed={scene.id === resume?.sceneId}
-                campaignPlaces={campaignPlaces}
-                campaignRealms={visibleRealms}
-                campaignPeople={campaignPeople}
-                campaignObjects={campaignObjects}
-                busy={busy}
-                onPatch={(patch) => patchScene(scene.id, patch)}
-                onRemove={() =>
-                  setDraft({
-                    ...draft,
-                    scenes: draft.scenes.filter((item) => item.id !== scene.id),
-                    sceneLinks: removeLinksForScene(draft.sceneLinks, scene.id)
-                  })
-                }
-                onStart={() => void startScene(scene)}
-                canRemove={draft.scenes.length > 1}
-              />
-            ))}
-            </>}
+              {t("cstOpenStoryboardEditor")}
+            </button>
+            {draft.scenes
+              .filter((scene) => sceneFormat(scene) !== "earlier")
+              .map((scene) => (
+                <div key={scene.id} className="setup-section">
+                  <h3>{scene.name || "New scene"}</h3>
+                  <p>
+                    {scene.encounter?.definition.description ||
+                      "Not yet playable. Make it playable in Storyboard."}
+                  </p>
+                  <button
+                    type="button"
+                    disabled={busy || !scene.encounter || !scene.placeId}
+                    onClick={() => void startScene(scene)}
+                  >
+                    {t("psTestThisScene")}
+                  </button>
+                </div>
+              ))}
+            {draft.scenes.some((scene) => sceneFormat(scene) === "earlier") && (
+              <>
+                <h3 className="panel-heading">{t("cstEarlierSceneFormat")}</h3>
+                <p className="form-section__lede">{t("cstTheseScenesWereMade")}</p>
+                {freshNight ? (
+                  <p className="form-section__lede">{t("cstYouLeftPlayChat")}</p>
+                ) : null}
+                <FormSection
+                  title={t("cstFromLastScene")}
+                  lede="Why they arrived: the agreement, not the bar chat. Empty = a new meeting."
+                >
+                  <textarea
+                    className="setup-field__story"
+                    value={handoffDraft}
+                    onChange={(e) => {
+                      const text = e.target.value;
+                      setHandoffDraft(text);
+                      if (!draft) return;
+                      void repo.saveStudioResume({
+                        campaignId: draft.id,
+                        ...(resume?.sceneId ? { sceneId: resume.sceneId } : {}),
+                        ...(text.trim() ? { handoff: text.trim() } : {}),
+                      });
+                    }}
+                    placeholder="He asked to sleep. Nothing else happened."
+                  />
+                </FormSection>
+                {draft.scenes
+                  .filter((scene) => sceneFormat(scene) === "earlier")
+                  .map((scene) => (
+                    <SceneCard
+                      key={scene.id}
+                      scene={scene}
+                      lastPlayed={scene.id === resume?.sceneId}
+                      campaignPlaces={campaignPlaces}
+                      campaignRealms={visibleRealms}
+                      campaignPeople={campaignPeople}
+                      campaignObjects={campaignObjects}
+                      busy={busy}
+                      onPatch={(patch) => patchScene(scene.id, patch)}
+                      onRemove={() =>
+                        setDraft({
+                          ...draft,
+                          scenes: draft.scenes.filter((item) => item.id !== scene.id),
+                          sceneLinks: removeLinksForScene(draft.sceneLinks, scene.id),
+                        })
+                      }
+                      onStart={() => void startScene(scene)}
+                      canRemove={draft.scenes.length > 1}
+                    />
+                  ))}
+              </>
+            )}
           </section>
         )}
 
         {tab === "storyboard" && (
           <section className="setup-section">
-            <h2>Your adventure, connected</h2><p className="form-section__lede">Build scenes and choices in a spacious editor. Your campaign details and draft stay here when you close it.</p><button type="button" className="setup-start" onClick={()=>setStoryboardOpen(true)}>Open Storyboard Editor →</button>{storyboardOpen&&<StoryboardEditor campaign={draft} places={draft.mapWorldId?visiblePlaces:campaignPlaces} worlds={visibleRealms} repo={repo} onRefresh={refresh} characters={campaignPeople} objects={campaignObjects} busy={busy} onChange={next=>{setDraft(next);setNotice(null);setError(null);}} onPlay={scene=>void startScene(scene)} onSave={()=>void save()} onClose={()=>setStoryboardOpen(false)} error={error} notice={notice}/>}
+            <h2>{t("cstYourAdventureConnected")}</h2>
+            <p className="form-section__lede">{t("cstBuildScenesAndChoices")}</p>
+            <button type="button" className="setup-start" onClick={() => setStoryboardOpen(true)}>
+              {t("cstOpenStoryboardEditor")}
+            </button>
+            {storyboardOpen && (
+              <StoryboardEditor
+                campaign={draft}
+                places={draft.mapWorldId ? visiblePlaces : campaignPlaces}
+                worlds={visibleRealms}
+                repo={repo}
+                onRefresh={refresh}
+                onCreatePlace={createPlace}
+                rulesets={visibleRulesets}
+                library={{
+                  characters: visibleCharacters,
+                  places: visiblePlaces,
+                  objects: visibleObjects,
+                }}
+                onOpenLibrary={(what) => {
+                  setStoryboardOpen(false);
+                  setStoryboardStep("scenes");
+                  goToStep("cast");
+                  if (what === "things") setTab("objects");
+                }}
+                initialStep={storyboardStep}
+                characters={campaignPeople}
+                objects={campaignObjects}
+                busy={busy}
+                onChange={(next) => {
+                  setDraft(next);
+                  setNotice(null);
+                  setError(null);
+                }}
+                onPlay={(scene) => void startScene(scene)}
+                onSave={() => void save()}
+                onClose={() => {
+                  setStoryboardOpen(false);
+                  setStoryboardStep("scenes");
+                }}
+                error={error}
+                notice={notice}
+              />
+            )}
           </section>
         )}
 
@@ -1223,11 +1653,16 @@ export function CampaignStudio({
         {error && <p className="setup-error">{error}</p>}
         <div className="studio-sheet__actions">
           <button type="button" className="setup-start" disabled={busy} onClick={() => void save()}>
-            Save campaign
+            {t("psSaveAdventure")}
           </button>
           {savedIds.has(draft.id) ? (
-            <button type="button" className="setup-example" disabled={busy} onClick={() => void remove()}>
-              Delete
+            <button
+              type="button"
+              className="setup-example"
+              disabled={busy}
+              onClick={() => void remove()}
+            >
+              {t("cstDelete")}
             </button>
           ) : null}
         </div>
@@ -1247,7 +1682,7 @@ function SceneCard({
   onPatch,
   onRemove,
   onStart,
-  canRemove
+  canRemove,
 }: {
   scene: CampaignScene;
   lastPlayed: boolean;
@@ -1261,7 +1696,8 @@ function SceneCard({
   onStart: () => void;
   canRemove: boolean;
 }) {
-  const canStart = Boolean(scene.placeId) && (!!scene.encounter||scene.people.length > 0);
+  const t = useTranslate();
+  const canStart = Boolean(scene.placeId) && (!!scene.encounter || scene.people.length > 0);
 
   function togglePerson(id: string) {
     onPatch((current) => {
@@ -1276,7 +1712,9 @@ function SceneCard({
   function patchPerson(id: string, patch: Partial<SceneCast>) {
     onPatch((current) => ({
       ...current,
-      people: current.people.map((item) => (item.characterId === id ? { ...item, ...patch } : item))
+      people: current.people.map((item) =>
+        item.characterId === id ? { ...item, ...patch } : item,
+      ),
     }));
   }
 
@@ -1292,44 +1730,55 @@ function SceneCard({
           when: "return_to_bar" as const,
           requiresFlags: [],
           requiresAbsentFlags: [],
-          setsFlags: []
-        }
-      ]
+          setsFlags: [],
+        },
+      ],
     }));
   }
 
   function patchWhatNowSet(setId: string, patch: (set: WhatNowSet) => WhatNowSet) {
     onPatch((current) => ({
       ...current,
-      whatNowSets: whatNowSetsFromScene(current).map((item) => (item.id === setId ? patch(item) : item))
+      whatNowSets: whatNowSetsFromScene(current).map((item) =>
+        item.id === setId ? patch(item) : item,
+      ),
     }));
   }
 
   function addWhatNowSet() {
     onPatch((current) => ({
       ...current,
-      whatNowSets: [...whatNowSetsFromScene(current), emptyWhatNowSet()]
+      whatNowSets: [...whatNowSetsFromScene(current), emptyWhatNowSet()],
     }));
   }
 
   const whatNowPlace = campaignPlaces.find((item) => item.id === scene.placeId);
-  const floorGoesTo = venueBuildingName(whatNowPlace?.name) || whatNowPlace?.name.trim() || "the landmark";
+  const floorGoesTo =
+    venueBuildingName(whatNowPlace?.name) || whatNowPlace?.name.trim() || "the landmark";
   const whatNowRooms = whatNowPlace?.rooms ?? [];
   const whatNowSets = whatNowSetsFromScene(scene);
 
   return (
-    <div className={lastPlayed ? "layer-card campaign-scene campaign-scene--last" : "layer-card campaign-scene"}>
-      {lastPlayed ? <p className="setup-optional" style={{ margin: "0 0 6px" }}>last played</p> : null}
+    <div
+      className={
+        lastPlayed ? "layer-card campaign-scene campaign-scene--last" : "layer-card campaign-scene"
+      }
+    >
+      {lastPlayed ? (
+        <p className="setup-optional" style={{ margin: "0 0 6px" }}>
+          {t("cstLastPlayed")}
+        </p>
+      ) : null}
       <SheetNameField
         ariaLabel="Scene name"
         value={scene.name}
-        placeholder="Opening"
+        placeholder={t("cstOpening")}
         onChange={(name) => onPatch({ name })}
       />
 
-      <FormSection title="Where">
+      <FormSection title={t("cstWhere")}>
         <label className="setup-field setup-field--row">
-          <span className="setup-field__label">Landmark</span>
+          <span className="setup-field__label">{t("cstLandmark")}</span>
           <select
             value={scene.placeId}
             onChange={(e) => onPatch({ placeId: e.target.value, startRoomId: "" })}
@@ -1354,7 +1803,7 @@ function SceneCard({
         </label>
         {whatNowPlace ? (
           <label className="setup-field setup-field--row">
-            <span className="setup-field__label">Starts at</span>
+            <span className="setup-field__label">{t("cstStartsAt")}</span>
             <select
               value={scene.startRoomId ?? ""}
               onChange={(e) => onPatch({ startRoomId: e.target.value })}
@@ -1371,7 +1820,7 @@ function SceneCard({
       </FormSection>
 
       <FormSection
-        title="Who is here"
+        title={t("cstWhoIsHere")}
         {...(campaignPeople.length === 0
           ? { lede: "Add people on the Characters tab first." }
           : {})}
@@ -1394,7 +1843,7 @@ function SceneCard({
             <div key={pick.characterId} className="campaign-scene__person">
               <p className="place-card__name">{personLabel(template, pick.characterId)}</p>
               <label className="setup-field setup-field--row">
-                <span className="setup-field__label">Where in this place?</span>
+                <span className="setup-field__label">{t("cstWhereInThisPlace")}</span>
                 <input
                   value={pick.position}
                   onChange={(e) => patchPerson(pick.characterId, { position: e.target.value })}
@@ -1402,7 +1851,7 @@ function SceneCard({
                 />
               </label>
               <label className="setup-field setup-field--row">
-                <span className="setup-field__label">Mood tonight</span>
+                <span className="setup-field__label">{t("cstMoodTonight")}</span>
                 <input
                   value={pick.mood}
                   onChange={(e) => patchPerson(pick.characterId, { mood: e.target.value })}
@@ -1410,7 +1859,7 @@ function SceneCard({
                 />
               </label>
               <label className="setup-field setup-field--row">
-                <span className="setup-field__label">Wearing</span>
+                <span className="setup-field__label">{t("cstWearing")}</span>
                 <input
                   value={pick.clothing}
                   onChange={(e) => patchPerson(pick.characterId, { clothing: e.target.value })}
@@ -1418,7 +1867,7 @@ function SceneCard({
                 />
               </label>
               <label className="setup-field setup-field--row">
-                <span className="setup-field__label">In their hands</span>
+                <span className="setup-field__label">{t("cstInTheirHands")}</span>
                 <input
                   value={pick.holding}
                   onChange={(e) => patchPerson(pick.characterId, { holding: e.target.value })}
@@ -1427,15 +1876,18 @@ function SceneCard({
               </label>
               <label className="setup-field setup-field--row">
                 <span className="setup-field__label">
-                  Trust
-                  <span className="setup-optional">with you</span>
+                  {t("cstTrust")}
+                  <span className="setup-optional">{t("cstWithYou")}</span>
                 </span>
-                <input value={pick.trust} onChange={(e) => patchPerson(pick.characterId, { trust: e.target.value })} />
+                <input
+                  value={pick.trust}
+                  onChange={(e) => patchPerson(pick.characterId, { trust: e.target.value })}
+                />
               </label>
               <label className="setup-field setup-field--row">
                 <span className="setup-field__label">
-                  Familiarity
-                  <span className="setup-optional">with you</span>
+                  {t("cstFamiliarity")}
+                  <span className="setup-optional">{t("cstWithYou")}</span>
                 </span>
                 <input
                   value={pick.familiarity}
@@ -1444,10 +1896,13 @@ function SceneCard({
               </label>
               <label className="setup-field setup-field--row">
                 <span className="setup-field__label">
-                  Tension
-                  <span className="setup-optional">tonight</span>
+                  {t("cstTension")}
+                  <span className="setup-optional">{t("cstTonight")}</span>
                 </span>
-                <input value={pick.tension} onChange={(e) => patchPerson(pick.characterId, { tension: e.target.value })} />
+                <input
+                  value={pick.tension}
+                  onChange={(e) => patchPerson(pick.characterId, { tension: e.target.value })}
+                />
               </label>
             </div>
           );
@@ -1455,7 +1910,7 @@ function SceneCard({
       </FormSection>
 
       {campaignObjects.length > 0 ? (
-        <FormSection title="In the room">
+        <FormSection title={t("cstInTheRoom")}>
           <div className="setup-chips" role="list">
             {campaignObjects.map((item) => (
               <Chip
@@ -1466,7 +1921,7 @@ function SceneCard({
                   onPatch({
                     objectIds: scene.objectIds.includes(item.id)
                       ? scene.objectIds.filter((id) => id !== item.id)
-                      : [...scene.objectIds, item.id]
+                      : [...scene.objectIds, item.id],
                   })
                 }
               />
@@ -1476,7 +1931,7 @@ function SceneCard({
       ) : null}
 
       <FormSection
-        title="Pre-defined Replies"
+        title={t("cpPreDefinedReplies")}
         action={
           <button type="button" className="setup-text-btn" onClick={addWhatNowSet}>
             + Add
@@ -1487,52 +1942,57 @@ function SceneCard({
         {whatNowSets.map((set) => (
           <div key={set.id} className="campaign-trigger">
             <label className="setup-field setup-field--row">
-              <span className="setup-field__label">Triggered by</span>
+              <span className="setup-field__label">{t("cstTriggeredBy")}</span>
               <input
                 value={set.keywords.join(", ")}
                 onChange={(e) =>
                   patchWhatNowSet(set.id, (current) => ({
                     ...current,
-                    keywords: parseKeywordList(e.target.value)
+                    keywords: parseKeywordList(e.target.value),
                   }))
                 }
                 placeholder="last call, follow me"
               />
             </label>
             <p className="form-section__lede">
-              Words in chat that show these buttons. Empty = someone invites them along, or they try to leave the map.
+              Words in chat that show these buttons. Empty = someone invites them along, or they try
+              to leave the map.
             </p>
             {set.choices.map((choice) => (
               <div key={choice.id}>
                 <label className="setup-field setup-field--row">
-                  <span className="setup-field__label">Button</span>
+                  <span className="setup-field__label">{t("cstButton")}</span>
                   <input
                     value={choice.label}
                     onChange={(e) =>
                       patchWhatNowSet(set.id, (current) => ({
                         ...current,
                         choices: current.choices.map((item) =>
-                          item.id === choice.id ? { ...item, label: e.target.value } : item
-                        )
+                          item.id === choice.id ? { ...item, label: e.target.value } : item,
+                        ),
                       }))
                     }
                     placeholder="I tell her the truth"
                   />
                 </label>
                 <label className="setup-field setup-field--row">
-                  <span className="setup-field__label">Goes to</span>
+                  <span className="setup-field__label">{t("cstGoesTo")}</span>
                   <select
-                    value={!choice.room.trim() || isWhatNowStay(choice.room) ? WHAT_NOW_STAY : choice.room}
+                    value={
+                      !choice.room.trim() || isWhatNowStay(choice.room)
+                        ? WHAT_NOW_STAY
+                        : choice.room
+                    }
                     onChange={(e) =>
                       patchWhatNowSet(set.id, (current) => ({
                         ...current,
                         choices: current.choices.map((item) =>
-                          item.id === choice.id ? { ...item, room: e.target.value } : item
-                        )
+                          item.id === choice.id ? { ...item, room: e.target.value } : item,
+                        ),
                       }))
                     }
                   >
-                    <option value={WHAT_NOW_STAY}>This beat</option>
+                    <option value={WHAT_NOW_STAY}>{t("cstThisBeat")}</option>
                     {whatNowPlace ? <option value={WHAT_NOW_FLOOR}>{floorGoesTo}</option> : null}
                     {whatNowRooms.map((room) => (
                       <option key={room.id} value={room.label}>
@@ -1547,11 +2007,11 @@ function SceneCard({
                   onClick={() =>
                     patchWhatNowSet(set.id, (current) => ({
                       ...current,
-                      choices: current.choices.filter((item) => item.id !== choice.id)
+                      choices: current.choices.filter((item) => item.id !== choice.id),
                     }))
                   }
                 >
-                  Remove
+                  {t("spRemove")}
                 </button>
               </div>
             ))}
@@ -1564,8 +2024,8 @@ function SceneCard({
                     ...current,
                     choices: [
                       ...current.choices,
-                      { id: crypto.randomUUID(), label: "", room: WHAT_NOW_STAY }
-                    ]
+                      { id: crypto.randomUUID(), label: "", room: WHAT_NOW_STAY },
+                    ],
                   }))
                 }
               >
@@ -1578,18 +2038,18 @@ function SceneCard({
               onClick={() =>
                 onPatch((current) => ({
                   ...current,
-                  whatNowSets: whatNowSetsFromScene(current).filter((item) => item.id !== set.id)
+                  whatNowSets: whatNowSetsFromScene(current).filter((item) => item.id !== set.id),
                 }))
               }
             >
-              Remove trigger
+              {t("cstRemoveTrigger")}
             </button>
           </div>
         ))}
       </FormSection>
 
       <FormSection
-        title="If they come back"
+        title={t("cstIfTheyComeBack")}
         action={
           <button type="button" className="setup-text-btn" onClick={addTrigger}>
             + Add
@@ -1602,37 +2062,40 @@ function SceneCard({
         {scene.triggers.map((trigger) => (
           <div key={trigger.id} className="campaign-trigger">
             <label className="setup-field setup-field--row">
-              <span className="setup-field__label">What happens</span>
+              <span className="setup-field__label">{t("cstWhatHappens")}</span>
               <textarea
                 value={trigger.content}
                 onChange={(e) =>
                   onPatch((current) => ({
                     ...current,
                     triggers: current.triggers.map((item) =>
-                      item.id === trigger.id ? { ...item, content: e.target.value } : item
-                    )
+                      item.id === trigger.id ? { ...item, content: e.target.value } : item,
+                    ),
                   }))
                 }
                 placeholder="Two strangers come in and ask about a brooch…"
               />
             </label>
             <label className="setup-field setup-field--row">
-              <span className="setup-field__label">Already in play</span>
+              <span className="setup-field__label">{t("cstAlreadyInPlay")}</span>
               <input
                 value={trigger.keywords.join(", ")}
                 onChange={(e) =>
                   onPatch((current) => ({
                     ...current,
                     triggers: current.triggers.map((item) =>
-                      item.id === trigger.id ? { ...item, keywords: parseKeywordList(e.target.value) } : item
-                    )
+                      item.id === trigger.id
+                        ? { ...item, keywords: parseKeywordList(e.target.value) }
+                        : item,
+                    ),
                   }))
                 }
                 placeholder="brooch, broschen"
               />
             </label>
             <p className="form-section__lede">
-              A word said in chat, or something in someone's hands. {triggerWhenLabel("return_to_bar")} — a night away counts too.
+              A word said in chat, or something in someone's hands.{" "}
+              {triggerWhenLabel("return_to_bar")} — a night away counts too.
             </p>
             <button
               type="button"
@@ -1640,23 +2103,28 @@ function SceneCard({
               onClick={() =>
                 onPatch((current) => ({
                   ...current,
-                  triggers: current.triggers.filter((item) => item.id !== trigger.id)
+                  triggers: current.triggers.filter((item) => item.id !== trigger.id),
                 }))
               }
             >
-              Remove
+              {t("spRemove")}
             </button>
           </div>
         ))}
       </FormSection>
 
       <div className="studio-sheet__actions">
-        <button type="button" className="setup-start" disabled={!canStart || busy} onClick={onStart}>
-          Start this scene
+        <button
+          type="button"
+          className="setup-start"
+          disabled={!canStart || busy}
+          onClick={onStart}
+        >
+          {t("cstStartThisScene")}
         </button>
         {canRemove ? (
           <button type="button" className="setup-example" onClick={onRemove}>
-            Delete
+            {t("cstDelete")}
           </button>
         ) : null}
       </div>

@@ -20,7 +20,7 @@ describe("realms and landmarks", () => {
       tags: [],
       source: "player",
       createdAt: "2026-01-01T00:00:00.000Z",
-      updatedAt: "2026-01-01T00:00:00.000Z"
+      updatedAt: "2026-01-01T00:00:00.000Z",
     });
     expect(loaded.realmId).toBe(FALLBACK_REALM_ID);
   });
@@ -36,7 +36,7 @@ describe("realms and landmarks", () => {
       audioDataUrl: "data:audio",
       source: "player",
       createdAt: "2026-01-01T00:00:00.000Z",
-      updatedAt: "2026-01-01T00:00:00.000Z"
+      updatedAt: "2026-01-01T00:00:00.000Z",
     });
     expect(loaded.brief).toBe("A wet cave system. Locals leave offerings at the mouth.");
     expect(loaded.thumbDataUrl).toBe("data:thumb");

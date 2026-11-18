@@ -1,4 +1,5 @@
-import { pinSessionAnatomy } from "@state/anatomy";
+import { useTranslate } from "../i18n/LanguageProvider";
+import { pinSessionAnatomy, pinSessionFactions } from "@state/anatomy";
 import { useEffect, useState } from "react";
 import { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 import type { Session } from "@state/StateSchema";
@@ -11,7 +12,7 @@ import type {
   RealmTemplate,
   RulesetTemplate,
   StoryTemplate,
-  VoiceTemplate
+  VoiceTemplate,
 } from "@library/LibrarySchema";
 import {
   EXAMPLE_CHARACTER_ID,
@@ -27,7 +28,7 @@ import {
   exampleRulesetTemplates,
   exampleVoiceTemplates,
   mergeWithExamples,
-  withAuroraRoomIntros
+  withAuroraRoomIntros,
 } from "@library/exampleTemplates";
 import {
   OBJECT_FILTER_ALL,
@@ -36,7 +37,7 @@ import {
   OBJECT_FILTER_UNSORTED,
   objectMatchesFilter,
   uniqueObjectTags,
-  type ObjectFilter
+  type ObjectFilter,
 } from "@library/objectFilter";
 import { characterDraftFromTemplate } from "@library/fromForm";
 import { callName, formatPersonName } from "@library/personName";
@@ -64,7 +65,7 @@ function Chip({
   active,
   label,
   thumb,
-  onPick
+  onPick,
 }: {
   active: boolean;
   label: string;
@@ -85,13 +86,14 @@ export function AdventureStudio({
   sessionId,
   repo,
   onStart,
-  onOpenShelf
+  onOpenShelf,
 }: {
   sessionId: string;
   repo: IndexedDBRepository;
   onStart: (session: Session) => void;
   onOpenShelf: (view: StudioView) => void;
 }) {
+  const t = useTranslate();
   const [characters, setCharacters] = useState<CharacterTemplate[]>([]);
   const [places, setPlaces] = useState<PlaceTemplate[]>([]);
   const [realms, setRealms] = useState<RealmTemplate[]>([]);
@@ -120,18 +122,28 @@ export function AdventureStudio({
       repo.listStories(),
       repo.listVoices(),
       repo.listRulesets(),
-      repo.listObjects()
+      repo.listObjects(),
     ])
-      .then(([nextCharacters, nextPlaces, nextRealms, nextStories, nextVoices, nextRulesets, nextObjects]) => {
-        if (cancelled) return;
-        setCharacters(nextCharacters);
-        setPlaces(nextPlaces);
-        setRealms(nextRealms);
-        setStories(nextStories);
-        setVoices(nextVoices);
-        setRulesets(nextRulesets);
-        setObjects(nextObjects);
-      })
+      .then(
+        ([
+          nextCharacters,
+          nextPlaces,
+          nextRealms,
+          nextStories,
+          nextVoices,
+          nextRulesets,
+          nextObjects,
+        ]) => {
+          if (cancelled) return;
+          setCharacters(nextCharacters);
+          setPlaces(nextPlaces);
+          setRealms(nextRealms);
+          setStories(nextStories);
+          setVoices(nextVoices);
+          setRulesets(nextRulesets);
+          setObjects(nextObjects);
+        },
+      )
       .catch(() => {
         if (!cancelled) setError("Could not load your library.");
       });
@@ -152,7 +164,7 @@ export function AdventureStudio({
   const ruleset = visibleRulesets.find((item) => item.id === rulesetId) ?? null;
   const objectTagNames = uniqueObjectTags(visibleObjects);
   const filteredObjects = visibleObjects.filter((item) =>
-    objectMatchesFilter(item, objectFilter, { storyId, placeId })
+    objectMatchesFilter(item, objectFilter, { storyId, placeId }),
   );
   const canStart = Boolean(place) && cast.length > 0;
 
@@ -172,25 +184,31 @@ export function AdventureStudio({
           stats: {},
           trust: "20",
           familiarity: "10",
-          tension: "5"
-        }
+          tension: "5",
+        },
       ];
     });
   }
 
   function toggleObject(id: string) {
-    setObjectIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
+    setObjectIds((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
+    );
   }
 
   function patchCast(libraryId: string, patch: Partial<CastPick>) {
-    setCast((current) => current.map((item) => (item.libraryId === libraryId ? { ...item, ...patch } : item)));
+    setCast((current) =>
+      current.map((item) => (item.libraryId === libraryId ? { ...item, ...patch } : item)),
+    );
   }
 
   function patchStat(libraryId: string, statId: string, value: string) {
     setCast((current) =>
       current.map((item) =>
-        item.libraryId === libraryId ? { ...item, stats: { ...item.stats, [statId]: value } } : item
-      )
+        item.libraryId === libraryId
+          ? { ...item, stats: { ...item.stats, [statId]: value } }
+          : item,
+      ),
     );
   }
 
@@ -234,96 +252,108 @@ export function AdventureStudio({
         }
       }
       const sceneRooms =
-        place.id === EXAMPLE_PLACE_ID ? withAuroraRoomIntros(place.rooms) : place.rooms ?? [];
+        place.id === EXAMPLE_PLACE_ID ? withAuroraRoomIntros(place.rooms) : (place.rooms ?? []);
       const parentRealm = visibleRealms.find((item) => item.id === place.realmId);
       const anatomyLibrary = await repo.listAnatomyTemplates();
+      const factionLibrary = await repo.listFactions();
       onStart(
-        pinSessionAnatomy(createSessionFromSetup(
-          {
-            location: place.name,
-            placeId: place.id,
-            ...(parentRealm?.name ? { realm: parentRealm.name } : {}),
-            ...realmPlayFields(parentRealm),
-            lighting: place.lighting,
-            noise: place.noise,
-            music: place.music,
-            placeNote: place.note.trim() || (place.id === EXAMPLE_PLACE_ID ? EXAMPLE_AURORA_NOTE : ""),
-            placeBrief: place.brief?.trim() || (place.id === EXAMPLE_PLACE_ID ? EXAMPLE_AURORA_BRIEF : ""),
-            ...(place.id === EXAMPLE_PLACE_ID ? { placeLore: EXAMPLE_AURORA_LORE } : {}),
-            ...((place.thumbDataUrl ||
-              place.imageDataUrl ||
-              place.gallery?.length ||
-              place.audioDataUrl ||
-              place.audioGallery?.length ||
-              sceneRooms.length > 0)
-              ? {
-                  placeVisual: {
-                    ...copyPictureFields(place),
-                    ...copyAudioFields(place),
-                    ...(sceneRooms.length > 0
-                      ? {
-                          rooms: sceneRooms.map((room) => ({
-                            id: room.id,
-                            label: room.label,
-                            keywords: room.keywords,
-                            ...(room.description?.trim() ? { description: room.description.trim() } : {}),
-                            ...(room.brief?.trim() ? { brief: room.brief.trim() } : {}),
-                            ...copyPictureFields(room),
-                            ...copyAudioFields(room)
-                          }))
-                        }
-                      : {})
-                  }
-                }
-              : {}),
-            ...(story
-              ? {
-                  storyTitle: story.name,
-                  storyPremise: story.premise
-                }
-              : {}),
-            ...(voice
-              ? {
-                  voiceTitle: voice.name,
-                  voiceInstruction: voice.instruction
-                }
-              : {}),
-            model,
-            ...(ruleset
-              ? {
-                  ruleset: { name: ruleset.name, attributes: ruleset.attributes }
-                }
-              : {}),
-            characters: cast.flatMap((pick) => {
-              const template = visibleCharacters.find((item) => item.id === pick.libraryId);
-              if (!template) return [];
-              const draft = characterDraftFromTemplate(template);
-              return [
-                {
-                  ...draft,
-                  mood: pick.mood,
-                  position: pick.position,
-                  clothing: pick.clothing,
-                  holding: pick.holding,
-                  stats: pick.stats,
-                  trust: pick.trust,
-                  familiarity: pick.familiarity,
-                  tension: pick.tension
-                }
-              ];
-            }),
-            objects: pickedObjects.map((item) => ({
-              id: item.id,
-              name: item.name,
-              note: item.note,
-              tags: item.tags,
-              ...(item.weight !== undefined ? { weight: item.weight } : {}),
-              ...(item.difficulty !== undefined ? { difficulty: item.difficulty } : {}),
-              ...(item.checkAttribute ? { checkAttribute: item.checkAttribute } : {})
-            }))
-          },
-          sessionId
-        ), anatomyLibrary)
+        pinSessionFactions(
+          pinSessionAnatomy(
+            createSessionFromSetup(
+              {
+                location: place.name,
+                placeId: place.id,
+                ...(parentRealm?.name ? { realm: parentRealm.name } : {}),
+                ...realmPlayFields(parentRealm),
+                lighting: place.lighting,
+                noise: place.noise,
+                music: place.music,
+                placeNote:
+                  place.note.trim() || (place.id === EXAMPLE_PLACE_ID ? EXAMPLE_AURORA_NOTE : ""),
+                placeBrief:
+                  place.brief?.trim() ||
+                  (place.id === EXAMPLE_PLACE_ID ? EXAMPLE_AURORA_BRIEF : ""),
+                ...(place.id === EXAMPLE_PLACE_ID ? { placeLore: EXAMPLE_AURORA_LORE } : {}),
+                ...(place.thumbDataUrl ||
+                place.imageDataUrl ||
+                place.gallery?.length ||
+                place.audioDataUrl ||
+                place.audioGallery?.length ||
+                sceneRooms.length > 0
+                  ? {
+                      placeVisual: {
+                        ...copyPictureFields(place),
+                        ...copyAudioFields(place),
+                        ...(sceneRooms.length > 0
+                          ? {
+                              rooms: sceneRooms.map((room) => ({
+                                id: room.id,
+                                label: room.label,
+                                keywords: room.keywords,
+                                ...(room.description?.trim()
+                                  ? { description: room.description.trim() }
+                                  : {}),
+                                ...(room.brief?.trim() ? { brief: room.brief.trim() } : {}),
+                                ...copyPictureFields(room),
+                                ...copyAudioFields(room),
+                              })),
+                            }
+                          : {}),
+                      },
+                    }
+                  : {}),
+                ...(story
+                  ? {
+                      storyTitle: story.name,
+                      storyPremise: story.premise,
+                    }
+                  : {}),
+                ...(voice
+                  ? {
+                      voiceTitle: voice.name,
+                      voiceInstruction: voice.instruction,
+                    }
+                  : {}),
+                model,
+                ...(ruleset
+                  ? {
+                      ruleset: { name: ruleset.name, attributes: ruleset.attributes },
+                    }
+                  : {}),
+                characters: cast.flatMap((pick) => {
+                  const template = visibleCharacters.find((item) => item.id === pick.libraryId);
+                  if (!template) return [];
+                  const draft = characterDraftFromTemplate(template);
+                  return [
+                    {
+                      ...draft,
+                      mood: pick.mood,
+                      position: pick.position,
+                      clothing: pick.clothing,
+                      holding: pick.holding,
+                      stats: pick.stats,
+                      trust: pick.trust,
+                      familiarity: pick.familiarity,
+                      tension: pick.tension,
+                    },
+                  ];
+                }),
+                objects: pickedObjects.map((item) => ({
+                  id: item.id,
+                  name: item.name,
+                  note: item.note,
+                  tags: item.tags,
+                  ...(item.weight !== undefined ? { weight: item.weight } : {}),
+                  ...(item.difficulty !== undefined ? { difficulty: item.difficulty } : {}),
+                  ...(item.checkAttribute ? { checkAttribute: item.checkAttribute } : {}),
+                })),
+              },
+              sessionId,
+            ),
+            anatomyLibrary,
+          ),
+          factionLibrary,
+        ),
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not start this scene.");
@@ -332,7 +362,9 @@ export function AdventureStudio({
   }
 
   function fillExample() {
-    const emma = visibleCharacters.find((item) => item.id === EXAMPLE_CHARACTER_ID) ?? exampleCharacterTemplate();
+    const emma =
+      visibleCharacters.find((item) => item.id === EXAMPLE_CHARACTER_ID) ??
+      exampleCharacterTemplate();
     setPlaceId(EXAMPLE_PLACE_ID);
     setRulesetId(EXAMPLE_RULESET_CLOSENESS_ID);
     setCast([
@@ -345,8 +377,8 @@ export function AdventureStudio({
         stats: {},
         trust: "20",
         familiarity: "10",
-        tension: "5"
-      }
+        tension: "5",
+      },
     ]);
     setError(null);
     setNotice("Example loaded. Set her stats, clothes, and where she stands, then Start scene.");
@@ -355,15 +387,13 @@ export function AdventureStudio({
   return (
     <div className="setup-screen studio-adventure">
       <div className="setup-card studio-sheet--form">
-        <p className="setup-kicker">One-off scene</p>
-        <h1 className="setup-title">Assemble a scene</h1>
-        <p className="setup-lede">
-          No campaign — just tonight. Pick a place and a character. Stats need a rule-set. Then Start scene.
-        </p>
+        <p className="setup-kicker">{t("cstQuickScene")}</p>
+        <h1 className="setup-title">{t("asAssembleAScene")}</h1>
+        <p className="setup-lede">{t("asNoAdventureJustTonight")}</p>
 
         <section className="setup-section">
           <div className="setup-section__head">
-            <p className="panel-heading">Model</p>
+            <p className="panel-heading">{t("cstModel")}</p>
           </div>
           <label className="setup-field">
             Ollama
@@ -373,33 +403,43 @@ export function AdventureStudio({
 
         <section className="setup-section">
           <div className="setup-section__head">
-            <p className="panel-heading">Narrator</p>
+            <p className="panel-heading">{t("csNarrator")}</p>
             <button type="button" className="setup-text-btn" onClick={() => onOpenShelf("voices")}>
-              Edit voices
+              {t("cstEditVoices")}
             </button>
           </div>
           <div className="setup-chips" role="list">
             <Chip active={voiceId === null} label="None" onPick={() => setVoiceId(null)} />
             {visibleVoices.map((item) => (
-              <Chip key={item.id} active={voiceId === item.id} label={item.name} onPick={() => setVoiceId(item.id)} />
+              <Chip
+                key={item.id}
+                active={voiceId === item.id}
+                label={item.name}
+                onPick={() => setVoiceId(item.id)}
+              />
             ))}
           </div>
         </section>
 
         <section className="setup-section">
           <div className="setup-section__head">
-            <p className="panel-heading">Ground story</p>
+            <p className="panel-heading">{t("csGroundStory")}</p>
             <button type="button" className="setup-text-btn" onClick={() => onOpenShelf("stories")}>
-              Edit stories
+              {t("asEditStories")}
             </button>
           </div>
           {stories.length === 0 ? (
-            <p className="inspector-empty">Optional. Write one on the Stories shelf if this world has a premise.</p>
+            <p className="inspector-empty">{t("asOptionalWriteOneOn")}</p>
           ) : (
             <div className="setup-chips" role="list">
               <Chip active={storyId === null} label="None" onPick={() => setStoryId(null)} />
               {stories.map((item) => (
-                <Chip key={item.id} active={storyId === item.id} label={item.name} onPick={() => setStoryId(item.id)} />
+                <Chip
+                  key={item.id}
+                  active={storyId === item.id}
+                  label={item.name}
+                  onPick={() => setStoryId(item.id)}
+                />
               ))}
             </div>
           )}
@@ -407,13 +447,13 @@ export function AdventureStudio({
 
         <section className="setup-section">
           <div className="setup-section__head">
-            <p className="panel-heading">Landmark</p>
+            <p className="panel-heading">{t("cstLandmark")}</p>
             <button type="button" className="setup-text-btn" onClick={() => onOpenShelf("places")}>
-              Edit locations
+              {t("cstEditLocations")}
             </button>
           </div>
           {visiblePlaces.length === 0 ? (
-            <p className="inspector-empty">Save a landmark first — it must live in a realm.</p>
+            <p className="inspector-empty">{t("asSaveALandmarkFirst")}</p>
           ) : (
             <div className="setup-chips" role="list">
               {visiblePlaces.map((item) => (
@@ -431,9 +471,13 @@ export function AdventureStudio({
 
         <section className="setup-section">
           <div className="setup-section__head">
-            <p className="panel-heading">Rule-set</p>
-            <button type="button" className="setup-text-btn" onClick={() => onOpenShelf("rulesets")}>
-              Edit rule-sets
+            <p className="panel-heading">{t("ruleSet")}</p>
+            <button
+              type="button"
+              className="setup-text-btn"
+              onClick={() => onOpenShelf("rulesets")}
+            >
+              {t("cstEditRuleSets")}
             </button>
           </div>
           <div className="setup-chips" role="list">
@@ -451,16 +495,20 @@ export function AdventureStudio({
 
         <section className="setup-section">
           <div className="setup-section__head">
-            <p className="panel-heading">Objects</p>
+            <p className="panel-heading">{t("asObjects")}</p>
             <button type="button" className="setup-text-btn" onClick={() => onOpenShelf("objects")}>
-              Edit objects
+              {t("cstEditObjects")}
             </button>
           </div>
           <p className="inspector-empty" style={{ marginBottom: 8 }}>
             Filter is a lens — you can still put a lightsaber in Midgård if you pick it.
           </p>
           <div className="setup-chips" role="list">
-            <Chip active={objectFilter === OBJECT_FILTER_ALL} label="All" onPick={() => setObjectFilter(OBJECT_FILTER_ALL)} />
+            <Chip
+              active={objectFilter === OBJECT_FILTER_ALL}
+              label="All"
+              onPick={() => setObjectFilter(OBJECT_FILTER_ALL)}
+            />
             <Chip
               active={objectFilter === OBJECT_FILTER_UNSORTED}
               label="Unsorted"
@@ -481,11 +529,16 @@ export function AdventureStudio({
               />
             ) : null}
             {objectTagNames.map((tag) => (
-              <Chip key={tag} active={objectFilter === tag} label={tag} onPick={() => setObjectFilter(tag)} />
+              <Chip
+                key={tag}
+                active={objectFilter === tag}
+                label={tag}
+                onPick={() => setObjectFilter(tag)}
+              />
             ))}
           </div>
           {filteredObjects.length === 0 ? (
-            <p className="inspector-empty">Nothing on this filter. Save objects on the Objects shelf, or switch to All.</p>
+            <p className="inspector-empty">{t("asNothingOnThisFilter")}</p>
           ) : (
             <div className="setup-chips" role="list" style={{ marginTop: 8 }}>
               {filteredObjects.map((item) => (
@@ -502,13 +555,17 @@ export function AdventureStudio({
 
         <section className="setup-section">
           <div className="setup-section__head">
-            <p className="panel-heading">Cast</p>
-            <button type="button" className="setup-text-btn" onClick={() => onOpenShelf("characters")}>
-              Edit characters
+            <p className="panel-heading">{t("pwCast")}</p>
+            <button
+              type="button"
+              className="setup-text-btn"
+              onClick={() => onOpenShelf("characters")}
+            >
+              {t("cstEditCharacters")}
             </button>
           </div>
           {visibleCharacters.length === 0 ? (
-            <p className="inspector-empty">The archive is empty. Add someone on the Characters shelf, then come back.</p>
+            <p className="inspector-empty">{t("asTheArchiveIsEmpty")}</p>
           ) : (
             <div className="setup-chips" role="list">
               {visibleCharacters.map((item) => (
@@ -526,7 +583,7 @@ export function AdventureStudio({
             if (!template) return null;
             const voice = traitVoice({
               char: callName(template.name, template.familyName, template.middleName),
-              pronoun: template.pronoun
+              pronoun: template.pronoun,
             });
             return (
               <div className="setup-character" key={pick.libraryId}>
@@ -537,14 +594,18 @@ export function AdventureStudio({
                   <button
                     type="button"
                     className="layer-card__toggle"
-                    onClick={() => setCast((current) => current.filter((item) => item.libraryId !== pick.libraryId))}
+                    onClick={() =>
+                      setCast((current) =>
+                        current.filter((item) => item.libraryId !== pick.libraryId),
+                      )
+                    }
                   >
-                    Remove
+                    {t("spRemove")}
                   </button>
                 </div>
                 <div className="setup-row">
                   <label className="setup-field">
-                    Mood in this scene
+                    {t("asMoodInThisScene")}
                     <input
                       value={pick.mood}
                       onChange={(e) => patchCast(pick.libraryId, { mood: e.target.value })}
@@ -552,7 +613,7 @@ export function AdventureStudio({
                     />
                   </label>
                   <label className="setup-field">
-                    Where in this place?
+                    {t("cstWhereInThisPlace")}
                     <input
                       value={pick.position}
                       onChange={(e) => patchCast(pick.libraryId, { position: e.target.value })}
@@ -562,7 +623,8 @@ export function AdventureStudio({
                 </div>
                 <div className="setup-row">
                   <label className="setup-field">
-                    Wearing now <span className="setup-optional">this scene</span>
+                    {t("asWearingNow")}
+                    <span className="setup-optional">{t("asThisScene")}</span>
                     <input
                       value={pick.clothing}
                       onChange={(e) => patchCast(pick.libraryId, { clothing: e.target.value })}
@@ -570,7 +632,8 @@ export function AdventureStudio({
                     />
                   </label>
                   <label className="setup-field">
-                    In their hands <span className="setup-optional">this scene</span>
+                    {t("cstInTheirHands")}
+                    <span className="setup-optional">{t("asThisScene")}</span>
                     <input
                       value={pick.holding}
                       onChange={(e) => patchCast(pick.libraryId, { holding: e.target.value })}
@@ -588,50 +651,66 @@ export function AdventureStudio({
                           ? [...listed, ...(current && !listed.includes(current) ? [current] : [])]
                           : [];
                       return (
-                      <div className="setup-field" key={def.id}>
-                        {def.name}
-                        {picks.length > 0 || (def.kind === "text" && listed.length > 0) ? (
-                          <PickChips
-                            ariaLabel={def.name}
-                            choices={picks}
-                            value={current || undefined}
-                            onPick={(choice) =>
-                              patchStat(pick.libraryId, def.id, current === choice ? "" : choice)
-                            }
-                            onAdd={(label) => patchStat(pick.libraryId, def.id, label)}
-                          />
-                        ) : (
-                          <input
-                            value={current}
-                            onChange={(e) => patchStat(pick.libraryId, def.id, e.target.value)}
-                            placeholder={def.kind === "number" ? `${def.min ?? 0}–${def.max ?? 100}` : ""}
-                          />
-                        )}
-                        {def.kind === "text" && def.description?.trim() ? (
-                          <span className="setup-optional" style={{ display: "block", marginTop: 4, fontWeight: 400 }}>
-                            {applyTraitTokens(def.description.trim(), voice)}
-                          </span>
-                        ) : def.kind !== "text" && (def.highMeaning?.trim() || def.lowMeaning?.trim() || def.description?.trim()) ? (
-                          <span className="setup-optional" style={{ display: "block", marginTop: 4, fontWeight: 400 }}>
-                            {[
-                              def.highMeaning?.trim() ? `High: ${applyTraitTokens(def.highMeaning.trim(), voice)}` : null,
-                              def.lowMeaning?.trim() ? `Low: ${applyTraitTokens(def.lowMeaning.trim(), voice)}` : null,
-                              !def.highMeaning?.trim() && !def.lowMeaning?.trim()
-                                ? applyTraitTokens(def.description.trim(), voice)
-                                : null
-                            ]
-                              .filter(Boolean)
-                              .join(" ")}
-                          </span>
-                        ) : null}
-                      </div>
+                        <div className="setup-field" key={def.id}>
+                          {def.name}
+                          {picks.length > 0 || (def.kind === "text" && listed.length > 0) ? (
+                            <PickChips
+                              ariaLabel={def.name}
+                              choices={picks}
+                              value={current || undefined}
+                              onPick={(choice) =>
+                                patchStat(pick.libraryId, def.id, current === choice ? "" : choice)
+                              }
+                              onAdd={(label) => patchStat(pick.libraryId, def.id, label)}
+                            />
+                          ) : (
+                            <input
+                              value={current}
+                              onChange={(e) => patchStat(pick.libraryId, def.id, e.target.value)}
+                              placeholder={
+                                def.kind === "number" ? `${def.min ?? 0}–${def.max ?? 100}` : ""
+                              }
+                            />
+                          )}
+                          {def.kind === "text" && def.description?.trim() ? (
+                            <span
+                              className="setup-optional"
+                              style={{ display: "block", marginTop: 4, fontWeight: 400 }}
+                            >
+                              {applyTraitTokens(def.description.trim(), voice)}
+                            </span>
+                          ) : def.kind !== "text" &&
+                            (def.highMeaning?.trim() ||
+                              def.lowMeaning?.trim() ||
+                              def.description?.trim()) ? (
+                            <span
+                              className="setup-optional"
+                              style={{ display: "block", marginTop: 4, fontWeight: 400 }}
+                            >
+                              {[
+                                def.highMeaning?.trim()
+                                  ? `High: ${applyTraitTokens(def.highMeaning.trim(), voice)}`
+                                  : null,
+                                def.lowMeaning?.trim()
+                                  ? `Low: ${applyTraitTokens(def.lowMeaning.trim(), voice)}`
+                                  : null,
+                                !def.highMeaning?.trim() && !def.lowMeaning?.trim()
+                                  ? applyTraitTokens(def.description.trim(), voice)
+                                  : null,
+                              ]
+                                .filter(Boolean)
+                                .join(" ")}
+                            </span>
+                          ) : null}
+                        </div>
                       );
                     })}
                   </div>
                 )}
                 <div className="setup-row" style={{ gridTemplateColumns: "1fr 1fr 1fr" }}>
                   <label className="setup-field">
-                    Trust <span className="setup-optional">with you</span>
+                    {t("cstTrust")}
+                    <span className="setup-optional">{t("cstWithYou")}</span>
                     <input
                       value={pick.trust}
                       onChange={(e) => patchCast(pick.libraryId, { trust: e.target.value })}
@@ -639,7 +718,7 @@ export function AdventureStudio({
                     />
                   </label>
                   <label className="setup-field">
-                    Familiarity
+                    {t("cstFamiliarity")}
                     <input
                       value={pick.familiarity}
                       onChange={(e) => patchCast(pick.libraryId, { familiarity: e.target.value })}
@@ -647,7 +726,7 @@ export function AdventureStudio({
                     />
                   </label>
                   <label className="setup-field">
-                    Tension
+                    {t("cstTension")}
                     <input
                       value={pick.tension}
                       onChange={(e) => patchCast(pick.libraryId, { tension: e.target.value })}
@@ -664,8 +743,13 @@ export function AdventureStudio({
         {error && <p className="setup-error">{error}</p>}
 
         <div className="setup-actions">
-          <button type="button" className="setup-start" disabled={!canStart || busy} onClick={() => void start()}>
-            Start scene
+          <button
+            type="button"
+            className="setup-start"
+            disabled={!canStart || busy}
+            onClick={() => void start()}
+          >
+            {t("asStartScene")}
           </button>
           {!canStart && !busy ? (
             <p className="inspector-empty">

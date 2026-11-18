@@ -13,7 +13,7 @@ export const AUTHORITY_ORDER = [
   "active_layer_effect",
   "ai_approved_state_mutation",
   "ai_inference",
-  "historical_memory"
+  "historical_memory",
 ] as const;
 
 export type AuthoritySource = (typeof AUTHORITY_ORDER)[number];
@@ -45,14 +45,15 @@ export function resolveAuthority(request: MutationRequest): AuthorityDecision {
   if (isAiSource && request.fieldLock === "player_locked") {
     return {
       allowed: false,
-      reason: "AI-sourced mutation rejected: target field is player_locked."
+      reason: "AI-sourced mutation rejected: target field is player_locked.",
     };
   }
 
   if (request.fieldLock === "system_locked" && request.source !== "immutable_system_constraint") {
     return {
       allowed: false,
-      reason: "Mutation rejected: target field is system_locked and can only change via explicit system control flow."
+      reason:
+        "Mutation rejected: target field is system_locked and can only change via explicit system control flow.",
     };
   }
 

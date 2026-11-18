@@ -25,7 +25,7 @@ function PromptBudgetSection() {
   return (
     <div
       className="inspector-section"
-      title="Heuristic size (~4 characters per token), same as the budget trimmer. Pass 1 is writing rules; chat is dialogue that still fits."
+      title="Rough size (about 4 characters per token), the same estimate used when trimming. “rules” are the writing instructions; “chat” is the conversation that still fits."
     >
       <p className="panel-heading">Prompt</p>
       <div className="inspector-row">
@@ -42,7 +42,7 @@ function PromptBudgetSection() {
         />
       </div>
       <div className="inspector-row">
-        <span className="inspector-row__key">ceiling</span>
+        <span className="inspector-row__key">hard limit</span>
         <span className="inspector-row__value">{budget.hardCeilingTokens}</span>
       </div>
       {budget.parts.map((part) => (
@@ -65,7 +65,8 @@ function PromptBudgetSection() {
 
 function eventChainDot(event: StateEvent): "ai" | "player" | "active" {
   const payload = event.payload as { source?: string } | undefined;
-  if (payload?.source === "ai_approved_state_mutation" || payload?.source === "ai_inference") return "ai";
+  if (payload?.source === "ai_approved_state_mutation" || payload?.source === "ai_inference")
+    return "ai";
   if (payload?.source) return "player";
   return "active";
 }
@@ -130,7 +131,8 @@ export function InspectorPanel() {
   const beatEvents = beat ? inspectEventsForBeat(events, beat) : [];
   const beatEventIds = new Set(beatEvents.map((event) => event.id));
   const committed = beatEvents.find((event) => event.type === "turn_committed");
-  const committedPayload = committed?.payload as { mutationsApplied?: number; mutationsRejected?: number } | undefined;
+  const committedPayload = committed?.payload as
+    { mutationsApplied?: number; mutationsRejected?: number } | undefined;
   const chainEvents = beat ? [...beatEvents].reverse() : [...events].slice(-6).reverse();
   const [undoMessage, setUndoMessage] = useState<string | null>(null);
 
@@ -232,7 +234,9 @@ export function InspectorPanel() {
         {session.story?.premise ? (
           <div className="inspector-row">
             <span className="inspector-row__key">story</span>
-            <span className="inspector-row__value">{session.story.title.trim() || "ground story"}</span>
+            <span className="inspector-row__value">
+              {session.story.title.trim() || "ground story"}
+            </span>
           </div>
         ) : null}
         {session.voice?.instruction ? (
@@ -358,14 +362,16 @@ export function InspectorPanel() {
         <div className="inspector-row">
           <span className="inspector-row__key">layers in play</span>
           <span className="inspector-row__value">
-            {getEffectiveActiveLayers(session).length} / {session.layers.filter((l) => l.active).length} on /{" "}
-            {session.layers.length}
+            {getEffectiveActiveLayers(session).length} /{" "}
+            {session.layers.filter((l) => l.active).length} on / {session.layers.length}
           </span>
         </div>
         <div className="inspector-row">
           <span className="inspector-row__key">memory</span>
           <span className="inspector-row__value">
-            {session.memory.episodic.length + session.memory.semantic.length + session.memory.relational.length}{" "}
+            {session.memory.episodic.length +
+              session.memory.semantic.length +
+              session.memory.relational.length}{" "}
             entries
           </span>
         </div>
@@ -374,14 +380,14 @@ export function InspectorPanel() {
       <div className="inspector-section">
         <div className="inspector-row" style={{ justifyContent: "space-between", marginBottom: 8 }}>
           <p className="panel-heading" style={{ margin: 0 }}>
-            {beat ? "This beat" : "Mutation chain"}
+            {beat ? "This beat" : "Recent changes"}
           </p>
           {beat ? (
             <button
               type="button"
               className="message__act"
               onClick={() => setInspectTurn(null)}
-              title="Show the recent mutation chain"
+              title="Show the recent changes to the story state"
             >
               all events
             </button>
@@ -395,7 +401,7 @@ export function InspectorPanel() {
                 borderRadius: 4,
                 padding: "2px 8px",
                 fontSize: "11px",
-                fontFamily: "var(--font-mono)"
+                fontFamily: "var(--font-mono)",
               }}
               title="Undo the most recent state change (§31)"
             >
@@ -410,12 +416,12 @@ export function InspectorPanel() {
               <span className="inspector-row__value">{beat.player.content.slice(0, 80)}</span>
             </div>
             <div className="inspector-row">
-              <span className="inspector-row__key">Pass 1</span>
+              <span className="inspector-row__key">reply</span>
               <span className="inspector-row__value">{beat.reply.content.slice(0, 80)}</span>
             </div>
             {committedPayload ? (
               <div className="inspector-row">
-                <span className="inspector-row__key">Pass 2</span>
+                <span className="inspector-row__key">changes</span>
                 <span className="inspector-row__value">
                   {committedPayload.mutationsApplied ?? 0} applied
                   {committedPayload.mutationsRejected
@@ -438,11 +444,16 @@ export function InspectorPanel() {
         )}
         <div className="chain">
           {chainEvents.map((event) => (
-            <div className={beatEventIds.has(event.id) && beat ? "chain-link chain-link--on" : "chain-link"} key={event.id}>
+            <div
+              className={
+                beatEventIds.has(event.id) && beat ? "chain-link chain-link--on" : "chain-link"
+              }
+              key={event.id}
+            >
               <span
                 className="chain-link__node"
                 style={{
-                  background: `var(--accent-${eventChainDot(event)})`
+                  background: `var(--accent-${eventChainDot(event)})`,
                 }}
               />
               <div className="chain-link__body">

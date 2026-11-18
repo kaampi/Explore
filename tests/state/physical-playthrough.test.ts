@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { applyPhysicalChange, describePhysicalState, type PhysicalChange } from "../../src/state/physicalContinuity";
+import {
+  applyPhysicalChange,
+  describePhysicalState,
+  type PhysicalChange,
+} from "../../src/state/physicalContinuity";
 import { validateAnatomicalRelation } from "../../src/state/anatomy";
 import type { PhysicalState, Session } from "../../src/state/StateSchema";
 
@@ -11,11 +15,15 @@ import type { PhysicalState, Session } from "../../src/state/StateSchema";
 describe("automated physical playthrough (50 turns)", () => {
   it("preserves two guards, weapon constraints, eight arms and unrelated scene state", () => {
     const alienParts = Array.from({ length: 8 }, (_, i) => ({
-      id: "arm_" + (i + 1), label: "Arm " + (i + 1), capabilities: ["grasp" as const]
+      id: "arm_" + (i + 1),
+      label: "Arm " + (i + 1),
+      capabilities: ["grasp" as const],
     }));
     const anatomy = {
       characters: { alien: { anatomyTemplateId: "eight" } },
-      anatomyTemplates: { eight: { id: "eight", name: "Eight arms", version: 1, parts: alienParts } }
+      anatomyTemplates: {
+        eight: { id: "eight", name: "Eight arms", version: 1, parts: alienParts },
+      },
     } as unknown as Pick<Session, "characters" | "anatomyTemplates">;
     let state: PhysicalState | undefined;
     let accepted = 0;
@@ -42,7 +50,7 @@ describe("automated physical playthrough (50 turns)", () => {
     };
     const grip = (id: string, subject: string, part: string, target: string): PhysicalChange => ({
       kind: "set_relation",
-      relation: { id, subject, subjectPart: part, relation: "holding", target, exclusive: true }
+      relation: { id, subject, subjectPart: part, relation: "holding", target, exclusive: true },
     });
     const release = (id: string): PhysicalChange => ({ kind: "remove_relation", id });
     // Turns 1–5: two guards restrained, and an alien uses independent arms.
@@ -59,10 +67,18 @@ describe("automated physical playthrough (50 turns)", () => {
     step(release("nonexistent"), false);
     // Turns 11–40: background movement never breaks persistent grips.
     for (let turn = 11; turn <= 40; turn++) {
-      step({ kind: "stance", actor: "bystander_" + turn, stance: turn % 2 ? "moving" : "standing" });
-      expect(state?.relations.map((r) => r.id).sort()).toEqual(
-        ["alien-1", "alien-2", "alien-8", "left", "right"]
-      );
+      step({
+        kind: "stance",
+        actor: "bystander_" + turn,
+        stance: turn % 2 ? "moving" : "standing",
+      });
+      expect(state?.relations.map((r) => r.id).sort()).toEqual([
+        "alien-1",
+        "alien-2",
+        "alien-8",
+        "left",
+        "right",
+      ]);
       const focus = describePhysicalState(state, 3, ["player"]);
       expect(focus).toHaveLength(2);
       expect(focus.join(" ")).toContain("left_arm");
@@ -83,9 +99,15 @@ describe("automated physical playthrough (50 turns)", () => {
     step(grip("player-axe", "player", "left_arm", "axe"));
     expect(accepted + rejected).toBe(50);
     expect(rejected).toBe(6);
-    expect(state?.relations.map((r) => r.id).sort()).toEqual(
-      ["alien-1", "alien-2", "alien-torch", "player-axe", "player-bow"]
-    );
-    expect(describePhysicalState(state, 2, ["player"]).every((line) => line.includes("occupied"))).toBe(true);
+    expect(state?.relations.map((r) => r.id).sort()).toEqual([
+      "alien-1",
+      "alien-2",
+      "alien-torch",
+      "player-axe",
+      "player-bow",
+    ]);
+    expect(
+      describePhysicalState(state, 2, ["player"]).every((line) => line.includes("occupied")),
+    ).toBe(true);
   });
 });

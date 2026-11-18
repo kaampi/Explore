@@ -19,17 +19,22 @@ function nameAsBehaviorSubject(content: string, characterId: string): boolean {
   const name = escapeRegExp(characterId);
   return new RegExp(
     `\\b${name}\\b\\s+(is|maintains|avoids|prefers|speaks|tends|remains|seems|acts|appears|rarely|never)\\b`,
-    "i"
+    "i",
   ).test(content);
 }
 
 export function readsAsCharacterTrait(content: string, characterIds: string[]): boolean {
-  const mentioned = characterIds.filter((id) => new RegExp(`\\b${escapeRegExp(id)}\\b`, "i").test(content));
+  const mentioned = characterIds.filter((id) =>
+    new RegExp(`\\b${escapeRegExp(id)}\\b`, "i").test(content),
+  );
   if (mentioned.length === 0) return false;
   return mentioned.some((id) => nameAsBehaviorSubject(content, id) || TRAIT_WORDS.test(content));
 }
 
-export function displayLayerType(layer: Pick<Layer, "type" | "content">, characterIds: string[]): LayerType {
+export function displayLayerType(
+  layer: Pick<Layer, "type" | "content">,
+  characterIds: string[],
+): LayerType {
   if (layer.type === "environment" && readsAsCharacterTrait(layer.content, characterIds)) {
     return "core";
   }
@@ -38,7 +43,7 @@ export function displayLayerType(layer: Pick<Layer, "type" | "content">, charact
 
 export function coerceProposedLayerType(
   proposal: { type: "core" | "relationship" | "environment"; content: string },
-  characterId: string
+  characterId: string,
 ): { type: "core" | "relationship" | "environment"; content: string } {
   if (proposal.type === "environment" && readsAsCharacterTrait(proposal.content, [characterId])) {
     return { ...proposal, type: "core" };

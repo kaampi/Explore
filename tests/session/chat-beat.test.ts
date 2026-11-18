@@ -6,7 +6,7 @@ import {
   inspectEventsForBeat,
   parseLiveTurns,
   undoIdsAfterReply,
-  undoIdsForBeatReplay
+  undoIdsForBeatReplay,
 } from "@session/chatBeat";
 import type { ConversationTurn } from "@state/StateSchema";
 
@@ -42,31 +42,31 @@ describe("inspectEventsForBeat", () => {
       turn: 1,
       timestamp: "t",
       type: "conversation_turn_appended",
-      payload: player
+      payload: player,
     });
     log.append({
       turn: 2,
       timestamp: "t",
       type: "state_mutation_committed",
-      payload: { path: "characters.emma.mood", value: "warm" }
+      payload: { path: "characters.emma.mood", value: "warm" },
     });
     log.append({
       turn: 3,
       timestamp: "t",
       type: "conversation_turn_appended",
-      payload: reply
+      payload: reply,
     });
     log.append({
       turn: 3,
       timestamp: "t",
       type: "turn_committed",
-      payload: { mutationsApplied: 1, mutationsRejected: 0 }
+      payload: { mutationsApplied: 1, mutationsRejected: 0 },
     });
     log.append({
       turn: 5,
       timestamp: "t",
       type: "conversation_turn_appended",
-      payload: later
+      payload: later,
     });
     const beat = chatBeatFor([player, reply, later], 3)!;
     const slice = inspectEventsForBeat(log.all(), beat);
@@ -74,7 +74,7 @@ describe("inspectEventsForBeat", () => {
       "conversation_turn_appended",
       "state_mutation_committed",
       "conversation_turn_appended",
-      "turn_committed"
+      "turn_committed",
     ]);
     expect(undoIdsAfterReply(log.all(), beat)).toHaveLength(1);
     expect(undoIdsForBeatReplay(log.all(), beat)).toHaveLength(2);

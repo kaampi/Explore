@@ -11,7 +11,7 @@ describe("slimPortrait", () => {
     const raw = {
       id: "rachel",
       name: "Rachel",
-      portraitDataUrl: `data:image/png;base64,${"A".repeat(MAX_LIBRARY_PORTRAIT_CHARS + 10)}`
+      portraitDataUrl: `data:image/png;base64,${"A".repeat(MAX_LIBRARY_PORTRAIT_CHARS + 10)}`,
     };
     const slim = dropOversizedPortraitFromRaw(raw) as { portraitDataUrl?: string; name: string };
     expect(slim.portraitDataUrl).toBeUndefined();

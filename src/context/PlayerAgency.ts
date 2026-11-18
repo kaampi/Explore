@@ -40,8 +40,11 @@ function npcActionRegexes(names: string[], pronoun?: CharacterPronoun): RegExp[]
   const subjects = subjectTerms(names, pronoun).map(escapeRegExp).join("|");
   if (!subjects) return [];
   return [
-    new RegExp(`\\b(?:see|saw|watch(?:es|ed)?|notice[sd]?|spot(?:s|ted)?|hear(?:s|d)?)\\s+(?:${subjects}|her|him)\\s+${VERB}\\b`, "i"),
-    new RegExp(`\\b(?:${subjects})\\s+(?!to\\b)(?!if\\b)${VERB}\\b`, "i")
+    new RegExp(
+      `\\b(?:see|saw|watch(?:es|ed)?|notice[sd]?|spot(?:s|ted)?|hear(?:s|d)?)\\s+(?:${subjects}|her|him)\\s+${VERB}\\b`,
+      "i",
+    ),
+    new RegExp(`\\b(?:${subjects})\\s+(?!to\\b)(?!if\\b)${VERB}\\b`, "i"),
   ];
 }
 
@@ -62,7 +65,7 @@ export interface PlayerAgencySplit {
 export function splitPlayerAgency(
   raw: string,
   names: string[],
-  pronoun?: CharacterPronoun
+  pronoun?: CharacterPronoun,
 ): PlayerAgencySplit {
   const text = raw.replace(/^\*+\s*|\s*\*+$/g, "").trim();
   if (!text) return { playerFacts: "", rejectedClaims: [] };
@@ -71,11 +74,17 @@ export function splitPlayerAgency(
   const index = firstNpcActionIndex(masked, names, pronoun);
   if (index < 0) return { playerFacts: text, rejectedClaims: [] };
 
-  const playerFacts = text.slice(0, index).replace(/[,;]+\s*$/, "").trim();
-  const rejected = text.slice(index).replace(/^[,;]+\s*/, "").trim();
+  const playerFacts = text
+    .slice(0, index)
+    .replace(/[,;]+\s*$/, "")
+    .trim();
+  const rejected = text
+    .slice(index)
+    .replace(/^[,;]+\s*/, "")
+    .trim();
   return {
     playerFacts,
-    rejectedClaims: rejected ? [rejected] : []
+    rejectedClaims: rejected ? [rejected] : [],
   };
 }
 
@@ -83,7 +92,7 @@ export function formatPass1UserContent(
   playerMessage: string,
   names: string[],
   pronoun?: CharacterPronoun,
-  focusName?: string
+  focusName?: string,
 ): string {
   const who = focusName?.trim() || names[0] || "the character";
   const split = splitPlayerAgency(playerMessage, names, pronoun);
@@ -99,7 +108,7 @@ export function formatPass1UserContent(
     `[Not a fact — ${who} did not do this. Do not write it happening.]`,
     ...split.rejectedClaims.map((claim) => `- ${claim}`),
     "",
-    `${who} decides what ${who} does. Write a different beat. Do not perform the rejected action.`
+    `${who} decides what ${who} does. Write a different beat. Do not perform the rejected action.`,
   ];
   return lines.join("\n");
 }

@@ -15,7 +15,7 @@ export class EventLog {
   append(event: Omit<StateEvent, "id"> & { id?: string }): StateEvent {
     const full: StateEvent = {
       id: event.id ?? crypto.randomUUID(),
-      ...event
+      ...event,
     };
     const parsed = StateEventSchema.parse(full);
     this.events.push(parsed);

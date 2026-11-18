@@ -5,7 +5,11 @@ import { IDEA_KINDS, IDEA_LABELS, type Idea } from "../../ideas/IdeaSchema";
 import { downloadIdeas } from "../../ideas/storybookExport";
 import { IdeaEditor } from "./IdeaEditor";
 
-export function IdeaLibrary({ repo, conversations, onOpen }: {
+export function IdeaLibrary({
+  repo,
+  conversations,
+  onOpen,
+}: {
   repo: IndexedDBRepository;
   conversations: ConversationEntry[];
   onOpen: (id: string) => void;
@@ -21,30 +25,39 @@ export function IdeaLibrary({ repo, conversations, onOpen }: {
 
   useEffect(() => {
     let cancelled = false;
-    void repo.listIdeas().then(result => {
-      if (cancelled) return;
-      setIdeas(result.entries);
-      setUnreadable(result.unreadable);
-      setReady(true);
-    }).catch(err => {
-      if (cancelled) return;
-      setError(String(err));
-      setReady(true);
-    });
-    return () => { cancelled = true; };
+    void repo
+      .listIdeas()
+      .then((result) => {
+        if (cancelled) return;
+        setIdeas(result.entries);
+        setUnreadable(result.unreadable);
+        setReady(true);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(String(err));
+        setReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [repo]);
 
-  const visible = ideas.filter(idea =>
-    (!kind || idea.kind === kind) &&
-    `${idea.title} ${idea.description} ${idea.source.conversationTitle}`
-      .toLowerCase().includes(query.toLowerCase()),
+  const visible = ideas.filter(
+    (idea) =>
+      (!kind || idea.kind === kind) &&
+      `${idea.title} ${idea.description} ${idea.source.conversationTitle}`
+        .toLowerCase()
+        .includes(query.toLowerCase()),
   );
 
   function download(entries: Idea[]) {
     setError("");
     try {
       downloadIdeas(entries);
-      setNotice("JSON download prepared. In kaampi Write, import it as a manuscript and open Brainstorm.");
+      setNotice(
+        "JSON download prepared. In kaampi Write, import it as a manuscript and open Brainstorm.",
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not prepare your export.");
     }
@@ -69,39 +82,68 @@ export function IdeaLibrary({ repo, conversations, onOpen }: {
           <p className="sb-muted">Your own ideas and possibilities discovered in conversations.</p>
         </div>
         <div className="sb-conversation-actions">
-        <button className="sb-button sb-button--primary" onClick={() => {
-          const now = new Date().toISOString();
-          setEditing({ id: crypto.randomUUID(), title: "", description: "", kind: "plot",
-            origin: "manual", createdAt: now, updatedAt: now,
-            source: { conversationId: "", conversationTitle: "Written manually", excerpts: [] } });
-        }}>Add idea</button>
-        <button className="sb-button sb-button--primary" disabled={!visible.length}
-          onClick={() => download(visible)}>
-          Export {visible.length} idea(s)
-        </button>
+          <button
+            className="sb-button sb-button--primary"
+            onClick={() => {
+              const now = new Date().toISOString();
+              setEditing({
+                id: crypto.randomUUID(),
+                title: "",
+                description: "",
+                kind: "plot",
+                origin: "manual",
+                createdAt: now,
+                updatedAt: now,
+                source: { conversationId: "", conversationTitle: "Written manually", excerpts: [] },
+              });
+            }}
+          >
+            Add idea
+          </button>
+          <button
+            className="sb-button sb-button--primary"
+            disabled={!visible.length}
+            onClick={() => download(visible)}
+          >
+            Export {visible.length} idea(s)
+          </button>
         </div>
       </div>
       <details className="sb-idea-help">
         <summary>Using your ideas in kaampi Write</summary>
         <p>
-        Export opens as a separate idea manuscript in kaampi Write, with one card per idea
-        in Brainstorm. To use an idea in an existing book, copy its text to that book’s
-        Brainstorm. JSON includes your ideas and their selected source messages.
-        Nothing is added to established story facts.
+          Export opens as a separate idea manuscript in kaampi Write, with one card per idea in
+          Brainstorm. To use an idea in an existing book, copy its text to that book’s Brainstorm.
+          JSON includes your ideas and their selected source messages. Nothing is added to
+          established story facts.
         </p>
       </details>
       <div className="sb-conversation-filters">
-        <input aria-label="Search ideas" placeholder="Find an idea…" value={query}
-          onChange={event => setQuery(event.target.value)} />
-        <select aria-label="Filter ideas by type" value={kind}
-          onChange={event => setKind(event.target.value)}>
+        <input
+          aria-label="Search ideas"
+          placeholder="Find an idea…"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
+        <select
+          aria-label="Filter ideas by type"
+          value={kind}
+          onChange={(event) => setKind(event.target.value)}
+        >
           <option value="">All types</option>
-          {IDEA_KINDS.map(value => (
-            <option key={value} value={value}>{IDEA_LABELS[value]}</option>
+          {IDEA_KINDS.map((value) => (
+            <option key={value} value={value}>
+              {IDEA_LABELS[value]}
+            </option>
           ))}
         </select>
       </div>
-      {ready && <p className="sb-idea-count" role="status">{visible.length} {visible.length === 1 ? "idea" : "ideas"}{query || kind ? ` matching your filters · ${ideas.length} saved` : " saved"}</p>}
+      {ready && (
+        <p className="sb-idea-count" role="status">
+          {visible.length} {visible.length === 1 ? "idea" : "ideas"}
+          {query || kind ? ` matching your filters · ${ideas.length} saved` : " saved"}
+        </p>
+      )}
       {error && <p role="alert">{error}</p>}
       {notice && <p role="status">{notice}</p>}
       {unreadable > 0 && (
@@ -109,55 +151,80 @@ export function IdeaLibrary({ repo, conversations, onOpen }: {
           {unreadable} saved idea(s) could not be read. Their stored data has been kept.
         </p>
       )}
-      {!ready ? <p>Loading your ideas…</p> : !visible.length ? (
+      {!ready ? (
+        <p>Loading your ideas…</p>
+      ) : !visible.length ? (
         <div className="sb-empty">
           <h2>{ideas.length ? "No matching ideas" : "Keep something worth exploring"}</h2>
-          <p>{ideas.length ? "Try another search or type." :
-            "Choose Add idea to write your own, or save an idea from a conversation."}</p>
+          <p>
+            {ideas.length
+              ? "Try another search or type."
+              : "Choose Add idea to write your own, or save an idea from a conversation."}
+          </p>
         </div>
       ) : (
         <div className="sb-conversation-grid">
-          {visible.map(idea => (
+          {visible.map((idea) => (
             <article key={idea.id} className="sb-conversation-card sb-idea-card">
               <span className="sb-eyebrow">{IDEA_LABELS[idea.kind]} IDEA</span>
               <h3>{idea.title}</h3>
               <p className="sb-idea-description">{idea.description}</p>
-              {idea.origin === "manual" ? <p className="sb-muted">Written manually</p> : <details className="sb-idea-source">
-                <summary>From {idea.source.conversationTitle}</summary>
-                <p>
-                  Captured {new Date(idea.createdAt).toLocaleDateString()}. Source text is
-                  kept even if the conversation changes.
-                </p>
-                {idea.source.excerpts.map((excerpt, index) => (
-                  <blockquote key={index}>
-                    <strong>{excerpt.speaker}</strong>
-                    <p>{excerpt.content}</p>
-                  </blockquote>
-                ))}
-                {conversations.some(entry => entry.id === idea.source.conversationId && !entry.archived) && (
-                  <button className="sb-link" onClick={() => onOpen(idea.source.conversationId)}>
-                    Open conversation
-                  </button>
-                )}
-              </details>}
+              {idea.origin === "manual" ? (
+                <p className="sb-muted">Written manually</p>
+              ) : (
+                <details className="sb-idea-source">
+                  <summary>From {idea.source.conversationTitle}</summary>
+                  <p>
+                    Captured {new Date(idea.createdAt).toLocaleDateString()}. Source text is kept
+                    even if the conversation changes.
+                  </p>
+                  {idea.source.excerpts.map((excerpt, index) => (
+                    <blockquote key={index}>
+                      <strong>{excerpt.speaker}</strong>
+                      <p>{excerpt.content}</p>
+                    </blockquote>
+                  ))}
+                  {conversations.some(
+                    (entry) => entry.id === idea.source.conversationId && !entry.archived,
+                  ) && (
+                    <button className="sb-link" onClick={() => onOpen(idea.source.conversationId)}>
+                      Open conversation
+                    </button>
+                  )}
+                </details>
+              )}
               <div className="sb-conversation-actions">
-                <button className="sb-button" onClick={() => setEditing(idea)}>Edit idea</button>
-                <button className="sb-button sb-button--secondary" onClick={() => void copy(idea)}>Copy idea</button>
-                <button className="sb-button sb-button--secondary" onClick={() => download([idea])}>Export JSON</button>
+                <button className="sb-button" onClick={() => setEditing(idea)}>
+                  Edit idea
+                </button>
+                <button className="sb-button sb-button--secondary" onClick={() => void copy(idea)}>
+                  Copy idea
+                </button>
+                <button className="sb-button sb-button--secondary" onClick={() => download([idea])}>
+                  Export JSON
+                </button>
               </div>
             </article>
           ))}
         </div>
       )}
       {editing && (
-        <IdeaEditor idea={editing} repo={repo} onClose={() => setEditing(null)} onSaved={next => {
-          setIdeas(current => [next, ...current.filter(idea => idea.id !== next.id)]
-            .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
-          setQuery("");
-          setKind("");
-          setEditing(null);
-          setNotice("Idea saved.");
-        }} />
+        <IdeaEditor
+          idea={editing}
+          repo={repo}
+          onClose={() => setEditing(null)}
+          onSaved={(next) => {
+            setIdeas((current) =>
+              [next, ...current.filter((idea) => idea.id !== next.id)].sort((a, b) =>
+                b.updatedAt.localeCompare(a.updatedAt),
+              ),
+            );
+            setQuery("");
+            setKind("");
+            setEditing(null);
+            setNotice("Idea saved.");
+          }}
+        />
       )}
     </main>
   );

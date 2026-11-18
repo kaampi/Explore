@@ -7,7 +7,7 @@ import {
   pronounFromText,
   stripHonorific,
   wPlusPlusFields,
-  wppLooks
+  wppLooks,
 } from "./cardHints";
 import { splitPersonName } from "./personName";
 import { formatAppearanceList } from "./appearanceText";
@@ -52,7 +52,9 @@ function pronounFromCardData(data: Record<string, unknown>): CharacterPronoun | 
 }
 
 function identityTextFromData(data: Record<string, unknown>): string {
-  return [readString(data, "description"), readString(data, "personality")].filter(Boolean).join("\n\n");
+  return [readString(data, "description"), readString(data, "personality")]
+    .filter(Boolean)
+    .join("\n\n");
 }
 
 export type SillyTavernReview = {
@@ -81,26 +83,45 @@ export function reviewFromCardData(raw: unknown): SillyTavernReview {
   }
 
   const wpp = wPlusPlusFields(rawText);
-  const structured = ["character", "body/appearance", "body", "looks", "appearance", "personality", "age", "gender", "sex"].some(key => key in wpp);
+  const structured = [
+    "character",
+    "body/appearance",
+    "body",
+    "looks",
+    "appearance",
+    "personality",
+    "age",
+    "gender",
+    "sex",
+  ].some((key) => key in wpp);
   const displayName = stripHonorific(wpp.character || jsonName);
   if (!displayName) {
     throw new SillyTavernImportError("This character card has no name.");
   }
 
   const structuredLooks = wppLooks(wpp);
-  const looks = structuredLooks ? formatAppearanceList(structuredLooks) : (structured ? "" : description);
+  const looks = structuredLooks
+    ? formatAppearanceList(structuredLooks)
+    : structured
+      ? ""
+      : description;
   const personalitySource = (wpp.personality || personalityField).trim();
   const withoutCharacterPrefix = personalitySource.replace(/^\{\{\s*char\s*\}\}(?:\s+|$)/i, "");
-  const personality = withoutCharacterPrefix === personalitySource
-    ? personalitySource
-    : withoutCharacterPrefix.replace(/^\p{L}/u, letter => letter.toUpperCase());
+  const personality =
+    withoutCharacterPrefix === personalitySource
+      ? personalitySource
+      : withoutCharacterPrefix.replace(/^\p{L}/u, (letter) => letter.toUpperCase());
   const pronoun =
     pronounFromCardData(data) ??
     (wpp.gender || wpp.sex ? pronounFromGenderLabel(wpp.gender || wpp.sex || "") : undefined) ??
     pronounFromText(rawText);
   // An explicit but unknown age must not become a childhood age from prose.
-  const approximateAge = data.age !== undefined ? ageFromField(data.age)
-    : "age" in wpp ? ageFromField(wpp.age) : ageFromText(rawText);
+  const approximateAge =
+    data.age !== undefined
+      ? ageFromField(data.age)
+      : "age" in wpp
+        ? ageFromField(wpp.age)
+        : ageFromText(rawText);
   const names = splitPersonName(displayName);
   const character = newCharacterTemplate({
     name: names.given,
@@ -114,9 +135,13 @@ export function reviewFromCardData(raw: unknown): SillyTavernReview {
     source: "sillytavern",
     tags: ensureImportedTag([], "sillytavern"),
     ...(pronoun ? { pronoun } : {}),
-    ...(approximateAge != null ? { approximateAge } : {})
+    ...(approximateAge != null ? { approximateAge } : {}),
   });
-  return { rawText: rawText || displayName, character, ...(data.character_book ? { embeddedLore: data.character_book } : {}) };
+  return {
+    rawText: rawText || displayName,
+    character,
+    ...(data.character_book ? { embeddedLore: data.character_book } : {}),
+  };
 }
 
 function decodeTextPayload(text: string): unknown {
@@ -129,7 +154,7 @@ function decodeTextPayload(text: string): unknown {
   try {
     const decoded = atob(trimmed);
     try {
-      const bytes = Uint8Array.from(decoded, char => char.charCodeAt(0));
+      const bytes = Uint8Array.from(decoded, (char) => char.charCodeAt(0));
       return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
     } catch {
       return JSON.parse(decoded); // Compatibility with older Latin-1 cards.
@@ -141,11 +166,12 @@ function decodeTextPayload(text: string): unknown {
 
 function readUint32BE(bytes: Uint8Array, offset: number): number {
   return (
-    ((bytes[offset] ?? 0) << 24) |
-    ((bytes[offset + 1] ?? 0) << 16) |
-    ((bytes[offset + 2] ?? 0) << 8) |
-    (bytes[offset + 3] ?? 0)
-  ) >>> 0;
+    (((bytes[offset] ?? 0) << 24) |
+      ((bytes[offset + 1] ?? 0) << 16) |
+      ((bytes[offset + 2] ?? 0) << 8) |
+      (bytes[offset + 3] ?? 0)) >>>
+    0
+  );
 }
 
 function ascii(bytes: Uint8Array, start: number, end: number): string {
@@ -224,7 +250,10 @@ export async function extractSillyTavernJsonFromPng(bytes: Uint8Array): Promise<
   return found;
 }
 
-export async function importSillyTavernCard(input: { jsonText?: string; pngBytes?: Uint8Array }): Promise<SillyTavernReview> {
+export async function importSillyTavernCard(input: {
+  jsonText?: string;
+  pngBytes?: Uint8Array;
+}): Promise<SillyTavernReview> {
   let raw: unknown;
   if (input.pngBytes) {
     raw = await extractSillyTavernJsonFromPng(input.pngBytes);
@@ -247,4 +276,3 @@ export async function importSillyTavernFile(file: File): Promise<SillyTavernRevi
   }
   return importSillyTavernCard({ jsonText: await file.text() });
 }
-

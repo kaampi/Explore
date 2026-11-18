@@ -13,18 +13,46 @@ async function selectModel(): Promise<string> {
   const requested = process.env.GEMINI_MODEL?.trim();
   const response = await fetch(apiRoot + "/models?pageSize=100", {
     headers: { "x-goog-api-key": key! },
-    signal: AbortSignal.timeout(15000)
+    signal: AbortSignal.timeout(15000),
   });
-  if (!response.ok) throw new Error("Gemini model discovery failed: HTTP " + response.status + " (check API key and Gemini API access).");
-  const data = await response.json() as { models?: Array<{ name: string; supportedGenerationMethods?: string[] }> };
-  const available = (data.models ?? []).filter((m) => m.supportedGenerationMethods?.includes("generateContent")).map((m) => m.name.replace(/^models\//, ""));
-  if (!available.length) throw new Error("Gemini API returned no models supporting generateContent.");
+  if (!response.ok)
+    throw new Error(
+      "Gemini model discovery failed: HTTP " +
+        response.status +
+        " (check API key and Gemini API access).",
+    );
+  const data = (await response.json()) as {
+    models?: Array<{ name: string; supportedGenerationMethods?: string[] }>;
+  };
+  const available = (data.models ?? [])
+    .filter((m) => m.supportedGenerationMethods?.includes("generateContent"))
+    .map((m) => m.name.replace(/^models\//, ""));
+  if (!available.length)
+    throw new Error("Gemini API returned no models supporting generateContent.");
   if (requested) {
-    if (!available.includes(requested)) throw new Error("Configured Gemini model is unavailable: " + requested + ". Available: " + available.join(", "));
+    if (!available.includes(requested))
+      throw new Error(
+        "Configured Gemini model is unavailable: " +
+          requested +
+          ". Available: " +
+          available.join(", "),
+      );
     return requested;
   }
-  const preferred = ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-3-flash", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash-lite"];
-  return preferred.find((name) => available.includes(name)) ?? available.find((name) => /flash/i.test(name)) ?? available[0]!;
+  const preferred = [
+    "gemini-3.8-flash",
+    "gemini-3.5-flash",
+    "gemini-3-flash",
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-2.5-flash-lite",
+    "gemini-2.0-flash-lite",
+  ];
+  return (
+    preferred.find((name) => available.includes(name)) ??
+    available.find((name) => /flash/i.test(name)) ??
+    available[0]!
+  );
 }
 let model = "";
 let endpoint = "";
@@ -37,21 +65,31 @@ async function ask(prompt: string): Promise<string> {
       headers: { "Content-Type": "application/json", "x-goog-api-key": key! },
       body: JSON.stringify({
         contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0, maxOutputTokens: 300 }
+        generationConfig: { temperature: 0, maxOutputTokens: 300 },
       }),
-      signal: AbortSignal.timeout(120000)
+      signal: AbortSignal.timeout(120000),
     });
     if ((response.status === 429 || response.status >= 500) && attempt < 2) {
       await wait(3000 * (attempt + 1));
       continue;
     }
     if (!response.ok) {
-      const payload = await response.json().catch(() => null) as { error?: { status?: string; message?: string } } | null;
-      const reason = payload?.error?.message?.slice(0, 500) || payload?.error?.status || "No API error details";
-      throw new Error("Gemini request failed for model " + model + ": HTTP " + response.status + " - " + reason);
+      const payload = (await response.json().catch(() => null)) as {
+        error?: { status?: string; message?: string };
+      } | null;
+      const reason =
+        payload?.error?.message?.slice(0, 500) || payload?.error?.status || "No API error details";
+      throw new Error(
+        "Gemini request failed for model " + model + ": HTTP " + response.status + " - " + reason,
+      );
     }
-    const json = await response.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
-    const answer = json.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join("").trim();
+    const json = (await response.json()) as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    };
+    const answer = json.candidates?.[0]?.content?.parts
+      ?.map((p) => p.text || "")
+      .join("")
+      .trim();
     if (!answer) throw new Error("Gemini returned no narration.");
     return answer;
   }
@@ -65,18 +103,47 @@ async function main() {
   console.log("Starting Gemini connectivity probe");
   await ask("Reply with READY.");
   console.log("Gemini connectivity probe passed");
-  let state = applyPhysicalChange(undefined, { kind: "set_relation", relation: {
-    id: "left", subject: "player", subjectPart: "left_arm", relation: "restraining", target: "guard_a", exclusive: true
-  } });
+  let state = applyPhysicalChange(undefined, {
+    kind: "set_relation",
+    relation: {
+      id: "left",
+      subject: "player",
+      subjectPart: "left_arm",
+      relation: "restraining",
+      target: "guard_a",
+      exclusive: true,
+    },
+  });
   if (!state.ok) throw new Error(state.reason);
-  state = applyPhysicalChange(state.state, { kind: "set_relation", relation: {
-    id: "right", subject: "player", subjectPart: "right_arm", relation: "restraining", target: "guard_b", exclusive: true
-  } });
+  state = applyPhysicalChange(state.state, {
+    kind: "set_relation",
+    relation: {
+      id: "right",
+      subject: "player",
+      subjectPart: "right_arm",
+      relation: "restraining",
+      target: "guard_b",
+      exclusive: true,
+    },
+  });
   if (!state.ok) throw new Error(state.reason);
   const scenes = [
-    { name: "both-arms-occupied", action: "I draw my sword with my left arm while continuing to hold both guards.", forbidden: /(?:draw|drew|pull|pulled|grab|grabb|unsheath|brandish|raise|lift|swing|wield).{0,65}(?:sword|blade)/i },
-    { name: "unrelated-movement", action: "A third guard walks into the room. I keep holding both guards.", forbidden: /(?:release|let go|drop|loosen).{0,45}(?:guard|grip|hold)/i },
-    { name: "other-arm-occupied", action: "I grab a bow with my right arm while holding guard B.", forbidden: /(?:grab|grasp|pick up|lift|take|hold).{0,45}(?:bow)/i }
+    {
+      name: "both-arms-occupied",
+      action: "I draw my sword with my left arm while continuing to hold both guards.",
+      forbidden:
+        /(?:draw|drew|pull|pulled|grab|grabb|unsheath|brandish|raise|lift|swing|wield).{0,65}(?:sword|blade)/i,
+    },
+    {
+      name: "unrelated-movement",
+      action: "A third guard walks into the room. I keep holding both guards.",
+      forbidden: /(?:release|let go|drop|loosen).{0,45}(?:guard|grip|hold)/i,
+    },
+    {
+      name: "other-arm-occupied",
+      action: "I grab a bow with my right arm while holding guard B.",
+      forbidden: /(?:grab|grasp|pick up|lift|take|hold).{0,45}(?:bow)/i,
+    },
   ];
   const results: Array<{ scenario: string; passed: boolean; response: string; note: string }> = [];
   for (const scene of scenes) {
@@ -87,22 +154,52 @@ async function main() {
       "A body part in an exclusive grip cannot hold another item unless explicitly released.",
       "Physical facts:\n" + describePhysicalState(state.state, 10, ["player"]).join("\n"),
       "Player action: " + scene.action,
-      "Write 1-2 sentences of third-person narration. Do not silently release a guard."
+      "Write 1-2 sentences of third-person narration. Do not silently release a guard.",
     ].join("\n\n");
     const response = await ask(prompt);
     // Conservative heuristic: report suspected violations, not proof of consistency.
-    const suspect = scene.forbidden.test(response) && !/(?:cannot|can't|couldn't|fails?|unable|impossible|without releasing|still holding|blocked|prevented|refuses|doesn't|does not|not enough|occupied)/i.test(response);
-    results.push({ scenario: scene.name, passed: !suspect, response, note: suspect ? "Potential contradiction (heuristic)" : "No obvious contradiction detected" });
+    const suspect =
+      scene.forbidden.test(response) &&
+      !/(?:cannot|can't|couldn't|fails?|unable|impossible|without releasing|still holding|blocked|prevented|refuses|doesn't|does not|not enough|occupied)/i.test(
+        response,
+      );
+    results.push({
+      scenario: scene.name,
+      passed: !suspect,
+      response,
+      note: suspect ? "Potential contradiction (heuristic)" : "No obvious contradiction detected",
+    });
     await wait(1200);
   }
   mkdirSync("artifacts", { recursive: true });
-  writeFileSync("artifacts/gemini-physical-playtest.json", JSON.stringify({ model, results }, null, 2) + "\n");
-  const lines = ["# Gemini physical continuity playtest", "", "Model: " + model, "", "| Scenario | Heuristic result |", "|---|---|",
-    ...results.map((r) => "| " + r.scenario + " | " + (r.passed ? "No obvious contradiction" : "Review needed") + " |"),
-    "", "This is a small live-model narration smoke test. Regex checks can produce false positives and false negatives.",
-    "Inspect the JSON artifact for full responses. API credentials are never included."];
+  writeFileSync(
+    "artifacts/gemini-physical-playtest.json",
+    JSON.stringify({ model, results }, null, 2) + "\n",
+  );
+  const lines = [
+    "# Gemini physical continuity playtest",
+    "",
+    "Model: " + model,
+    "",
+    "| Scenario | Heuristic result |",
+    "|---|---|",
+    ...results.map(
+      (r) =>
+        "| " +
+        r.scenario +
+        " | " +
+        (r.passed ? "No obvious contradiction" : "Review needed") +
+        " |",
+    ),
+    "",
+    "This is a small live-model narration smoke test. Regex checks can produce false positives and false negatives.",
+    "Inspect the JSON artifact for full responses. API credentials are never included.",
+  ];
   writeFileSync("artifacts/gemini-physical-playtest.md", lines.join("\n") + "\n");
   console.log(lines.join("\n"));
   if (results.some((r) => !r.passed)) process.exitCode = 1;
 }
-main().catch((err) => { console.error(err instanceof Error ? err.message : "Unknown playtest error"); process.exitCode = 1; });
+main().catch((err) => {
+  console.error(err instanceof Error ? err.message : "Unknown playtest error");
+  process.exitCode = 1;
+});

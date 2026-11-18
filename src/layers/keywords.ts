@@ -45,13 +45,19 @@ export function keywordHitsText(text: string, keywords: string[]): boolean {
       if (hay.includes(keyword.toLowerCase())) return true;
       continue;
     }
-    const pattern = new RegExp(`(?<![\\p{L}\\p{N}_])${escapeRegExp(keyword)}(?![\\p{L}\\p{N}_])`, "iu");
+    const pattern = new RegExp(
+      `(?<![\\p{L}\\p{N}_])${escapeRegExp(keyword)}(?![\\p{L}\\p{N}_])`,
+      "iu",
+    );
     if (pattern.test(text)) return true;
   }
   return false;
 }
 
-export function conversationKeywordHaystack(conversation: unknown[], maxTurns = KEYWORD_SCAN_TURNS): string {
+export function conversationKeywordHaystack(
+  conversation: unknown[],
+  maxTurns = KEYWORD_SCAN_TURNS,
+): string {
   const turns: Array<{ turn: number; content: string }> = [];
   for (const entry of conversation) {
     if (entry === null || typeof entry !== "object") continue;
@@ -60,13 +66,16 @@ export function conversationKeywordHaystack(conversation: unknown[], maxTurns = 
     turns.push({ turn: Number(record.turn) || 0, content: record.content });
   }
   turns.sort((a, b) => a.turn - b.turn);
-  return turns.slice(-maxTurns).map((entry) => entry.content).join("\n");
+  return turns
+    .slice(-maxTurns)
+    .map((entry) => entry.content)
+    .join("\n");
 }
 
 export function keywordsMatchConversation(
   conversation: unknown[],
   keywords: string[],
-  maxTurns = KEYWORD_SCAN_TURNS
+  maxTurns = KEYWORD_SCAN_TURNS,
 ): boolean {
   return keywordHitsText(conversationKeywordHaystack(conversation, maxTurns), keywords);
 }
@@ -74,10 +83,11 @@ export function keywordsMatchConversation(
 /** Chat ever, or something in someone's hands — not the last-8 wake window. */
 export function tokenKnownInPlay(
   session: Pick<Session, "conversation" | "characters">,
-  keywords: string[]
+  keywords: string[],
 ): boolean {
   if (keywords.length === 0) return true;
-  if (keywordsMatchConversation(session.conversation, keywords, Number.MAX_SAFE_INTEGER)) return true;
+  if (keywordsMatchConversation(session.conversation, keywords, Number.MAX_SAFE_INTEGER))
+    return true;
   for (const character of Object.values(session.characters)) {
     if (keywordHitsText(character.holding?.value ?? "", keywords)) return true;
   }

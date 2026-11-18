@@ -17,7 +17,8 @@ export async function anatomyImageFromFile(file: File): Promise<string> {
     if (!context) throw new Error("Could not read this image.");
     context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     const data = canvas.toDataURL("image/png");
-    if (data.length > ANATOMY_IMAGE_MAX_CHARS) throw new Error("This image is too detailed to store. Try a simpler or smaller image.");
+    if (data.length > ANATOMY_IMAGE_MAX_CHARS)
+      throw new Error("This image is too detailed to store. Try a simpler or smaller image.");
     return data;
   } finally {
     bitmap.close();

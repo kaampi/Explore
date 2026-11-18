@@ -1,4 +1,4 @@
-import { startPlayableCampaign } from './adventureStart';
+import { startPlayableCampaign } from "./adventureStart";
 import { mapContext } from "@library/worldMap";
 import {
   campaignPlayerIsFilled,
@@ -10,7 +10,7 @@ import {
   PlaceTemplate,
   RealmTemplate,
   RulesetTemplate,
-  VoiceTemplate
+  VoiceTemplate,
 } from "@library/LibrarySchema";
 import { characterDraftFromTemplate } from "@library/fromForm";
 import {
@@ -20,13 +20,13 @@ import {
   EXAMPLE_PLACE_ID,
   EXAMPLE_REALM_DUNBAAR_ID,
   exampleRealmDunbaar,
-  withAuroraRoomIntros
+  withAuroraRoomIntros,
 } from "@library/exampleTemplates";
 import { createSessionFromSetup, type SceneSetup } from "@session/createSession";
 import { copyWhatNowSets } from "@state/whatNowGate";
 import { copyAudioFields } from "@state/placeAudio";
 import { copyPictureFields } from "@state/placePictures";
-import type { Session } from "@state/StateSchema";
+import type { AnatomyTemplate, Session } from "@state/StateSchema";
 
 function realmLabel(place: PlaceTemplate, realms: RealmTemplate[] | undefined): string | undefined {
   const named = realms?.find((item) => item.id === place.realmId)?.name.trim();
@@ -39,29 +39,45 @@ function realmLabel(place: PlaceTemplate, realms: RealmTemplate[] | undefined): 
 export function sceneStartHere(place: PlaceTemplate, startRoomId: string | undefined): string {
   const id = startRoomId?.trim();
   if (!id) return place.name;
-  const rooms = place.id === EXAMPLE_PLACE_ID ? withAuroraRoomIntros(place.rooms) : place.rooms ?? [];
+  const rooms =
+    place.id === EXAMPLE_PLACE_ID ? withAuroraRoomIntros(place.rooms) : (place.rooms ?? []);
   const room = rooms.find((item) => item.id === id);
   return room?.label.trim() || place.name;
 }
 
 /** Pictures, sound, and copy from the parent realm — not Here. */
-export function realmPlayFields(realm: RealmTemplate | undefined): Pick<SceneSetup, "realmNote" | "realmBrief" | "realmVisual"> {
+export function realmPlayFields(
+  realm: RealmTemplate | undefined,
+): Pick<SceneSetup, "realmNote" | "realmBrief" | "realmVisual"> {
   if (!realm) return {};
   const note = realm.note.trim();
-  const brief = [realm.brief?.trim() || realm.note.trim(), realm.instructions?.trim(), mapContext(realm.worldMap)].filter(Boolean).join("\n\n");
+  const brief = [
+    realm.brief?.trim() || realm.note.trim(),
+    realm.instructions?.trim(),
+    mapContext(realm.worldMap),
+  ]
+    .filter(Boolean)
+    .join("\n\n");
   const visual = { ...copyPictureFields(realm), ...copyAudioFields(realm) };
   const hasVisual = Boolean(
-    visual.thumbDataUrl || visual.imageDataUrl || visual.gallery?.length || visual.audioDataUrl || visual.audioGallery?.length
+    visual.thumbDataUrl ||
+    visual.imageDataUrl ||
+    visual.gallery?.length ||
+    visual.audioDataUrl ||
+    visual.audioGallery?.length,
   );
   return {
     ...(note ? { realmNote: note } : {}),
     ...(brief ? { realmBrief: brief } : {}),
-    ...(hasVisual ? { realmVisual: visual } : {})
+    ...(hasVisual ? { realmVisual: visual } : {}),
   };
 }
 
-export function placeVisualFromTemplate(place: PlaceTemplate): NonNullable<SceneSetup["placeVisual"]> {
-  const sceneRooms = place.id === EXAMPLE_PLACE_ID ? withAuroraRoomIntros(place.rooms) : place.rooms ?? [];
+export function placeVisualFromTemplate(
+  place: PlaceTemplate,
+): NonNullable<SceneSetup["placeVisual"]> {
+  const sceneRooms =
+    place.id === EXAMPLE_PLACE_ID ? withAuroraRoomIntros(place.rooms) : (place.rooms ?? []);
   return {
     ...copyPictureFields(place),
     ...copyAudioFields(place),
@@ -76,10 +92,10 @@ export function placeVisualFromTemplate(place: PlaceTemplate): NonNullable<Scene
             ...(room.description?.trim() ? { description: room.description.trim() } : {}),
             ...(room.brief?.trim() ? { brief: room.brief.trim() } : {}),
             ...copyPictureFields(room),
-            ...copyAudioFields(room)
-          }))
+            ...copyAudioFields(room),
+          })),
         }
-      : {})
+      : {}),
   };
 }
 
@@ -97,10 +113,13 @@ export function setupFromCampaignScene(args: {
   const { campaign, scene, places, realms, characters, objects, voices, rulesets } = args;
   const place = places.find((item) => item.id === scene.placeId);
   if (!place) return { ok: false, reason: "This scene needs a place." };
-  if (scene.people.length === 0) return { ok: false, reason: "This scene needs at least one person." };
+  if (scene.people.length === 0)
+    return { ok: false, reason: "This scene needs at least one person." };
 
   const voice = campaign.voiceId ? voices.find((item) => item.id === campaign.voiceId) : undefined;
-  const ruleset = campaign.rulesetId ? rulesets.find((item) => item.id === campaign.rulesetId) : undefined;
+  const ruleset = campaign.rulesetId
+    ? rulesets.find((item) => item.id === campaign.rulesetId)
+    : undefined;
   const startPrompt = campaign.startPrompt.trim();
   const playerIntro = campaign.playerIntro.trim();
 
@@ -120,8 +139,8 @@ export function setupFromCampaignScene(args: {
         lore: member?.lore ?? [],
         trust: pick.trust,
         familiarity: pick.familiarity,
-        tension: pick.tension
-      }
+        tension: pick.tension,
+      },
     ];
   });
   if (setupCharacters.length === 0) {
@@ -133,16 +152,20 @@ export function setupFromCampaignScene(args: {
     .filter((item): item is ObjectTemplate => Boolean(item));
 
   // Carry the entire containment chain and contents into the session snapshot.
-  const included = new Set(pickedObjects.map(o => o.id));
+  const included = new Set(pickedObjects.map((o) => o.id));
   let added = true;
   while (added) {
     added = false;
     for (const object of objects) {
       if (included.has(object.id)) continue;
       const parent = object.startingLocation;
-      const neededParent = pickedObjects.some(o => o.startingLocation?.kind === "object" && o.startingLocation.objectId === object.id);
-      if (neededParent || parent?.kind === "object" && included.has(parent.objectId)) {
-        pickedObjects.push(object); included.add(object.id); added = true;
+      const neededParent = pickedObjects.some(
+        (o) => o.startingLocation?.kind === "object" && o.startingLocation.objectId === object.id,
+      );
+      if (neededParent || (parent?.kind === "object" && included.has(parent.objectId))) {
+        pickedObjects.push(object);
+        included.add(object.id);
+        added = true;
       }
     }
   }
@@ -154,7 +177,7 @@ export function setupFromCampaignScene(args: {
       trigger: trigger.when,
       requiresFlags: trigger.requiresFlags.map((flag) => flag.trim()).filter(Boolean),
       requiresAbsentFlags: trigger.requiresAbsentFlags.map((flag) => flag.trim()).filter(Boolean),
-      setsFlags: trigger.setsFlags.map((flag) => flag.trim()).filter(Boolean)
+      setsFlags: trigger.setsFlags.map((flag) => flag.trim()).filter(Boolean),
     }))
     .filter((item) => item.content && item.keywords.length > 0);
 
@@ -162,8 +185,13 @@ export function setupFromCampaignScene(args: {
   const realm = realmLabel(place, realms);
   const visual = placeVisualFromTemplate(place);
   const hasVisual =
-    Boolean(visual.thumbDataUrl || visual.imageDataUrl || visual.gallery?.length || visual.audioDataUrl || visual.audioGallery?.length) ||
-    Boolean(visual.rooms && visual.rooms.length > 0);
+    Boolean(
+      visual.thumbDataUrl ||
+      visual.imageDataUrl ||
+      visual.gallery?.length ||
+      visual.audioDataUrl ||
+      visual.audioGallery?.length,
+    ) || Boolean(visual.rooms && visual.rooms.length > 0);
 
   return {
     ok: true,
@@ -177,7 +205,8 @@ export function setupFromCampaignScene(args: {
       noise: place.noise,
       music: place.music,
       placeNote: place.note.trim() || (place.id === EXAMPLE_PLACE_ID ? EXAMPLE_AURORA_NOTE : ""),
-      placeBrief: place.brief?.trim() || (place.id === EXAMPLE_PLACE_ID ? EXAMPLE_AURORA_BRIEF : ""),
+      placeBrief:
+        place.brief?.trim() || (place.id === EXAMPLE_PLACE_ID ? EXAMPLE_AURORA_BRIEF : ""),
       ...(place.id === EXAMPLE_PLACE_ID ? { placeLore: EXAMPLE_AURORA_LORE } : {}),
       ...(hasVisual ? { placeVisual: visual } : {}),
       ...(startPrompt ? { storyTitle: campaign.name, storyPremise: startPrompt } : {}),
@@ -190,7 +219,7 @@ export function setupFromCampaignScene(args: {
         const you = campaign.player;
         if (!campaignPlayerIsFilled(you) || !you) return {};
         const stats = Object.fromEntries(
-          Object.entries(you.stats).filter(([, value]) => String(value).trim())
+          Object.entries(you.stats).filter(([, value]) => String(value).trim()),
         );
         return {
           playerIdentity: {
@@ -199,14 +228,14 @@ export function setupFromCampaignScene(args: {
             ...(you.personality.trim() ? { personality: you.personality.trim() } : {}),
             ...(you.pronoun ? { pronoun: you.pronoun } : {}),
             ...(you.portraitDataUrl?.trim() ? { portraitDataUrl: you.portraitDataUrl.trim() } : {}),
-            ...(Object.keys(stats).length > 0 ? { stats } : {})
-          }
+            ...(Object.keys(stats).length > 0 ? { stats } : {}),
+          },
         };
       })(),
       ...(voice
         ? {
             voiceTitle: voice.name,
-            voiceInstruction: voice.instruction
+            voiceInstruction: voice.instruction,
           }
         : {}),
       ...(campaign.model?.trim() ? { model: campaign.model.trim() } : {}),
@@ -217,23 +246,27 @@ export function setupFromCampaignScene(args: {
         name: item.name,
         note: item.note,
         tags: item.tags,
-        ...(item.startingLocation ? { startingLocation: item.startingLocation } : item.placeId ? {startingLocation: {kind: "place" as const, placeId: item.placeId}} : {}),
-        ...(item.readableContent ? {readableContent: item.readableContent} : {}),
-        ...(item.openable !== undefined ? {openable: item.openable} : {}),
-        ...(item.portable !== undefined ? {portable: item.portable} : {}),
-        ...(item.lockable !== undefined ? {lockable: item.lockable} : {}),
-        ...(item.storyRole ? {storyRole: item.storyRole} : {}),
-        ...(item.storyImportance ? {storyImportance: item.storyImportance} : {}),
+        ...(item.startingLocation
+          ? { startingLocation: item.startingLocation }
+          : item.placeId
+            ? { startingLocation: { kind: "place" as const, placeId: item.placeId } }
+            : {}),
+        ...(item.readableContent ? { readableContent: item.readableContent } : {}),
+        ...(item.openable !== undefined ? { openable: item.openable } : {}),
+        ...(item.portable !== undefined ? { portable: item.portable } : {}),
+        ...(item.lockable !== undefined ? { lockable: item.lockable } : {}),
+        ...(item.storyRole ? { storyRole: item.storyRole } : {}),
+        ...(item.storyImportance ? { storyImportance: item.storyImportance } : {}),
         ...(item.weight !== undefined ? { weight: item.weight } : {}),
         ...(item.difficulty !== undefined ? { difficulty: item.difficulty } : {}),
-        ...(item.checkAttribute ? { checkAttribute: item.checkAttribute } : {})
+        ...(item.checkAttribute ? { checkAttribute: item.checkAttribute } : {}),
       })),
       ...(onceBeats.length > 0 ? { onceBeats } : {}),
       ...(() => {
         const whatNowSets = copyWhatNowSets(whatNowSetsFromScene(scene));
         return whatNowSets.length > 0 ? { whatNowSets } : {};
-      })()
-    }
+      })(),
+    },
   };
 }
 
@@ -247,13 +280,40 @@ export function sessionFromCampaignScene(
     objects: ObjectTemplate[];
     voices: VoiceTemplate[];
     rulesets: RulesetTemplate[];
+    anatomyTemplates?: AnatomyTemplate[];
+    factions?: { id: string; name: string }[];
     handoff?: string;
   },
-  sessionId: string
+  sessionId: string,
 ): { ok: true; session: Session } | { ok: false; reason: string } {
-  if(args.scene.encounter){try{return {ok:true,session:startPlayableCampaign(args.campaign,args.scene,args.places,sessionId,args.realms)};}catch(error){return {ok:false,reason:error instanceof Error?error.message:'Could not start this adventure.'};}}
+  if (args.scene.encounter) {
+    try {
+      return {
+        ok: true,
+        session: startPlayableCampaign(
+          args.campaign,
+          args.scene,
+          args.places,
+          sessionId,
+          args.realms,
+          {
+            characters: args.characters,
+            voices: args.voices,
+            rulesets: args.rulesets,
+            objects: args.objects,
+            ...(args.anatomyTemplates ? { anatomyTemplates: args.anatomyTemplates } : {}),
+            ...(args.factions ? { factions: args.factions } : {}),
+          },
+        ),
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        reason: error instanceof Error ? error.message : "Could not start this adventure.",
+      };
+    }
+  }
   const built = setupFromCampaignScene(args);
   if (!built.ok) return built;
   return { ok: true, session: createSessionFromSetup(built.setup, sessionId) };
 }
-

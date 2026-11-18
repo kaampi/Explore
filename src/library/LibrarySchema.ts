@@ -1,7 +1,8 @@
-import { AdventureLinkSchema,AdventureGoalSchema } from '../game/AdventureSchema';
-import { upgradeMissingMessengerCampaign } from '../scenarios/missingMessenger';
-import { EncounterGameSchema } from '../game/EncounterSchema';
+import { AdventureLinkSchema, AdventureGoalSchema } from "../game/AdventureSchema";
+import { upgradeMissingMessengerCampaign } from "../scenarios/missingMessenger";
+import { EncounterGameSchema } from "../game/EncounterSchema";
 import { ObjectLocationSchema } from "./objectLocation";
+import { CoreEntitySnapshotSchema, CoreOriginSchema, SceneDraftSchema } from "./coreOrigin";
 import { WorldMapSchema } from "./worldMap";
 import {
   ApproximateAgeSchema,
@@ -9,7 +10,7 @@ import {
   CharacterPronounSchema,
   PicturePlaySchema,
   ScenePictureSchema,
-  SceneRoomSchema
+  SceneRoomSchema,
 } from "@state/StateSchema";
 import { z } from "zod";
 
@@ -26,7 +27,7 @@ export const CharacterLoreEntrySchema = z.object({
   title: z.string().default(""),
   content: z.string().min(1),
   /** Empty = always in the prompt when the scene starts. Prefer keywords. */
-  keywords: z.array(z.string().min(1)).default(() => [])
+  keywords: z.array(z.string().min(1)).default(() => []),
 });
 export type CharacterLoreEntry = z.infer<typeof CharacterLoreEntrySchema>;
 
@@ -45,7 +46,12 @@ export const CharacterTemplateSchema = z.object({
   middleName: z.string().default(""),
   personality: z.string().default(""),
   anatomyTemplateId: z.string().min(1).max(100).optional(),
-  anatomyOverrides: z.object({ addedParts: z.array(z.string().min(1).max(80)).default([]), removedParts: z.array(z.string().min(1).max(80)).default([]) }).optional(),
+  anatomyOverrides: z
+    .object({
+      addedParts: z.array(z.string().min(1).max(80)).default([]),
+      removedParts: z.array(z.string().min(1).max(80)).default([]),
+    })
+    .optional(),
   /** Typical temperament — not a scene. Room/place is campaign/scene, not archive. */
   mood: z.string().default(""),
   /** How they speak. Identity, not a scene. Empty on older cards. */
@@ -69,17 +75,26 @@ export const CharacterTemplateSchema = z.object({
   tags: z.array(z.string().min(1)).default(() => []),
   source: LibrarySourceSchema.default("player"),
   /** Attribution for a deliberate local copy; never grants writes to Storybook. */
-  coreOrigin: z.object({
-    workspaceId: z.string().min(1), projectId: z.string().min(1),
-    entityRef: z.string().min(1), revision: z.number().int().positive(),
-  }).optional(),
-  coreSnapshot: z.object({
-    name: z.string(), personality: z.string(), appearance: z.string(),
-    pronoun: z.string().optional(), approximateAge: z.number().optional(),
-    facts: z.array(z.object({ predicate: z.string(), label: z.string(), value: z.string() })),
-  }).optional(),
+  coreOrigin: z
+    .object({
+      workspaceId: z.string().min(1),
+      projectId: z.string().min(1),
+      entityRef: z.string().min(1),
+      revision: z.number().int().positive(),
+    })
+    .optional(),
+  coreSnapshot: z
+    .object({
+      name: z.string(),
+      personality: z.string(),
+      appearance: z.string(),
+      pronoun: z.string().optional(),
+      approximateAge: z.number().optional(),
+      facts: z.array(z.object({ predicate: z.string(), label: z.string(), value: z.string() })),
+    })
+    .optional(),
   createdAt: z.string(),
-  updatedAt: z.string()
+  updatedAt: z.string(),
 });
 export type CharacterTemplate = z.infer<typeof CharacterTemplateSchema>;
 
@@ -111,8 +126,10 @@ export const PlaceTemplateSchema = z.object({
   /** Landmark Look for. Not sent to the model. Not a character tag. */
   tags: z.array(z.string().min(1)).default(() => []),
   source: LibrarySourceSchema.default("player"),
+  coreOrigin: CoreOriginSchema.optional(),
+  coreSnapshot: CoreEntitySnapshotSchema.optional(),
   createdAt: z.string(),
-  updatedAt: z.string()
+  updatedAt: z.string(),
 });
 export type PlaceTemplate = z.infer<typeof PlaceTemplateSchema>;
 
@@ -140,9 +157,13 @@ export const RealmTemplateSchema = z.object({
   audioDataUrl: z.string().optional(),
   audioGallery: z.array(z.string().min(1)).optional(),
   audioPlay: PicturePlaySchema.optional(),
+  /** Free play in this world. Off unless the owner turns it on. */
+  openWorld: z.object({ generateResidents: z.boolean().default(false) }).optional(),
+  /** Set when the world was made from a shared manuscript, so later imports go into the same world. */
+  coreOrigin: CoreOriginSchema.optional(),
   source: LibrarySourceSchema.default("player"),
   createdAt: z.string(),
-  updatedAt: z.string()
+  updatedAt: z.string(),
 });
 export type RealmTemplate = z.infer<typeof RealmTemplateSchema>;
 
@@ -152,7 +173,7 @@ export const StoryTemplateSchema = z.object({
   premise: z.string().min(1),
   source: LibrarySourceSchema.default("player"),
   createdAt: z.string(),
-  updatedAt: z.string()
+  updatedAt: z.string(),
 });
 export type StoryTemplate = z.infer<typeof StoryTemplateSchema>;
 
@@ -162,7 +183,7 @@ export const VoiceTemplateSchema = z.object({
   instruction: z.string().min(1),
   source: LibrarySourceSchema.default("player"),
   createdAt: z.string(),
-  updatedAt: z.string()
+  updatedAt: z.string(),
 });
 export type VoiceTemplate = z.infer<typeof VoiceTemplateSchema>;
 
@@ -170,9 +191,11 @@ export const RulesetTemplateSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   attributes: z.array(AttributeDefSchema).default(() => []),
+  /** Health the player starts with in an adventure. Missing: 20. */
+  playerHealth: z.number().int().min(1).max(200).optional(),
   source: LibrarySourceSchema.default("player"),
   createdAt: z.string(),
-  updatedAt: z.string()
+  updatedAt: z.string(),
 });
 export type RulesetTemplate = z.infer<typeof RulesetTemplateSchema>;
 
@@ -180,6 +203,16 @@ export type RulesetTemplate = z.infer<typeof RulesetTemplateSchema>;
  * A named thing that can be placed in a scene. Tags are this shelf only
  * (relic, key). storyId / placeId are optional homes — not locks.
  */
+/** What a thing does when it is carried as a weapon. The skill is the name of a value, such as "Melee". */
+export const ObjectWeaponSchema = z.object({
+  skill: z.string().trim().min(1).max(60),
+  kind: z.enum(["melee", "ranged"]),
+  damage: z.number().int().min(0).max(50),
+  range: z.number().positive().optional(),
+  usesAmmunition: z.boolean().default(false),
+});
+export type ObjectWeapon = z.infer<typeof ObjectWeaponSchema>;
+
 export const ObjectTemplateSchema = z.object({
   factionIds: z.array(z.string().min(1)).optional(),
   id: z.string().min(1),
@@ -198,10 +231,15 @@ export const ObjectTemplateSchema = z.object({
   lockable: z.boolean().optional(),
   weight: z.number().nonnegative().optional(),
   difficulty: z.number().nonnegative().optional(),
+  checkLevel: z.enum(["easy", "standard", "hard", "veryHard"]).optional(),
   checkAttribute: z.string().min(1).optional(),
+  /** Set when the thing can be used as a weapon. */
+  weapon: ObjectWeaponSchema.optional(),
   source: LibrarySourceSchema.default("player"),
+  coreOrigin: CoreOriginSchema.optional(),
+  coreSnapshot: CoreEntitySnapshotSchema.optional(),
   createdAt: z.string(),
-  updatedAt: z.string()
+  updatedAt: z.string(),
 });
 export type ObjectTemplate = z.infer<typeof ObjectTemplateSchema>;
 
@@ -221,7 +259,7 @@ export const CampaignTriggerSchema = z.object({
   /** Story flags that must be ABSENT — a beat that stops firing once something else happened. */
   requiresAbsentFlags: z.array(z.string().min(1)).default(() => []),
   /** Story flags this beat sets the turn it fires. */
-  setsFlags: z.array(z.string().min(1)).default(() => [])
+  setsFlags: z.array(z.string().min(1)).default(() => []),
 });
 export type CampaignTrigger = z.infer<typeof CampaignTriggerSchema>;
 
@@ -238,7 +276,7 @@ export type StoryboardLink = z.infer<typeof StoryboardLinkSchema>;
 /** Canvas placement for a scene card on the Storyboard. Missing = not yet placed. */
 export const StoryboardPositionSchema = z.object({
   x: z.number(),
-  y: z.number()
+  y: z.number(),
 });
 export type StoryboardPosition = z.infer<typeof StoryboardPositionSchema>;
 
@@ -246,18 +284,23 @@ const storyboardSectionFields = {
   id: z.string().min(1),
   title: z.string(),
   position: StoryboardPositionSchema.optional(),
-  collapsed: z.boolean().optional()
+  collapsed: z.boolean().optional(),
 };
 
 const StoryboardSectionSizeSchema = z.object({
   width: z.number().finite().positive(),
-  height: z.number().finite().positive()
+  height: z.number().finite().positive(),
 });
 export type StoryboardSectionSize = z.infer<typeof StoryboardSectionSizeSchema>;
 
-export const StoryboardSectionSchema = z.discriminatedUnion('kind', [
-  z.object({ ...storyboardSectionFields, kind: z.literal('act') }),
-  z.object({ ...storyboardSectionFields, kind: z.literal('group'), actId: z.string().min(1).optional(), size: StoryboardSectionSizeSchema.optional() })
+export const StoryboardSectionSchema = z.discriminatedUnion("kind", [
+  z.object({ ...storyboardSectionFields, kind: z.literal("act") }),
+  z.object({
+    ...storyboardSectionFields,
+    kind: z.literal("group"),
+    actId: z.string().min(1).optional(),
+    size: StoryboardSectionSizeSchema.optional(),
+  }),
 ]);
 export type StoryboardSection = z.infer<typeof StoryboardSectionSchema>;
 
@@ -268,7 +311,7 @@ export type StoryboardSection = z.infer<typeof StoryboardSectionSchema>;
  */
 export const StoryboardChapterSchema = z.object({
   id: z.string().min(1),
-  title: z.string().default("")
+  title: z.string().default(""),
 });
 export type StoryboardChapter = z.infer<typeof StoryboardChapterSchema>;
 
@@ -279,10 +322,10 @@ export const CampaignMemberSchema = z.object({
     .record(z.string(), z.union([z.string(), z.number()]))
     .default(() => ({}))
     .transform((row) =>
-      Object.fromEntries(Object.entries(row).map(([key, value]) => [key, String(value)]))
+      Object.fromEntries(Object.entries(row).map(([key, value]) => [key, String(value)])),
     ),
   /** Keyword lore for this person in this campaign — not the archive card. */
-  lore: z.array(CharacterLoreEntrySchema).default(() => [])
+  lore: z.array(CharacterLoreEntrySchema).default(() => []),
 });
 export type CampaignMember = z.infer<typeof CampaignMemberSchema>;
 
@@ -297,7 +340,7 @@ export const CampaignPlayerSchema = z.object({
     .record(z.string(), z.union([z.string(), z.number()]))
     .default(() => ({}))
     .transform((row) =>
-      Object.fromEntries(Object.entries(row).map(([key, value]) => [key, String(value)]))
+      Object.fromEntries(Object.entries(row).map(([key, value]) => [key, String(value)])),
     ),
 });
 export type CampaignPlayer = z.infer<typeof CampaignPlayerSchema>;
@@ -310,11 +353,11 @@ export function campaignPlayerIsFilled(player: CampaignPlayer | undefined): bool
   if (!player) return false;
   return Boolean(
     player.name.trim() ||
-      player.appearance.trim() ||
-      player.personality.trim() ||
-      player.pronoun ||
-      player.portraitDataUrl?.trim() ||
-      Object.values(player.stats).some((value) => String(value).trim())
+    player.appearance.trim() ||
+    player.personality.trim() ||
+    player.pronoun ||
+    player.portraitDataUrl?.trim() ||
+    Object.values(player.stats).some((value) => String(value).trim()),
   );
 }
 
@@ -326,7 +369,7 @@ export const SceneCastSchema = z.object({
   holding: z.string().default(""),
   trust: z.string().default("20"),
   familiarity: z.string().default("10"),
-  tension: z.string().default("5")
+  tension: z.string().default("5"),
 });
 export type SceneCast = z.infer<typeof SceneCastSchema>;
 
@@ -334,7 +377,7 @@ export type SceneCast = z.infer<typeof SceneCastSchema>;
 export const WhatNowChoiceSchema = z.object({
   id: z.string().min(1),
   label: z.string().default(""),
-  room: z.string().default("")
+  room: z.string().default(""),
 });
 export type WhatNowChoice = z.infer<typeof WhatNowChoiceSchema>;
 
@@ -342,7 +385,10 @@ export type WhatNowChoice = z.infer<typeof WhatNowChoiceSchema>;
 export const WhatNowSetSchema = z.object({
   id: z.string().min(1),
   keywords: z.array(z.string().min(1)).default(() => []),
-  choices: z.array(WhatNowChoiceSchema).max(3).default(() => [])
+  choices: z
+    .array(WhatNowChoiceSchema)
+    .max(3)
+    .default(() => []),
 });
 export type WhatNowSet = z.infer<typeof WhatNowSetSchema>;
 
@@ -364,10 +410,10 @@ function migrateSceneWhatNow(raw: unknown): unknown {
           {
             id: typeof rec.id === "string" && rec.id.trim() ? `${rec.id}-replies` : "replies",
             keywords: leftoverKeywords,
-            choices: leftoverChoices
-          }
+            choices: leftoverChoices,
+          },
         ]
-      : authored ?? [];
+      : (authored ?? []);
   return rec;
 }
 
@@ -376,8 +422,9 @@ export const CampaignSceneSchema = z.preprocess(
   z.object({
     id: z.string().min(1),
     name: z.string().default(""),
-    encounter:EncounterGameSchema.optional(),
-    mapNodeId:z.string().min(1).optional(),usePlaceIntro:z.boolean().optional(),
+    encounter: EncounterGameSchema.optional(),
+    mapNodeId: z.string().min(1).optional(),
+    usePlaceIntro: z.boolean().optional(),
     placeId: z.string().default(""),
     /** Empty = the landmark floor. Otherwise a focal room id on that place. */
     startRoomId: z.string().default(""),
@@ -390,8 +437,10 @@ export const CampaignSceneSchema = z.preprocess(
     position: StoryboardPositionSchema.optional(),
     storyboardSectionId: z.string().min(1).optional(),
     /** Which Storyboard chapter this scene is grouped into, if any. */
-    chapterId: z.string().min(1).optional()
-  })
+    chapterId: z.string().min(1).optional(),
+    /** Notes from a manuscript event this scene was started from. Never played. */
+    draft: SceneDraftSchema.optional(),
+  }),
 );
 export type CampaignScene = z.infer<typeof CampaignSceneSchema>;
 
@@ -402,14 +451,27 @@ export type CampaignScene = z.infer<typeof CampaignSceneSchema>;
 export const CampaignTemplateSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
-  mapWorldId:z.string().min(1).optional(),
-  goal:AdventureGoalSchema.optional(),exampleId:z.string().optional(),exampleVersion:z.number().int().nonnegative().optional(),
+  mapWorldId: z.string().min(1).optional(),
+  /**
+   * "map" lets the player leave the written scenes: places on the map that have no scene of their
+   * own get one when a game starts, joined to the written scenes by the map's ways. Written scenes,
+   * their ways and the goal always come first.
+   */
+  openWorld: z.enum(["scenes", "map"]).default("scenes"),
+  goal: AdventureGoalSchema.optional(),
+  exampleId: z.string().optional(),
+  exampleVersion: z.number().int().nonnegative().optional(),
   /** Player-facing. Never sent to the model. */
   playerIntro: z.string().default(""),
   /** Writer premise for Pass 1. Characters do not automatically know it. */
   startPrompt: z.string().default(""),
   model: z.string().optional(),
   rulesetId: z.string().optional(),
+  /**
+   * When an adventure changes rule-set, what an old skill is now called, so a weapon card that
+   * names the old skill still finds the new one. Keys are lower-case, trimmed ids and names.
+   */
+  skillAliases: z.record(z.string(), z.string()).default(() => ({})),
   voiceId: z.string().optional(),
   /** The map. Every landmark in this realm belongs to the campaign. */
   realmId: z.string().optional(),
@@ -442,7 +504,7 @@ export const CampaignTemplateSchema = z.object({
   storyFlags: z.array(z.string().min(1)).default([]),
   source: LibrarySourceSchema.default("player"),
   createdAt: z.string(),
-  updatedAt: z.string()
+  updatedAt: z.string(),
 });
 export type CampaignTemplate = z.infer<typeof CampaignTemplateSchema>;
 
@@ -460,7 +522,8 @@ export function parsePlaceTemplate(input: unknown): PlaceTemplate {
 function attachRealmId(input: unknown): unknown {
   if (!input || typeof input !== "object") return input;
   const row = input as Record<string, unknown>;
-  const realmId = typeof row.realmId === "string" && row.realmId.trim() ? row.realmId.trim() : FALLBACK_REALM_ID;
+  const realmId =
+    typeof row.realmId === "string" && row.realmId.trim() ? row.realmId.trim() : FALLBACK_REALM_ID;
   return { ...row, realmId };
 }
 
@@ -472,8 +535,14 @@ export function parseRealmTemplate(input: unknown): RealmTemplate {
 
 function asStoredPicture(value: unknown): { thumbDataUrl: string; imageDataUrl: string } | null {
   if (!value || typeof value !== "object") return null;
-  const thumb = "thumbDataUrl" in value && typeof value.thumbDataUrl === "string" ? value.thumbDataUrl.trim() : "";
-  const image = "imageDataUrl" in value && typeof value.imageDataUrl === "string" ? value.imageDataUrl.trim() : "";
+  const thumb =
+    "thumbDataUrl" in value && typeof value.thumbDataUrl === "string"
+      ? value.thumbDataUrl.trim()
+      : "";
+  const image =
+    "imageDataUrl" in value && typeof value.imageDataUrl === "string"
+      ? value.imageDataUrl.trim()
+      : "";
   const picture = image || thumb;
   if (!picture) return null;
   return { thumbDataUrl: thumb || picture, imageDataUrl: picture };
@@ -483,27 +552,31 @@ function sanitizePlacePictures(input: unknown): unknown {
   if (!input || typeof input !== "object") return input;
   const row = input as Record<string, unknown>;
   const gallery = Array.isArray(row.gallery)
-    ? row.gallery.map(asStoredPicture).filter((item): item is NonNullable<typeof item> => item !== null)
+    ? row.gallery
+        .map(asStoredPicture)
+        .filter((item): item is NonNullable<typeof item> => item !== null)
     : row.gallery;
   const rooms = Array.isArray(row.rooms)
     ? row.rooms.map((room) => {
         if (!room || typeof room !== "object") return room;
         const entry = room as Record<string, unknown>;
         const roomGallery = Array.isArray(entry.gallery)
-          ? entry.gallery.map(asStoredPicture).filter((item): item is NonNullable<typeof item> => item !== null)
+          ? entry.gallery
+              .map(asStoredPicture)
+              .filter((item): item is NonNullable<typeof item> => item !== null)
           : entry.gallery;
         return { ...entry, gallery: roomGallery };
       })
     : row.rooms;
   const cover = asStoredPicture({
     thumbDataUrl: row.thumbDataUrl,
-    imageDataUrl: row.imageDataUrl
+    imageDataUrl: row.imageDataUrl,
   });
   return {
     ...row,
     ...(cover ? { thumbDataUrl: cover.thumbDataUrl, imageDataUrl: cover.imageDataUrl } : {}),
     gallery,
-    rooms
+    rooms,
   };
 }
 
@@ -531,9 +604,11 @@ function sanitizeRuleset(input: unknown): unknown {
       if (!Array.isArray(entry.options)) return entry;
       return {
         ...entry,
-        options: entry.options.filter((option): option is string => typeof option === "string" && option.trim().length > 0)
+        options: entry.options.filter(
+          (option): option is string => typeof option === "string" && option.trim().length > 0,
+        ),
       };
-    })
+    }),
   };
 }
 
@@ -542,7 +617,9 @@ export function parseObjectTemplate(input: unknown): ObjectTemplate {
 }
 
 export function parseCampaignTemplate(input: unknown): CampaignTemplate {
-  return CampaignTemplateSchema.parse(upgradeMissingMessengerCampaign(CampaignTemplateSchema.parse(input)));
+  return CampaignTemplateSchema.parse(
+    upgradeMissingMessengerCampaign(CampaignTemplateSchema.parse(input)),
+  );
 }
 
 export function nowIso(): string {
@@ -563,28 +640,33 @@ export function recoverCharacterTemplate(input: unknown): CharacterTemplate | nu
     ...row,
     tags,
     createdAt: typeof row.createdAt === "string" && row.createdAt.trim() ? row.createdAt : stamp,
-    updatedAt: typeof row.updatedAt === "string" && row.updatedAt.trim() ? row.updatedAt : stamp
+    updatedAt: typeof row.updatedAt === "string" && row.updatedAt.trim() ? row.updatedAt : stamp,
   });
   return second.success ? second.data : null;
 }
 
 export function newCharacterTemplate(
-  fields: Omit<z.input<typeof CharacterTemplateSchema>, "id" | "createdAt" | "updatedAt"> & { id?: string }
+  fields: Omit<z.input<typeof CharacterTemplateSchema>, "id" | "createdAt" | "updatedAt"> & {
+    id?: string;
+  },
 ): CharacterTemplate {
   const stamp = nowIso();
   return CharacterTemplateSchema.parse({
     ...fields,
     id: fields.id ?? crypto.randomUUID(),
     createdAt: stamp,
-    updatedAt: stamp
+    updatedAt: stamp,
   });
 }
 
 export function newPlaceTemplate(
-  fields: Omit<z.input<typeof PlaceTemplateSchema>, "id" | "createdAt" | "updatedAt" | "realmId"> & {
+  fields: Omit<
+    z.input<typeof PlaceTemplateSchema>,
+    "id" | "createdAt" | "updatedAt" | "realmId"
+  > & {
     id?: string;
     realmId?: string;
-  }
+  },
 ): PlaceTemplate {
   const stamp = nowIso();
   return PlaceTemplateSchema.parse({
@@ -592,86 +674,88 @@ export function newPlaceTemplate(
     realmId: fields.realmId?.trim() || FALLBACK_REALM_ID,
     id: fields.id ?? crypto.randomUUID(),
     createdAt: stamp,
-    updatedAt: stamp
+    updatedAt: stamp,
   });
 }
 
 export function newRealmTemplate(
-  fields: Omit<RealmTemplate, "id" | "createdAt" | "updatedAt"> & { id?: string }
+  fields: Omit<RealmTemplate, "id" | "createdAt" | "updatedAt"> & { id?: string },
 ): RealmTemplate {
   const stamp = nowIso();
   return RealmTemplateSchema.parse({
     ...fields,
     id: fields.id ?? crypto.randomUUID(),
     createdAt: stamp,
-    updatedAt: stamp
+    updatedAt: stamp,
   });
 }
 
 export function newStoryTemplate(
-  fields: Omit<StoryTemplate, "id" | "createdAt" | "updatedAt"> & { id?: string }
+  fields: Omit<StoryTemplate, "id" | "createdAt" | "updatedAt"> & { id?: string },
 ): StoryTemplate {
   const stamp = nowIso();
   return StoryTemplateSchema.parse({
     ...fields,
     id: fields.id ?? crypto.randomUUID(),
     createdAt: stamp,
-    updatedAt: stamp
+    updatedAt: stamp,
   });
 }
 
 export function newVoiceTemplate(
-  fields: Omit<VoiceTemplate, "id" | "createdAt" | "updatedAt"> & { id?: string }
+  fields: Omit<VoiceTemplate, "id" | "createdAt" | "updatedAt"> & { id?: string },
 ): VoiceTemplate {
   const stamp = nowIso();
   return VoiceTemplateSchema.parse({
     ...fields,
     id: fields.id ?? crypto.randomUUID(),
     createdAt: stamp,
-    updatedAt: stamp
+    updatedAt: stamp,
   });
 }
 
 export function newRulesetTemplate(
-  fields: Omit<RulesetTemplate, "id" | "createdAt" | "updatedAt"> & { id?: string }
+  fields: Omit<RulesetTemplate, "id" | "createdAt" | "updatedAt"> & { id?: string },
 ): RulesetTemplate {
   const stamp = nowIso();
   return RulesetTemplateSchema.parse({
     ...fields,
     id: fields.id ?? crypto.randomUUID(),
     createdAt: stamp,
-    updatedAt: stamp
+    updatedAt: stamp,
   });
 }
 
 export function newObjectTemplate(
-  fields: Omit<ObjectTemplate, "id" | "createdAt" | "updatedAt"> & { id?: string }
+  fields: Omit<ObjectTemplate, "id" | "createdAt" | "updatedAt"> & { id?: string },
 ): ObjectTemplate {
   const stamp = nowIso();
   return ObjectTemplateSchema.parse({
     ...fields,
     id: fields.id ?? crypto.randomUUID(),
     createdAt: stamp,
-    updatedAt: stamp
+    updatedAt: stamp,
   });
 }
 
 export function newCampaignTemplate(
-  fields: Omit<z.input<typeof CampaignTemplateSchema>, "id" | "createdAt" | "updatedAt"> & { id?: string }
+  fields: Omit<z.input<typeof CampaignTemplateSchema>, "id" | "createdAt" | "updatedAt"> & {
+    id?: string;
+  },
 ): CampaignTemplate {
   const stamp = nowIso();
   return CampaignTemplateSchema.parse({
     ...fields,
     id: fields.id ?? crypto.randomUUID(),
     createdAt: stamp,
-    updatedAt: stamp
+    updatedAt: stamp,
   });
 }
 
 /** Landmarks in play: the whole realm, or leftover `placeIds` if no realm is set. */
 export function campaignLandmarks(
   campaign: Pick<CampaignTemplate, "realmId" | "placeIds">,
-  places: PlaceTemplate[]
+  places: PlaceTemplate[],
 ): PlaceTemplate[] {
   const realmId = campaign.realmId?.trim();
   if (realmId) return places.filter((item) => item.realmId === realmId);
@@ -683,12 +767,15 @@ export function campaignLandmarks(
 /** Old campaigns listed landmarks. One shared realm becomes `realmId`. */
 export function inferCampaignRealmId(
   campaign: Pick<CampaignTemplate, "realmId" | "placeIds">,
-  places: PlaceTemplate[]
+  places: PlaceTemplate[],
 ): string {
   const named = campaign.realmId?.trim();
   if (named) return named;
   const realms = new Set(
-    places.filter((item) => campaign.placeIds.includes(item.id)).map((item) => item.realmId.trim()).filter(Boolean)
+    places
+      .filter((item) => campaign.placeIds.includes(item.id))
+      .map((item) => item.realmId.trim())
+      .filter(Boolean),
   );
   if (realms.size === 1) return [...realms][0] ?? "";
   return "";
@@ -697,7 +784,7 @@ export function inferCampaignRealmId(
 export function emptyCampaignScene(): CampaignScene {
   return CampaignSceneSchema.parse({
     id: crypto.randomUUID(),
-    name: "Opening"
+    name: "Opening",
   });
 }
 
@@ -705,7 +792,7 @@ export function emptyWhatNowSet(): WhatNowSet {
   return WhatNowSetSchema.parse({
     id: crypto.randomUUID(),
     keywords: [],
-    choices: [{ id: crypto.randomUUID(), label: "", room: "" }]
+    choices: [{ id: crypto.randomUUID(), label: "", room: "" }],
   });
 }
 
@@ -721,7 +808,7 @@ export function whatNowSetsFromScene(scene: {
     name: "Opening",
     whatNowSets: scene.whatNowSets,
     whatNow: scene.whatNow,
-    whatNowKeywords: scene.whatNowKeywords
+    whatNowKeywords: scene.whatNowKeywords,
   }).whatNowSets;
 }
 
@@ -775,4 +862,3 @@ export function deriveStoryTitle(title: string, premise: string): string {
   if (first.length <= 48) return first;
   return `${first.slice(0, 45).trimEnd()}…`;
 }
-

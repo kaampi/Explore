@@ -3,12 +3,18 @@ import {
   LIBRARY_BACKUP_KIND,
   parseLibraryBackup,
   restoreLibraryBackup,
-  type LibraryBackupStore
+  type LibraryBackupStore,
 } from "@library/libraryBackup";
-import { exampleCharacterTemplate, exampleRealmDunbaar, exampleVoiceTemplates } from "@library/exampleTemplates";
+import {
+  exampleCharacterTemplate,
+  exampleRealmDunbaar,
+  exampleVoiceTemplates,
+} from "@library/exampleTemplates";
 import { newObjectTemplate } from "@library/LibrarySchema";
 
-function memoryStore(seed: Partial<LibraryBackupStore> = {}): LibraryBackupStore & { voices: unknown[] } {
+function memoryStore(
+  seed: Partial<LibraryBackupStore> = {},
+): LibraryBackupStore & { voices: unknown[] } {
   const voices: unknown[] = [];
   return {
     voices,
@@ -30,7 +36,7 @@ function memoryStore(seed: Partial<LibraryBackupStore> = {}): LibraryBackupStore
     saveRuleset: async () => undefined,
     saveObject: async () => undefined,
     saveCampaign: async () => undefined,
-    ...seed
+    ...seed,
   };
 }
 
@@ -46,7 +52,7 @@ describe("library backup", () => {
       format: 1,
       exportedAt: "2026-09-06T00:00:00.000Z",
       voices: [voice, { id: "bad" }],
-      characters: []
+      characters: [],
     });
     expect(skipped).toBe(1);
     expect(backup.voices).toHaveLength(1);
@@ -57,7 +63,6 @@ describe("library backup", () => {
   });
 });
 
-
 it("round-trips all character images and morph settings in full and individual exports", async () => {
   const { collectLibraryBackup, collectCharacterBackup } = await import("@library/libraryBackup");
   const { IndexedDBRepository } = await import("../../src/persistence/IndexedDBRepository");
@@ -65,28 +70,60 @@ it("round-trips all character images and morph settings in full and individual e
   const source = new IndexedDBRepository(new IDBFactory(), "source");
   const card = exampleCharacterTemplate();
   const profile = {
-    version: 1, active: true,
-    gallery: [{ id: "photo", name: "Photo", image: "data:image/png;base64,YQ==", kind: "ordinary", emotion: "" }],
+    version: 1,
+    active: true,
+    gallery: [
+      {
+        id: "photo",
+        name: "Photo",
+        image: "data:image/png;base64,YQ==",
+        kind: "ordinary",
+        emotion: "",
+      },
+    ],
     expressions: [{ name: "happy", image: "data:image/png;base64,Yg==", points: [[0.2, 0.3]] }],
-    triangles: [[0, 1, 2]], eyeCenters: { happy: [[0.3, 0.4], [0.6, 0.4]] },
-    morphDurations: { "neutral:happy": 2500 }, eyeCorrections: { "neutral:happy": true }
+    triangles: [[0, 1, 2]],
+    eyeCenters: {
+      happy: [
+        [0.3, 0.4],
+        [0.6, 0.4],
+      ],
+    },
+    morphDurations: { "neutral:happy": 2500 },
+    eyeCorrections: { "neutral:happy": true },
   };
   await source.saveCharacter(card);
   await source.saveCharacterMorph(card.id, profile);
-  for (const exported of [await collectLibraryBackup(source), await collectCharacterBackup(source, card)]) {
+  for (const exported of [
+    await collectLibraryBackup(source),
+    await collectCharacterBackup(source, card),
+  ]) {
     const { backup, skipped } = parseLibraryBackup(JSON.parse(JSON.stringify(exported)));
     expect(skipped).toBe(0);
     const target = new IndexedDBRepository(new IDBFactory(), "target");
     const report = await restoreLibraryBackup(target, backup);
     expect(report.skipped).toBe(0);
     expect(await target.loadCharacterMorph(card.id)).toEqual(profile);
-    expect((await target.listCharacters()).find(c => c.id === card.id)?.portraitDataUrl).toEqual(card.portraitDataUrl);
+    expect((await target.listCharacters()).find((c) => c.id === card.id)?.portraitDataUrl).toEqual(
+      card.portraitDataUrl,
+    );
   }
 });
 it("keeps existing morphs when importing older cards without morph data", async () => {
-  const { backup } = parseLibraryBackup({ kind: LIBRARY_BACKUP_KIND, format: 2, characters: [exampleCharacterTemplate()] });
+  const { backup } = parseLibraryBackup({
+    kind: LIBRARY_BACKUP_KIND,
+    format: 2,
+    characters: [exampleCharacterTemplate()],
+  });
   let changed = false;
-  await restoreLibraryBackup(memoryStore({ saveCharacterMorph: async () => { changed = true; } }), backup);
+  await restoreLibraryBackup(
+    memoryStore({
+      saveCharacterMorph: async () => {
+        changed = true;
+      },
+    }),
+    backup,
+  );
   expect(changed).toBe(false);
 });
 
@@ -119,10 +156,12 @@ it("preserves faction definitions and affiliations across database upgrades and 
     history: "Founded after the river trade reopened.",
     alliedFactionIds: [allies.id],
     hostileFactionIds: [rivals.id],
-    images: [{
-      imageDataUrl: "data:image/jpeg;base64,YQ==",
-      thumbDataUrl: "data:image/jpeg;base64,Yg=="
-    }]
+    images: [
+      {
+        imageDataUrl: "data:image/jpeg;base64,YQ==",
+        thumbDataUrl: "data:image/jpeg;base64,Yg==",
+      },
+    ],
   };
   await source.saveFaction(allies);
   await source.saveFaction(rivals);
@@ -130,23 +169,38 @@ it("preserves faction definitions and affiliations across database upgrades and 
   const card = { ...character, factionIds: [faction.id] };
   await source.saveCharacter(card);
   const object = newObjectTemplate({
-    name: "Guild seal", note: "", tags: [], source: "player", factionIds: [faction.id, allies.id]
+    name: "Guild seal",
+    note: "",
+    tags: [],
+    source: "player",
+    factionIds: [faction.id, allies.id],
   });
   await source.saveObject(object);
   const realm = {
     ...exampleRealmDunbaar(),
     worldMap: {
-      nodes: [{
-        id: "port", name: "Port", kind: "Settlement", x: 50, y: 50,
-        description: "", population: "", characterIds: [], factionIds: [faction.id]
-      }],
-      routes: []
-    }
+      nodes: [
+        {
+          id: "port",
+          name: "Port",
+          kind: "Settlement",
+          x: 50,
+          y: 50,
+          description: "",
+          population: "",
+          characterIds: [],
+          factionIds: [faction.id],
+        },
+      ],
+      routes: [],
+    },
   };
   await source.saveRealm(realm);
 
   expect((await collectCharacterBackup(source, card)).factions).toEqual([faction]);
-  const { backup, skipped } = parseLibraryBackup(JSON.parse(JSON.stringify(await collectLibraryBackup(source))));
+  const { backup, skipped } = parseLibraryBackup(
+    JSON.parse(JSON.stringify(await collectLibraryBackup(source))),
+  );
   expect(skipped).toBe(0);
   const target = new IndexedDBRepository(new IDBFactory(), "restored");
   expect((await restoreLibraryBackup(target, backup)).skipped).toBe(0);

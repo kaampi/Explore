@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   resolveWhatNowIntercept,
   shouldArmWhatNowAfterTurn,
-  whatNowBlocksComposer
+  whatNowBlocksComposer,
 } from "@state/whatNowGate";
 import { WHAT_NOW_STAY } from "@state/playerDestination";
 import type { Session } from "@state/StateSchema";
@@ -21,17 +21,17 @@ function makeSession(overrides: Partial<Session> = {}): Session {
     characters: {
       emma: {
         position: { value: "behind the bar", lock: "unlocked" },
-        mood: { value: "reserved", lock: "unlocked" }
-      }
+        mood: { value: "reserved", lock: "unlocked" },
+      },
     },
     scene: { location: "The Aurora Room — a quiet late-night bar", environment: {} },
     player: {
       position: { value: "at the bar", lock: "unlocked" },
-      status: { value: "awake", lock: "unlocked" }
+      status: { value: "awake", lock: "unlocked" },
     },
     whatNow: [
       { id: "wn1", label: "Go with Emma to her room", room: "Emma's room" },
-      { id: "wn2", label: "Stay at the bar", room: "at the bar" }
+      { id: "wn2", label: "Stay at the bar", room: "at the bar" },
     ],
     whatNowOpen: false,
     relationships: {},
@@ -43,39 +43,41 @@ function makeSession(overrides: Partial<Session> = {}): Session {
         content:
           "Adjoining the bar: toilets off the hall, Emma's room behind the staff door, a guest room upstairs, and a cellar door behind the bar.",
         active: true,
-        aiGenerated: false
-      }
+        aiGenerated: false,
+      },
     ],
     memory: { episodic: [], semantic: [], relational: [] },
     conversation: [],
     events: [],
     snapshots: [],
     diagnostics: [],
-    ...overrides
+    ...overrides,
   };
 }
 
 describe("resolveWhatNowIntercept", () => {
   it("lets ordinary chat through before the opening is over", () => {
-    expect(resolveWhatNowIntercept(makeSession(), "I'll have a whiskey.")).toEqual({ kind: "pass" });
+    expect(resolveWhatNowIntercept(makeSession(), "I'll have a whiskey.")).toEqual({
+      kind: "pass",
+    });
     expect(whatNowBlocksComposer(makeSession())).toBe(false);
   });
 
   it("takes a listed room as the fork, even when typed", () => {
     expect(resolveWhatNowIntercept(makeSession(), "I walk into Emma's room")).toEqual({
       kind: "pass",
-      goTo: "Emma's room"
+      goTo: "Emma's room",
     });
   });
 
   it("opens the fork instead of inventing a hotel", () => {
     expect(resolveWhatNowIntercept(makeSession(), "I walk to the hotel")).toEqual({
       kind: "open",
-      setId: "replies"
+      setId: "replies",
     });
     expect(resolveWhatNowIntercept(makeSession(), "I sleep on the street")).toEqual({
       kind: "open",
-      setId: "replies"
+      setId: "replies",
     });
   });
 
@@ -88,7 +90,9 @@ describe("resolveWhatNowIntercept", () => {
   });
 
   it("still lets a canon walk that is not a fork option", () => {
-    expect(resolveWhatNowIntercept(makeSession(), "I walk to the toilets")).toEqual({ kind: "pass" });
+    expect(resolveWhatNowIntercept(makeSession(), "I walk to the toilets")).toEqual({
+      kind: "pass",
+    });
   });
 
   it("blocks typing once the fork is open", () => {
@@ -97,7 +101,7 @@ describe("resolveWhatNowIntercept", () => {
     expect(whatNowBlocksComposer(open)).toBe(true);
     expect(resolveWhatNowIntercept(open, "Go with Emma to her room", "Emma's room")).toEqual({
       kind: "pass",
-      goTo: "Emma's room"
+      goTo: "Emma's room",
     });
   });
 
@@ -105,13 +109,13 @@ describe("resolveWhatNowIntercept", () => {
     const open = makeSession({
       whatNow: [
         { id: "wn1", label: "I tell her the truth", room: WHAT_NOW_STAY },
-        { id: "wn2", label: "I lie", room: WHAT_NOW_STAY }
+        { id: "wn2", label: "I lie", room: WHAT_NOW_STAY },
       ],
-      whatNowOpen: true
+      whatNowOpen: true,
     });
     expect(resolveWhatNowIntercept(open, "I lie", WHAT_NOW_STAY)).toEqual({
       kind: "pass",
-      goTo: WHAT_NOW_STAY
+      goTo: WHAT_NOW_STAY,
     });
     expect(resolveWhatNowIntercept(open, "I'll have a whiskey.")).toEqual({ kind: "blocked" });
   });
@@ -122,9 +126,9 @@ describe("resolveWhatNowIntercept", () => {
         {
           turn: 2,
           role: "character",
-          content: "Actually, we don't have guest rooms here. I can recommend a few local hotels."
-        }
-      ]
+          content: "Actually, we don't have guest rooms here. I can recommend a few local hotels.",
+        },
+      ],
     });
     expect(shouldArmWhatNowAfterTurn(session)).toBe(false);
   });
@@ -135,9 +139,9 @@ describe("resolveWhatNowIntercept", () => {
         {
           turn: 4,
           role: "character",
-          content: "If you'd like, I can show you. It's not much, but it's mine."
-        }
-      ]
+          content: "If you'd like, I can show you. It's not much, but it's mine.",
+        },
+      ],
     });
     expect(shouldArmWhatNowAfterTurn(session)).toBe(true);
   });
@@ -145,7 +149,7 @@ describe("resolveWhatNowIntercept", () => {
   it("arms when Look for words are in her line, not because the player said okay", () => {
     const session = makeSession({
       whatNowKeywords: ["last call"],
-      conversation: [{ turn: 1, role: "character", content: "Last call, love." }]
+      conversation: [{ turn: 1, role: "character", content: "Last call, love." }],
     });
     expect(resolveWhatNowIntercept(session, "Okay.")).toEqual({ kind: "pass" });
     expect(shouldArmWhatNowAfterTurn(session)).toBe(true);
@@ -158,17 +162,22 @@ describe("resolveWhatNowIntercept", () => {
         {
           id: "call",
           keywords: ["last call"],
-          choices: [{ id: "a", label: "I stay for last call", room: WHAT_NOW_STAY }]
+          choices: [{ id: "a", label: "I stay for last call", room: WHAT_NOW_STAY }],
         },
         {
           id: "follow",
           keywords: ["follow me"],
-          choices: [{ id: "b", label: "I go with her", room: "Emma's room" }]
-        }
-      ]
+          choices: [{ id: "b", label: "I go with her", room: "Emma's room" }],
+        },
+      ],
     });
-    expect(resolveWhatNowIntercept(session, "She said last call")).toEqual({ kind: "open", setId: "call" });
-    expect(resolveWhatNowIntercept(session, "I'll follow me out")).toEqual({ kind: "open", setId: "follow" });
+    expect(resolveWhatNowIntercept(session, "She said last call")).toEqual({
+      kind: "open",
+      setId: "call",
+    });
+    expect(resolveWhatNowIntercept(session, "I'll follow me out")).toEqual({
+      kind: "open",
+      setId: "follow",
+    });
   });
 });
-

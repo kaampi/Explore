@@ -110,17 +110,9 @@ function json(response: ServerResponse, status: number, value: unknown) {
 /** Both npm start and npm run preview expose the same same-origin status API. */
 export function localAppsPlugin(): Plugin {
   const pending = new Map<string, Promise<AppStatus>>();
-  async function middleware(
-    request: IncomingMessage,
-    response: ServerResponse,
-    next: () => void,
-  ) {
+  async function middleware(request: IncomingMessage, response: ServerResponse, next: () => void) {
     const url = new URL(request.url ?? "/", "http://localhost");
-    if (
-      !["/api/ecosystem/status", "/.well-known/storycore-app.json"].includes(
-        url.pathname,
-      )
-    )
+    if (!["/api/ecosystem/status", "/.well-known/storycore-app.json"].includes(url.pathname))
       return next();
     if (request.method !== "GET") {
       json(response, 405, { error: "GET required" });
@@ -155,8 +147,7 @@ export function localAppsPlugin(): Plugin {
     let address: string;
     try {
       address =
-        safeAppAddress(url.searchParams.get("address") ?? "") ||
-        DEFAULT_APP_ADDRESSES[appId];
+        safeAppAddress(url.searchParams.get("address") ?? "") || DEFAULT_APP_ADDRESSES[appId];
     } catch {
       json(response, 400, { error: "Invalid app address" });
       return;

@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { attributeModifier, checkAttempt, normalizedAttributeValue, rollD20 } from "@state/checkEngine";
+import {
+  attributeModifier,
+  checkAttempt,
+  normalizedAttributeValue,
+  rollD20,
+} from "@state/checkEngine";
 
 describe("rollD20", () => {
   it("maps 0 to 1 and just-under-1 to 20", () => {
@@ -43,10 +48,17 @@ describe("checkAttempt", () => {
       attributeValue: 18,
       attributeDef: { min: 1, max: 18 },
       difficulty: 14,
-      roll: 10
+      roll: 10,
     });
     // modifier at max (100 normalized) is +5, so total = 15 >= 14.
-    expect(result).toEqual({ roll: 10, modifier: 5, total: 15, difficulty: 14, success: true, critical: undefined });
+    expect(result).toEqual({
+      roll: 10,
+      modifier: 5,
+      total: 15,
+      difficulty: 14,
+      success: true,
+      critical: undefined,
+    });
   });
 
   it("fails when roll + modifier falls short of the difficulty", () => {
@@ -54,7 +66,7 @@ describe("checkAttempt", () => {
       attributeValue: 1,
       attributeDef: { min: 1, max: 18 },
       difficulty: 14,
-      roll: 10
+      roll: 10,
     });
     // modifier at min (0 normalized) is -5, so total = 5 < 14.
     expect(result.success).toBe(false);
@@ -66,7 +78,7 @@ describe("checkAttempt", () => {
       attributeValue: 1,
       attributeDef: { min: 1, max: 18 },
       difficulty: 30,
-      roll: 20
+      roll: 20,
     });
     expect(result.success).toBe(true);
     expect(result.critical).toBe("success");
@@ -77,7 +89,7 @@ describe("checkAttempt", () => {
       attributeValue: 18,
       attributeDef: { min: 1, max: 18 },
       difficulty: 1,
-      roll: 1
+      roll: 1,
     });
     expect(result.success).toBe(false);
     expect(result.critical).toBe("failure");
@@ -88,13 +100,18 @@ describe("checkAttempt", () => {
       attributeValue: 10,
       attributeDef: { min: 1, max: 18 },
       difficulty: 10,
-      rng: () => 0.5
+      rng: () => 0.5,
     });
     expect(result.roll).toBe(11);
   });
 
   it("is a pure function — same inputs, same outputs", () => {
-    const input = { attributeValue: 12, attributeDef: { min: 1, max: 18 }, difficulty: 12, roll: 8 } as const;
+    const input = {
+      attributeValue: 12,
+      attributeDef: { min: 1, max: 18 },
+      difficulty: 12,
+      roll: 8,
+    } as const;
     expect(checkAttempt(input)).toEqual(checkAttempt(input));
   });
 });

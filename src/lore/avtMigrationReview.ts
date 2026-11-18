@@ -1,9 +1,10 @@
 import { inspectAvtStructure } from "./avtInspect";
 
 type Data = Record<string, unknown>;
-const obj = (value: unknown): Data | null => value !== null && typeof value === "object" && !Array.isArray(value) ? value as Data : null;
-const str = (value: unknown): string => typeof value === "string" ? value.trim() : "";
-const list = (value: unknown): unknown[] => Array.isArray(value) ? value : [];
+const obj = (value: unknown): Data | null =>
+  value !== null && typeof value === "object" && !Array.isArray(value) ? (value as Data) : null;
+const str = (value: unknown): string => (typeof value === "string" ? value.trim() : "");
+const list = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
 export type AvtMigrationCandidate = {
   kind: "character" | "location" | "item";
   sourceId: string;
@@ -24,7 +25,11 @@ export function reviewAvtMigration(raw: unknown): AvtMigrationReview {
   const root = obj(raw)!;
   const candidates: AvtMigrationCandidate[] = [];
   const seen = new Set<string>();
-  for (const [field, kind] of [["characters", "character"], ["locations", "location"], ["items", "item"]] as const) {
+  for (const [field, kind] of [
+    ["characters", "character"],
+    ["locations", "location"],
+    ["items", "item"],
+  ] as const) {
     for (const value of list(root[field])) {
       const row = obj(value);
       const sourceId = str(row?.id);
@@ -36,7 +41,14 @@ export function reviewAvtMigration(raw: unknown): AvtMigrationReview {
       if (sourceId) seen.add(sourceId);
       if (name.length > 200) reasons.push("Name exceeds 200 characters");
       const description = str(row?.description).slice(0, 600);
-      candidates.push({ kind, sourceId, name: name.slice(0, 200), description, eligible: reasons.length === 0, reasons });
+      candidates.push({
+        kind,
+        sourceId,
+        name: name.slice(0, 200),
+        description,
+        eligible: reasons.length === 0,
+        reasons,
+      });
     }
   }
   return {

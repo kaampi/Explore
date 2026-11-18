@@ -7,6 +7,6 @@ export const anatomyImages: Record<string, AnatomyImage[]> = {
     { src: "/anatomy/humanoid_elf_male.png", label: "Elf Male" },
     { src: "/anatomy/humanoid_elf_female.png", label: "Elf Female" },
     { src: "/anatomy/humanoid_orc.png", label: "Orc" },
-    { src: "/anatomy/humanoid_dwarf.png", label: "Dwarf" }
-  ]
+    { src: "/anatomy/humanoid_dwarf.png", label: "Dwarf" },
+  ],
 };

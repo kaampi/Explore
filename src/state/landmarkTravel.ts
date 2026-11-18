@@ -36,9 +36,11 @@ export type LandmarkTravelPatch = {
   audioDataUrl?: string | undefined;
   audioGallery?: string[] | undefined;
   audioPlay?: NonNullable<Session["scene"]>["audioPlay"];
-  placeLayers: Array<Pick<Layer, "id" | "type" | "priority" | "content" | "active" | "aiGenerated"> & {
-    keywords?: string[];
-  }>;
+  placeLayers: Array<
+    Pick<Layer, "id" | "type" | "priority" | "content" | "active" | "aiGenerated"> & {
+      keywords?: string[];
+    }
+  >;
 };
 
 export type LandmarkExit = {
@@ -60,7 +62,7 @@ function currentLandmark(session: Session, places: LandmarkRef[]): LandmarkRef |
   return places.find(
     (item) =>
       foldPlace(item.name) === foldPlace(loc) ||
-      (venue !== undefined && foldPlace(item.name).includes(foldPlace(venue)))
+      (venue !== undefined && foldPlace(item.name).includes(foldPlace(venue))),
   );
 }
 
@@ -83,29 +85,50 @@ export function mapLandmarkTravels(session: Session, places: LandmarkRef[]): Lan
       label: landmarkLabel(item.name),
       dest: item.id,
       enabled: true,
-      kind: "travel" as const
+      kind: "travel" as const,
     }));
 }
 
 export function applyLandmarkTravel(session: Session, patch: LandmarkTravelPatch): void {
-  if (patch.travelMinutes !== undefined && Number.isSafeInteger(patch.travelMinutes) && patch.travelMinutes >= 0) {
+  if (
+    patch.travelMinutes !== undefined &&
+    Number.isSafeInteger(patch.travelMinutes) &&
+    patch.travelMinutes >= 0
+  ) {
     const total = (session.gameClock?.totalMinutes ?? INITIAL_GAME_MINUTES) + patch.travelMinutes;
-    if (Number.isSafeInteger(total)) session.gameClock = { totalMinutes: total,
-      lastAdvance: {minutes: patch.travelMinutes, reason: `Travel to ${patch.location}`} };
+    if (Number.isSafeInteger(total))
+      session.gameClock = {
+        totalMinutes: total,
+        lastAdvance: { minutes: patch.travelMinutes, reason: `Travel to ${patch.location}` },
+      };
   }
   initializeSpatialReferences(session);
   const previous = session.scene;
-  session.visitedMapPlaceIds=[...new Set([...(session.visitedMapPlaceIds??[]),...(previous?.placeId?[previous.placeId]:[]),patch.placeId])];
+  session.visitedMapPlaceIds = [
+    ...new Set([
+      ...(session.visitedMapPlaceIds ?? []),
+      ...(previous?.placeId ? [previous.placeId] : []),
+      patch.placeId,
+    ]),
+  ];
   // Resolve relative positions before changing what "here" refers to.
   const departure = session.player?.position.value?.trim() || previous?.location;
-  if(departure){for(const character of Object.values(session.characters)){if(character.position.lock === "unlocked" && /^(?:here|här)$/i.test(character.position.value.trim()))character.position={...character.position,value:departure};}}
+  if (departure) {
+    for (const character of Object.values(session.characters)) {
+      if (
+        character.position.lock === "unlocked" &&
+        /^(?:here|här)$/i.test(character.position.value.trim())
+      )
+        character.position = { ...character.position, value: departure };
+    }
+  }
   session.scene = {
     location: patch.location,
     placeId: patch.placeId,
     environment: {
       ...(patch.lighting?.trim() ? { lighting: patch.lighting.trim() } : {}),
       ...(patch.noise?.trim() ? { noise: patch.noise.trim() } : {}),
-      ...(patch.music !== undefined ? { music: patch.music } : {})
+      ...(patch.music !== undefined ? { music: patch.music } : {}),
     },
     ...(previous?.realm ? { realm: previous.realm } : {}),
     ...(previous?.realmNote ? { realmNote: previous.realmNote } : {}),
@@ -115,7 +138,7 @@ export function applyLandmarkTravel(session: Session, patch: LandmarkTravelPatch
     ...(patch.brief?.trim() ? { brief: patch.brief.trim() } : {}),
     ...copyPictureFields(patch),
     ...copyAudioFields(patch),
-    ...((patch.rooms ?? []).length > 0 ? { rooms: patch.rooms } : {})
+    ...((patch.rooms ?? []).length > 0 ? { rooms: patch.rooms } : {}),
   };
   session.openedRoomIds = [];
   session.whatNow = undefined;
@@ -125,23 +148,33 @@ export function applyLandmarkTravel(session: Session, patch: LandmarkTravelPatch
 
   session.layers = [
     ...session.layers.filter((layer) => !layer.id.startsWith("layer-place")),
-    ...patch.placeLayers
+    ...patch.placeLayers,
   ];
-  if (patch.routeInfo) session.layers.push({id:"layer-place-route",type:"environment",priority:11,content:`Route just travelled (do not repeat the journey): ${patch.routeInfo}`,active:true,aiGenerated:false});
+  if (patch.routeInfo)
+    session.layers.push({
+      id: "layer-place-route",
+      type: "environment",
+      priority: 11,
+      content: `Route just travelled (do not repeat the journey): ${patch.routeInfo}`,
+      active: true,
+      aiGenerated: false,
+    });
 
-  if(session.spatialPlaces?.length)initializeSpatialReferences(session,[{id:patch.placeId,name:patch.location.replace(/^Outside\s+/i,"")}]);
-  const destinationRef=resolveLocation(session,patch.location);
+  if (session.spatialPlaces?.length)
+    initializeSpatialReferences(session, [
+      { id: patch.placeId, name: patch.location.replace(/^Outside\s+/i, "") },
+    ]);
+  const destinationRef = resolveLocation(session, patch.location);
   const here = patch.location;
   if (session.player && session.player.position.lock === "unlocked") {
     session.player.position = { ...session.player.position, value: here };
-    if(destinationRef)session.player.locationRef=destinationRef;
+    if (destinationRef) session.player.locationRef = destinationRef;
   }
   for (const id of travelingPartyIds(session)) {
     const character = session.characters[id];
     if (character && character.position.lock === "unlocked") {
       character.position = { ...character.position, value: here };
-      if(destinationRef)character.locationRef=destinationRef;
+      if (destinationRef) character.locationRef = destinationRef;
     }
   }
 }
-

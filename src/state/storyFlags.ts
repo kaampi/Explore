@@ -22,7 +22,7 @@ export function hasStoryFlag(session: Pick<Session, "storyFlags">, flag: string)
 export function storyFlagsSatisfied(
   session: Pick<Session, "storyFlags">,
   requires?: string[],
-  requiresAbsent?: string[]
+  requiresAbsent?: string[],
 ): boolean {
   if (requires?.some((flag) => !hasStoryFlag(session, flag))) return false;
   if (requiresAbsent?.some((flag) => hasStoryFlag(session, flag))) return false;
@@ -39,7 +39,10 @@ export function nextFlagsAfterSet(flags: string[] | undefined, flag: string): st
 }
 
 /** Next `storyFlags` after clearing `flag`, or undefined if it was already absent (no-op). */
-export function nextFlagsAfterClear(flags: string[] | undefined, flag: string): string[] | undefined {
+export function nextFlagsAfterClear(
+  flags: string[] | undefined,
+  flag: string,
+): string[] | undefined {
   const target = normalizeStoryFlag(flag);
   if (!target) return undefined;
   const current = flags ?? [];
@@ -53,7 +56,10 @@ export function nextFlagsAfterClear(flags: string[] | undefined, flag: string): 
  * campaign sees them too. Order-sensitive: flags are set in a specific
  * sequence and that sequence is itself part of what "the same" means here.
  */
-export function storyFlagsDiffer(campaignFlags: string[], sessionFlags: string[] | undefined): boolean {
+export function storyFlagsDiffer(
+  campaignFlags: string[],
+  sessionFlags: string[] | undefined,
+): boolean {
   const live = sessionFlags ?? [];
   if (campaignFlags.length !== live.length) return true;
   return campaignFlags.some((flag, index) => flag !== live[index]);

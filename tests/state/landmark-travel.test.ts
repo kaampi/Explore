@@ -2,7 +2,11 @@ import { describe, it, expect } from "vitest";
 import { EventLog } from "@events/EventLog";
 import { StateEngine } from "@state/StateEngine";
 import { applyLandmarkTravel, mapLandmarkTravels } from "@state/landmarkTravel";
-import { EXAMPLE_AURORA_ROOMS, EXAMPLE_PLACE_ID, EXAMPLE_REALM_DUNBAAR_ID } from "@library/exampleTemplates";
+import {
+  EXAMPLE_AURORA_ROOMS,
+  EXAMPLE_PLACE_ID,
+  EXAMPLE_REALM_DUNBAAR_ID,
+} from "@library/exampleTemplates";
 import type { Session } from "@state/StateSchema";
 
 function makeSession(overrides: Partial<Session> = {}): Session {
@@ -19,19 +23,19 @@ function makeSession(overrides: Partial<Session> = {}): Session {
       emma: {
         name: "Emma",
         position: { value: "behind the bar", lock: "unlocked" },
-        mood: { value: "neutral", lock: "unlocked" }
-      }
+        mood: { value: "neutral", lock: "unlocked" },
+      },
     },
     scene: {
       location: "The Aurora Room — a quiet late-night bar",
       placeId: EXAMPLE_PLACE_ID,
       environment: { lighting: "low" },
       rooms: EXAMPLE_AURORA_ROOMS,
-      note: "Jazz and dark wood."
+      note: "Jazz and dark wood.",
     },
     player: {
       position: { value: "at the bar", lock: "unlocked" },
-      status: { value: "awake", lock: "unlocked" }
+      status: { value: "awake", lock: "unlocked" },
     },
     partyIds: [],
     layers: [
@@ -41,7 +45,7 @@ function makeSession(overrides: Partial<Session> = {}): Session {
         priority: 10,
         content: "Jazz and dark wood.",
         active: true,
-        aiGenerated: false
+        aiGenerated: false,
       },
       {
         id: "layer-core-emma",
@@ -49,8 +53,8 @@ function makeSession(overrides: Partial<Session> = {}): Session {
         priority: 0,
         content: "A reserved bartender.",
         active: true,
-        aiGenerated: false
-      }
+        aiGenerated: false,
+      },
     ],
     relationships: {},
     memory: { episodic: [], semantic: [], relational: [] },
@@ -58,34 +62,40 @@ function makeSession(overrides: Partial<Session> = {}): Session {
     events: [],
     snapshots: [],
     diagnostics: [],
-    ...overrides
+    ...overrides,
   };
 }
 
 const oasis = {
   id: "place-oasis",
   name: "Red Oasis",
-  realmId: EXAMPLE_REALM_DUNBAAR_ID
+  realmId: EXAMPLE_REALM_DUNBAAR_ID,
 };
 
 const places = [
-  { id: EXAMPLE_PLACE_ID, name: "The Aurora Room — a quiet late-night bar", realmId: EXAMPLE_REALM_DUNBAAR_ID },
-  oasis
+  {
+    id: EXAMPLE_PLACE_ID,
+    name: "The Aurora Room — a quiet late-night bar",
+    realmId: EXAMPLE_REALM_DUNBAAR_ID,
+  },
+  oasis,
 ];
 
 describe("mapLandmarkTravels", () => {
   it("lists other landmarks from the floor, not from a side room", () => {
-    expect(mapLandmarkTravels(makeSession(), places).map((item) => item.label)).toEqual(["Red Oasis"]);
+    expect(mapLandmarkTravels(makeSession(), places).map((item) => item.label)).toEqual([
+      "Red Oasis",
+    ]);
     expect(
       mapLandmarkTravels(
         makeSession({
           player: {
             position: { value: "Emma's room", lock: "unlocked" },
-            status: { value: "awake", lock: "unlocked" }
-          }
+            status: { value: "awake", lock: "unlocked" },
+          },
         }),
-        places
-      )
+        places,
+      ),
     ).toEqual([]);
   });
 });
@@ -98,11 +108,16 @@ describe("applyLandmarkTravel", () => {
       location: oasis.name,
       lighting: "lanterns",
       note: "Warm sand.",
-      rooms: [{
-        description: "",
-        fromRoomIds: [],
-        gate: "open" as const,
-        id: "tent", label: "tent", keywords: [] }],
+      rooms: [
+        {
+          description: "",
+          fromRoomIds: [],
+          gate: "open" as const,
+          id: "tent",
+          label: "tent",
+          keywords: [],
+        },
+      ],
       placeLayers: [
         {
           id: "layer-place",
@@ -110,9 +125,9 @@ describe("applyLandmarkTravel", () => {
           priority: 10,
           content: "Warm sand.",
           active: true,
-          aiGenerated: false
-        }
-      ]
+          aiGenerated: false,
+        },
+      ],
     });
     expect(session.scene?.placeId).toBe(oasis.id);
     expect(session.scene?.location).toBe("Red Oasis");
@@ -128,7 +143,7 @@ describe("applyLandmarkTravel", () => {
     applyLandmarkTravel(session, {
       placeId: oasis.id,
       location: oasis.name,
-      placeLayers: []
+      placeLayers: [],
     });
     expect(session.characters.emma?.position.value).toBe("Red Oasis");
   });
@@ -138,7 +153,7 @@ describe("applyLandmarkTravel", () => {
     applyLandmarkTravel(session, {
       placeId: oasis.id,
       location: oasis.name,
-      placeLayers: []
+      placeLayers: [],
     });
     expect(session.characters.emma?.position.value).toBe("behind the bar");
     expect(session.player?.position.value).toBe("Red Oasis");
@@ -151,10 +166,9 @@ describe("StateEngine.travelToLandmark", () => {
     engine.travelToLandmark({
       placeId: oasis.id,
       location: oasis.name,
-      placeLayers: []
+      placeLayers: [],
     });
     expect(engine.getSession().scene?.placeId).toBe(oasis.id);
     expect(engine.getEventLog().last()?.type).toBe("landmark_traveled");
   });
 });
-

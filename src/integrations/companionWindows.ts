@@ -23,6 +23,9 @@ export function openCompanionWindow(app: CompanionAppId, address: string): void 
 
 /** Desktop opens an installed sibling; browsers retain their existing window behavior. */
 export async function openCompanionApp(app: CompanionAppId, address: string): Promise<void> {
-  if (isTauri()) { await invoke("open_companion_app", { appId: app }); return; }
+  if (isTauri()) {
+    await invoke("open_companion_app", { appId: app });
+    return;
+  }
   openCompanionWindow(app, address);
 }

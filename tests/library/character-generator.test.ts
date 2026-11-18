@@ -28,7 +28,7 @@ describe("generateCharacter", () => {
     const first = generateCharacter({ brief: "", seed: 1 });
     const second = generateCharacter({ brief: "", seed: 2 });
     expect(`${first.name} ${first.familyName} ${first.appearance}`).not.toBe(
-      `${second.name} ${second.familyName} ${second.appearance}`
+      `${second.name} ${second.familyName} ${second.appearance}`,
     );
   });
 
@@ -37,7 +37,7 @@ describe("generateCharacter", () => {
       brief: "A wary night bartender who notices everything",
       pronoun: "she",
       approximateAge: 41,
-      seed: 11
+      seed: 11,
     });
     expect(card.pronoun).toBe("she");
     expect(card.approximateAge).toBe(41);
@@ -51,7 +51,7 @@ describe("generateCharacter", () => {
   it("reads Swedish cues without copying clothes or a kink into the card", () => {
     const card = generateCharacter({
       brief: "hon, 34, vaksam bartender med rött hår, wears a leather jacket, kink",
-      seed: 4
+      seed: 4,
     });
     expect(card.pronoun).toBe("she");
     expect(card.approximateAge).toBe(34);
@@ -76,7 +76,7 @@ describe("generateCharacter", () => {
     const forced = generateCharacter({ brief: "korthugget scholar", speech: "rambling", seed: 5 });
     const decomposed = generateCharacter({
       brief: "a dry sailor, " + "svävande".normalize("NFD"),
-      seed: 5
+      seed: 5,
     });
     expect(clipped.speech).toMatch(/clipped/i);
     expect(clipped.tags).toContain("scholar");

@@ -3,7 +3,7 @@ import {
   mustForceInactiveOnAdd,
   resolveLayerActivationChange,
   shouldDiscardAiLayerProposal,
-  shouldBlockLayerActivation
+  shouldBlockLayerActivation,
 } from "@layers/LayerPolicy";
 import type { Session } from "@state/StateSchema";
 
@@ -26,7 +26,7 @@ function makeSession(overrides: Partial<Session> = {}): Session {
     partyIds: [],
     partyHoldIds: [],
     partyPendingIds: [],
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -61,7 +61,7 @@ describe("shouldDiscardAiLayerProposal", () => {
     const decision = shouldDiscardAiLayerProposal(
       "ai_approved_state_mutation",
       { type: "environment", content: "There is a spare room down the hall." },
-      makeSession()
+      makeSession(),
     );
     expect(decision.discard).toBe(true);
   });
@@ -70,7 +70,7 @@ describe("shouldDiscardAiLayerProposal", () => {
     const decision = shouldDiscardAiLayerProposal(
       "ai_inference",
       { type: "environment", content: "A stray dog sleeps by the door." },
-      makeSession()
+      makeSession(),
     );
     expect(decision.discard).toBe(true);
   });
@@ -81,15 +81,15 @@ describe("shouldDiscardAiLayerProposal", () => {
       shouldDiscardAiLayerProposal(
         "ai_approved_state_mutation",
         { type: "environment", content: "It's raining on the windows." },
-        session
-      ).discard
+        session,
+      ).discard,
     ).toBe(false);
     expect(
       shouldDiscardAiLayerProposal(
         "ai_approved_state_mutation",
         { type: "core", content: "She keeps a spare room in her heart." },
-        session
-      ).discard
+        session,
+      ).discard,
     ).toBe(false);
   });
 
@@ -98,8 +98,8 @@ describe("shouldDiscardAiLayerProposal", () => {
       shouldDiscardAiLayerProposal(
         "player_manual_state",
         { type: "environment", content: "Guest rooms upstairs." },
-        makeSession()
-      ).discard
+        makeSession(),
+      ).discard,
     ).toBe(false);
   });
 
@@ -112,16 +112,16 @@ describe("shouldDiscardAiLayerProposal", () => {
           priority: 0,
           content: "An inn. Guest rooms upstairs.",
           active: true,
-          aiGenerated: false
-        }
-      ]
+          aiGenerated: false,
+        },
+      ],
     });
     expect(
       shouldDiscardAiLayerProposal(
         "ai_approved_state_mutation",
         { type: "environment", content: "The guest room is quiet tonight." },
-        session
-      ).discard
+        session,
+      ).discard,
     ).toBe(false);
   });
 });
@@ -132,9 +132,9 @@ describe("shouldBlockLayerActivation", () => {
       {
         type: "environment",
         content: "There is a spare room down the hall.",
-        aiGenerated: true
+        aiGenerated: true,
       },
-      makeSession()
+      makeSession(),
     );
     expect(decision.discard).toBe(true);
   });
@@ -143,9 +143,8 @@ describe("shouldBlockLayerActivation", () => {
     expect(
       shouldBlockLayerActivation(
         { type: "environment", content: "Guest rooms upstairs.", aiGenerated: false },
-        makeSession()
-      ).discard
+        makeSession(),
+      ).discard,
     ).toBe(false);
   });
 });
-

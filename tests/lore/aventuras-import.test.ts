@@ -23,23 +23,32 @@ describe("Aventuras lorebook exchange import", () => {
     expect(book.origin?.format).toBe("aventuras");
     expect(book.raw).toEqual(raw);
     expect(book.entries[0]).toMatchObject({
-      title: "Old Keep", mode: "keywords", approved: false,
+      title: "Old Keep",
+      mode: "keywords",
+      approved: false,
       entity: { kind: "location" },
     });
   });
   it("never activates disabled or private entries", () => {
-    const book = importWorldData(envelope([
-      entry({ injectionMode: "never" }),
-      entry({ hiddenInfo: "Secret" }),
-      entry({ description: "{{macro}}" }),
-    ]), "lore.json");
-    expect(book.entries.every(row => row.mode === "dormant" && !row.approved)).toBe(true);
+    const book = importWorldData(
+      envelope([
+        entry({ injectionMode: "never" }),
+        entry({ hiddenInfo: "Secret" }),
+        entry({ description: "{{macro}}" }),
+      ]),
+      "lore.json",
+    );
+    expect(book.entries.every((row) => row.mode === "dormant" && !row.approved)).toBe(true);
   });
   it("rejects wrong entity and unsupported versions without SillyTavern fallback", () => {
-    expect(importWorldData(envelope([], "character"), "char.json").origin?.format).toBe("aventuras");
+    expect(importWorldData(envelope([], "character"), "char.json").origin?.format).toBe(
+      "aventuras",
+    );
     expect(() => importWorldData(envelope([], "lorebook", "2.0.0"), "lore.json")).toThrow();
   });
   it("rejects more than 5000 entries", () => {
-    expect(() => importWorldData(envelope(Array.from({ length: 5001 }, () => entry())), "large.json")).toThrow();
+    expect(() =>
+      importWorldData(envelope(Array.from({ length: 5001 }, () => entry())), "large.json"),
+    ).toThrow();
   });
 });

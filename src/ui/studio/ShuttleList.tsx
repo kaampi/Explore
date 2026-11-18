@@ -10,7 +10,7 @@ function Row({
   item,
   selected,
   onSelect,
-  onMove
+  onMove,
 }: {
   item: ShuttleItem;
   selected: boolean;
@@ -39,7 +39,7 @@ export function ShuttleList({
   left,
   right,
   onAdd,
-  onRemove
+  onRemove,
 }: {
   leftHeading: string;
   rightHeading: string;
@@ -91,10 +91,22 @@ export function ShuttleList({
         </div>
       </div>
       <div className="shuttle__actions">
-        <button type="button" className="shuttle__move" disabled={!canAdd} onClick={add} aria-label="Add to campaign">
+        <button
+          type="button"
+          className="shuttle__move"
+          disabled={!canAdd}
+          onClick={add}
+          aria-label="Add to adventure"
+        >
           Add <span aria-hidden="true">&gt;</span>
         </button>
-        <button type="button" className="shuttle__move" disabled={!canRemove} onClick={remove} aria-label="Remove from campaign">
+        <button
+          type="button"
+          className="shuttle__move"
+          disabled={!canRemove}
+          onClick={remove}
+          aria-label="Remove from adventure"
+        >
           <span aria-hidden="true">&lt;</span> Remove
         </button>
       </div>

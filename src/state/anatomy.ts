@@ -7,11 +7,11 @@ import type { Session, PhysicalRelation } from "./StateSchema";
  */
 export function validateAnatomicalRelation(
   session: Pick<Session, "characters" | "anatomyTemplates">,
-  relation: PhysicalRelation
+  relation: PhysicalRelation,
 ): string | undefined {
   for (const [entityId, partId] of [
     [relation.subject, relation.subjectPart],
-    [relation.target, relation.targetPart]
+    [relation.target, relation.targetPart],
   ] as const) {
     if (!partId) continue;
     const character = session.characters[entityId];
@@ -21,7 +21,10 @@ export function validateAnatomicalRelation(
     if (!template) continue;
     const added = character.anatomyOverrides?.addedParts ?? [];
     const removed = character.anatomyOverrides?.removedParts ?? [];
-    if ((!template.parts.some((part) => part.id === partId) && !added.includes(partId)) || isAnatomyPartRemoved(template, removed, partId)) {
+    if (
+      (!template.parts.some((part) => part.id === partId) && !added.includes(partId)) ||
+      isAnatomyPartRemoved(template, removed, partId)
+    ) {
       return `${entityId} has no available body part "${partId}" in anatomy template "${template.id}".`;
     }
   }
@@ -29,10 +32,7 @@ export function validateAnatomicalRelation(
 }
 
 /** Pin independent template snapshots to a newly created session. */
-export function pinSessionAnatomy<T extends Session>(
-  session: T,
-  library: AnatomyTemplate[]
-): T {
+export function pinSessionAnatomy<T extends Session>(session: T, library: AnatomyTemplate[]): T {
   const templates: Record<string, AnatomyTemplate> = {};
   for (const character of Object.values(session.characters)) {
     const id = character.anatomyTemplateId;
@@ -43,13 +43,31 @@ export function pinSessionAnatomy<T extends Session>(
   return Object.keys(templates).length ? { ...session, anatomyTemplates: templates } : session;
 }
 
-export function isAnatomyPartRemoved(template: AnatomyTemplate, removed: readonly string[], partId: string): boolean {
+export function isAnatomyPartRemoved(
+  template: AnatomyTemplate,
+  removed: readonly string[],
+  partId: string,
+): boolean {
   const seen = new Set<string>();
   let id: string | undefined = partId;
   while (id && !seen.has(id)) {
     if (removed.includes(id)) return true;
     seen.add(id);
-    id = template.parts.find(part => part.id === id)?.parentId;
+    id = template.parts.find((part) => part.id === id)?.parentId;
   }
   return false;
+}
+
+/** Pin the names of the factions the session's characters belong to, so later edits do not change them. */
+export function pinSessionFactions<T extends Session>(
+  session: T,
+  library: ReadonlyArray<{ id: string; name: string }>,
+): T {
+  const factions: Record<string, { name: string }> = {};
+  for (const character of Object.values(session.characters))
+    for (const id of character.factionIds ?? []) {
+      const faction = library.find((item) => item.id === id);
+      if (faction) factions[id] = { name: faction.name };
+    }
+  return Object.keys(factions).length ? { ...session, factions } : session;
 }

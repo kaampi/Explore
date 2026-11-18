@@ -17,36 +17,52 @@ export function buildAvtPlayableSession(
   if (!sessionId.trim()) throw new Error("A new session ID is required.");
   if (!selected.length) throw new Error("Select at least one reviewed entity.");
   const keys = new Set<string>();
-  const chosen = selected.map(item => {
+  const chosen = selected.map((item) => {
     const key = `${item.kind}:\0${item.sourceId}`;
     if (keys.has(key)) throw new Error("Duplicate entity selection.");
     keys.add(key);
-    const candidate = review.candidates.find(c => c.kind === item.kind && c.sourceId === item.sourceId);
+    const candidate = review.candidates.find(
+      (c) => c.kind === item.kind && c.sourceId === item.sourceId,
+    );
     if (!candidate || !candidate.eligible || !candidate.name.trim())
       throw new Error("Selection contains an unapproved or unknown source entity.");
     return candidate;
   });
-  if (chosen.filter(c => c.kind === "character").length > 100) throw new Error("Select at most 100 characters.");
-  if (chosen.filter(c => c.kind === "item").length > 500) throw new Error("Select at most 500 items.");
-  const characters: CharacterDraft[] = chosen.filter(c => c.kind === "character").map(c => ({
-    name: c.name,
-    personality: "",
-    mood: "neutral",
-    position: "here",
-  }));
-  if (chosen.filter(c => c.kind === "location").length > 1) throw new Error("Select only one starting location.");
-  const location = chosen.find(c => c.kind === "location")?.name ?? "Imported world";
-  const objects = chosen.filter(c => c.kind === "item").map((c, index) => ({
-    id: `imported-item-${index + 1}`,
-    name: c.name,
-    note: "",
-    tags: [],
-  }));
-  const session = createSessionFromSetup({
-    location, lighting: "", noise: "", music: false, placeNote: "",
-    characters,
-    objects,
-  }, sessionId);
+  if (chosen.filter((c) => c.kind === "character").length > 100)
+    throw new Error("Select at most 100 characters.");
+  if (chosen.filter((c) => c.kind === "item").length > 500)
+    throw new Error("Select at most 500 items.");
+  const characters: CharacterDraft[] = chosen
+    .filter((c) => c.kind === "character")
+    .map((c) => ({
+      name: c.name,
+      personality: "",
+      mood: "neutral",
+      position: "here",
+    }));
+  if (chosen.filter((c) => c.kind === "location").length > 1)
+    throw new Error("Select only one starting location.");
+  const location = chosen.find((c) => c.kind === "location")?.name ?? "Imported world";
+  const objects = chosen
+    .filter((c) => c.kind === "item")
+    .map((c, index) => ({
+      id: `imported-item-${index + 1}`,
+      name: c.name,
+      note: "",
+      tags: [],
+    }));
+  const session = createSessionFromSetup(
+    {
+      location,
+      lighting: "",
+      noise: "",
+      music: false,
+      placeNote: "",
+      characters,
+      objects,
+    },
+    sessionId,
+  );
   return parseSession({
     ...session,
     layers: [],

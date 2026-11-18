@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { newRulesetTemplate, parseChoiceOptions, parseRulesetTemplate } from "@library/LibrarySchema";
+import {
+  newRulesetTemplate,
+  parseChoiceOptions,
+  parseRulesetTemplate,
+} from "@library/LibrarySchema";
 import { exampleClosenessRuleset, exampleFantasyRuleset } from "@library/exampleTemplates";
 
 describe("ruleset templates", () => {
@@ -12,13 +16,22 @@ describe("ruleset templates", () => {
           midMeaning: "",
           options: [],
           maxShift: 0,
-          id: "safety", name: "Trygghet", kind: "number", min: 0, max: 100, highMeaning: "{{char}} can stay open.", lowMeaning: "{{char}} keeps distance." }
+          id: "safety",
+          name: "Trygghet",
+          kind: "number",
+          min: 0,
+          max: 100,
+          highMeaning: "{{char}} can stay open.",
+          lowMeaning: "{{char}} keeps distance.",
+        },
       ],
-      source: "player"
+      source: "player",
     });
     expect(template.id).toBeTruthy();
     expect(parseRulesetTemplate(template).attributes[0]?.name).toBe("Trygghet");
-    expect(parseRulesetTemplate(template).attributes[0]?.highMeaning).toBe("{{char}} can stay open.");
+    expect(parseRulesetTemplate(template).attributes[0]?.highMeaning).toBe(
+      "{{char}} can stay open.",
+    );
   });
 
   it("stores choice lists on a text field", () => {
@@ -34,10 +47,10 @@ describe("ruleset templates", () => {
           name: "Orientation",
           kind: "text",
           description: "Honor the live value only.",
-          options: ["Hetero", "Homo", "Bi"]
-        }
+          options: ["Hetero", "Homo", "Bi"],
+        },
       ],
-      source: "player"
+      source: "player",
     });
     expect(parseRulesetTemplate(template).attributes[0]?.options).toEqual(["Hetero", "Homo", "Bi"]);
   });
@@ -71,9 +84,15 @@ describe("ruleset templates", () => {
           midMeaning: "",
           options: [],
           maxShift: 0,
-          id: "passion", name: "Passion", kind: "number", min: 1, max: 18, role: "desire" }
+          id: "passion",
+          name: "Passion",
+          kind: "number",
+          min: 1,
+          max: 18,
+          role: "desire",
+        },
       ],
-      source: "player"
+      source: "player",
     });
     expect(parseRulesetTemplate(template).attributes[0]?.role).toBe("desire");
   });
@@ -92,14 +111,13 @@ describe("ruleset templates", () => {
           id: "orientation",
           name: "Orientation",
           kind: "text",
-          options: ["Hetero", "", "Bi", "  "]
-        }
+          options: ["Hetero", "", "Bi", "  "],
+        },
       ],
       source: "player",
       createdAt: "2026-01-01T00:00:00.000Z",
-      updatedAt: "2026-01-01T00:00:00.000Z"
+      updatedAt: "2026-01-01T00:00:00.000Z",
     });
     expect(template.attributes[0]?.options).toEqual(["Hetero", "Bi"]);
   });
 });
-

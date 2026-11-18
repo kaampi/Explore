@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 import { newVoiceTemplate, type LibrarySource, type VoiceTemplate } from "@library/LibrarySchema";
 import { exampleVoiceTemplates, mergeWithExamples } from "@library/exampleTemplates";
+import { useTranslate } from "../i18n/LanguageProvider";
 import { withOriginalTimestamps } from "@library/fromForm";
 import { StudioList } from "./StudioList";
 import { FormSection } from "./FormSection";
@@ -26,11 +27,12 @@ function draftFrom(template: VoiceTemplate): Draft {
     name: template.name,
     instruction: template.instruction,
     source: template.source,
-    createdAt: template.createdAt
+    createdAt: template.createdAt,
   };
 }
 
 export function VoiceStudio({ repo }: { repo: IndexedDBRepository }) {
+  const t = useTranslate();
   const [library, setLibrary] = useState<VoiceTemplate[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -84,10 +86,13 @@ export function VoiceStudio({ repo }: { repo: IndexedDBRepository }) {
         ...(draft.id ? { id: draft.id } : {}),
         name: name || "Untitled voice",
         instruction,
-        source: draft.source
+        source: draft.source,
       });
       const previous = library.find((item) => item.id === built.id);
-      const saved = withOriginalTimestamps(built, previous ?? (draft.createdAt ? { createdAt: draft.createdAt } : undefined));
+      const saved = withOriginalTimestamps(
+        built,
+        previous ?? (draft.createdAt ? { createdAt: draft.createdAt } : undefined),
+      );
       await repo.saveVoice(saved);
       await refresh();
       setSelectedId(saved.id);
@@ -118,7 +123,7 @@ export function VoiceStudio({ repo }: { repo: IndexedDBRepository }) {
         items={items.map((item) => ({
           id: item.id,
           name: item.name,
-          caption: sourceCaption(item.source, savedIds.has(item.id))
+          caption: sourceCaption(item.source, savedIds.has(item.id)),
         }))}
         selectedId={selectedId}
         onSelect={open}
@@ -135,7 +140,9 @@ export function VoiceStudio({ repo }: { repo: IndexedDBRepository }) {
       />
       <section className="studio-sheet studio-sheet--form">
         {!draft && (
-          <p className="inspector-empty">How the scene is told — not what the world is. Story lives on the other shelf.</p>
+          <p className="inspector-empty">
+            How the scene is told — not what the world is. Story lives on the other shelf.
+          </p>
         )}
         {draft && (
           <>
@@ -154,13 +161,18 @@ export function VoiceStudio({ repo }: { repo: IndexedDBRepository }) {
                 className="setup-field__story"
                 value={draft.instruction}
                 onChange={(e) => setDraft({ ...draft, instruction: e.target.value })}
-                placeholder="Du är Spelledare…"
+                placeholder={t("voiceInstructionPlaceholder")}
               />
             </FormSection>
             {notice && <p className="setup-notice">{notice}</p>}
             {error && <p className="setup-error">{error}</p>}
             <div className="studio-sheet__actions">
-              <button type="button" className="setup-start" disabled={busy} onClick={() => void save()}>
+              <button
+                type="button"
+                className="setup-start"
+                disabled={busy}
+                onClick={() => void save()}
+              >
                 Save
               </button>
               {saved && (

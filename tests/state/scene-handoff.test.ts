@@ -24,16 +24,16 @@ function makeSession(overrides: Partial<Session> = {}): Session {
     diagnostics: [],
     player: {
       position: { value: "The Aurora Room", lock: "unlocked" },
-      status: { value: "awake", lock: "unlocked" }
+      status: { value: "awake", lock: "unlocked" },
     },
-    ...overrides
+    ...overrides,
   };
 }
 
 describe("draftSceneHandoff", () => {
   it("keeps the written agreement", () => {
     expect(draftSceneHandoff(makeSession({ outgoingHandoff: "He asked to sleep. No sex." }))).toBe(
-      "He asked to sleep. No sex."
+      "He asked to sleep. No sex.",
     );
   });
 
@@ -44,10 +44,10 @@ describe("draftSceneHandoff", () => {
           handoff: "He asked to sleep. No sex.",
           conversation: [
             { turn: 1, role: "player", content: "I just need to sleep." },
-            { turn: 2, role: "character", speaker: "emma", content: "She unbuttons her blouse." }
-          ]
-        })
-      )
+            { turn: 2, role: "character", speaker: "emma", content: "She unbuttons her blouse." },
+          ],
+        }),
+      ),
     ).toBe("Left The Aurora Room. They said: I just need to sleep.");
   });
 
@@ -56,10 +56,9 @@ describe("draftSceneHandoff", () => {
       draftSceneHandoff(
         makeSession({
           handoff: "He asked to sleep. No sex.",
-          outgoingHandoff: "We fled to the cabin together."
-        })
-      )
+          outgoingHandoff: "We fled to the cabin together.",
+        }),
+      ),
     ).toBe("We fled to the cabin together.");
   });
 });
-

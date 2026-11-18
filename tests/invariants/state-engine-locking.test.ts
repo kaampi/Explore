@@ -17,8 +17,8 @@ function makeSession(): Session {
     characters: {
       emma: {
         position: { value: "table", lock: "unlocked" },
-        mood: { value: "angry", lock: "unlocked" }
-      }
+        mood: { value: "angry", lock: "unlocked" },
+      },
     },
     relationships: {},
     layers: [],
@@ -26,7 +26,7 @@ function makeSession(): Session {
     conversation: [],
     events: [],
     snapshots: [],
-    diagnostics: []
+    diagnostics: [],
   };
 }
 
@@ -44,7 +44,7 @@ describe("StateEngine.proposeLockChange", () => {
       path: "characters.emma.mood",
       requestedLock: "player_locked",
       source: "player_manual_state",
-      expectedStateVersion: 0
+      expectedStateVersion: 0,
     });
 
     expect(result.committed).toBe(true);
@@ -57,7 +57,7 @@ describe("StateEngine.proposeLockChange", () => {
       path: "characters.emma.mood",
       requestedLock: "player_locked",
       source: "ai_approved_state_mutation",
-      expectedStateVersion: 0
+      expectedStateVersion: 0,
     });
 
     expect(result.committed).toBe(false);
@@ -69,7 +69,7 @@ describe("StateEngine.proposeLockChange", () => {
       path: "characters.emma.mood",
       requestedLock: "player_locked",
       source: "player_manual_state",
-      expectedStateVersion: 0
+      expectedStateVersion: 0,
     });
 
     // state version has advanced to 1 after the lock change
@@ -77,7 +77,7 @@ describe("StateEngine.proposeLockChange", () => {
       path: "characters.emma.mood",
       value: "calm",
       source: "ai_approved_state_mutation",
-      expectedStateVersion: 1
+      expectedStateVersion: 1,
     });
 
     expect(mutationResult.committed).toBe(false);
@@ -89,10 +89,9 @@ describe("StateEngine.proposeLockChange", () => {
       path: "characters.emma.mood",
       requestedLock: "player_locked",
       source: "player_manual_state",
-      expectedStateVersion: 999
+      expectedStateVersion: 999,
     });
 
     expect(result.committed).toBe(false);
   });
 });
-

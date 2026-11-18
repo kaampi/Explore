@@ -1,2 +1,16 @@
-import type { MapNode,WorldMap } from "./worldMap";
-export function knownMapNodes(map:WorldMap,discovered:ReadonlySet<string>):MapNode[]{const byId=new Map(map.nodes.map(n=>[n.id,n]));return map.nodes.filter(n=>{const seen=new Set<string>();let current:MapNode|undefined=n;while(current){if(seen.has(current.id))return false;seen.add(current.id);if(current.visibility&&current.visibility!=="visible"&&!discovered.has(current.id))return false;current=current.parentId?byId.get(current.parentId):undefined;}return true;});}
+import type { MapNode, WorldMap } from "./worldMap";
+export function knownMapNodes(map: WorldMap, discovered: ReadonlySet<string>): MapNode[] {
+  const byId = new Map(map.nodes.map((n) => [n.id, n]));
+  return map.nodes.filter((n) => {
+    const seen = new Set<string>();
+    let current: MapNode | undefined = n;
+    while (current) {
+      if (seen.has(current.id)) return false;
+      seen.add(current.id);
+      if (current.visibility && current.visibility !== "visible" && !discovered.has(current.id))
+        return false;
+      current = current.parentId ? byId.get(current.parentId) : undefined;
+    }
+    return true;
+  });
+}

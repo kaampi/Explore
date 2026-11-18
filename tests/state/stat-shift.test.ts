@@ -29,7 +29,7 @@ function makeSession(): Session {
           highMeaning: "",
           lowMeaning: "",
           midMeaning: "",
-          options: []
+          options: [],
         },
         {
           id: "boldness",
@@ -42,7 +42,7 @@ function makeSession(): Session {
           highMeaning: "",
           lowMeaning: "",
           midMeaning: "",
-          options: []
+          options: [],
         },
         {
           id: "strength",
@@ -55,9 +55,9 @@ function makeSession(): Session {
           highMeaning: "",
           lowMeaning: "",
           midMeaning: "",
-          options: []
-        }
-      ]
+          options: [],
+        },
+      ],
     },
     characters: {
       emma: {
@@ -66,9 +66,9 @@ function makeSession(): Session {
         stats: {
           arousal: { value: 40, lock: "unlocked" },
           boldness: { value: 50, lock: "unlocked" },
-          strength: { value: 12, lock: "unlocked" }
-        }
-      }
+          strength: { value: 12, lock: "unlocked" },
+        },
+      },
     },
     relationships: {},
     layers: [],
@@ -76,7 +76,7 @@ function makeSession(): Session {
     conversation: [],
     events: [],
     snapshots: [],
-    diagnostics: []
+    diagnostics: [],
   });
 }
 
@@ -92,7 +92,7 @@ describe("Pass 2 rule-set stats", () => {
   it("lists only fields whose maxShift is above 0", () => {
     expect(movableStatsForCharacter(makeSession(), "emma").map((row) => row.id)).toEqual([
       "arousal",
-      "boldness"
+      "boldness",
     ]);
   });
 
@@ -102,7 +102,7 @@ describe("Pass 2 rule-set stats", () => {
       path: "characters.emma.stats.arousal",
       value: 90,
       source: "ai_approved_state_mutation",
-      expectedStateVersion: 0
+      expectedStateVersion: 0,
     });
     expect(result.committed).toBe(true);
     expect(engine.getSession().characters.emma?.stats?.arousal?.value).toBe(55);
@@ -114,7 +114,7 @@ describe("Pass 2 rule-set stats", () => {
       path: "characters.emma.stats.boldness",
       value: 80,
       source: "ai_approved_state_mutation",
-      expectedStateVersion: 0
+      expectedStateVersion: 0,
     });
     expect(engine.getSession().characters.emma?.stats?.boldness?.value).toBe(53);
   });
@@ -125,7 +125,7 @@ describe("Pass 2 rule-set stats", () => {
       path: "characters.emma.stats.strength",
       value: 16,
       source: "ai_approved_state_mutation",
-      expectedStateVersion: 0
+      expectedStateVersion: 0,
     });
     expect(result.committed).toBe(false);
     expect(engine.getSession().characters.emma?.stats?.strength?.value).toBe(12);
@@ -137,10 +137,9 @@ describe("Pass 2 rule-set stats", () => {
       path: "characters.emma.stats.strength",
       value: 16,
       source: "player_manual_state",
-      expectedStateVersion: 0
+      expectedStateVersion: 0,
     });
     expect(result.committed).toBe(true);
     expect(engine.getSession().characters.emma?.stats?.strength?.value).toBe(16);
   });
 });
-

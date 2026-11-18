@@ -29,7 +29,7 @@ export class StudioErrorBoundary extends Component<Props, State> {
           padding: 28,
           minHeight: "100%",
           color: "#e7e5e0",
-          background: "#12141a"
+          background: "#12141a",
         }}
       >
         <p style={{ color: "#f87171", margin: "0 0 12px", fontSize: 16 }}>
@@ -41,7 +41,7 @@ export class StudioErrorBoundary extends Component<Props, State> {
             wordBreak: "break-word",
             fontSize: 13,
             color: "#e7e5e0",
-            margin: "0 0 16px"
+            margin: "0 0 16px",
           }}
         >
           {message}
@@ -53,7 +53,7 @@ export class StudioErrorBoundary extends Component<Props, State> {
             border: "none",
             color: "#9ca3af",
             padding: 0,
-            fontSize: 14
+            fontSize: 14,
           }}
           onClick={() => {
             this.setState({ error: null });
@@ -66,4 +66,3 @@ export class StudioErrorBoundary extends Component<Props, State> {
     );
   }
 }
-

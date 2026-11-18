@@ -3,7 +3,7 @@ import {
   collectPlaceAudio,
   copyAudioFields,
   MAX_PLACE_AUDIO,
-  persistPlaceAudio
+  persistPlaceAudio,
 } from "@state/placeAudio";
 
 describe("placeAudio", () => {
@@ -11,8 +11,8 @@ describe("placeAudio", () => {
     expect(
       collectPlaceAudio({
         audioDataUrl: "data:audio-a",
-        audioGallery: ["data:audio-a", "data:audio-b"]
-      })
+        audioGallery: ["data:audio-a", "data:audio-b"],
+      }),
     ).toEqual(["data:audio-a", "data:audio-b"]);
   });
 
@@ -21,7 +21,7 @@ describe("placeAudio", () => {
     expect(persistPlaceAudio(["data:audio-a", "data:audio-b"], "random")).toEqual({
       audioDataUrl: "data:audio-a",
       audioGallery: ["data:audio-b"],
-      audioPlay: "random"
+      audioPlay: "random",
     });
   });
 
@@ -36,12 +36,12 @@ describe("placeAudio", () => {
       copyAudioFields({
         audioDataUrl: "data:audio-a",
         audioGallery: ["data:audio-b"],
-        audioPlay: "fade"
-      })
+        audioPlay: "fade",
+      }),
     ).toEqual({
       audioDataUrl: "data:audio-a",
       audioGallery: ["data:audio-b"],
-      audioPlay: "fade"
+      audioPlay: "fade",
     });
   });
 });

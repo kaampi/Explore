@@ -34,7 +34,7 @@ export function collectPlaceAudio(sound: Sound | undefined): string[] {
 
 export function persistPlaceAudio(
   clips: string[],
-  play: PicturePlay = "fade"
+  play: PicturePlay = "fade",
 ): Pick<Sound, "audioDataUrl" | "audioGallery" | "audioPlay"> {
   const cleaned = collectPlaceAudio({ audioGallery: clips });
   const first = cleaned[0];
@@ -42,7 +42,7 @@ export function persistPlaceAudio(
   return {
     ...(first ? { audioDataUrl: first } : {}),
     ...(rest.length > 0 ? { audioGallery: rest } : {}),
-    ...(cleaned.length > 1 ? { audioPlay: play } : {})
+    ...(cleaned.length > 1 ? { audioPlay: play } : {}),
   };
 }
 

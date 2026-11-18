@@ -7,7 +7,7 @@ import {
   nextFlagsAfterSet,
   normalizeStoryFlag,
   storyFlagsDiffer,
-  storyFlagsSatisfied
+  storyFlagsSatisfied,
 } from "@state/storyFlags";
 import type { Session } from "@state/StateSchema";
 
@@ -24,7 +24,7 @@ function makeSession(overrides: Partial<Session> = {}): Session {
     characters: {},
     player: {
       position: { value: "at the bar", lock: "unlocked" },
-      status: { value: "awake", lock: "unlocked" }
+      status: { value: "awake", lock: "unlocked" },
     },
     relationships: {},
     layers: [],
@@ -34,7 +34,7 @@ function makeSession(overrides: Partial<Session> = {}): Session {
     snapshots: [],
     diagnostics: [],
     storyFlags: [],
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -142,4 +142,3 @@ describe("StateEngine story flags", () => {
     expect(engine.getSession().stateVersion).toBe(before);
   });
 });
-

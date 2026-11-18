@@ -10,7 +10,7 @@ import {
   type LibrarySource,
   type PlaceTemplate,
   type StoryTemplate,
-  type VoiceTemplate
+  type VoiceTemplate,
 } from "./LibrarySchema";
 import { namesFromStored } from "./personName";
 
@@ -20,13 +20,16 @@ export function characterDraftFromTemplate(template: CharacterTemplate): Charact
     name: names.given,
     ...(names.family ? { familyName: names.family } : {}),
     ...(names.middle ? { middleName: names.middle } : {}),
-    ...(typeof template.approximateAge === "number" ? { approximateAge: template.approximateAge } : {}),
+    ...(typeof template.approximateAge === "number"
+      ? { approximateAge: template.approximateAge }
+      : {}),
     personality: template.personality,
     ...(template.speech.trim() ? { speech: template.speech } : {}),
     mood: template.mood,
     position: "",
     libraryId: template.id,
     ...(template.anatomyTemplateId ? { anatomyTemplateId: template.anatomyTemplateId } : {}),
+    ...(template.factionIds?.length ? { factionIds: template.factionIds } : {}),
     saveToLibrary: false,
     source: template.source,
     scenario: template.scenario,
@@ -34,7 +37,7 @@ export function characterDraftFromTemplate(template: CharacterTemplate): Charact
     ...(template.pronoun ? { pronoun: template.pronoun } : {}),
     ...(template.appearance?.trim() ? { appearance: template.appearance } : {}),
     ...(template.portraitDataUrl ? { portraitDataUrl: template.portraitDataUrl } : {}),
-    lore: []
+    lore: [],
   };
 }
 
@@ -66,8 +69,8 @@ export function characterTemplateFromDraft(draft: CharacterDraft): CharacterTemp
           id: entry.id?.trim() || `lore-${index + 1}`,
           title: entry.title ?? "",
           content: entry.content.trim(),
-          keywords: entry.keywords ?? []
-        }))
+          keywords: entry.keywords ?? [],
+        })),
     });
   }
 
@@ -91,8 +94,8 @@ export function characterTemplateFromDraft(draft: CharacterDraft): CharacterTemp
         id: entry.id?.trim() || `lore-${index + 1}`,
         title: entry.title ?? "",
         content: entry.content.trim(),
-        keywords: entry.keywords ?? []
-      }))
+        keywords: entry.keywords ?? [],
+      })),
   });
 }
 
@@ -120,7 +123,7 @@ export function placeTemplateFromForm(fields: {
       music: fields.music,
       note: fields.note,
       ...(fields.brief?.trim() ? { brief: fields.brief.trim() } : {}),
-      source
+      source,
     });
   }
 
@@ -131,7 +134,7 @@ export function placeTemplateFromForm(fields: {
     music: fields.music,
     note: fields.note,
     ...(fields.brief?.trim() ? { brief: fields.brief.trim() } : {}),
-    source
+    source,
   });
 }
 
@@ -152,14 +155,14 @@ export function storyTemplateFromForm(fields: {
       id: fields.libraryId,
       name,
       premise,
-      source
+      source,
     });
   }
 
   return newStoryTemplate({
     name,
     premise,
-    source
+    source,
   });
 }
 
@@ -180,21 +183,21 @@ export function voiceTemplateFromForm(fields: {
       id: fields.libraryId,
       name,
       instruction,
-      source
+      source,
     });
   }
 
   return newVoiceTemplate({
     name,
     instruction,
-    source
+    source,
   });
 }
 
 /** Preserve createdAt when updating an existing library record. */
 export function withOriginalTimestamps<T extends { createdAt: string; updatedAt: string }>(
   next: T,
-  previous: { createdAt: string } | undefined
+  previous: { createdAt: string } | undefined,
 ): T {
   if (!previous) return next;
   return { ...next, createdAt: previous.createdAt, updatedAt: nowIso() };

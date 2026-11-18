@@ -2,8 +2,16 @@ import { useEffect, useId, useRef } from "react";
 import { percentileNotation } from "../../checks/CheckEngine";
 import type { DiceSound } from "../diceSound";
 
-export function DiceTray({ roll, sound, onSettled, throwFrom = "right" }: {
-  throwFrom?: "left" | "right"; roll: number; sound: DiceSound | null; onSettled: (fallback: boolean) => void;
+export function DiceTray({
+  roll,
+  sound,
+  onSettled,
+  throwFrom = "right",
+}: {
+  throwFrom?: "left" | "right";
+  roll: number;
+  sound: DiceSound | null;
+  onSettled: (fallback: boolean) => void;
 }) {
   const id = `dice-${useId().replace(/:/g, "")}`;
   const onSettledRef = useRef(onSettled);
@@ -30,34 +38,56 @@ export function DiceTray({ roll, sound, onSettled, throwFrom = "right" }: {
     const host = document.getElementById(id);
     if (host) observer.observe(host);
     async function animate() {
-      if (reducedMotion) { finish(true); return; }
+      if (reducedMotion) {
+        finish(true);
+        return;
+      }
       try {
         const { default: DiceBox } = await import("@3d-dice/dice-box-threejs");
         if (cancelled) return;
         box = new DiceBox(`#${id}`, {
-          sounds: false, shadows: true, theme_colorset: "white",
-          theme_texture: "none", theme_material: "plastic", baseScale: (host?.clientWidth??800)<500?90:115,
+          sounds: false,
+          shadows: true,
+          theme_colorset: "white",
+          theme_texture: "none",
+          theme_material: "plastic",
+          baseScale: (host?.clientWidth ?? 800) < 500 ? 90 : 115,
           theme_customColorset: {
-            name: "explore", foreground: "#fff8f0", background: "#86696d",
-            outline: "#49383b", texture: "none", material: "plastic"
-          }
+            name: "explore",
+            foreground: "#fff8f0",
+            background: "#86696d",
+            outline: "#49383b",
+            texture: "none",
+            material: "plastic",
+          },
         });
         // Its resizeWorld registers an anonymous global listener with no
         // removal API. Own resizing locally so repeated checks don't leak it.
         box.resizeWorld = () => {};
-        const throwBox=box;
-        box.startClickThrow=(notation:string)=>{
+        const throwBox = box;
+        box.startClickThrow = (notation: string) => {
           // The dice library spawns opposite the velocity: positive x enters from the left.
-          const vector={x:(throwFrom === "left" ? 1 : -1)*throwBox.display.currentWidth*.9,y:throwBox.display.currentHeight*.12};
-          const distance=Math.hypot(vector.x,vector.y)+100;
-          return throwBox.getNotationVectors(notation,vector,3.3*distance*throwBox.strength,distance);
+          const vector = {
+            x: (throwFrom === "left" ? 1 : -1) * throwBox.display.currentWidth * 0.9,
+            y: throwBox.display.currentHeight * 0.12,
+          };
+          const distance = Math.hypot(vector.x, vector.y) + 100;
+          return throwBox.getNotationVectors(
+            notation,
+            vector,
+            3.3 * distance * throwBox.strength,
+            distance,
+          );
         };
         const audioBox = box;
         box.eventCollide = ({ body, target }) => {
           // Skip the invisible simulation used to predetermine faces.
           if (audioBox.animstate !== "throw" || !body || !target) return;
           const diceCollision = body.mass > 0;
-          sound?.hit(diceCollision ? body.velocity.length() : target.velocity.length(), diceCollision);
+          sound?.hit(
+            diceCollision ? body.velocity.length() : target.velocity.length(),
+            diceCollision,
+          );
         };
         await box.initialize();
         if (cancelled) return;
@@ -82,7 +112,11 @@ export function DiceTray({ roll, sound, onSettled, throwFrom = "right" }: {
         window.setTimeout(() => {
           oldBox.scene.traverse((object) => {
             object.geometry?.dispose();
-            const materials = object.material ? (Array.isArray(object.material) ? object.material : [object.material]) : [];
+            const materials = object.material
+              ? Array.isArray(object.material)
+                ? object.material
+                : [object.material]
+              : [];
             materials.forEach((material) => material.dispose());
           });
           oldBox.renderer?.dispose();
@@ -92,5 +126,12 @@ export function DiceTray({ roll, sound, onSettled, throwFrom = "right" }: {
     };
   }, [id, roll, sound, throwFrom]);
 
-  return <div id={id} className="action-check__tray" data-throw-from={throwFrom} aria-label="Percentile dice: tens and units" />;
+  return (
+    <div
+      id={id}
+      className="action-check__tray"
+      data-throw-from={throwFrom}
+      aria-label="Percentile dice: tens and units"
+    />
+  );
 }

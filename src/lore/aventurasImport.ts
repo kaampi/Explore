@@ -36,26 +36,42 @@ export function importAventurasLorebook(raw: unknown, sourceName: string): Loreb
     const reasons: string[] = [];
     if (!entry.description.trim()) reasons.push("No usable text content.");
     if (entry.injectionMode === "never") reasons.push("Disabled in source.");
-    if (entry.hiddenInfo?.trim()) reasons.push("Contains private story information; review original before activation.");
+    if (entry.hiddenInfo?.trim())
+      reasons.push("Contains private story information; review original before activation.");
     if (entry.loreManagementBlacklisted) reasons.push("Excluded from source lore management.");
-    if (/{{|^\s*@@/m.test(entry.description) || entry.keywords.some(key => /^\/.+\/[a-z]*$/i.test(key))) {
+    if (
+      /{{|^\s*@@/m.test(entry.description) ||
+      entry.keywords.some((key) => /^\/.+\/[a-z]*$/i.test(key))
+    ) {
       reasons.push("Macros or regex require manual adaptation.");
     }
-    const keywords = [...new Set([...entry.keywords, ...entry.aliases].map(s => s.trim()).filter(Boolean))];
-    if (entry.injectionMode === "keyword" && !keywords.length) reasons.push("No activation keywords.");
+    const keywords = [
+      ...new Set([...entry.keywords, ...entry.aliases].map((s) => s.trim()).filter(Boolean)),
+    ];
+    if (entry.injectionMode === "keyword" && !keywords.length)
+      reasons.push("No activation keywords.");
     return {
       id: `aventuras:${index}`,
       title: entry.name,
       content: entry.description,
       keywords,
-      mode: (reasons.length || entry.injectionMode === "never" ? "dormant" : entry.injectionMode === "always" ? "always" : "keywords") as "dormant" | "always" | "keywords",
+      mode: (reasons.length || entry.injectionMode === "never"
+        ? "dormant"
+        : entry.injectionMode === "always"
+          ? "always"
+          : "keywords") as "dormant" | "always" | "keywords",
       reasons,
       approved: false,
       raw: entry,
       entity: {
         id: `aventuras:${index}`,
         name: entry.name,
-        kind: entry.type === "character" ? "character" as const : entry.type === "location" ? "location" as const : "lore" as const,
+        kind:
+          entry.type === "character"
+            ? ("character" as const)
+            : entry.type === "location"
+              ? ("location" as const)
+              : ("lore" as const),
         category: entry.type,
       },
     };

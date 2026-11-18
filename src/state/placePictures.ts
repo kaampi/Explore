@@ -45,17 +45,17 @@ export function collectPlacePictures(visual: Visual | undefined): PlacePicture[]
 
 export function persistPlacePictures(
   pictures: PlacePicture[],
-  play: PicturePlay = "fade"
+  play: PicturePlay = "fade",
 ): Pick<Visual, "thumbDataUrl" | "imageDataUrl" | "gallery" | "picturePlay"> {
   const cleaned = collectPlacePictures({
-    gallery: pictures
+    gallery: pictures,
   });
   const first = cleaned[0];
   const rest = cleaned.slice(1);
   return {
     ...(first ? { thumbDataUrl: first.thumbDataUrl, imageDataUrl: first.imageDataUrl } : {}),
     ...(rest.length > 0 ? { gallery: rest } : {}),
-    ...(cleaned.length > 1 ? { picturePlay: play } : {})
+    ...(cleaned.length > 1 ? { picturePlay: play } : {}),
   };
 }
 

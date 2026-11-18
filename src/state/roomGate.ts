@@ -19,7 +19,10 @@ export function roomIsVisible(session: Session, room: Pick<SceneRoom, "id" | "ga
 }
 
 /** Graph may still refuse. This is only the lock/hidden gate. */
-export function roomGateAllowsEntry(session: Session, room: Pick<SceneRoom, "id" | "gate">): boolean {
+export function roomGateAllowsEntry(
+  session: Session,
+  room: Pick<SceneRoom, "id" | "gate">,
+): boolean {
   const gate = roomGate(room);
   if (gate === "open") return true;
   return roomIsOpened(session, room.id);

@@ -17,9 +17,7 @@ function button(label: string): HTMLButtonElement {
     (element) => (element.getAttribute("aria-label") || element.textContent?.trim()) === label,
   );
   if (!element)
-    throw new Error(
-      `Missing button: ${label} in ${container.textContent?.slice(-500)}`,
-    );
+    throw new Error(`Missing button: ${label} in ${container.textContent?.slice(-500)}`);
   return element;
 }
 function named(label: string): HTMLButtonElement {
@@ -36,10 +34,10 @@ async function click(element: HTMLElement) {
 }
 async function input(element: HTMLInputElement, value: string) {
   await act(async () => {
-    Object.getOwnPropertyDescriptor(
-      window.HTMLInputElement.prototype,
-      "value",
-    )!.set!.call(element, value);
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(
+      element,
+      value,
+    );
     element.dispatchEvent(new Event("input", { bubbles: true }));
   });
 }
@@ -47,9 +45,7 @@ async function waitFor(check: () => boolean) {
   const deadline = Date.now() + 4000;
   while (!check()) {
     if (Date.now() > deadline)
-      throw new Error(
-        `UI did not settle: ${container.textContent?.slice(-800)}`,
-      );
+      throw new Error(`UI did not settle: ${container.textContent?.slice(-800)}`);
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 5));
     });
@@ -68,17 +64,13 @@ async function mount() {
 async function create(name: string) {
   await click(
     button(
-      container
-        .querySelector(".sb-hero__content h2")
-        ?.textContent?.includes("Every conversation")
+      container.querySelector(".sb-hero__content h2")?.textContent?.includes("Every conversation")
         ? "Create your first character ＋"
         : "＋ Create",
     ),
   );
   await input(
-    container.querySelector<HTMLInputElement>(
-      'input[placeholder="What are they called?"]',
-    )!,
+    container.querySelector<HTMLInputElement>('input[placeholder="What are they called?"]')!,
     name,
   );
   await click(button("Create & chat →"));
@@ -86,14 +78,9 @@ async function create(name: string) {
 }
 async function send(text: string, answer: string) {
   reply = answer;
-  await input(
-    container.querySelector<HTMLInputElement>('[aria-label="Your message"]')!,
-    text,
-  );
+  await input(container.querySelector<HTMLInputElement>('[aria-label="Your message"]')!, text);
   await click(button("Send"));
-  await waitFor(
-    () => !!container.querySelector(".chat-log")?.textContent?.includes(answer),
-  );
+  await waitFor(() => !!container.querySelector(".chat-log")?.textContent?.includes(answer));
   await waitFor(() => !container.querySelector(".message--streaming"));
 }
 async function home() {
@@ -148,10 +135,8 @@ beforeEach(async () => {
           checkedAt: 1,
         });
       }
-      if (address.endsWith("/api/tags"))
-        return Response.json({ models: [{ name: "chat-a" }] });
-      if (address.endsWith("/api/show"))
-        return Response.json({ capabilities: ["completion"] });
+      if (address.endsWith("/api/tags")) return Response.json({ models: [{ name: "chat-a" }] });
+      if (address.endsWith("/api/show")) return Response.json({ capabilities: ["completion"] });
       if (address.endsWith("/api/chat")) {
         const payload = JSON.parse(String(init?.body));
         const text = payload.options?.temperature === 0.8 ? reply : "[]";
@@ -180,26 +165,52 @@ afterEach(async () => {
 });
 
 describe("conversation library journeys", () => {
-  it('returns directly to the open conversation after a page reload',async()=>{
-    await mount();await create('Ari');await send('Remember this gate.','Mara keeps watch by the gate.');
-    await act(async()=>{await new Promise(r=>setTimeout(r,320));root.unmount();});root=createRoot(container);
-    await act(async()=>root.render(<App/>));await waitFor(()=>!!container.querySelector('[aria-label="Your message"]'));
-    expect(container.querySelector('.chat-log')?.textContent).toContain('Mara keeps watch by the gate.');expect(container.querySelector('.sb-home')).toBeNull();
+  it("returns directly to the open conversation after a page reload", async () => {
+    await mount();
+    await create("Ari");
+    await send("Remember this gate.", "Mara keeps watch by the gate.");
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 320));
+      root.unmount();
+    });
+    root = createRoot(container);
+    await act(async () => root.render(<App />));
+    await waitFor(() => !!container.querySelector('[aria-label="Your message"]'));
+    expect(container.querySelector(".chat-log")?.textContent).toContain(
+      "Mara keeps watch by the gate.",
+    );
+    expect(container.querySelector(".sb-home")).toBeNull();
   });
-  it('offers existing characters before creating someone new in Free play',async()=>{
-    await mount();await create('Ari');await home();await click(button('Free play'));
-    await waitFor(()=>!!container.querySelector('.sb-free-character-picker'));
-    const choice=Array.from(container.querySelectorAll<HTMLButtonElement>('.sb-free-character-picker button')).find(b=>b.textContent?.includes('Ari'));
-    expect(choice).toBeTruthy();expect(container.textContent).toContain('Create a new character');await click(choice!);
-    await waitFor(()=>!!Array.from(container.querySelectorAll('dialog')).find(d=>d.getAttribute('aria-label')==='Chat with Ari'));
-    expect(container.querySelector('.sb-free-character-picker')).toBeNull();
+  it("offers existing characters before creating someone new in Free play", async () => {
+    await mount();
+    await create("Ari");
+    await home();
+    await click(button("Free play"));
+    await waitFor(() => !!container.querySelector(".sb-free-character-picker"));
+    const choice = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(".sb-free-character-picker button"),
+    ).find((b) => b.textContent?.includes("Ari"));
+    expect(choice).toBeTruthy();
+    expect(container.textContent).toContain("Create a new character");
+    await click(choice!);
+    await waitFor(
+      () =>
+        !!Array.from(container.querySelectorAll("dialog")).find(
+          (d) => d.getAttribute("aria-label") === "Chat with Ari",
+        ),
+    );
+    expect(container.querySelector(".sb-free-character-picker")).toBeNull();
   });
 
   it("confirms deletion by name, preserves on cancel/failure, and never restores the deleted active conversation", async () => {
-    await mount(); await create("Ari");
+    await mount();
+    await create("Ari");
     await send("A private note.", "Ari keeps it safe.");
     await theme("Forest dusk");
-    await input(container.querySelector<HTMLInputElement>('[aria-label="Your message"]')!, "Unsent private draft");
+    await input(
+      container.querySelector<HTMLInputElement>('[aria-label="Your message"]')!,
+      "Unsent private draft",
+    );
     await home();
     await click(button("◷ My conversations"));
     await waitFor(() => !!container.querySelector(".sb-conversation-library"));
@@ -211,13 +222,22 @@ describe("conversation library journeys", () => {
     await click(button("Cancel"));
     expect(await repo.listSessionIds()).toEqual([id]);
     await click(named("Delete Conversation with Ari"));
-    const remove = vi.spyOn(IndexedDBRepository.prototype, "deleteSession").mockRejectedValueOnce(new Error("Storage unavailable"));
+    const remove = vi
+      .spyOn(IndexedDBRepository.prototype, "deleteSession")
+      .mockRejectedValueOnce(new Error("Storage unavailable"));
     await click(button("Delete permanently"));
-    await waitFor(() => container.querySelector("dialog")?.textContent?.includes("Storage unavailable") === true);
+    await waitFor(
+      () =>
+        container.querySelector("dialog")?.textContent?.includes("Storage unavailable") === true,
+    );
     expect(await repo.listSessionIds()).toEqual([id]);
     expect(sessionStorage.getItem(`sandboxai-draft:${id}`)).toBe("Unsent private draft");
     await click(button("Delete permanently"));
-    await waitFor(() => container.querySelectorAll(".sb-conversation-card").length === 0 && !container.querySelector("dialog"));
+    await waitFor(
+      () =>
+        container.querySelectorAll(".sb-conversation-card").length === 0 &&
+        !container.querySelector("dialog"),
+    );
     expect(remove).toHaveBeenCalledTimes(2);
     expect(await repo.listSessionIds()).toEqual([]);
     expect(await repo.loadActiveConversationId()).toBeNull();
@@ -226,23 +246,36 @@ describe("conversation library journeys", () => {
     await waitFor(() => !!container.querySelector(".sb-home-connection"));
     expect(container.textContent).not.toContain("Continue exploring →");
     expect(await repo.listSessionIds()).toEqual([]);
-    await act(async () => { await new Promise(resolve => setTimeout(resolve, 350)); });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 350));
+    });
     expect((await loadThemeLibrary())?.conversations).not.toHaveProperty(id);
-    await act(async () => { root.unmount(); });
-    root = createRoot(container); await mount();
+    await act(async () => {
+      root.unmount();
+    });
+    root = createRoot(container);
+    await mount();
     expect(container.textContent).not.toContain("Continue exploring →");
     expect(await repo.listSessionIds()).toEqual([]);
     await repo.close();
   }, 20000);
 
   it("deletes archived conversations while preserving the current conversation, library characters and captured ideas", async () => {
-    await mount(); await create("Ari"); await send("A clue.", "Ari points to the map."); await home();
+    await mount();
+    await create("Ari");
+    await send("A clue.", "Ari points to the map.");
+    await home();
     const repo = new IndexedDBRepository();
     const deleted = (await repo.listSessionIds())[0]!;
     const original = await repo.loadSession(deleted);
-    const idea = captureIdea(original, new Set([(original.conversation[0] as { turn: number }).turn]), "A saved clue");
+    const idea = captureIdea(
+      original,
+      new Set([(original.conversation[0] as { turn: number }).turn]),
+      "A saved clue",
+    );
     await repo.saveIdea(idea);
-    await create("Elara"); await home();
+    await create("Elara");
+    await home();
     await click(button("◷ My conversations"));
     await waitFor(() => !!container.querySelector(".sb-conversation-library"));
     await click(named("Archive Conversation with Ari"));
@@ -252,12 +285,17 @@ describe("conversation library journeys", () => {
     await click(button("Delete permanently"));
     await waitFor(() => container.textContent?.includes("Archived (0)") === true);
     expect(await repo.listSessionIds()).toHaveLength(1);
-    expect((await repo.listCharacters()).map(person => person.name).sort()).toEqual(["Ari", "Elara"]);
+    expect((await repo.listCharacters()).map((person) => person.name).sort()).toEqual([
+      "Ari",
+      "Elara",
+    ]);
     expect((await repo.listIdeas()).entries[0]).toEqual(idea);
     await click(button("Conversations (1)"));
     await click(named("Continue Conversation with Elara"));
     await waitFor(() => !!container.querySelector('[aria-label="Your message"]'));
-    expect((await repo.loadSession((await repo.listSessionIds())[0]!)).characters.elara?.name).toBe("Elara");
+    expect((await repo.loadSession((await repo.listSessionIds())[0]!)).characters.elara?.name).toBe(
+      "Elara",
+    );
     await repo.close();
   }, 20000);
 
@@ -274,18 +312,12 @@ describe("conversation library journeys", () => {
     await click(named("kaampi Explore home"));
     await waitFor(() => !!container.querySelector(".sb-home-connection"));
     await click(button("↗ Continue exploring"));
-    await waitFor(
-      () => !!container.querySelector('[aria-label="Your message"]'),
-    );
-    expect(container.querySelector(".chat-log")?.textContent).toContain(
-      "Ari closes the map case.",
-    );
+    await waitFor(() => !!container.querySelector('[aria-label="Your message"]'));
+    expect(container.querySelector(".chat-log")?.textContent).toContain("Ari closes the map case.");
   }, 15000);
   it("keeps runtime story flags in the conversation instead of changing its shared campaign", async () => {
     const repo = new IndexedDBRepository();
-    await repo.saveCampaign(
-      newCampaignTemplate({ id: "shared", name: "Shared world" }),
-    );
+    await repo.saveCampaign(newCampaignTemplate({ id: "shared", name: "Shared world" }));
     const saved = createSessionFromSetup(
       {
         location: "Map room",
@@ -320,14 +352,10 @@ describe("conversation library journeys", () => {
     await repo.createConversation(saved);
     await mount();
     await click(button("↗ Continue exploring"));
-    await waitFor(
-      () => !!container.querySelector('[aria-label="Your message"]'),
-    );
+    await waitFor(() => !!container.querySelector('[aria-label="Your message"]'));
     await send("What did you find?", "Ari holds up a key.");
     await home();
-    expect((await repo.loadSession("campaign-first")).storyFlags).toContain(
-      "key-found",
-    );
+    expect((await repo.loadSession("campaign-first")).storyFlags).toContain("key-found");
     expect((await repo.loadCampaign("shared")).storyFlags).toEqual([]);
     await repo.close();
   }, 15000);
@@ -350,30 +378,22 @@ describe("conversation library journeys", () => {
     await waitFor(() => !!container.querySelector(".sb-conversation-library"));
     expect(container.querySelectorAll(".sb-conversation-card")).toHaveLength(2);
     await click(named("Rename Conversation with Ari"));
-    await input(
-      container.querySelector<HTMLInputElement>("dialog input")!,
-      "Maps with Ari",
-    );
+    await input(container.querySelector<HTMLInputElement>("dialog input")!, "Maps with Ari");
     await click(button("Save name"));
     await waitFor(() => !container.querySelector("dialog"));
     await click(named("Archive Conversation with Elara"));
-    await waitFor(
-      () => container.querySelectorAll(".sb-conversation-card").length === 1,
-    );
+    await waitFor(() => container.querySelectorAll(".sb-conversation-card").length === 1);
     await click(named("Continue Maps with Ari"));
-    await waitFor(
-      () => !!container.querySelector('[aria-label="Your message"]'),
-    );
+    await waitFor(() => !!container.querySelector('[aria-label="Your message"]'));
     expect(container.querySelector(".chat-log")?.textContent).toContain(
       "Ari remembers the first map.",
     );
     expect(container.querySelector(".chat-log")?.textContent).not.toContain(
       "Elara talks about the sea.",
     );
-    expect(
-      container.querySelector<HTMLInputElement>('[aria-label="Your message"]')
-        ?.value,
-    ).toBe("An Ari-only draft.");
+    expect(container.querySelector<HTMLInputElement>('[aria-label="Your message"]')?.value).toBe(
+      "An Ari-only draft.",
+    );
     expect(
       container
         .querySelector<HTMLElement>(".sb-themed-play")
@@ -384,14 +404,10 @@ describe("conversation library journeys", () => {
     await waitFor(() => !!container.querySelector(".sb-conversation-library"));
     await click(button("Archived (1)"));
     await click(named("Restore Conversation with Elara"));
-    await waitFor(
-      () => container.textContent?.includes("Archived (0)") === true,
-    );
+    await waitFor(() => container.textContent?.includes("Archived (0)") === true);
     await click(button("Conversations (2)"));
     await click(named("Continue Conversation with Elara"));
-    await waitFor(
-      () => !!container.querySelector('[aria-label="Your message"]'),
-    );
+    await waitFor(() => !!container.querySelector('[aria-label="Your message"]'));
     expect(container.querySelector(".chat-log")?.textContent).toContain(
       "Elara talks about the sea.",
     );
@@ -420,9 +436,7 @@ describe("conversation library journeys", () => {
     await click(button("◷ My conversations"));
     await waitFor(() => !!container.querySelector(".sb-conversation-library"));
     await click(named("Continue Conversation with Ari"));
-    await waitFor(
-      () => !!container.querySelector('[aria-label="Your message"]'),
-    );
+    await waitFor(() => !!container.querySelector('[aria-label="Your message"]'));
     await home();
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 320));
@@ -433,9 +447,7 @@ describe("conversation library journeys", () => {
     root = createRoot(container);
     await mount();
     await click(button("↗ Continue exploring"));
-    await waitFor(
-      () => !!container.querySelector('[aria-label="Your message"]'),
-    );
+    await waitFor(() => !!container.querySelector('[aria-label="Your message"]'));
     expect(container.querySelector(".chat-log")?.textContent).toContain(
       "The map remains on the table.",
     );
@@ -450,33 +462,24 @@ describe("conversation library journeys", () => {
     await create("Ari");
     await send("Keep this.", "Ari keeps the note.");
     await home();
-    vi.spyOn(
-      IndexedDBRepository.prototype,
-      "createConversation",
-    ).mockRejectedValueOnce(new Error("Storage is full."));
+    vi.spyOn(IndexedDBRepository.prototype, "createConversation").mockRejectedValueOnce(
+      new Error("Storage is full."),
+    );
     await createAttempt();
     async function createAttempt() {
       await click(button("＋ Create"));
       await input(
-        container.querySelector<HTMLInputElement>(
-          'input[placeholder="What are they called?"]',
-        )!,
+        container.querySelector<HTMLInputElement>('input[placeholder="What are they called?"]')!,
         "Elara",
       );
       await click(button("Create & chat →"));
-      await waitFor(
-        () => container.textContent?.includes("Storage is full.") === true,
-      );
+      await waitFor(() => container.textContent?.includes("Storage is full.") === true);
     }
     const repo = new IndexedDBRepository();
     expect(await repo.listSessionIds()).toHaveLength(1);
     await repo.close();
     await click(button("↗ Continue exploring"));
-    await waitFor(
-      () => !!container.querySelector('[aria-label="Your message"]'),
-    );
-    expect(container.querySelector(".chat-log")?.textContent).toContain(
-      "Ari keeps the note.",
-    );
+    await waitFor(() => !!container.querySelector('[aria-label="Your message"]'));
+    expect(container.querySelector(".chat-log")?.textContent).toContain("Ari keeps the note.");
   }, 15000);
 });

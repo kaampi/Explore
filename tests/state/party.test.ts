@@ -10,7 +10,7 @@ import {
   isLeftBehind,
   wantsToJoinPlayerParty,
   canAcceptParty,
-  nextPendingAfterIds
+  nextPendingAfterIds,
 } from "@state/party";
 import { spatialWritesForTurn } from "@state/playerDestination";
 import { EXAMPLE_AURORA_ROOMS } from "@library/exampleTemplates";
@@ -29,17 +29,17 @@ function makeSession(overrides: Partial<Session> = {}): Session {
       emma: {
         name: "Emma",
         position: { value: "behind the bar", lock: "unlocked" },
-        mood: { value: "neutral", lock: "unlocked" }
-      }
+        mood: { value: "neutral", lock: "unlocked" },
+      },
     },
     scene: {
       location: "The Aurora Room — a quiet late-night bar",
       environment: {},
-      rooms: EXAMPLE_AURORA_ROOMS
+      rooms: EXAMPLE_AURORA_ROOMS,
     },
     player: {
       position: { value: "at the bar", lock: "unlocked" },
-      status: { value: "awake", lock: "unlocked" }
+      status: { value: "awake", lock: "unlocked" },
     },
     partyIds: [],
     partyPendingIds: [],
@@ -50,7 +50,7 @@ function makeSession(overrides: Partial<Session> = {}): Session {
     events: [],
     snapshots: [],
     diagnostics: [],
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -64,18 +64,18 @@ describe("party", () => {
         makeSession({
           player: {
             position: { value: "Market Streets", lock: "unlocked" },
-            status: { value: "awake", lock: "unlocked" }
+            status: { value: "awake", lock: "unlocked" },
           },
           characters: {
             emma: {
               name: "Emma",
               position: { value: "Emma's room", lock: "unlocked" },
-              mood: { value: "neutral", lock: "unlocked" }
-            }
-          }
+              mood: { value: "neutral", lock: "unlocked" },
+            },
+          },
         }),
-        "emma"
-      )
+        "emma",
+      ),
     ).toBe(true);
   });
 
@@ -91,17 +91,19 @@ describe("party", () => {
     expect(wantsToJoinPlayerParty('"I\'m with you. Lead the way."')).toBe(true);
     expect(wantsToJoinPlayerParty("I'm in the room")).toBe(false);
     expect(wantsToJoinPlayerParty("A little more won't scare me off.")).toBe(true);
-    expect(wantsToJoinPlayerParty('"If you\'re offering a chance to break free and make our own way, I\'m interested."')).toBe(
-      true
-    );
+    expect(
+      wantsToJoinPlayerParty(
+        "\"If you're offering a chance to break free and make our own way, I'm interested.\"",
+      ),
+    ).toBe(true);
     expect(wantsToJoinPlayerParty('"I\'ll come back tomorrow."')).toBe(false);
     expect(wantsToJoinPlayerParty('"Follow me."')).toBe(false);
     expect(wantsToJoinPlayerParty('"Come with me."')).toBe(false);
     expect(wantsToJoinPlayerParty('"Aye, I\'ll come," she says.')).toBe(true);
     expect(
       wantsToJoinPlayerParty(
-        "'We're in this together, partner. Where you go, we go. Count on it.' Emma nods. 'We've got your back.'"
-      )
+        "'We're in this together, partner. Where you go, we go. Count on it.' Emma nods. 'We've got your back.'",
+      ),
     ).toBe(true);
   });
 
@@ -111,21 +113,21 @@ describe("party", () => {
         emma: {
           name: "Emma",
           position: { value: "behind the bar", lock: "unlocked" },
-          mood: { value: "n", lock: "unlocked" }
+          mood: { value: "n", lock: "unlocked" },
         },
         vikky: {
           name: "Vikky",
           position: { value: "behind the bar", lock: "unlocked" },
-          mood: { value: "n", lock: "unlocked" }
-        }
-      }
+          mood: { value: "n", lock: "unlocked" },
+        },
+      },
     });
     expect(
       nextPendingAfterOffer(
         session,
         "vikky",
-        "Vikky's gaze flicks up. 'Aye, I'm in,' she replies. 'Emma's room is just through that door.'"
-      )
+        "Vikky's gaze flicks up. 'Aye, I'm in,' she replies. 'Emma's room is just through that door.'",
+      ),
     ).toEqual(["vikky"]);
   });
 
@@ -135,19 +137,19 @@ describe("party", () => {
         emma: {
           name: "Emma",
           position: { value: "Emma's room", lock: "unlocked" },
-          mood: { value: "n", lock: "unlocked" }
+          mood: { value: "n", lock: "unlocked" },
         },
         vikky: {
           name: "Vikky",
           position: { value: "Emma's room", lock: "unlocked" },
-          mood: { value: "n", lock: "unlocked" }
-        }
-      }
+          mood: { value: "n", lock: "unlocked" },
+        },
+      },
     });
     const reply =
       "Vikky's grin widens. 'You know it, Moe. When you call, we answer.' She squeezes his arm. 'We're in this together, partner. Where you go, we go. Count on it.' Emma nods. 'We've got your back, Moe.'";
     expect(nextPendingAfterOffer(session, "vikky", reply)).toEqual(
-      expect.arrayContaining(["vikky", "emma"])
+      expect.arrayContaining(["vikky", "emma"]),
     );
     expect(nextPendingAfterOffer(session, "vikky", reply)).toHaveLength(2);
   });
@@ -158,14 +160,14 @@ describe("party", () => {
         emma: {
           name: "Emma",
           position: { value: "Emma's room", lock: "unlocked" },
-          mood: { value: "n", lock: "unlocked" }
+          mood: { value: "n", lock: "unlocked" },
         },
         vikky: {
           name: "Vikky",
           position: { value: "Emma's room", lock: "unlocked" },
-          mood: { value: "n", lock: "unlocked" }
-        }
-      }
+          mood: { value: "n", lock: "unlocked" },
+        },
+      },
     });
     expect(nextPendingAfterIds(session, ["Vikky", "emma"])).toEqual(["vikky", "emma"]);
     expect(nextPendingAfterIds({ ...session, partyIds: ["emma"] }, ["emma"])).toBeUndefined();
@@ -177,11 +179,11 @@ describe("party", () => {
     expect(nextPartyAfterPlayerText(session, "Let's go", "emma").partyIds).toEqual(["emma"]);
     expect(nextPartyAfterPlayerText(session, "I go alone", "emma")).toEqual({
       partyIds: [],
-      partyPendingIds: ["emma"]
+      partyPendingIds: ["emma"],
     });
     expect(nextPartyAfterPlayerText(session, "Wait here", "emma")).toEqual({
       partyIds: [],
-      partyPendingIds: ["emma"]
+      partyPendingIds: ["emma"],
     });
   });
 
@@ -191,19 +193,19 @@ describe("party", () => {
         emma: {
           name: "Emma",
           position: { value: "behind the bar", lock: "unlocked" },
-          mood: { value: "n", lock: "unlocked" }
+          mood: { value: "n", lock: "unlocked" },
         },
         leah: {
           name: "Leah",
           position: { value: "Emma's room", lock: "unlocked" },
-          mood: { value: "n", lock: "unlocked" }
+          mood: { value: "n", lock: "unlocked" },
         },
         vikky: {
           name: "Vikky",
           position: { value: "Emma's room", lock: "unlocked" },
-          mood: { value: "n", lock: "unlocked" }
-        }
-      }
+          mood: { value: "n", lock: "unlocked" },
+        },
+      },
     });
     const reply =
       'Leah lets out a laugh. "A little more won\'t scare me off." Vikky steps forward. "I\'m interested."';
@@ -216,52 +218,84 @@ describe("party", () => {
     expect(partySlots({ ...session, partyPendingIds: ["emma"] }).map((slot) => slot.kind)).toEqual([
       "empty",
       "empty",
-      "empty"
+      "empty",
     ]);
     expect(waitlistSlots({ ...session, partyPendingIds: ["emma"] })[0]).toMatchObject({
       kind: "pending",
       id: "emma",
-      name: "Emma"
+      name: "Emma",
     });
   });
 
   it("caps the later waitlist at two, even if the party is full", () => {
     const session = makeSession({
       characters: {
-        emma: { name: "Emma", position: { value: "bar", lock: "unlocked" }, mood: { value: "n", lock: "unlocked" } },
-        lars: { name: "Lars", position: { value: "bar", lock: "unlocked" }, mood: { value: "n", lock: "unlocked" } },
-        nia: { name: "Nia", position: { value: "bar", lock: "unlocked" }, mood: { value: "n", lock: "unlocked" } },
-        jo: { name: "Jo", position: { value: "bar", lock: "unlocked" }, mood: { value: "n", lock: "unlocked" } },
-        kit: { name: "Kit", position: { value: "bar", lock: "unlocked" }, mood: { value: "n", lock: "unlocked" } },
-        rey: { name: "Rey", position: { value: "bar", lock: "unlocked" }, mood: { value: "n", lock: "unlocked" } }
+        emma: {
+          name: "Emma",
+          position: { value: "bar", lock: "unlocked" },
+          mood: { value: "n", lock: "unlocked" },
+        },
+        lars: {
+          name: "Lars",
+          position: { value: "bar", lock: "unlocked" },
+          mood: { value: "n", lock: "unlocked" },
+        },
+        nia: {
+          name: "Nia",
+          position: { value: "bar", lock: "unlocked" },
+          mood: { value: "n", lock: "unlocked" },
+        },
+        jo: {
+          name: "Jo",
+          position: { value: "bar", lock: "unlocked" },
+          mood: { value: "n", lock: "unlocked" },
+        },
+        kit: {
+          name: "Kit",
+          position: { value: "bar", lock: "unlocked" },
+          mood: { value: "n", lock: "unlocked" },
+        },
+        rey: {
+          name: "Rey",
+          position: { value: "bar", lock: "unlocked" },
+          mood: { value: "n", lock: "unlocked" },
+        },
       },
       partyIds: ["emma", "lars", "nia"],
-      partyPendingIds: ["jo"]
+      partyPendingIds: ["jo"],
     });
     expect(nextPendingAfterOffer(session, "kit", '"I\'ll come with you."')).toEqual(["jo", "kit"]);
     expect(
-      nextPendingAfterOffer({ ...session, partyPendingIds: ["jo", "kit"] }, "rey", '"I\'ll come with you."')
+      nextPendingAfterOffer(
+        { ...session, partyPendingIds: ["jo", "kit"] },
+        "rey",
+        '"I\'ll come with you."',
+      ),
     ).toBeUndefined();
   });
 
   it("moves accepted members on a walk, not pending ones", () => {
     expect(
-      spatialWritesForTurn(makeSession({ partyIds: ["emma"] }), "I walk into the toilets", "emma")
+      spatialWritesForTurn(makeSession({ partyIds: ["emma"] }), "I walk into the toilets", "emma"),
     ).toEqual(
       expect.arrayContaining([
         { path: "player.position", value: "toilets" },
-        { path: "characters.emma.position", value: "toilets" }
-      ])
+        { path: "characters.emma.position", value: "toilets" },
+      ]),
     );
-    expect(spatialWritesForTurn(makeSession({ partyPendingIds: ["emma"] }), "I walk into the toilets", "emma")).toEqual([
-      { path: "player.position", value: "toilets" }
-    ]);
+    expect(
+      spatialWritesForTurn(
+        makeSession({ partyPendingIds: ["emma"] }),
+        "I walk into the toilets",
+        "emma",
+      ),
+    ).toEqual([{ path: "player.position", value: "toilets" }]);
   });
 
   it("Stay keeps them in the party and does not walk them", () => {
     const session = makeSession({ partyIds: ["emma"], partyHoldIds: ["emma"] });
     expect(spatialWritesForTurn(session, "I walk into the toilets", "emma")).toEqual([
-      { path: "player.position", value: "toilets" }
+      { path: "player.position", value: "toilets" },
     ]);
     expect(
       isLeftBehind(
@@ -270,18 +304,18 @@ describe("party", () => {
           partyHoldIds: ["emma"],
           player: {
             position: { value: "toilets", lock: "unlocked" },
-            status: { value: "awake", lock: "unlocked" }
+            status: { value: "awake", lock: "unlocked" },
           },
           characters: {
             emma: {
               name: "Emma",
               position: { value: "behind the bar", lock: "unlocked" },
-              mood: { value: "neutral", lock: "unlocked" }
-            }
-          }
+              mood: { value: "neutral", lock: "unlocked" },
+            },
+          },
         }),
-        "emma"
-      )
+        "emma",
+      ),
     ).toBe(true);
   });
 
@@ -308,33 +342,32 @@ describe("party", () => {
       ...engine.getSession(),
       player: {
         ...engine.getSession().player!,
-        position: { value: "Ladies Room", lock: "unlocked" as const }
-      }
+        position: { value: "Ladies Room", lock: "unlocked" as const },
+      },
     };
     expect(canAcceptParty(inLadies, "emma")).toBe(true);
     const inRoom = {
       ...engine.getSession(),
       player: {
         ...engine.getSession().player!,
-        position: { value: "Emma's room", lock: "unlocked" as const }
+        position: { value: "Emma's room", lock: "unlocked" as const },
       },
       characters: {
         ...engine.getSession().characters,
         emma: {
           ...engine.getSession().characters.emma!,
-          position: { value: "with Moe", lock: "unlocked" as const }
-        }
-      }
+          position: { value: "with Moe", lock: "unlocked" as const },
+        },
+      },
     };
     expect(canAcceptParty(inRoom, "emma")).toBe(true);
     const elsewhere = {
       ...engine.getSession(),
       player: {
         ...engine.getSession().player!,
-        position: { value: "Market Streets", lock: "unlocked" as const }
-      }
+        position: { value: "Market Streets", lock: "unlocked" as const },
+      },
     };
     expect(canAcceptParty(elsewhere, "emma")).toBe(false);
   });
 });
-

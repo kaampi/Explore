@@ -44,12 +44,7 @@ export function WorldArtwork({ variant = 0 }: { variant?: number }) {
       <g fill={colors[1]} opacity=".7">
         <path d="M713 242v-61h17v61ZM736 240v-45h17v45ZM762 239v-68h18v68ZM704 184l17-25 18 25ZM755 174l16-25 16 25Z" />
       </g>
-      <path
-        d="m790 40 6-4 6 4m18 13 5-3 5 3"
-        fill="none"
-        stroke={colors[4]}
-        strokeWidth="2"
-      />
+      <path d="m790 40 6-4 6 4m18 13 5-3 5 3" fill="none" stroke={colors[4]} strokeWidth="2" />
     </svg>
   );
 }

@@ -8,14 +8,14 @@ export function isCondensationContent(content: string): boolean {
 }
 
 export function parseCondensationRange(
-  content: string
+  content: string,
 ): { start: number; end: number; summary: string } | null {
   const match = content.match(CONDENSED_RANGE_PATTERN);
   if (!match?.[1] || !match[2]) return null;
   return {
     start: Number(match[1]),
     end: Number(match[2]),
-    summary: content.slice(match[0].length).trim()
+    summary: content.slice(match[0].length).trim(),
   };
 }
 
@@ -33,7 +33,7 @@ export function getHighestCondensedTurnEnd(session: Session): number {
 }
 
 export function listCondensationRecaps(
-  session: Session
+  session: Session,
 ): { start: number; end: number; summary: string }[] {
   return session.memory.episodic
     .map((entry) => parseCondensationRange(entry.content))
@@ -41,6 +41,10 @@ export function listCondensationRecaps(
     .sort((a, b) => a.start - b.start || a.end - b.end);
 }
 
-export function formatCondensationEntry(startTurn: number, endTurn: number, summary: string): string {
+export function formatCondensationEntry(
+  startTurn: number,
+  endTurn: number,
+  summary: string,
+): string {
   return `[condensed turns ${startTurn}-${endTurn}] ${summary}`;
 }

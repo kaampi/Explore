@@ -7,7 +7,11 @@ export function sourceCaption(source: LibrarySource | undefined, saved: boolean)
   return "library";
 }
 
-export function shelfCaption(source: LibrarySource | undefined, saved: boolean, tags: string[] = []): string {
+export function shelfCaption(
+  source: LibrarySource | undefined,
+  saved: boolean,
+  tags: string[] = [],
+): string {
   const extra = tags.join(" · ");
   return extra ? `${sourceCaption(source, saved)} · ${extra}` : sourceCaption(source, saved);
 }

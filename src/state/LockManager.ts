@@ -36,7 +36,7 @@ export interface LockChangeDecision {
 
 const AI_SOURCES: ReadonlySet<AuthoritySource> = new Set([
   "ai_approved_state_mutation",
-  "ai_inference"
+  "ai_inference",
 ]);
 
 export function resolveLockChange(request: LockChangeRequest): LockChangeDecision {
@@ -50,7 +50,7 @@ export function resolveLockChange(request: LockChangeRequest): LockChangeDecisio
   ) {
     return {
       allowed: false,
-      reason: "system_locked fields can only be changed by the system's explicit control flow."
+      reason: "system_locked fields can only be changed by the system's explicit control flow.",
     };
   }
 
@@ -60,7 +60,7 @@ export function resolveLockChange(request: LockChangeRequest): LockChangeDecisio
   ) {
     return {
       allowed: false,
-      reason: "Only the system's explicit control flow may set a field to system_locked."
+      reason: "Only the system's explicit control flow may set a field to system_locked.",
     };
   }
 

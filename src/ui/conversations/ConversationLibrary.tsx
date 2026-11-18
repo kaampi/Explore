@@ -21,20 +21,15 @@ export function ConversationCard({
   onDelete?: (entry: ConversationEntry) => void;
 }) {
   const { library } = useAppearance();
-  const theme =
-    library.conversations[entry.id] ?? library.defaultPlay ?? library.active;
+  const theme = library.conversations[entry.id] ?? library.defaultPlay ?? library.active;
   const date = new Intl.DateTimeFormat(undefined, {
     month: "short",
     day: "numeric",
   }).format(new Date(entry.updatedAt));
   return (
-    <article
-      className={`sb-conversation-card${compact ? " sb-conversation-card--compact" : ""}`}
-    >
+    <article className={`sb-conversation-card${compact ? " sb-conversation-card--compact" : ""}`}>
       <div className="sb-conversation-card__top">
-        <span className="sb-eyebrow">
-          {entry.participants.join(", ") || "YOUR EXPLORATION"}
-        </span>
+        <span className="sb-eyebrow">{entry.participants.join(", ") || "YOUR EXPLORATION"}</span>
         <span>{date}</span>
       </div>
       <h3>{entry.title}</h3>
@@ -81,7 +76,17 @@ export function ConversationCard({
             {entry.archived ? "Restore" : "Archive"}
           </button>
         )}
-        {onDelete && <button type="button" className="sb-link sb-delete-conversation" disabled={busy} aria-label={`Delete ${entry.title}`} onClick={() => onDelete(entry)}>Delete</button>}
+        {onDelete && (
+          <button
+            type="button"
+            className="sb-link sb-delete-conversation"
+            disabled={busy}
+            aria-label={`Delete ${entry.title}`}
+            onClick={() => onDelete(entry)}
+          >
+            Delete
+          </button>
+        )}
       </div>
     </article>
   );
@@ -128,32 +133,17 @@ export function ConversationLibrary({
         <h1>
           Stories to <em>come back to.</em>
         </h1>
-        <button
-          type="button"
-          className="sb-button"
-          onClick={onNew}
-          disabled={busy}
-        >
+        <button type="button" className="sb-button" onClick={onNew} disabled={busy}>
           ＋ New conversation
         </button>
       </div>
-      <p className="sb-muted">
-        Every meeting has its own history, relationships, and atmosphere.
-      </p>
+      <p className="sb-muted">Every meeting has its own history, relationships, and atmosphere.</p>
       <div className="sb-conversation-filters">
         <div className="sb-segment" aria-label="Conversation collection">
-          <button
-            type="button"
-            aria-pressed={!archived}
-            onClick={() => setArchived(false)}
-          >
+          <button type="button" aria-pressed={!archived} onClick={() => setArchived(false)}>
             Conversations ({entries.filter((entry) => !entry.archived).length})
           </button>
-          <button
-            type="button"
-            aria-pressed={archived}
-            onClick={() => setArchived(true)}
-          >
+          <button type="button" aria-pressed={archived} onClick={() => setArchived(true)}>
             Archived ({entries.filter((entry) => entry.archived).length})
           </button>
         </div>
@@ -167,8 +157,8 @@ export function ConversationLibrary({
       {unreadable > 0 && (
         <p className="sb-notice" role="status">
           {unreadable} saved conversation
-          {unreadable === 1 ? " could" : "s could"} not be read. The original
-          records remain in storage.
+          {unreadable === 1 ? " could" : "s could"} not be read. The original records remain in
+          storage.
         </p>
       )}
       <div className="sb-conversation-grid">
@@ -184,7 +174,10 @@ export function ConversationLibrary({
               setError(null);
             }}
             onArchive={onArchive}
-            onDelete={entry => { setDeleting(entry); setError(null); }}
+            onDelete={(entry) => {
+              setDeleting(entry);
+              setError(null);
+            }}
           />
         ))}
       </div>
@@ -208,10 +201,7 @@ export function ConversationLibrary({
         </div>
       )}
       {renaming && (
-        <Modal
-          title="Give this conversation a name"
-          onClose={() => setRenaming(null)}
-        >
+        <Modal title="Give this conversation a name" onClose={() => setRenaming(null)}>
           <form
             onSubmit={(event) => {
               event.preventDefault();
@@ -220,9 +210,7 @@ export function ConversationLibrary({
                 .then(() => setRenaming(null))
                 .catch((err: unknown) =>
                   setError(
-                    err instanceof Error
-                      ? err.message
-                      : "Could not rename this conversation.",
+                    err instanceof Error ? err.message : "Could not rename this conversation.",
                   ),
                 );
             }}
@@ -242,36 +230,68 @@ export function ConversationLibrary({
               </p>
             )}
             <div className="sb-dialog__actions">
-              <button
-                type="button"
-                className="sb-link"
-                onClick={() => setRenaming(null)}
-              >
+              <button type="button" className="sb-link" onClick={() => setRenaming(null)}>
                 Cancel
               </button>
-              <button
-                type="submit"
-                className="sb-button"
-                disabled={busy || !title.trim()}
-              >
+              <button type="submit" className="sb-button" disabled={busy || !title.trim()}>
                 Save name
               </button>
             </div>
           </form>
         </Modal>
       )}
-      {deleting && <Modal title="Delete conversation permanently?" onClose={() => { if (!busy) setDeleting(null); }}>
-        <p>Delete <strong>{deleting.title}</strong> and its entire conversation history? This cannot be undone.</p>
-        <p className="sb-muted">Your characters, worlds, saved ideas and shared audio tracks stay in your library. To keep this conversation for later, cancel and choose Archive instead.</p>
-        {error && <p className="sb-error" role="alert">{error}</p>}
-        <div className="sb-dialog__actions">
-          <button type="button" className="sb-link" disabled={busy} autoFocus onClick={() => setDeleting(null)}>Cancel</button>
-          <button type="button" className="sb-button sb-button--danger" disabled={busy} onClick={() => {
-            setError(null);
-            void onDelete(deleting.id).then(() => setDeleting(null)).catch((err: unknown) => setError(err instanceof Error ? err.message : "Could not delete this conversation. Try again."));
-          }}>{busy ? "Deleting…" : "Delete permanently"}</button>
-        </div>
-      </Modal>}
+      {deleting && (
+        <Modal
+          title="Delete conversation permanently?"
+          onClose={() => {
+            if (!busy) setDeleting(null);
+          }}
+        >
+          <p>
+            Delete <strong>{deleting.title}</strong> and its entire conversation history? This
+            cannot be undone.
+          </p>
+          <p className="sb-muted">
+            Your characters, worlds, saved ideas and shared audio tracks stay in your library. To
+            keep this conversation for later, cancel and choose Archive instead.
+          </p>
+          {error && (
+            <p className="sb-error" role="alert">
+              {error}
+            </p>
+          )}
+          <div className="sb-dialog__actions">
+            <button
+              type="button"
+              className="sb-link"
+              disabled={busy}
+              autoFocus
+              onClick={() => setDeleting(null)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="sb-button sb-button--danger"
+              disabled={busy}
+              onClick={() => {
+                setError(null);
+                void onDelete(deleting.id)
+                  .then(() => setDeleting(null))
+                  .catch((err: unknown) =>
+                    setError(
+                      err instanceof Error
+                        ? err.message
+                        : "Could not delete this conversation. Try again.",
+                    ),
+                  );
+              }}
+            >
+              {busy ? "Deleting…" : "Delete permanently"}
+            </button>
+          </div>
+        </Modal>
+      )}
     </main>
   );
 }

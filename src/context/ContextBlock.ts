@@ -7,13 +7,7 @@
  */
 
 export type ContextBlockSource =
-  | "system_rule"
-  | "voice"
-  | "story"
-  | "state_summary"
-  | "active_layer"
-  | "memory"
-  | "conversation";
+  "system_rule" | "voice" | "story" | "state_summary" | "active_layer" | "memory" | "conversation";
 
 export interface ContextBlock {
   id: string;
@@ -46,5 +40,5 @@ export const PRIORITY = {
   /** Pinned recap of beats the 8,000 ceiling already dropped. */
   CONDENSED_HISTORY: 35,
   MEMORY: 40,
-  CONVERSATION_RECENT: 50
+  CONVERSATION_RECENT: 50,
 } as const;

@@ -35,10 +35,17 @@ const fields = [
   ["approximateAge", "Age"],
 ] as const;
 
-export function sameCoreCharacter(character: CharacterTemplate, source: CoreCharacterSource): boolean {
+export function sameCoreCharacter(
+  character: CharacterTemplate,
+  source: CoreCharacterSource,
+): boolean {
   const origin = character.coreOrigin;
-  return !!origin && origin.workspaceId === source.workspaceId &&
-    origin.projectId === source.projectId && origin.entityRef === source.entityRef;
+  return (
+    !!origin &&
+    origin.workspaceId === source.workspaceId &&
+    origin.projectId === source.projectId &&
+    origin.entityRef === source.entityRef
+  );
 }
 
 export function snapshotCoreCharacter(entity: CoreBibleEntity): CoreCharacterSnapshot {
@@ -46,11 +53,21 @@ export function snapshotCoreCharacter(entity: CoreBibleEntity): CoreCharacterSna
     name: entity.name.trim(),
     personality: entity.personality?.trim() ?? "",
     appearance: entity.looks?.trim() ?? "",
-    ...(entity.pronoun?.trim() && entity.pronoun.trim().length <= 32 ? { pronoun: entity.pronoun.trim() } : {}),
-    ...(Number.isInteger(entity.approximateAge) && entity.approximateAge! >= 1 && entity.approximateAge! <= 130 ? { approximateAge: entity.approximateAge } : {}),
-    facts: entity.facts.filter(f => f.value.trim()).map(f => ({
-      predicate: f.predicate.trim(), label: f.label.trim(), value: f.value.trim(),
-    })),
+    ...(entity.pronoun?.trim() && entity.pronoun.trim().length <= 32
+      ? { pronoun: entity.pronoun.trim() }
+      : {}),
+    ...(Number.isInteger(entity.approximateAge) &&
+    entity.approximateAge! >= 1 &&
+    entity.approximateAge! <= 130
+      ? { approximateAge: entity.approximateAge }
+      : {}),
+    facts: entity.facts
+      .filter((f) => f.value.trim())
+      .map((f) => ({
+        predicate: f.predicate.trim(),
+        label: f.label.trim(),
+        value: f.value.trim(),
+      })),
   };
 }
 
@@ -81,20 +98,31 @@ export function reviewCoreCharacter(
     const after = fieldValue(next, key);
     if (before === after) continue;
     const local = localField(character, key);
-    changes.push({ key, label, previous: before, incoming: after, local,
-      conflict: local !== before && local !== after });
+    changes.push({
+      key,
+      label,
+      previous: before,
+      incoming: after,
+      local,
+      conflict: local !== before && local !== after,
+    });
   }
-  const oldFacts = new Map(previous.facts.map(f => [f.predicate, f]));
+  const oldFacts = new Map(previous.facts.map((f) => [f.predicate, f]));
   for (const fact of next.facts) {
     const old = oldFacts.get(fact.predicate);
     if (old?.value === fact.value) continue;
-    const localEntry = character.lore.find(entry => entry.id === coreFactId(fact.predicate));
+    const localEntry = character.lore.find((entry) => entry.id === coreFactId(fact.predicate));
     const local = localEntry?.content ?? "";
     const expected = old ? coreFactContent(previous.name, old.label, old.value) : "";
     changes.push({
-      key: "fact:" + fact.predicate, label: fact.label,
-      previous: old?.value ?? "", incoming: fact.value, local,
-      conflict: !!localEntry && local !== expected &&
+      key: "fact:" + fact.predicate,
+      label: fact.label,
+      previous: old?.value ?? "",
+      incoming: fact.value,
+      local,
+      conflict:
+        !!localEntry &&
+        local !== expected &&
         local !== coreFactContent(next.name, fact.label, fact.value),
     });
   }
@@ -116,8 +144,10 @@ export function applyCoreCharacterChanges(
   approvedKeys: readonly string[],
   source: CoreCharacterSource,
 ): CharacterTemplate {
-  if (!sameCoreCharacter(character, source) || incoming.entity_ref !== source.entityRef) throw new Error("Core identity mismatch.");
-  if (source.revision < character.coreOrigin!.revision) throw new Error("This manuscript version is older than the local copy.");
+  if (!sameCoreCharacter(character, source) || incoming.entity_ref !== source.entityRef)
+    throw new Error("kaampi Codex identity mismatch.");
+  if (source.revision < character.coreOrigin!.revision)
+    throw new Error("This manuscript version is older than the local copy.");
   const selected = new Set(approvedKeys);
   const next = snapshotCoreCharacter(incoming);
   const updated: CharacterTemplate = { ...character, lore: [...character.lore] };
@@ -127,13 +157,19 @@ export function applyCoreCharacterChanges(
     if (key === "personality") updated.personality = next.personality;
     if (key === "appearance") updated.appearance = next.appearance;
     if (key === "pronoun") updated.pronoun = next.pronoun as CharacterTemplate["pronoun"];
-    if (key === "approximateAge") updated.approximateAge = next.approximateAge as CharacterTemplate["approximateAge"];
+    if (key === "approximateAge")
+      updated.approximateAge = next.approximateAge as CharacterTemplate["approximateAge"];
   }
   for (const fact of next.facts) {
     if (!selected.has("fact:" + fact.predicate)) continue;
     const id = coreFactId(fact.predicate);
-    const entry = { id, title: fact.label, content: coreFactContent(next.name, fact.label, fact.value), keywords: [] as string[] };
-    const index = updated.lore.findIndex(item => item.id === id);
+    const entry = {
+      id,
+      title: fact.label,
+      content: coreFactContent(next.name, fact.label, fact.value),
+      keywords: [] as string[],
+    };
+    const index = updated.lore.findIndex((item) => item.id === id);
     if (index >= 0) updated.lore[index] = { ...updated.lore[index], ...entry };
     else updated.lore.push(entry);
   }
@@ -143,14 +179,14 @@ export function applyCoreCharacterChanges(
   if (baseline) {
     updated.coreSnapshot = {
       ...baseline,
-      facts: baseline.facts.map(fact => ({ ...fact })),
+      facts: baseline.facts.map((fact) => ({ ...fact })),
     };
     for (const [key] of fields) {
       if (selected.has(key)) Object.assign(updated.coreSnapshot, { [key]: next[key] });
     }
     for (const fact of next.facts) {
       if (!selected.has("fact:" + fact.predicate)) continue;
-      const index = updated.coreSnapshot.facts.findIndex(old => old.predicate === fact.predicate);
+      const index = updated.coreSnapshot.facts.findIndex((old) => old.predicate === fact.predicate);
       if (index < 0) updated.coreSnapshot.facts.push({ ...fact });
       else updated.coreSnapshot.facts[index] = { ...fact };
     }

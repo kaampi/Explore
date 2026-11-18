@@ -3,7 +3,7 @@ import {
   collectPlacePictures,
   copyPictureFields,
   MAX_PLACE_PICTURES,
-  persistPlacePictures
+  persistPlacePictures,
 } from "@state/placePictures";
 
 const a = { thumbDataUrl: "data:thumb-a", imageDataUrl: "data:image-a" };
@@ -16,8 +16,8 @@ describe("placePictures", () => {
       collectPlacePictures({
         thumbDataUrl: a.thumbDataUrl,
         imageDataUrl: a.imageDataUrl,
-        gallery: [a, b]
-      })
+        gallery: [a, b],
+      }),
     ).toEqual([a, b]);
   });
 
@@ -26,19 +26,19 @@ describe("placePictures", () => {
     expect(persistPlacePictures([a, b], "random")).toEqual({
       ...a,
       gallery: [b],
-      picturePlay: "random"
+      picturePlay: "random",
     });
     expect(persistPlacePictures([a, b], "fade")).toEqual({
       ...a,
       gallery: [b],
-      picturePlay: "fade"
+      picturePlay: "fade",
     });
   });
 
   it("caps at six pictures", () => {
     const many = Array.from({ length: 8 }, (_, i) => ({
       thumbDataUrl: `data:thumb-${i}`,
-      imageDataUrl: `data:image-${i}`
+      imageDataUrl: `data:image-${i}`,
     }));
     expect(collectPlacePictures({ gallery: many })).toHaveLength(MAX_PLACE_PICTURES);
     expect(persistPlacePictures(many).gallery).toHaveLength(MAX_PLACE_PICTURES - 1);
@@ -48,7 +48,7 @@ describe("placePictures", () => {
     expect(copyPictureFields({ ...a, gallery: [b, c], picturePlay: "random" })).toEqual({
       ...a,
       gallery: [b, c],
-      picturePlay: "random"
+      picturePlay: "random",
     });
   });
 });

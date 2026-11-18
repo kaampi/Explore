@@ -2,11 +2,18 @@ import { describe, expect, it } from "vitest";
 import { previewAvtHistory } from "../../src/lore/avtHistoryPreview";
 
 const sample = () => ({
-  version: "1.11.0", story: { id: "story-old", title: "Harbor" },
+  version: "1.11.0",
+  story: { id: "story-old", title: "Harbor" },
   branches: [{ id: "branch-old" }],
   entries: [
     { id: "entry-a", type: "user", content: "Hello", branchId: "branch-old" },
-    { id: "entry-b", type: "assistant", content: "Welcome", parentId: "entry-a", branchId: "branch-old" },
+    {
+      id: "entry-b",
+      type: "assistant",
+      content: "Welcome",
+      parentId: "entry-a",
+      branchId: "branch-old",
+    },
   ],
 });
 describe("AVT transcript preview", () => {
@@ -25,6 +32,6 @@ describe("AVT transcript preview", () => {
     input.entries[1]!.parentId = "missing";
     const preview = previewAvtHistory(input);
     expect(preview.lines[1]?.parentTargetId).toBeNull();
-    expect(preview.warnings.some(w => w.includes("unknown parent"))).toBe(true);
+    expect(preview.warnings.some((w) => w.includes("unknown parent"))).toBe(true);
   });
 });

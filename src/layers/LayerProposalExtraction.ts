@@ -23,7 +23,7 @@ const NoLayerProposalSchema = z.object({ propose: z.literal(false) });
 const LayerProposalSchema = z.object({
   propose: z.literal(true),
   type: z.enum(["core", "relationship", "environment"]),
-  content: z.string().min(1)
+  content: z.string().min(1),
 });
 const LayerProposalResultSchema = z.union([NoLayerProposalSchema, LayerProposalSchema]);
 
@@ -34,7 +34,7 @@ export interface LayerProposal {
 
 export type LayerProposalExtractor = (
   dialogueText: string,
-  characterId: string
+  characterId: string,
 ) => Promise<LayerProposal | null>;
 
 export function parseLayerProposal(rawText: string): LayerProposal | null {
@@ -63,7 +63,7 @@ export interface LLMLayerProposalExtractorOptions {
 
 export function createLLMLayerProposalExtractor(
   llmAdapter: LLMAdapter,
-  options: LLMLayerProposalExtractorOptions = {}
+  options: LLMLayerProposalExtractorOptions = {},
 ): LayerProposalExtractor {
   const maxAttempts = options.maxAttempts ?? 2;
   const baseDelayMs = options.baseDelayMs ?? 200;
@@ -97,11 +97,11 @@ export function createLLMLayerProposalExtractor(
                   '{"propose": true, "type": "core"|"relationship"|"environment", "content": "<the behavioral instruction>"}',
                   "",
                   "Propose a layer RARELY — only for something that should genuinely persist and shape how",
-                  "this character behaves going forward, not for routine dialogue."
-                ].join("\n")
+                  "this character behaves going forward, not for routine dialogue.",
+                ].join("\n"),
               },
-              { role: "user", content: dialogueText }
-            ]
+              { role: "user", content: dialogueText },
+            ],
           })) {
             if (chunk.type === "text_delta") collected += chunk.text;
             else if (chunk.type === "error")
@@ -115,7 +115,7 @@ export function createLLMLayerProposalExtractor(
           const parsed = parseLayerProposal(collected);
           return parsed ? coerceProposedLayerType(parsed, characterId) : null;
         },
-        { maxAttempts, baseDelayMs, sleepImpl: options.sleepImpl }
+        { maxAttempts, baseDelayMs, sleepImpl: options.sleepImpl },
       );
     } catch (err) {
       options.onFailure?.(err);

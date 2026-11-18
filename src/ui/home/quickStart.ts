@@ -9,10 +9,7 @@ import type {
 import { characterDraftFromTemplate } from "@library/fromForm";
 import { createSessionFromSetup } from "@session/createSession";
 import { attributeRange } from "@state/traitBands";
-import {
-  placeVisualFromTemplate,
-  realmPlayFields,
-} from "@session/campaignStart";
+import { placeVisualFromTemplate, realmPlayFields } from "@session/campaignStart";
 
 /** Start from a person. No campaign, rule-set, imported world, or authored plot required. */
 export function quickCharacterSession(
@@ -27,29 +24,39 @@ export function quickCharacterSession(
   } = {},
 ) {
   const place = options.place;
-  const stats = Object.fromEntries((options.ruleset?.attributes ?? []).filter(def => def.kind === "number").map(def => {
-    const { min, max } = attributeRange(def);
-    const midpoint = min + (max - min) / 2;
-    return [def.id, String(Number.isInteger(min) && Number.isInteger(max) ? Math.round(midpoint) : midpoint)];
-  }));
+  const stats = Object.fromEntries(
+    (options.ruleset?.attributes ?? [])
+      .filter((def) => def.kind === "number")
+      .map((def) => {
+        const { min, max } = attributeRange(def);
+        const midpoint = min + (max - min) / 2;
+        return [
+          def.id,
+          String(Number.isInteger(min) && Number.isInteger(max) ? Math.round(midpoint) : midpoint),
+        ];
+      }),
+  );
   const draft = {
     ...characterDraftFromTemplate(character),
     lore: character.lore,
     position: place?.name ?? "A quiet meeting place",
     ...(options.ruleset ? { stats } : {}),
   };
-  const session=createSessionFromSetup(
+  const session = createSessionFromSetup(
     {
       location: place?.name ?? "A quiet meeting place",
       lighting: place?.lighting ?? "soft light",
       noise: place?.noise ?? "quiet",
       music: place?.music ?? false,
       placeNote:
-        place?.note ??
-        "A new conversation. There is no goal to reach — begin wherever you like.",
+        place?.note ?? "A new conversation. There is no goal to reach — begin wherever you like.",
       characters: [draft],
-      ...(options.voice ? { voiceTitle: options.voice.name, voiceInstruction: options.voice.instruction } : {}),
-      ...(options.ruleset ? { ruleset: { name: options.ruleset.name, attributes: options.ruleset.attributes } } : {}),
+      ...(options.voice
+        ? { voiceTitle: options.voice.name, voiceInstruction: options.voice.instruction }
+        : {}),
+      ...(options.ruleset
+        ? { ruleset: { name: options.ruleset.name, attributes: options.ruleset.attributes } }
+        : {}),
       ...(options.ruleset ? { playerIdentity: { stats } } : {}),
       ...(place
         ? {
@@ -58,13 +65,16 @@ export function quickCharacterSession(
             placeVisual: placeVisualFromTemplate(place),
           }
         : {}),
-      ...(options.realm
-        ? { realm: options.realm.name, ...realmPlayFields(options.realm) }
-        : {}),
+      ...(options.realm ? { realm: options.realm.name, ...realmPlayFields(options.realm) } : {}),
       ...(options.model ? { model: options.model } : {}),
     },
     sessionId,
   );
-  initializeSpatialReferences(session,options.realm?.worldMap?.nodes.filter(n=>n.placeId).map(n=>({id:n.placeId!,name:n.name,kind:n.kind}))??[]);
+  initializeSpatialReferences(
+    session,
+    options.realm?.worldMap?.nodes
+      .filter((n) => n.placeId)
+      .map((n) => ({ id: n.placeId!, name: n.name, kind: n.kind })) ?? [],
+  );
   return session;
 }

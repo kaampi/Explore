@@ -1,3 +1,4 @@
+import { useTranslate } from "../i18n/LanguageProvider";
 import { useEffect, useRef, useState } from "react";
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 import {
@@ -7,14 +8,14 @@ import {
   parseTagList,
   type LibrarySource,
   type PlaceTemplate,
-  type RealmTemplate
+  type RealmTemplate,
 } from "@library/LibrarySchema";
 import {
   examplePlaceTemplate,
   exampleRealmTemplates,
   EXAMPLE_PLACE_ID,
   mergeWithExamples,
-  withAuroraRoomIntros
+  withAuroraRoomIntros,
 } from "@library/exampleTemplates";
 import { withOriginalTimestamps } from "@library/fromForm";
 import {
@@ -23,13 +24,13 @@ import {
   persistPlacePictures,
   picturePlayOf,
   type PlacePicture,
-  type PicturePlay
+  type PicturePlay,
 } from "@state/placePictures";
 import {
   audioPlayOf,
   collectPlaceAudio,
   MAX_PLACE_AUDIO,
-  persistPlaceAudio
+  persistPlaceAudio,
 } from "@state/placeAudio";
 import { StudioList } from "./StudioList";
 import { FormSection } from "./FormSection";
@@ -83,7 +84,7 @@ function emptyRoom(): RoomDraft {
     pictures: [],
     picturePlay: "fade",
     clips: [],
-    audioPlay: "fade"
+    audioPlay: "fade",
   };
 }
 
@@ -98,6 +99,7 @@ type RealmDraft = {
   picturePlay: PicturePlay;
   clips: string[];
   audioPlay: PicturePlay;
+  generateResidents: boolean;
   source: LibrarySource;
   createdAt?: string;
 };
@@ -112,7 +114,8 @@ function emptyRealmDraft(): RealmDraft {
     picturePlay: "fade",
     clips: [],
     audioPlay: "fade",
-    source: "player"
+    generateResidents: false,
+    source: "player",
   };
 }
 
@@ -126,8 +129,9 @@ function realmDraftFrom(template: RealmTemplate): RealmDraft {
     picturePlay: picturePlayOf(template),
     clips: collectPlaceAudio(template),
     audioPlay: audioPlayOf(template),
+    generateResidents: template.openWorld?.generateResidents ?? false,
     source: template.source,
-    createdAt: template.createdAt
+    createdAt: template.createdAt,
   };
 }
 
@@ -147,7 +151,7 @@ function emptyDraft(realmId: string): Draft {
     audioPlay: "fade",
     tags: "",
     rooms: [],
-    source: "player"
+    source: "player",
   };
 }
 
@@ -171,7 +175,10 @@ function draftFrom(template: PlaceTemplate): Draft {
     clips: collectPlaceAudio(template),
     audioPlay: audioPlayOf(template),
     tags: formatTagList(template.tags ?? []),
-    rooms: (template.id === EXAMPLE_PLACE_ID ? withAuroraRoomIntros(template.rooms) : template.rooms ?? []).map((room) => ({
+    rooms: (template.id === EXAMPLE_PLACE_ID
+      ? withAuroraRoomIntros(template.rooms)
+      : (template.rooms ?? [])
+    ).map((room) => ({
       id: room.id,
       label: room.label,
       description: room.description ?? "",
@@ -182,10 +189,10 @@ function draftFrom(template: PlaceTemplate): Draft {
       pictures: collectPlacePictures(room),
       picturePlay: picturePlayOf(room),
       clips: collectPlaceAudio(room),
-      audioPlay: audioPlayOf(room)
+      audioPlay: audioPlayOf(room),
     })),
     source: template.source,
-    createdAt: template.createdAt
+    createdAt: template.createdAt,
   };
 }
 
@@ -195,7 +202,7 @@ function PictureStrip({
   busy,
   onAdd,
   onRemove,
-  onPlay
+  onPlay,
 }: {
   pictures: PlacePicture[];
   play: PicturePlay;
@@ -204,6 +211,7 @@ function PictureStrip({
   onRemove: (index: number) => void;
   onPlay: (play: PicturePlay) => void;
 }) {
+  const t = useTranslate();
   return (
     <div className="studio-gallery">
       {pictures.length === 0 ? (
@@ -211,10 +219,18 @@ function PictureStrip({
       ) : (
         <div className="studio-gallery__row">
           {pictures.map((picture, index) => (
-            <div key={`${index}:${picture.thumbDataUrl.slice(-24)}`} className="studio-gallery__item">
+            <div
+              key={`${index}:${picture.thumbDataUrl.slice(-24)}`}
+              className="studio-gallery__item"
+            >
               <img src={picture.thumbDataUrl} alt="" />
-              <button type="button" className="setup-text-btn" disabled={busy} onClick={() => onRemove(index)}>
-                Remove
+              <button
+                type="button"
+                className="setup-text-btn"
+                disabled={busy}
+                onClick={() => onRemove(index)}
+              >
+                {t("spRemove")}
               </button>
             </div>
           ))}
@@ -233,10 +249,13 @@ function PictureStrip({
       </div>
       {pictures.length > 1 ? (
         <label className="setup-field">
-          Several pictures
-          <select value={play} onChange={(e) => onPlay(e.target.value === "random" ? "random" : "fade")}>
-            <option value="fade">Fade slowly</option>
-            <option value="random">Pick one when you enter</option>
+          {t("plsSeveralPictures")}
+          <select
+            value={play}
+            onChange={(e) => onPlay(e.target.value === "random" ? "random" : "fade")}
+          >
+            <option value="fade">{t("plsFadeSlowly")}</option>
+            <option value="random">{t("plsPickOneWhenYou")}</option>
           </select>
         </label>
       ) : null}
@@ -250,7 +269,7 @@ function SoundStrip({
   busy,
   onAdd,
   onRemove,
-  onPlay
+  onPlay,
 }: {
   clips: string[];
   play: PicturePlay;
@@ -259,6 +278,7 @@ function SoundStrip({
   onRemove: (index: number) => void;
   onPlay: (play: PicturePlay) => void;
 }) {
+  const t = useTranslate();
   return (
     <div className="studio-gallery">
       {clips.length > 0 ? (
@@ -266,8 +286,13 @@ function SoundStrip({
           {clips.map((clip, index) => (
             <div key={`${index}:${clip.slice(-24)}`} className="studio-gallery__item">
               <div className="studio-gallery__sound">Loop {index + 1}</div>
-              <button type="button" className="setup-text-btn" disabled={busy} onClick={() => onRemove(index)}>
-                Remove
+              <button
+                type="button"
+                className="setup-text-btn"
+                disabled={busy}
+                onClick={() => onRemove(index)}
+              >
+                {t("spRemove")}
               </button>
             </div>
           ))}
@@ -286,10 +311,13 @@ function SoundStrip({
       </div>
       {clips.length > 1 ? (
         <label className="setup-field">
-          Several loops
-          <select value={play} onChange={(e) => onPlay(e.target.value === "random" ? "random" : "fade")}>
-            <option value="fade">Fade slowly</option>
-            <option value="random">Pick one when you enter</option>
+          {t("plsSeveralLoops")}
+          <select
+            value={play}
+            onChange={(e) => onPlay(e.target.value === "random" ? "random" : "fade")}
+          >
+            <option value="fade">{t("plsFadeSlowly")}</option>
+            <option value="random">{t("plsPickOneWhenYou")}</option>
           </select>
         </label>
       ) : null}
@@ -298,6 +326,7 @@ function SoundStrip({
 }
 
 export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
+  const t = useTranslate();
   const [library, setLibrary] = useState<PlaceTemplate[]>([]);
   const [realms, setRealms] = useState<RealmTemplate[]>([]);
   const [selectedRealmId, setSelectedRealmId] = useState<string | null>(null);
@@ -346,7 +375,9 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
   const aurora = examplePlaceTemplate();
   const visiblePlaces = mergeWithExamples(library, [aurora]);
   const selectedRealm = visibleRealms.find((item) => item.id === selectedRealmId) ?? null;
-  const landmarks = selectedRealmId ? visiblePlaces.filter((item) => item.realmId === selectedRealmId) : [];
+  const landmarks = selectedRealmId
+    ? visiblePlaces.filter((item) => item.realmId === selectedRealmId)
+    : [];
 
   function openRealm(id: string) {
     const item = visibleRealms.find((row) => row.id === id);
@@ -406,7 +437,10 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
       }
       setDraft((current) => {
         if (!current) return current;
-        return { ...current, pictures: [...current.pictures, ...pairs].slice(0, MAX_PLACE_PICTURES) };
+        return {
+          ...current,
+          pictures: [...current.pictures, ...pairs].slice(0, MAX_PLACE_PICTURES),
+        };
       });
     } catch (err) {
       setError(err instanceof PortraitError ? err.message : "Could not read that image.");
@@ -420,7 +454,11 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
     setDraft((current) => {
       if (!current) return current;
       const pictures = current.pictures.filter((_, i) => i !== index);
-      return { ...current, pictures, picturePlay: pictures.length > 1 ? current.picturePlay : "fade" };
+      return {
+        ...current,
+        pictures,
+        picturePlay: pictures.length > 1 ? current.picturePlay : "fade",
+      };
     });
   }
 
@@ -441,10 +479,10 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
               rooms: current.rooms.map((room) =>
                 room.id === roomId
                   ? { ...room, pictures: [...room.pictures, ...pairs].slice(0, MAX_PLACE_PICTURES) }
-                  : room
-              )
+                  : room,
+              ),
             }
-          : current
+          : current,
       );
     } catch (err) {
       setError(err instanceof PortraitError ? err.message : "Could not read that image.");
@@ -462,10 +500,14 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
             rooms: current.rooms.map((room) => {
               if (room.id !== roomId) return room;
               const pictures = room.pictures.filter((_, i) => i !== index);
-              return { ...room, pictures, picturePlay: pictures.length > 1 ? room.picturePlay : "fade" };
-            })
+              return {
+                ...room,
+                pictures,
+                picturePlay: pictures.length > 1 ? room.picturePlay : "fade",
+              };
+            }),
           }
-        : current
+        : current,
     );
   }
 
@@ -489,7 +531,10 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
       }
       setRealmDraft((current) => {
         if (!current) return current;
-        return { ...current, pictures: [...current.pictures, ...pairs].slice(0, MAX_PLACE_PICTURES) };
+        return {
+          ...current,
+          pictures: [...current.pictures, ...pairs].slice(0, MAX_PLACE_PICTURES),
+        };
       });
     } catch (err) {
       setError(err instanceof PortraitError ? err.message : "Could not read that image.");
@@ -503,7 +548,11 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
     setRealmDraft((current) => {
       if (!current) return current;
       const pictures = current.pictures.filter((_, i) => i !== index);
-      return { ...current, pictures, picturePlay: pictures.length > 1 ? current.picturePlay : "fade" };
+      return {
+        ...current,
+        pictures,
+        picturePlay: pictures.length > 1 ? current.picturePlay : "fade",
+      };
     });
   }
 
@@ -568,9 +617,9 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
               if (room.id !== roomId) return room;
               const clips = room.clips.filter((_, i) => i !== index);
               return { ...room, clips, audioPlay: clips.length > 1 ? room.audioPlay : "fade" };
-            })
+            }),
           }
-        : current
+        : current,
     );
   }
 
@@ -589,10 +638,12 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
           ? {
               ...current,
               rooms: current.rooms.map((room) =>
-                room.id === roomId ? { ...room, clips: [...room.clips, ...clips].slice(0, MAX_PLACE_AUDIO) } : room
-              )
+                room.id === roomId
+                  ? { ...room, clips: [...room.clips, ...clips].slice(0, MAX_PLACE_AUDIO) }
+                  : room,
+              ),
             }
-          : current
+          : current,
       );
     } catch (err) {
       setError(err instanceof AmbientAudioError ? err.message : "Could not read that sound.");
@@ -624,7 +675,7 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
             : {}),
           ...(room.gate && room.gate !== "open" ? { gate: room.gate } : {}),
           ...persistPlacePictures(room.pictures, room.picturePlay),
-          ...persistPlaceAudio(room.clips, room.audioPlay)
+          ...persistPlaceAudio(room.clips, room.audioPlay),
         }))
         .filter((room) => room.label);
       const built = newPlaceTemplate({
@@ -640,10 +691,13 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
         source: draft.source,
         ...persistPlacePictures(draft.pictures, draft.picturePlay),
         ...persistPlaceAudio(draft.clips, draft.audioPlay),
-        rooms
+        rooms,
       });
       const previous = library.find((item) => item.id === built.id);
-      const savedPlace = withOriginalTimestamps(built, previous ?? (draft.createdAt ? { createdAt: draft.createdAt } : undefined));
+      const savedPlace = withOriginalTimestamps(
+        built,
+        previous ?? (draft.createdAt ? { createdAt: draft.createdAt } : undefined),
+      );
       const realmCard = visibleRealms.find((item) => item.id === savedPlace.realmId);
       if (realmCard && !savedRealmIds.has(realmCard.id)) {
         await repo.saveRealm(realmCard);
@@ -677,15 +731,20 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
         note: realmDraft.note,
         ...(realmDraft.brief.trim() ? { brief: realmDraft.brief.trim() } : {}),
         source: realmDraft.source,
+        ...(realmDraft.generateResidents ? { openWorld: { generateResidents: true } } : {}),
         ...persistPlacePictures(realmDraft.pictures, realmDraft.picturePlay),
-        ...persistPlaceAudio(realmDraft.clips, realmDraft.audioPlay)
+        ...persistPlaceAudio(realmDraft.clips, realmDraft.audioPlay),
       });
       const previous = realms.find((item) => item.id === built.id);
       const saved = withOriginalTimestamps(
         built,
-        previous ?? (realmDraft.createdAt ? { createdAt: realmDraft.createdAt } : undefined)
+        previous ?? (realmDraft.createdAt ? { createdAt: realmDraft.createdAt } : undefined),
       );
-      await repo.saveRealm({ ...saved, ...(previous?.worldMap ? { worldMap: previous.worldMap } : {}), ...(previous?.instructions ? {instructions:previous.instructions} : {}) });
+      await repo.saveRealm({
+        ...saved,
+        ...(previous?.worldMap ? { worldMap: previous.worldMap } : {}),
+        ...(previous?.instructions ? { instructions: previous.instructions } : {}),
+      });
       await refresh();
       setSelectedRealmId(saved.id);
       setRealmDraft(realmDraftFrom(saved));
@@ -730,14 +789,14 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
           id: FLOOR_FOCAL_ID,
           name: draft.name.trim() || "Floor",
           caption: "Floor · default Here",
-          ...(draft.pictures[0]?.thumbDataUrl ? { thumb: draft.pictures[0].thumbDataUrl } : {})
+          ...(draft.pictures[0]?.thumbDataUrl ? { thumb: draft.pictures[0].thumbDataUrl } : {}),
         },
         ...draft.rooms.map((room) => ({
           id: room.id,
           name: room.label.trim() || "Untitled focal",
           caption: "Focal",
-          ...(room.pictures[0]?.thumbDataUrl ? { thumb: room.pictures[0].thumbDataUrl } : {})
-        }))
+          ...(room.pictures[0]?.thumbDataUrl ? { thumb: room.pictures[0].thumbDataUrl } : {}),
+        })),
       ]
     : [];
 
@@ -807,7 +866,7 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
             id: item.id,
             name: item.name,
             caption: shelfCaption(item.source, savedRealmIds.has(item.id)),
-            ...(thumb ? { thumb } : {})
+            ...(thumb ? { thumb } : {}),
           };
         })}
         selectedId={selectedRealmId}
@@ -835,7 +894,7 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
             caption: shelfCaption(item.source, savedPlaceIds.has(item.id), item.tags ?? []),
             ...(collectPlacePictures(item)[0]?.thumbDataUrl
               ? { thumb: collectPlacePictures(item)[0]!.thumbDataUrl }
-              : {})
+              : {}),
           }))}
           selectedId={selectedId}
           onSelect={open}
@@ -873,7 +932,8 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
       <section className="studio-sheet studio-sheet--form">
         {!realmDraft && !draft && (
           <p className="inspector-empty">
-            Realm → landmark → focal. Click City of Dunbaar, then the bar, then a room. The form is always the last column you picked.
+            Realm → landmark → focal. Click City of Dunbaar, then the bar, then a room. The form is
+            always the last column you picked.
           </p>
         )}
         {realmDraft && !draft && (
@@ -882,63 +942,86 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
             <SheetNameField
               ariaLabel="Realm name"
               value={realmDraft.name}
-              placeholder="New realm"
+              placeholder={t("plsNewRealm")}
               onChange={(name) => setRealmDraft({ ...realmDraft, name })}
             />
             <FormSection
-              title="Pictures"
+              title={t("plsPictures")}
               lede="Atlas thumb, and a chat backdrop if the landmark has none. Not sent to the model."
             >
-            <PictureStrip
-              pictures={realmDraft.pictures}
-              play={realmDraft.picturePlay}
-              busy={busy}
-              onAdd={() => realmPicRef.current?.click()}
-              onRemove={removeRealmPicture}
-              onPlay={(play) => setRealmDraft({ ...realmDraft, picturePlay: play })}
-            />
+              <PictureStrip
+                pictures={realmDraft.pictures}
+                play={realmDraft.picturePlay}
+                busy={busy}
+                onAdd={() => realmPicRef.current?.click()}
+                onRemove={removeRealmPicture}
+                onPlay={(play) => setRealmDraft({ ...realmDraft, picturePlay: play })}
+              />
             </FormSection>
             <FormSection
-              title="Sound"
+              title={t("plsSound")}
               lede="A looping mp3/ogg/wav under 6 MB. Plays if the landmark has no loop. Not sent to the model."
             >
-            <SoundStrip
-              clips={realmDraft.clips}
-              play={realmDraft.audioPlay}
-              busy={busy}
-              onAdd={() => realmAudioRef.current?.click()}
-              onRemove={removeRealmClip}
-              onPlay={(play) => setRealmDraft({ ...realmDraft, audioPlay: play })}
-            />
-            </FormSection>
-            <FormSection title="Intro" lede="A postcard for the player. Not Here — the scene still plays in a landmark.">
-            <textarea
-              className="setup-field__story"
-              value={realmDraft.note}
-              onChange={(e) => setRealmDraft({ ...realmDraft, note: e.target.value })}
-              placeholder="A quiet city. Hidden rooms sit behind ordinary doors."
-            />
+              <SoundStrip
+                clips={realmDraft.clips}
+                play={realmDraft.audioPlay}
+                busy={busy}
+                onAdd={() => realmAudioRef.current?.click()}
+                onRemove={removeRealmClip}
+                onPlay={(play) => setRealmDraft({ ...realmDraft, audioPlay: play })}
+              />
             </FormSection>
             <FormSection
-              title="For the model"
-              lede="Two or three facts for Pass 1. Empty = the intro is sent instead."
+              title={t("plsIntro")}
+              lede="A postcard for the player. Not Here — the scene still plays in a landmark."
             >
-            <textarea
-              className="setup-field__story"
-              value={realmDraft.brief}
-              onChange={(e) => setRealmDraft({ ...realmDraft, brief: e.target.value })}
-              placeholder="Dunbaar is a quiet harbour city. Hidden rooms sit behind ordinary doors."
-            />
+              <textarea
+                className="setup-field__story"
+                value={realmDraft.note}
+                onChange={(e) => setRealmDraft({ ...realmDraft, note: e.target.value })}
+                placeholder="A quiet city. Hidden rooms sit behind ordinary doors."
+              />
+            </FormSection>
+            <FormSection
+              title={t("plsForTheModel")}
+              lede="Two or three facts for the story AI. Empty = the intro is sent instead."
+            >
+              <textarea
+                className="setup-field__story"
+                value={realmDraft.brief}
+                onChange={(e) => setRealmDraft({ ...realmDraft, brief: e.target.value })}
+                placeholder="Dunbaar is a quiet harbour city. Hidden rooms sit behind ordinary doors."
+              />
+            </FormSection>
+            <FormSection
+              title={t("pathFreeTitle")}
+              lede="When someone explores this world on its map, the story AI can give a place with no people a couple of ordinary residents to talk to. They carry nothing, hand out nothing and cannot be fought; they are only someone to talk to."
+            >
+              <label className="setup-field setup-field--row">
+                <input
+                  type="checkbox"
+                  checked={realmDraft.generateResidents}
+                  onChange={(e) =>
+                    setRealmDraft({ ...realmDraft, generateResidents: e.target.checked })
+                  }
+                />
+                <span className="setup-field__label">{t("plsLetTheAiInvent")}</span>
+              </label>
             </FormSection>
             {notice && <p className="setup-notice">{notice}</p>}
             {error && <p className="setup-error">{error}</p>}
             <div className="studio-sheet__actions">
-              <button type="button" className="setup-start" disabled={busy} onClick={() => void saveRealm()}>
-                Save
+              <button
+                type="button"
+                className="setup-start"
+                disabled={busy}
+                onClick={() => void saveRealm()}
+              >
+                {t("cpSave")}
               </button>
               {realmSaved && (
                 <button type="button" className="setup-example" onClick={() => void removeRealm()}>
-                  Delete
+                  {t("cstDelete")}
                 </button>
               )}
             </div>
@@ -953,13 +1036,13 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
             <SheetNameField
               ariaLabel="Landmark name"
               value={draft.name}
-              placeholder="New landmark"
+              placeholder={t("plsNewLandmark")}
               onChange={(name) => setDraft({ ...draft, name })}
             />
             <label className="setup-field setup-field--row">
               <span className="setup-field__label">
-                Tags
-                <span className="setup-optional">this landmark only</span>
+                {t("plsTags")}
+                <span className="setup-optional">{t("plsThisLandmarkOnly")}</span>
               </span>
               <input
                 value={draft.tags}
@@ -968,72 +1051,95 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
               />
             </label>
             <FormSection
-              title="Pictures"
+              title={t("plsPictures")}
               lede="Each file becomes a thumb and a chat backdrop. This is Here until someone walks into another focal. Not sent to the model."
             >
-            <PictureStrip
-              pictures={draft.pictures}
-              play={draft.picturePlay}
-              busy={busy}
-              onAdd={() => venueRef.current?.click()}
-              onRemove={removeVenuePicture}
-              onPlay={(play) => setDraft({ ...draft, picturePlay: play })}
-            />
-            </FormSection>
-            <FormSection title="Sound" lede="A looping mp3/ogg/wav under 6 MB. Not sent to the model.">
-            <SoundStrip
-              clips={draft.clips}
-              play={draft.audioPlay}
-              busy={busy}
-              onAdd={() => venueAudioRef.current?.click()}
-              onRemove={removeVenueClip}
-              onPlay={(play) => setDraft({ ...draft, audioPlay: play })}
-            />
-            </FormSection>
-            <FormSection title="Light and sound">
-            <div className="setup-row">
-              <label className="setup-field">
-                <span className="setup-field__label">Light</span>
-                <input value={draft.lighting} onChange={(e) => setDraft({ ...draft, lighting: e.target.value })} placeholder="dim, neon…" />
-              </label>
-              <label className="setup-field">
-                <span className="setup-field__label">Sound</span>
-                <input value={draft.noise} onChange={(e) => setDraft({ ...draft, noise: e.target.value })} placeholder="rain, chatter…" />
-              </label>
-            </div>
-            <label className="setup-check">
-              <input type="checkbox" checked={draft.music} onChange={(e) => setDraft({ ...draft, music: e.target.checked })} />
-              Music is playing
-            </label>
+              <PictureStrip
+                pictures={draft.pictures}
+                play={draft.picturePlay}
+                busy={busy}
+                onAdd={() => venueRef.current?.click()}
+                onRemove={removeVenuePicture}
+                onPlay={(play) => setDraft({ ...draft, picturePlay: play })}
+              />
             </FormSection>
             <FormSection
-              title="Intro"
+              title={t("plsSound")}
+              lede="A looping mp3/ogg/wav under 6 MB. Not sent to the model."
+            >
+              <SoundStrip
+                clips={draft.clips}
+                play={draft.audioPlay}
+                busy={busy}
+                onAdd={() => venueAudioRef.current?.click()}
+                onRemove={removeVenueClip}
+                onPlay={(play) => setDraft({ ...draft, audioPlay: play })}
+              />
+            </FormSection>
+            <FormSection title={t("plsLightAndSound")}>
+              <div className="setup-row">
+                <label className="setup-field">
+                  <span className="setup-field__label">{t("themeLight")}</span>
+                  <input
+                    value={draft.lighting}
+                    onChange={(e) => setDraft({ ...draft, lighting: e.target.value })}
+                    placeholder="dim, neon…"
+                  />
+                </label>
+                <label className="setup-field">
+                  <span className="setup-field__label">{t("plsSound")}</span>
+                  <input
+                    value={draft.noise}
+                    onChange={(e) => setDraft({ ...draft, noise: e.target.value })}
+                    placeholder="rain, chatter…"
+                  />
+                </label>
+              </div>
+              <label className="setup-check">
+                <input
+                  type="checkbox"
+                  checked={draft.music}
+                  onChange={(e) => setDraft({ ...draft, music: e.target.checked })}
+                />
+                {t("plsMusicIsPlaying")}
+              </label>
+            </FormSection>
+            <FormSection
+              title={t("plsIntro")}
               lede="Typed over the picture. The player sees this. Not sent if For the model is filled."
             >
-            <textarea
-              className="setup-field__story"
-              value={draft.note}
-              onChange={(e) => setDraft({ ...draft, note: e.target.value })}
-              placeholder="What you see and hear in this place…"
-            />
+              <textarea
+                className="setup-field__story"
+                value={draft.note}
+                onChange={(e) => setDraft({ ...draft, note: e.target.value })}
+                placeholder="What you see and hear in this place…"
+              />
             </FormSection>
-            <FormSection title="For the model" lede="Compact Here for this landmark. Empty = the intro is sent instead.">
-            <textarea
-              className="setup-field__story"
-              value={draft.brief}
-              onChange={(e) => setDraft({ ...draft, brief: e.target.value })}
-              placeholder="The Aurora Room is a hidden harbor archive…"
-            />
+            <FormSection
+              title={t("plsForTheModel")}
+              lede="Compact Here for this landmark. Empty = the intro is sent instead."
+            >
+              <textarea
+                className="setup-field__story"
+                value={draft.brief}
+                onChange={(e) => setDraft({ ...draft, brief: e.target.value })}
+                placeholder="The Aurora Room is a hidden harbor archive…"
+              />
             </FormSection>
             {notice && <p className="setup-notice">{notice}</p>}
             {error && <p className="setup-error">{error}</p>}
             <div className="studio-sheet__actions">
-              <button type="button" className="setup-start" disabled={busy} onClick={() => void save()}>
-                Save
+              <button
+                type="button"
+                className="setup-start"
+                disabled={busy}
+                onClick={() => void save()}
+              >
+                {t("cpSave")}
               </button>
               {saved && (
                 <button type="button" className="setup-example" onClick={() => void remove()}>
-                  Delete landmark
+                  {t("plsDeleteLandmark")}
                 </button>
               )}
             </div>
@@ -1048,125 +1154,137 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
             <SheetNameField
               ariaLabel="Focal name"
               value={selectedRoom.label}
-              placeholder="New focal"
+              placeholder={t("plsNewFocal")}
               onChange={(label) =>
                 setDraft({
                   ...draft,
-                  rooms: draft.rooms.map((item) => (item.id === selectedRoom.id ? { ...item, label } : item))
+                  rooms: draft.rooms.map((item) =>
+                    item.id === selectedRoom.id ? { ...item, label } : item,
+                  ),
                 })
               }
             />
             <FormSection
-              title="Pictures"
+              title={t("plsPictures")}
               lede="Typed over the picture. A focal without a picture stays dark instead of showing the landmark."
             >
-            <PictureStrip
-              pictures={selectedRoom.pictures}
-              play={selectedRoom.picturePlay}
-              busy={busy}
-              onAdd={() => {
-                roomTargetRef.current = selectedRoom.id;
-                roomRef.current?.click();
-              }}
-              onRemove={(index) => removeRoomPicture(selectedRoom.id, index)}
-              onPlay={(play) =>
-                setDraft({
-                  ...draft,
-                  rooms: draft.rooms.map((item) => (item.id === selectedRoom.id ? { ...item, picturePlay: play } : item))
-                })
-              }
-            />
+              <PictureStrip
+                pictures={selectedRoom.pictures}
+                play={selectedRoom.picturePlay}
+                busy={busy}
+                onAdd={() => {
+                  roomTargetRef.current = selectedRoom.id;
+                  roomRef.current?.click();
+                }}
+                onRemove={(index) => removeRoomPicture(selectedRoom.id, index)}
+                onPlay={(play) =>
+                  setDraft({
+                    ...draft,
+                    rooms: draft.rooms.map((item) =>
+                      item.id === selectedRoom.id ? { ...item, picturePlay: play } : item,
+                    ),
+                  })
+                }
+              />
             </FormSection>
-            <FormSection title="Sound">
-            <SoundStrip
-              clips={selectedRoom.clips}
-              play={selectedRoom.audioPlay}
-              busy={busy}
-              onAdd={() => {
-                roomAudioTargetRef.current = selectedRoom.id;
-                roomAudioRef.current?.click();
-              }}
-              onRemove={(index) => removeRoomClip(selectedRoom.id, index)}
-              onPlay={(play) =>
-                setDraft({
-                  ...draft,
-                  rooms: draft.rooms.map((item) => (item.id === selectedRoom.id ? { ...item, audioPlay: play } : item))
-                })
-              }
-            />
+            <FormSection title={t("plsSound")}>
+              <SoundStrip
+                clips={selectedRoom.clips}
+                play={selectedRoom.audioPlay}
+                busy={busy}
+                onAdd={() => {
+                  roomAudioTargetRef.current = selectedRoom.id;
+                  roomAudioRef.current?.click();
+                }}
+                onRemove={(index) => removeRoomClip(selectedRoom.id, index)}
+                onPlay={(play) =>
+                  setDraft({
+                    ...draft,
+                    rooms: draft.rooms.map((item) =>
+                      item.id === selectedRoom.id ? { ...item, audioPlay: play } : item,
+                    ),
+                  })
+                }
+              />
             </FormSection>
-            <FormSection title="Intro" lede="Typed over the picture. The player sees this.">
-            <textarea
-              className="setup-field__story"
-              value={selectedRoom.description}
-              placeholder="What you see when you walk in…"
-              onChange={(e) =>
-                setDraft({
-                  ...draft,
-                  rooms: draft.rooms.map((item) =>
-                    item.id === selectedRoom.id ? { ...item, description: e.target.value } : item
-                  )
-                })
-              }
-            />
-            </FormSection>
-            <FormSection title="For the model">
-            <textarea
-              className="setup-field__story"
-              value={selectedRoom.brief}
-              placeholder="A narrow staff room. Bed, chair, curtains drawn."
-              onChange={(e) =>
-                setDraft({
-                  ...draft,
-                  rooms: draft.rooms.map((item) =>
-                    item.id === selectedRoom.id ? { ...item, brief: e.target.value } : item
-                  )
-                })
-              }
-            />
-            </FormSection>
-            <FormSection title="Also match" lede="Other names that count as walking into this room.">
-            <label className="setup-field">
-              <input
-                value={selectedRoom.keywords}
-                placeholder="staff room, her room"
+            <FormSection title={t("plsIntro")} lede="Typed over the picture. The player sees this.">
+              <textarea
+                className="setup-field__story"
+                value={selectedRoom.description}
+                placeholder="What you see when you walk in…"
                 onChange={(e) =>
                   setDraft({
                     ...draft,
                     rooms: draft.rooms.map((item) =>
-                      item.id === selectedRoom.id ? { ...item, keywords: e.target.value } : item
-                    )
+                      item.id === selectedRoom.id ? { ...item, description: e.target.value } : item,
+                    ),
                   })
                 }
               />
-            </label>
+            </FormSection>
+            <FormSection title={t("plsForTheModel")}>
+              <textarea
+                className="setup-field__story"
+                value={selectedRoom.brief}
+                placeholder="A narrow staff room. Bed, chair, curtains drawn."
+                onChange={(e) =>
+                  setDraft({
+                    ...draft,
+                    rooms: draft.rooms.map((item) =>
+                      item.id === selectedRoom.id ? { ...item, brief: e.target.value } : item,
+                    ),
+                  })
+                }
+              />
             </FormSection>
             <FormSection
-              title="Door"
-              lede="How this room shows on the Go row in chat. Closed rooms wait until chat names them, a listed reply goes there, or you open them in Inspector. Hidden rooms have no button until then."
+              title={t("plsAlsoMatch")}
+              lede="Other names that count as walking into this room."
             >
-              <label className="setup-field setup-field--row">
-                <span className="setup-field__label">In play</span>
-                <select
-                  value={selectedRoom.gate}
-                  onChange={(e) => {
-                    const gate = e.target.value === "locked" || e.target.value === "hidden" ? e.target.value : "open";
+              <label className="setup-field">
+                <input
+                  value={selectedRoom.keywords}
+                  placeholder="staff room, her room"
+                  onChange={(e) =>
                     setDraft({
                       ...draft,
                       rooms: draft.rooms.map((item) =>
-                        item.id === selectedRoom.id ? { ...item, gate } : item
-                      )
+                        item.id === selectedRoom.id ? { ...item, keywords: e.target.value } : item,
+                      ),
+                    })
+                  }
+                />
+              </label>
+            </FormSection>
+            <FormSection
+              title={t("plsDoor")}
+              lede="How this room shows on the Go row in chat. Closed rooms wait until chat names them, a listed reply goes there, or you open them in Inspector. Hidden rooms have no button until then."
+            >
+              <label className="setup-field setup-field--row">
+                <span className="setup-field__label">{t("plsInPlay")}</span>
+                <select
+                  value={selectedRoom.gate}
+                  onChange={(e) => {
+                    const gate =
+                      e.target.value === "locked" || e.target.value === "hidden"
+                        ? e.target.value
+                        : "open";
+                    setDraft({
+                      ...draft,
+                      rooms: draft.rooms.map((item) =>
+                        item.id === selectedRoom.id ? { ...item, gate } : item,
+                      ),
                     });
                   }}
                 >
-                  <option value="open">Always open</option>
-                  <option value="locked">Visible, closed until opened</option>
-                  <option value="hidden">Hidden until named</option>
+                  <option value="open">{t("plsAlwaysOpen")}</option>
+                  <option value="locked">{t("plsVisibleClosedUntilOpened")}</option>
+                  <option value="hidden">{t("plsHiddenUntilNamed")}</option>
                 </select>
               </label>
             </FormSection>
             <FormSection
-              title="Reachable from"
+              title={t("plsReachableFrom")}
               lede="Where you can walk in from — and where the Go buttons appear. Empty = from the landmark floor only, not from other rooms. Tick both ends of a door if they should connect."
             >
               <label className="setup-check">
@@ -1181,11 +1299,16 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
                           ? {
                               ...item,
                               fromRoomIds: e.target.checked
-                                ? [...(item.fromRoomIds ?? []).filter((id) => id !== FLOOR_FOCAL_ID), FLOOR_FOCAL_ID]
-                                : (item.fromRoomIds ?? []).filter((id) => id !== FLOOR_FOCAL_ID)
+                                ? [
+                                    ...(item.fromRoomIds ?? []).filter(
+                                      (id) => id !== FLOOR_FOCAL_ID,
+                                    ),
+                                    FLOOR_FOCAL_ID,
+                                  ]
+                                : (item.fromRoomIds ?? []).filter((id) => id !== FLOOR_FOCAL_ID),
                             }
-                          : item
-                      )
+                          : item,
+                      ),
                     })
                   }
                 />
@@ -1206,11 +1329,14 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
                               ? {
                                   ...item,
                                   fromRoomIds: e.target.checked
-                                    ? [...(item.fromRoomIds ?? []).filter((id) => id !== room.id), room.id]
-                                    : (item.fromRoomIds ?? []).filter((id) => id !== room.id)
+                                    ? [
+                                        ...(item.fromRoomIds ?? []).filter((id) => id !== room.id),
+                                        room.id,
+                                      ]
+                                    : (item.fromRoomIds ?? []).filter((id) => id !== room.id),
                                 }
-                              : item
-                          )
+                              : item,
+                          ),
                         })
                       }
                     />
@@ -1221,18 +1347,26 @@ export function PlaceStudio({ repo }: { repo: IndexedDBRepository }) {
             {notice && <p className="setup-notice">{notice}</p>}
             {error && <p className="setup-error">{error}</p>}
             <div className="studio-sheet__actions">
-              <button type="button" className="setup-start" disabled={busy} onClick={() => void save()}>
-                Save
+              <button
+                type="button"
+                className="setup-start"
+                disabled={busy}
+                onClick={() => void save()}
+              >
+                {t("cpSave")}
               </button>
               <button
                 type="button"
                 className="setup-example"
                 onClick={() => {
-                  setDraft({ ...draft, rooms: draft.rooms.filter((item) => item.id !== selectedRoom.id) });
+                  setDraft({
+                    ...draft,
+                    rooms: draft.rooms.filter((item) => item.id !== selectedRoom.id),
+                  });
                   setSelectedFocalId(FLOOR_FOCAL_ID);
                 }}
               >
-                Remove focal
+                {t("plsRemoveFocal")}
               </button>
             </div>
           </>

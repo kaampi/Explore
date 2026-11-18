@@ -66,7 +66,7 @@ export async function sceneImagesFromFile(file: File): Promise<SceneImagePair> {
   try {
     return {
       thumbDataUrl: jpegFromBitmap(bitmap, THUMB_EDGE, SCENE_JPEG_QUALITY),
-      imageDataUrl: jpegFromBitmap(bitmap, SCENE_EDGE, SCENE_JPEG_QUALITY)
+      imageDataUrl: jpegFromBitmap(bitmap, SCENE_EDGE, SCENE_JPEG_QUALITY),
     };
   } finally {
     bitmap.close();

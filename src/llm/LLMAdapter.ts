@@ -27,7 +27,7 @@ export class AllProvidersFailedError extends Error {
     super(
       `All ${attempts.length} provider(s) failed before producing any output: ${attempts
         .map((e) => e.message)
-        .join("; ")}`
+        .join("; ")}`,
     );
     this.name = "AllProvidersFailedError";
   }
@@ -47,7 +47,7 @@ export class LLMAdapter {
   /** Providers (in fallback order) that satisfy every capability requested (only truthy requirements are checked). */
   capableProviders(required: Partial<ProviderCapabilities>): LLMProvider[] {
     const requiredKeys = (Object.keys(required) as (keyof ProviderCapabilities)[]).filter(
-      (key) => required[key]
+      (key) => required[key],
     );
     return this.providers.filter((p) => requiredKeys.every((key) => p.capabilities[key]));
   }
@@ -80,7 +80,11 @@ export class LLMAdapter {
         }
 
         const underlyingMessage = err instanceof Error ? err.message : String(err);
-        const wrapped = new ProviderError(provider.name, `streamCompletion failed: ${underlyingMessage}`, err);
+        const wrapped = new ProviderError(
+          provider.name,
+          `streamCompletion failed: ${underlyingMessage}`,
+          err,
+        );
         attemptErrors.push(wrapped);
 
         if (yieldedAny) {

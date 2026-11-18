@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { displayLayerType, readsAsCharacterTrait, coerceProposedLayerType } from "@layers/layerPlacement";
+import {
+  displayLayerType,
+  readsAsCharacterTrait,
+  coerceProposedLayerType,
+} from "@layers/layerPlacement";
 
 const EMMA = ["emma"];
 
@@ -8,8 +12,8 @@ describe("readsAsCharacterTrait", () => {
     expect(
       readsAsCharacterTrait(
         "Emma maintains a neutral, reserved demeanor in public settings, preferring solitude even when interacting briefly with others.",
-        EMMA
-      )
+        EMMA,
+      ),
     ).toBe(true);
   });
 
@@ -17,8 +21,8 @@ describe("readsAsCharacterTrait", () => {
     expect(
       readsAsCharacterTrait(
         "Emma maintains a professional demeanor and avoids small talk while working at the bar.",
-        EMMA
-      )
+        EMMA,
+      ),
     ).toBe(true);
   });
 
@@ -26,8 +30,8 @@ describe("readsAsCharacterTrait", () => {
     expect(
       readsAsCharacterTrait(
         "Emma's workplace is an upscale, low-key cocktail lounge with subdued evening ambiance.",
-        EMMA
-      )
+        EMMA,
+      ),
     ).toBe(false);
   });
 
@@ -35,14 +39,17 @@ describe("readsAsCharacterTrait", () => {
     expect(
       readsAsCharacterTrait(
         "A locked cellar door sits behind the bar. Emma keeps the better bottles down there and does not mention it unless asked.",
-        EMMA
-      )
+        EMMA,
+      ),
     ).toBe(false);
   });
 
   it("does not treat a pure atmosphere note as a character trait", () => {
     expect(
-      readsAsCharacterTrait("Dimly lit, intimate setting with soft jazz in an almost-empty bar", EMMA)
+      readsAsCharacterTrait(
+        "Dimly lit, intimate setting with soft jazz in an almost-empty bar",
+        EMMA,
+      ),
     ).toBe(false);
   });
 });
@@ -53,10 +60,11 @@ describe("displayLayerType", () => {
       displayLayerType(
         {
           type: "environment",
-          content: "Emma maintains a professional demeanor and avoids small talk while working at the bar."
+          content:
+            "Emma maintains a professional demeanor and avoids small talk while working at the bar.",
         },
-        EMMA
-      )
+        EMMA,
+      ),
     ).toBe("core");
   });
 
@@ -66,25 +74,31 @@ describe("displayLayerType", () => {
         {
           type: "environment",
           content:
-            "A locked cellar door sits behind the bar. Emma keeps the better bottles down there and does not mention it unless asked."
+            "A locked cellar door sits behind the bar. Emma keeps the better bottles down there and does not mention it unless asked.",
         },
-        EMMA
-      )
+        EMMA,
+      ),
     ).toBe("environment");
   });
 
   it("leaves a real place note as environment", () => {
     expect(
       displayLayerType(
-        { type: "environment", content: "The dimly lit bar has an intimate atmosphere with soft jazz music." },
-        EMMA
-      )
+        {
+          type: "environment",
+          content: "The dimly lit bar has an intimate atmosphere with soft jazz music.",
+        },
+        EMMA,
+      ),
     ).toBe("environment");
   });
 
   it("does not override an explicit relationship type", () => {
     expect(
-      displayLayerType({ type: "relationship", content: "Emma has started to trust the player." }, EMMA)
+      displayLayerType(
+        { type: "relationship", content: "Emma has started to trust the player." },
+        EMMA,
+      ),
     ).toBe("relationship");
   });
 });
@@ -94,8 +108,8 @@ describe("coerceProposedLayerType", () => {
     expect(
       coerceProposedLayerType(
         { type: "environment", content: "Emma maintains a reserved demeanor in public." },
-        "emma"
-      )
+        "emma",
+      ),
     ).toEqual({ type: "core", content: "Emma maintains a reserved demeanor in public." });
   });
 

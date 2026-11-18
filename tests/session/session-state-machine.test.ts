@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { transition, canTransition, InvalidTransitionError, type SessionState, type SessionEvent } from "@session/SessionStateMachine";
+import {
+  transition,
+  canTransition,
+  InvalidTransitionError,
+  type SessionState,
+  type SessionEvent,
+} from "@session/SessionStateMachine";
 
 const ALL_STATES: SessionState[] = [
   "idle",
@@ -7,7 +13,7 @@ const ALL_STATES: SessionState[] = [
   "streaming",
   "extracting",
   "committing",
-  "error"
+  "error",
 ];
 const ALL_EVENTS: SessionEvent[] = [
   "start_turn",
@@ -16,7 +22,7 @@ const ALL_EVENTS: SessionEvent[] = [
   "proposals_ready",
   "committed",
   "failure",
-  "reset"
+  "reset",
 ];
 
 describe("SessionStateMachine — happy path", () => {
@@ -66,7 +72,12 @@ describe("SessionStateMachine — invalid transitions", () => {
   });
 
   it("every busy state (not idle/error) accepts 'failure'", () => {
-    const busyStates: SessionState[] = ["awaiting_response", "streaming", "extracting", "committing"];
+    const busyStates: SessionState[] = [
+      "awaiting_response",
+      "streaming",
+      "extracting",
+      "committing",
+    ];
     for (const state of busyStates) {
       expect(canTransition(state, "failure")).toBe(true);
     }

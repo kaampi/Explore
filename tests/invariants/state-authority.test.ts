@@ -25,22 +25,22 @@ function makeSession(): Session {
       emma: {
         position: { value: "table", lock: "unlocked" },
         mood: { value: "angry", lock: "player_locked" },
-        energy: { value: 50, lock: "unlocked" }
-      }
+        energy: { value: 50, lock: "unlocked" },
+      },
     },
     relationships: {
       emma: {
         trust: { value: 20, lock: "unlocked" },
         familiarity: { value: 10, lock: "unlocked" },
-        tension: { value: 5, lock: "unlocked" }
-      }
+        tension: { value: 5, lock: "unlocked" },
+      },
     },
     layers: [],
     memory: { episodic: [], semantic: [], relational: [] },
     conversation: [],
     events: [],
     snapshots: [],
-    diagnostics: []
+    diagnostics: [],
   };
 }
 
@@ -58,7 +58,7 @@ describe("Invariant: AI can never overwrite player_locked state", () => {
       path: "characters.emma.mood",
       value: "calm",
       source: "ai_approved_state_mutation",
-      expectedStateVersion: 0
+      expectedStateVersion: 0,
     });
 
     expect(result.committed).toBe(false);
@@ -70,7 +70,7 @@ describe("Invariant: AI can never overwrite player_locked state", () => {
       path: "characters.emma.mood",
       value: "calm",
       source: "ai_inference",
-      expectedStateVersion: 0
+      expectedStateVersion: 0,
     });
 
     expect(result.committed).toBe(false);
@@ -81,7 +81,7 @@ describe("Invariant: AI can never overwrite player_locked state", () => {
       path: "characters.emma.mood",
       value: "calm",
       source: "player_manual_state",
-      expectedStateVersion: 0
+      expectedStateVersion: 0,
     });
 
     expect(result.committed).toBe(true);
@@ -93,7 +93,7 @@ describe("Invariant: AI can never overwrite player_locked state", () => {
       path: "characters.emma.position",
       value: "bar",
       source: "ai_approved_state_mutation",
-      expectedStateVersion: 0
+      expectedStateVersion: 0,
     });
 
     expect(result.committed).toBe(true);
@@ -105,7 +105,7 @@ describe("Invariant: AI can never overwrite player_locked state", () => {
       path: "characters.emma.clothing",
       value: "a towel",
       source: "ai_approved_state_mutation",
-      expectedStateVersion: 0
+      expectedStateVersion: 0,
     });
     expect(coat.committed).toBe(true);
     expect(engine.getSession().characters.emma?.clothing?.value).toBe("a towel");
@@ -114,7 +114,7 @@ describe("Invariant: AI can never overwrite player_locked state", () => {
       path: "characters.emma.holding",
       value: "empty",
       source: "ai_approved_state_mutation",
-      expectedStateVersion: 1
+      expectedStateVersion: 1,
     });
     expect(drop.committed).toBe(true);
     expect(engine.getSession().characters.emma?.holding?.value).toBe("");
@@ -125,7 +125,7 @@ describe("Invariant: AI can never overwrite player_locked state", () => {
       path: "characters.emma.position",
       value: "beside the player",
       source: "ai_approved_state_mutation",
-      expectedStateVersion: 0
+      expectedStateVersion: 0,
     });
     expect(walk.committed).toBe(true);
     expect(engine.getSession().characters.emma?.position.value).toBe("beside the player");
@@ -134,7 +134,7 @@ describe("Invariant: AI can never overwrite player_locked state", () => {
       path: "characters.emma.pose",
       value: "",
       source: "ai_approved_state_mutation",
-      expectedStateVersion: 1
+      expectedStateVersion: 1,
     });
     expect(stop.committed).toBe(true);
     expect(engine.getSession().characters.emma?.pose?.value).toBe("");
@@ -152,15 +152,15 @@ describe("Invariant: AI can never overwrite player_locked state", () => {
         content:
           "Adjoining the bar: toilets off the hall, Emma's room behind the staff door, a guest room upstairs, and a cellar door behind the bar.",
         active: true,
-        aiGenerated: false
-      }
+        aiGenerated: false,
+      },
     ];
     const local = new StateEngine(session, new EventLog());
     const result = local.proposeMutation({
       path: "characters.emma.position",
       value: "The Aurora Room",
       source: "ai_approved_state_mutation",
-      expectedStateVersion: 0
+      expectedStateVersion: 0,
     });
     expect(result.committed).toBe(false);
     expect(local.getSession().characters.emma?.position.value).toBe("Emma's room");
@@ -177,7 +177,7 @@ describe("Invariant: a state commit can always be traced to an event", () => {
       path: "characters.emma.position",
       value: "bar",
       source: "player_manual_state",
-      expectedStateVersion: 0
+      expectedStateVersion: 0,
     });
 
     expect(eventLog.all()).toHaveLength(1);
@@ -193,7 +193,7 @@ describe("Invariant: a state commit can always be traced to an event", () => {
       path: "characters.emma.mood",
       value: "calm",
       source: "ai_approved_state_mutation",
-      expectedStateVersion: 0
+      expectedStateVersion: 0,
     });
 
     expect(eventLog.all()).toHaveLength(0);
@@ -209,7 +209,7 @@ describe("Invariant: stale state versions are rejected (concurrency safety)", ()
       path: "characters.emma.position",
       value: "bar",
       source: "player_manual_state",
-      expectedStateVersion: 999 // stale on purpose
+      expectedStateVersion: 999, // stale on purpose
     });
 
     expect(result.committed).toBe(false);
@@ -223,7 +223,7 @@ describe("Relationship meters are lockable live state", () => {
       path: "relationships.emma.trust",
       value: 35,
       source: "ai_approved_state_mutation",
-      expectedStateVersion: 0
+      expectedStateVersion: 0,
     });
 
     expect(result.committed).toBe(true);
@@ -236,7 +236,7 @@ describe("Relationship meters are lockable live state", () => {
       path: "relationships.emma.familiarity",
       value: 140,
       source: "ai_approved_state_mutation",
-      expectedStateVersion: 0
+      expectedStateVersion: 0,
     });
 
     expect(result.committed).toBe(true);
@@ -252,7 +252,7 @@ describe("Relationship meters are lockable live state", () => {
       path: "relationships.emma.trust",
       value: 80,
       source: "ai_approved_state_mutation",
-      expectedStateVersion: 0
+      expectedStateVersion: 0,
     });
 
     expect(result.committed).toBe(false);
@@ -270,16 +270,16 @@ describe("Older sessions with raw relationship numbers still load", () => {
       characters: {
         emma: {
           position: { value: "bar", lock: "unlocked" },
-          mood: { value: "neutral", lock: "unlocked" }
-        }
+          mood: { value: "neutral", lock: "unlocked" },
+        },
       },
-      relationships: { emma: { trust: 20, familiarity: 10, tension: 5 } }
+      relationships: { emma: { trust: 20, familiarity: 10, tension: 5 } },
     });
 
     expect(session.relationships.emma).toEqual({
       trust: { value: 20, lock: "unlocked" },
       familiarity: { value: 10, lock: "unlocked" },
-      tension: { value: 5, lock: "unlocked" }
+      tension: { value: 5, lock: "unlocked" },
     });
   });
 
@@ -292,14 +292,14 @@ describe("Older sessions with raw relationship numbers still load", () => {
       characters: {
         emma: {
           position: { value: "bar", lock: "unlocked" },
-          mood: { value: "neutral", lock: "unlocked" }
-        }
+          mood: { value: "neutral", lock: "unlocked" },
+        },
       },
-      scene: { location: "The Aurora Room", environment: {} }
+      scene: { location: "The Aurora Room", environment: {} },
     });
     expect(session.player).toEqual({
       position: { value: "The Aurora Room", lock: "unlocked" },
-      status: { value: "awake", lock: "unlocked" }
+      status: { value: "awake", lock: "unlocked" },
     });
   });
 });
@@ -311,7 +311,7 @@ describe("Player presence is lockable live state", () => {
       path: "player.status",
       value: "asleep",
       source: "ai_approved_state_mutation",
-      expectedStateVersion: 0
+      expectedStateVersion: 0,
     });
     expect(result.committed).toBe(true);
     expect(engine.getSession().player?.status.value).toBe("asleep");
@@ -323,10 +323,9 @@ describe("Player presence is lockable live state", () => {
       path: "player.position",
       value: "spare room down the hall",
       source: "ai_approved_state_mutation",
-      expectedStateVersion: 0
+      expectedStateVersion: 0,
     });
     expect(result.committed).toBe(false);
     expect(engine.getSession().player?.position.value).not.toBe("spare room down the hall");
   });
 });
-

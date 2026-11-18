@@ -4,7 +4,7 @@ export function FormSection({
   title,
   action,
   lede,
-  children
+  children,
 }: {
   title: string;
   action?: ReactNode;

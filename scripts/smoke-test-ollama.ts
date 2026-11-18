@@ -24,8 +24,8 @@ async function main() {
     for await (const chunk of adapter.streamCompletion({
       messages: [
         { role: "system", content: "You are a terse test assistant. Reply in one short sentence." },
-        { role: "user", content: "Say hello and confirm you are working." }
-      ]
+        { role: "user", content: "Say hello and confirm you are working." },
+      ],
     })) {
       if (chunk.type === "text_delta") {
         process.stdout.write(chunk.text);
@@ -44,7 +44,7 @@ async function main() {
         "  - Ollama isn't running: start it with `ollama serve`\n" +
         `  - Model "${model}" isn't pulled: run \`ollama pull ${model}\`\n` +
         "  - CORS: if this were called from a browser instead of Node, you'd also need\n" +
-        "    OLLAMA_ORIGINS set to your dev server's origin.\n"
+        "    OLLAMA_ORIGINS set to your dev server's origin.\n",
     );
     process.exitCode = 1;
     return;
