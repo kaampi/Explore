@@ -58,3 +58,53 @@ export function publicCommands(game: EncounterGame): PublicCommand[] {
       };
     });
 }
+
+/**
+ * Up to three things to suggest under "What do you do?", never one that is blocked, in this order:
+ * what can be done with the person the player is talking to and is not done, then other things
+ * that can be done here and are not done, then doors that can be unlocked or opened, then
+ * "Look around". Fights and turns are not suggested; the list of everything is "More choices".
+ */
+export function suggestedCommands(
+  game: EncounterGame,
+  addresseeId?: string,
+  limit = 3,
+): PublicCommand[] {
+  const { definition: d, state: s } = game;
+  if (s.phase !== "exploration") return [];
+  const open = publicCommands(game).filter((command) => !command.blocked);
+  const interactionOf = (command: PublicCommand) =>
+    command.action.kind === "interaction"
+      ? d.interactions.find(
+          (i) => i.id === (command.action as { interactionId: string }).interactionId,
+        )
+      : undefined;
+  const undone = (command: PublicCommand) => {
+    const interaction = interactionOf(command);
+    return !!interaction && !s.attempts.includes(interaction.id);
+  };
+  const withThem = open.filter(
+    (command) =>
+      undone(command) && !!addresseeId && interactionOf(command)?.counterpartyId === addresseeId,
+  );
+  const elsewhere = open.filter(
+    (command) =>
+      undone(command) && !(addresseeId && interactionOf(command)?.counterpartyId === addresseeId),
+  );
+  const doors = open.filter((command) => {
+    if (command.action.kind !== "interact") return false;
+    const door = s.barriers[command.action.barrierId];
+    if (!door || door.open) return false;
+    return command.action.operation === (door.locked ? "unlock" : "open");
+  });
+  const look = open.filter((command) => command.action.kind === "look");
+  const seen = new Set<string>();
+  return [...withThem, ...elsewhere, ...doors, ...look]
+    .filter((command) => {
+      const key = JSON.stringify(command.action);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, limit);
+}

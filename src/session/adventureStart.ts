@@ -50,6 +50,7 @@ function personaFrom(person: CharacterTemplate, extra: PersonaSources = {}): Per
     appearance: clip(person.appearance, 600),
     ...(body ? { body: clip(body, 300) } : {}),
     ...(factions ? { factions: clip(factions, 300) } : {}),
+    ...(person.portraitDataUrl?.trim() ? { portraitDataUrl: person.portraitDataUrl.trim() } : {}),
   };
 }
 
