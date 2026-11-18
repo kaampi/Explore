@@ -332,7 +332,12 @@ export async function planSay(
   session: Session,
   text: string,
   provider: Provider | undefined,
-  options: { signal?: AbortSignal | undefined; lastSpeakerId?: string | undefined } = {},
+  options: {
+    signal?: AbortSignal | undefined;
+    lastSpeakerId?: string | undefined;
+    /** The person the player chose to talk to. Goes before the guess about who the line is for. */
+    addresseeId?: string | undefined;
+  } = {},
 ): Promise<SayPlan> {
   const game = session.encounter;
   if (!game) return { kind: "plain" };
@@ -340,7 +345,7 @@ export async function planSay(
   if (spokenInteraction(d, s, text) || greetingTarget(d, s, text)) return { kind: "authored" };
   if (!provider || !aiAllowed(game)) return { kind: "plain" };
   if (session.adventure?.narration?.freeReplies === false) return { kind: "plain" };
-  const addressee = speechAddressee(d, s, text, options.lastSpeakerId);
+  const addressee = speechAddressee(d, s, text, options.lastSpeakerId, options.addresseeId);
   if (!addressee) return { kind: "plain" };
   const interpreted = await interpretSay(session, addressee.id, text, provider, options.signal);
   if (interpreted.status === "cancelled") return { kind: "cancelled" };

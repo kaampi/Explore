@@ -89,6 +89,11 @@ export const EffectSchema = z.discriminatedUnion("kind", [
 const OutcomeSchema = z.object({
   text: z.string().min(1),
   effects: z.array(EffectSchema).default([]),
+  /**
+   * What the player now knows, in a sentence, for an outcome that sets a discovery. Shown under
+   * "What you know" and in the journal. Missing: the first sentence of the outcome's text.
+   */
+  learned: z.string().max(200).optional(),
 });
 export const InteractionSchema = z.object({
   id,

@@ -143,7 +143,8 @@ export function greetingTarget(
 }
 
 /**
- * Who a spoken line is for. A name in the line wins, but only if that person is here.
+ * Who a spoken line is for. A person the player has chosen to talk to, if they are here, comes
+ * first. Otherwise a name in the line wins, but only if that person is here.
  * Otherwise the one person present, otherwise whoever spoke last if they are still here.
  * No answer means the line is not addressed to anyone.
  */
@@ -152,8 +153,12 @@ export function speechAddressee(
   s: EncounterState,
   text: string,
   lastSpeakerId?: string,
+  chosenId?: string,
 ): Actor | undefined {
   const here = Object.values(s.actors).filter((actor) => present(d, s, actor));
+  // The person the player chose to talk to goes before any guess, even if the line names someone else.
+  const chosen = chosenId ? here.find((actor) => actor.id === chosenId) : undefined;
+  if (chosen) return chosen;
   const named = Object.values(s.actors).filter(
     (actor) => actor.id !== d.playerId && containsName(text, actor),
   );
