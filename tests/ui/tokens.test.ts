@@ -93,11 +93,14 @@ function stylesheets(dir: string): string[] {
  * dice and combat effects aside); this limit is lowered as the stylesheets are moved to the
  * variables, and must never be raised.
  */
-const DIRECT_COLOUR_LIMIT = 389;
+const DIRECT_COLOUR_LIMIT = 134;
+
+/** Stylesheets whose colours are their own, as the palette decision allows: dice and combat effects. */
+const OWN_COLOURS = new Set(["dice.css", "combat-stage.css", "roll-result.css"]);
 
 it("counts the colours written directly in stylesheets, and lets the number only go down", () => {
   let count = 0;
-  for (const path of stylesheets("src/ui"))
+  for (const path of stylesheets("src/ui").filter((file) => !OWN_COLOURS.has(basename(file))))
     count += (
       readFileSync(path, "utf8")
         .replace(/\/\*[\s\S]*?\*\//g, "")
@@ -157,4 +160,31 @@ it("gives the old button classes one rule each in controls.css, not one per view
     for (const rule of rules)
       expect(rule, name).not.toMatch(/background:\s*var\(--(accent-active|page-accent)\)/);
   }
+});
+
+it("keeps colours out of the frame stylesheets and the map studio, except the play themes' own variables", () => {
+  for (const name of ["experience.css", "styles.css", "page-system.css", "studio/worldMap.css"]) {
+    const direct = css(name)
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .split("\n")
+      .filter((line) => /#[0-9a-fA-F]{3,8}\b|\brgba?\(|\bhsla?\(/.test(line))
+      // The play view's theme works in channels of the theme's own colours (the next step).
+      .filter((line) => !/--play-/.test(line));
+    expect(direct, name).toEqual([]);
+  }
+});
+
+it("has no green button left in the frame: the old green is not used as a button surface", () => {
+  for (const name of ["experience.css", "styles.css", "page-system.css"])
+    expect(css(name), name).not.toMatch(/background:\s*var\(--accent-active\);\s*\n\s*color:\s*#/);
+});
+
+it("gives the Save map button the main button's colours", () => {
+  const map = readFileSync("src/ui/studio/worldMap.css", "utf8");
+  expect(map).toMatch(/button\.world-map__primary\s*\{[^}]*background:\s*var\(--accent-strong\)/);
+  expect(map).not.toMatch(/--map-accent:\s*#/);
+});
+
+it("does not give the hero's update button a colour of its own", () => {
+  expect(css("experience.css")).not.toMatch(/sb-update-check > \.sb-button\s*\{[^}]*background/);
 });

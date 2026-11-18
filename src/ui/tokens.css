@@ -43,6 +43,13 @@
   --space-4: 16px;
   --space-6: 24px;
 
+  /* Over photographs, the same in both modes: black for shades and shadows, white for text. */
+  --scrim: #000000;
+  --photo-text: #ffffff;
+  /* An illustration: the landscape in the picture of a play theme. */
+  --preview-landscape:
+    linear-gradient(150deg, #627d6e40, #274e40), linear-gradient(30deg, #556c55, #bac0a0);
+
   /* Older names, kept so existing rules keep working. */
   --accent-active: var(--success);
   --subhead: var(--accent);

@@ -758,7 +758,7 @@
 .storyboard-resize-handle:hover,
 .storyboard-resize-handle:focus-visible {
   opacity: 1;
-  background: var(--adventure-accent, var(--accent-active));
+  background: var(--adventure-accent, var(--accent));
   outline: none;
 }
 
