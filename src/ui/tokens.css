@@ -1,11 +1,14 @@
 /*
   Explore's colours and type, in one place. Every colour in the product frame comes from these
-  variables, light on the frame and dark when the shell is dark. Components never write a colour
+  variables, light on the frame and dark when the shell is dark. Either palette can be put on any
+  element with data-shell="light" or data-shell="dark": the play view does so after its theme's
+  background, so a light theme gets the light palette even when the app is dark. Components never write a colour
   of their own, except the map's terrain, illustrations, dice and combat effects.
   The palette and its rules: the design decision "Explores grundpalett".
 */
 :root,
-.sandbox-root {
+.sandbox-root,
+[data-shell="light"] {
   --bg: #f4f4f2;
   --panel: #fcfcfb;
   --panel-raised: #e9e9e6;
@@ -61,7 +64,8 @@
   color-scheme: light;
 }
 :root[data-shell="dark"],
-.sandbox-root[data-shell="dark"] {
+.sandbox-root[data-shell="dark"],
+[data-shell="dark"] {
   --bg: #15181e;
   --panel: #1c2028;
   --panel-raised: #252a34;

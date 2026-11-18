@@ -17,10 +17,12 @@
   font-family: var(--font-ui, "Barlow", system-ui, sans-serif);
   animation: roll-result-appear 0.42s cubic-bezier(0.18, 0.8, 0.25, 1) both;
 }
+/* palette-exempt: effect: the flash of a successful roll */
 .roll-result[data-outcome="success"] {
   --result-core: #132300;
   --result-edge: #539600;
 }
+/* palette-exempt: effect: the frame that flashes around a result */
 .roll-result__frame {
   position: absolute;
   inset: 0;

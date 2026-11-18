@@ -73,6 +73,7 @@
   min-width: 0;
 }
 .action-check__participant img,
+/* palette-exempt: illustration: the silhouette of a person */
 .action-check__silhouette {
   width: 88px;
   height: 104px;
@@ -150,6 +151,7 @@
   margin-bottom: 12px;
   overflow-wrap: anywhere;
 }
+/* palette-exempt: the dice tray: the picture of the table the dice roll on */
 .action-check__tray {
   width: 100%;
   height: 230px;
@@ -286,9 +288,11 @@
   font-size: 28px;
   font-weight: 500;
 }
+/* palette-exempt: effect: the outcome of a roll */
 .action-check__success {
   color: #a4d0aa;
 }
+/* palette-exempt: effect: the outcome of a roll */
 .action-check__failure {
   color: #e0ae95;
 }

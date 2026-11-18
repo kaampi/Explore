@@ -18,6 +18,7 @@ import { ConnectionHelp } from "../connection/ConnectionHelp";
 import { Modal } from "../components/Modal";
 import { StatusBar } from "../components/StatusBar";
 import { playThemeStyle, useAppearance } from "../themes/ThemeProvider";
+import { shellForTheme } from "../themes/theme";
 import { GameAudio } from "../audio/GameAudio";
 import { portraitSrc } from "../studio/portrait";
 import { playerCheckStats } from "../../checks/playerCheck";
@@ -198,6 +199,7 @@ export function PlayWorkspace({
             setBackgroundMenu({ x: event.clientX, y: event.clientY });
           }}
           className={`sb-themed-play${withSidebar ? " sb-themed-play--rules" : ""}${gatePreview ? " sb-themed-play--gate-preview" : ""}`}
+          data-shell={shellForTheme(library.active)}
           style={{
             ...playThemeStyle(library.active),
             ...(gatePreview ? { backgroundImage: `url(${gateBackground})` } : {}),

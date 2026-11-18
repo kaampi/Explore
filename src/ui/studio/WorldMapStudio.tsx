@@ -21,6 +21,7 @@ import type { TerrainBrushMode } from "./ForestBrush";
 import { mapLabelIds } from "./mapDetail";
 import { BrushTerrain, ForestBrushInput } from "./ForestBrush";
 import { Menu, type MenuItem } from "../components/Menu";
+import { MapToolIcon } from "./MapToolIcon";
 import { attachRoadJunction } from "@library/mapJunctions";
 import { CrossingInformation } from "./CrossingInformation";
 import { EncounterFields } from "./EncounterFields";
@@ -1713,12 +1714,7 @@ export function WorldMapStudio({
                           onClick={() => activateTool(item.id)}
                         >
                           {item.icon ? (
-                            <img
-                              className="world-map__tool-image"
-                              src={"/map-tools/" + item.icon}
-                              alt=""
-                              aria-hidden="true"
-                            />
+                            <MapToolIcon name={item.icon} />
                           ) : (
                             <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
                               <path
@@ -1768,12 +1764,7 @@ export function WorldMapStudio({
                             aria-pressed={Boolean(brushMode && brushMode !== "erase")}
                             onClick={() => setBrushPanel((v) => !v)}
                           >
-                            <img
-                              className="world-map__tool-image"
-                              src="/map-tools/brush.svg"
-                              alt=""
-                              aria-hidden="true"
-                            />
+                            <MapToolIcon name="brush.svg" />
                           </button>
                           <button
                             type="button"

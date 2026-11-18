@@ -645,33 +645,20 @@
   border-color: var(--accent);
   color: var(--accent);
 }
-.world-map__tool-icon {
-  display: block;
-  width: 26px;
-  height: 26px;
-  background: currentColor;
-  mask-size: contain;
-  mask-position: center;
-  mask-repeat: no-repeat;
-  -webkit-mask-size: contain;
-  -webkit-mask-position: center;
-  -webkit-mask-repeat: no-repeat;
-}
 .world-map__toolbox button:hover:not(:disabled) {
   background: var(--map-paper);
 }
-.world-map__tool-image {
+.world-map__tool-icon {
   display: block;
   width: 28px;
   height: 28px;
-  object-fit: contain;
+  color: inherit;
   pointer-events: none;
 }
-/* The tool pictures are drawn in dark lines for a light button. In the dark mode the lightness is
-   turned over and the colours are kept, so the arrow is not black on dark. */
-:root[data-shell="dark"] .world-map__tool-image,
-.sandbox-root[data-shell="dark"] .world-map__tool-image {
-  filter: invert(1) hue-rotate(180deg);
+.world-map__tool-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 .world-map__connection-details label {
   display: grid;

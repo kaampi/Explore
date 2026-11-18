@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { Modal } from "../components/Modal";
-import { PRESET_THEMES, contrastRatio, type PlayTheme } from "./theme";
+import { PRESET_THEMES, contrastRatio, shellForTheme, type PlayTheme } from "./theme";
 import { playThemeStyle, useAppearance } from "./ThemeProvider";
 import { backgroundFromFile } from "./themeStorage";
 import { PatternSettings, BACKGROUND_PATTERNS } from "./BackgroundSettings";
@@ -193,7 +193,11 @@ export function AppearanceSettingsContent({ onClose }: { onClose: () => void }) 
             {range("Text size", "textSize", 15, 26, 1, `${theme.textSize}px`)}
             {range("Reading width", "textWidth", 480, 1000, 20, `${theme.textWidth}px`)}
           </div>
-          <div className="sb-theme-preview" style={playThemeStyle(theme)}>
+          <div
+            className="sb-theme-preview"
+            data-shell={shellForTheme(theme)}
+            style={playThemeStyle(theme)}
+          >
             {theme.backgroundMode === "pattern" && (
               <div
                 className="sb-theme-preview__pattern"

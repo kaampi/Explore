@@ -61,10 +61,12 @@ for (const [mode, set] of Object.entries(modes())) {
   });
 }
 
-it("applies the dark palette to the page itself as well as to the app frame", () => {
-  expect(css("tokens.css")).toMatch(
-    /:root\[data-shell="dark"\],\s*\.sandbox-root\[data-shell="dark"\]\s*\{/,
+it("applies the dark palette to the page itself, to the app frame and to any element marked dark", () => {
+  const tokens = css("tokens.css");
+  expect(tokens).toMatch(
+    /:root\[data-shell="dark"\],\s*\.sandbox-root\[data-shell="dark"\],\s*\[data-shell="dark"\]\s*\{/,
   );
+  expect(tokens).toMatch(/:root,\s*\.sandbox-root,\s*\[data-shell="light"\]\s*\{/);
 });
 
 it("writes no fallback colour inside a variable, since the variables always exist", () => {
@@ -89,18 +91,17 @@ function stylesheets(dir: string): string[] {
 }
 
 /**
- * Colours written straight into a component's styles. The target is none (terrain, illustrations,
- * dice and combat effects aside); this limit is lowered as the stylesheets are moved to the
- * variables, and must never be raised.
+ * Colours written straight into a component's styles, counted in every stylesheet. The target is
+ * none, except the true exceptions of the palette decision (the dice canvas, effects, animations
+ * and illustrations), which are marked with a `palette-exempt:` comment on their block. The dice
+ * box, the combat stage and the roll result are counted too: their dialogs are made again with the
+ * play view. This limit is lowered as the stylesheets are moved to the variables, and never raised.
  */
-const DIRECT_COLOUR_LIMIT = 134;
-
-/** Stylesheets whose colours are their own, as the palette decision allows: dice and combat effects. */
-const OWN_COLOURS = new Set(["dice.css", "combat-stage.css", "roll-result.css"]);
+const DIRECT_COLOUR_LIMIT = 232;
 
 it("counts the colours written directly in stylesheets, and lets the number only go down", () => {
   let count = 0;
-  for (const path of stylesheets("src/ui").filter((file) => !OWN_COLOURS.has(basename(file))))
+  for (const path of stylesheets("src/ui"))
     count += (
       readFileSync(path, "utf8")
         .replace(/\/\*[\s\S]*?\*\//g, "")
@@ -189,9 +190,23 @@ it("does not give the hero's update button a colour of its own", () => {
   expect(css("experience.css")).not.toMatch(/sb-update-check > \.sb-button\s*\{[^}]*background/);
 });
 
-it("turns the lightness of the map tool pictures over in the dark mode, so the arrow is not black on dark", () => {
+it("draws the map tool pictures in currentColor, so they follow the text and turn plum when chosen", () => {
+  for (const name of ["select-move", "edit-nodes", "connect-entities", "brush"]) {
+    const svg = readFileSync(`src/ui/studio/map-tools/${name}.svg`, "utf8");
+    expect(svg, name).toContain("currentColor");
+    // No colour of its own: no black, no white, no rgb or hex colour.
+    expect(svg, name).not.toMatch(/rgb\(|#[0-9a-fA-F]{3,8}\b|:\s*(black|white)\b/);
+  }
   const map = readFileSync("src/ui/studio/worldMap.css", "utf8");
-  expect(map).toMatch(
-    /\.sandbox-root\[data-shell="dark"\] \.world-map__tool-image\s*\{[^}]*filter:\s*invert\(1\)/,
-  );
+  expect(map.match(/\.world-map__tool-icon \{/g)).toHaveLength(1);
+  expect(map).not.toContain("world-map__tool-image");
+});
+
+it("marks only a few true exceptions in the dice, combat and roll stylesheets, each with a reason", () => {
+  const files = ["dice.css", "combat/combat-stage.css", "components/roll-result.css"];
+  const marks = files.flatMap((name) => css(name).match(/palette-exempt: [^*]+\*\//g) ?? []);
+  expect(marks.length).toBeGreaterThan(0);
+  expect(marks.length).toBeLessThanOrEqual(12);
+  for (const mark of marks)
+    expect(mark).toMatch(/palette-exempt: (effect|illustration|the dice tray)/);
 });
