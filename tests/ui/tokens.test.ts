@@ -210,3 +210,34 @@ it("marks only a few true exceptions in the dice, combat and roll stylesheets, e
   for (const mark of marks)
     expect(mark).toMatch(/palette-exempt: (effect|illustration|the dice tray)/);
 });
+
+it("gives every part of every map tool picture a fill of its own or the text colour, never the browser's black", async () => {
+  const map = readFileSync("src/ui/studio/worldMap.css", "utf8");
+  // What a part with no fill of its own inherits from the picture: the text colour.
+  expect(map).toMatch(/\.world-map__tool-icon svg\s*\{[^}]*fill:\s*currentColor/);
+  const { JSDOM } = await import("jsdom");
+  const SHAPES = "path, circle, rect, ellipse, polygon, polyline, line";
+  const fillOf = (element: Element): string | undefined => {
+    for (let node: Element | null = element; node; node = node.parentElement) {
+      const style = node.getAttribute("style")?.match(/(?:^|;)\s*fill:\s*([^;]+)/)?.[1];
+      const attribute = node.getAttribute("fill");
+      if (style ?? attribute) return (style ?? attribute)!.trim();
+    }
+    return undefined;
+  };
+  for (const name of ["select-move", "edit-nodes", "connect-entities", "brush"]) {
+    const svg = new JSDOM(readFileSync(`src/ui/studio/map-tools/${name}.svg`, "utf8"), {
+      contentType: "image/svg+xml",
+    }).window.document;
+    const parts: Element[] = Array.from(svg.querySelectorAll<Element>(SHAPES));
+    expect(parts.length, name).toBeGreaterThan(0);
+    for (const part of parts) {
+      const fill = fillOf(part);
+      // No fill written: it inherits currentColor from the rule above. Written: not black or white.
+      if (fill !== undefined)
+        expect(fill, `${name} ${part.tagName}`).toMatch(
+          /^(none|currentColor|color-mix\(.*currentColor.*\)|var\(--[\w-]+\))$/,
+        );
+    }
+  }
+});
