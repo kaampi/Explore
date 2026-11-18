@@ -144,6 +144,7 @@ export function WorldMapStudio({
   const [worlds, setWorlds] = useState<RealmTemplate[]>([]);
   const [places, setPlaces] = useState<PlaceTemplate[]>([]);
   const [worldId, setWorldId] = useState("");
+  const [generateResidents, setGenerateResidents] = useState(false);
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.code !== "Space" || playerPreview || !worldId) return;
@@ -284,6 +285,7 @@ export function WorldMapStudio({
         if (chosen) {
           setWorldId(chosen.id);
           setMap(chosen.worldMap ?? empty());
+          setGenerateResidents(chosen.openWorld?.generateResidents ?? false);
           setLevel(initialLevel);
         }
       })
@@ -442,6 +444,7 @@ export function WorldMapStudio({
     if (dirty && !confirm("Discard unsaved map changes?")) return;
     setWorldId(id);
     setMap(worlds.find((w) => w.id === id)?.worldMap ?? empty());
+    setGenerateResidents(worlds.find((w) => w.id === id)?.openWorld?.generateResidents ?? false);
     setLevel("");
     setSelected("");
     setDirty(false);
@@ -885,7 +888,13 @@ export function WorldMapStudio({
             updatedAt: new Date().toISOString(),
           });
       }
-      const saved = { ...world, worldMap: valid, updatedAt: new Date().toISOString() };
+      const { openWorld: _openWorld, ...worldWithoutOpenWorld } = world;
+      const saved = {
+        ...worldWithoutOpenWorld,
+        ...(generateResidents ? { openWorld: { generateResidents: true } } : {}),
+        worldMap: valid,
+        updatedAt: new Date().toISOString(),
+      };
       await repo.saveRealm(saved);
       setWorlds(fresh.map((w) => (w.id === worldId ? saved : w)));
       setPlaces(await repo.listPlaces());
@@ -914,6 +923,7 @@ export function WorldMapStudio({
       setWorlds([...worlds, w]);
       setWorldId(w.id);
       setMap(empty());
+      setGenerateResidents(false);
       setDirty(false);
       setLevel("");
       setSelected("");
@@ -1042,6 +1052,17 @@ export function WorldMapStudio({
             <details className="world-map__settings world-map__settings--header">
               <summary>World settings</summary>
               <div className="world-map__toolbar">
+                <label title="When someone explores this world on its map, the story AI can give a place with no people a couple of ordinary residents to talk to. They carry nothing, hand out nothing and cannot be fought; they are only someone to talk to.">
+                  <input
+                    type="checkbox"
+                    checked={generateResidents}
+                    onChange={(e) => {
+                      setGenerateResidents(e.target.checked);
+                      setDirty(true);
+                    }}
+                  />{" "}
+                  Let the AI invent residents for empty places
+                </label>
                 <label>
                   Map type{" "}
                   <select value={mapType} onChange={(e) => setMapType(e.target.value as MapType)}>
