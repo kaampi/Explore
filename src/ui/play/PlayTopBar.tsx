@@ -10,6 +10,7 @@ export function PlayTopBar({
   onHome,
   homeDisabled,
   homeTitle,
+  onSaveIdea,
   sound,
   onAppearance,
   aiOpen,
@@ -25,6 +26,8 @@ export function PlayTopBar({
   onHome: () => void;
   homeDisabled: boolean;
   homeTitle?: string | undefined;
+  /** Keeps the last lines of the story as an idea. Without it there is no button. */
+  onSaveIdea?: (() => void) | undefined;
   /** The sound control. It stays mounted, so that what is playing keeps playing. */
   sound?: ReactNode;
   onAppearance: () => void;
@@ -87,6 +90,15 @@ export function PlayTopBar({
         </span>
       )}
       <div className="play-top__tools">
+        {onSaveIdea && (
+          <button
+            type="button"
+            className="play-top__idea ui-button ui-button--primary"
+            onClick={onSaveIdea}
+          >
+            {t("pvSaveIdea")}
+          </button>
+        )}
         {sound}
         <MenuButton label={t("pvMenu")} items={items} className="play-top__menu" />
       </div>

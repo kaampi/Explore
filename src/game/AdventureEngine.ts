@@ -377,3 +377,48 @@ export function peopleMet(session: Session): PersonMet[] {
   }
   return met;
 }
+
+export type StorySegment = {
+  sceneId: string;
+  place: string;
+  /** Game time when the player came to the place, in minutes. */
+  minutes: number;
+  /** The turns of the conversation that belong to this place: from the first, up to but not including the last. */
+  from: number;
+  to: number;
+};
+
+/**
+ * The conversation cut into the places the player has been in, in order. A place starts at the
+ * first turn, or at the turn that tells of an arrival, and runs until the next arrival. Each has
+ * the game time of the arrival. Outside an adventure there is one segment of everything.
+ */
+export function storySegments(session: Session): StorySegment[] {
+  const turns = session.conversation as { adventureSceneId?: unknown }[];
+  const run = session.adventure;
+  const nameOf = (sceneId: string) =>
+    run?.scenes.find((scene) => scene.id === sceneId)?.name ??
+    session.encounter?.definition.title ??
+    sceneId;
+  const firstScene = run
+    ? (run.transitions[0]?.from ?? run.currentSceneId)
+    : (session.sceneId ?? "");
+  const starts: { index: number; sceneId: string }[] = [{ index: 0, sceneId: firstScene }];
+  turns.forEach((turn, index) => {
+    if (index > 0 && typeof turn?.adventureSceneId === "string")
+      starts.push({ index, sceneId: turn.adventureSceneId });
+  });
+  let clock = INITIAL_GAME_MINUTES;
+  return starts.map((start, position) => {
+    if (position > 0)
+      clock +=
+        run?.links.find((link) => link.id === run.transitions[position - 1]?.linkId)?.minutes ?? 0;
+    return {
+      sceneId: start.sceneId,
+      place: nameOf(start.sceneId),
+      minutes: clock,
+      from: start.index,
+      to: starts[position + 1]?.index ?? turns.length,
+    };
+  });
+}

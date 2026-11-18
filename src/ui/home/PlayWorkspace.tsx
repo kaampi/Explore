@@ -29,6 +29,8 @@ import { PlayMapCard } from "../components/PlayMapCard";
 import { usePlayMap } from "../components/usePlayMap";
 import { isGateTestSession } from "../../session/gateTest";
 import { PlayTopBar } from "../play/PlayTopBar";
+import { captureIdea, type Idea } from "../../ideas/IdeaSchema";
+import { IdeaEditor } from "../ideas/IdeaEditor";
 import { formatGameTime } from "../../state/gameClock";
 
 export function PlayWorkspace({
@@ -61,6 +63,8 @@ export function PlayWorkspace({
   const [checkRequest, setCheckRequest] = useState(0);
   const [partyTarget, setPartyTarget] = useState<HTMLElement | null>(null);
   const [backgroundOpen, setBackgroundOpen] = useState(false);
+  const [idea, setIdea] = useState<Idea | null>(null);
+  const [ideaNote, setIdeaNote] = useState("");
   const [backgroundMenu, setBackgroundMenu] = useState<{ x: number; y: number } | null>(null);
   const withRules = !!session.ruleset;
   const mapModel = usePlayMap(repo, session),
@@ -74,6 +78,29 @@ export function PlayWorkspace({
         locationKey={session.scene?.placeId ?? session.sceneId ?? ""}
       />
     ) : undefined;
+  /** Keep these lines of the story as an idea: open the editor with them. */
+  function saveIdea(turns: number[]) {
+    try {
+      setIdea(
+        captureIdea(
+          session,
+          turns,
+          title || session.encounter?.definition.title || "Your adventure",
+        ),
+      );
+      setIdeaNote("");
+    } catch (error) {
+      setIdeaNote(error instanceof Error ? error.message : "Could not capture this idea.");
+    }
+  }
+  /** The last three lines of the story, the ones just played. */
+  function saveRecentIdea() {
+    const turns = (session.conversation as { turn?: unknown }[])
+      .map((entry) => (typeof entry?.turn === "number" ? entry.turn : undefined))
+      .filter((turn): turn is number => turn !== undefined)
+      .slice(-3);
+    saveIdea(turns);
+  }
   const withSidebar = withRules || Boolean(mapModel);
   // An engine scene has its own frame: a top row and three columns.
   const framed = !!session.encounter;
@@ -104,6 +131,7 @@ export function PlayWorkspace({
           }
           onHome={() => onHome(session)}
           homeDisabled={streaming}
+          onSaveIdea={saveRecentIdea}
           sound={<GameAudio key={session.id} conversationId={session.id} />}
           onAppearance={onAppearance}
           aiOpen={settingsOpen}
@@ -200,6 +228,22 @@ export function PlayWorkspace({
         />
       )}
       {backgroundOpen && <BackgroundDialog onClose={() => setBackgroundOpen(false)} />}
+      {ideaNote && (
+        <p role="alert" className="play-view__note">
+          {ideaNote}
+        </p>
+      )}
+      {idea && (
+        <IdeaEditor
+          idea={idea}
+          repo={repo}
+          onClose={() => setIdea(null)}
+          onSaved={() => {
+            setIdea(null);
+            setIdeaNote("");
+          }}
+        />
+      )}
       {settingsOpen && <StatusBar />}
       {!canSend && !session.gateEncounter && !session.encounter && (
         <div className="sb-play-connection" role="status">
@@ -238,7 +282,12 @@ export function PlayWorkspace({
           }}
         >
           {session.encounter ? (
-            <EncounterPanel onHome={onHome} mapView={mapView} backdrop={encounterBackdrop} />
+            <EncounterPanel
+              onHome={onHome}
+              mapView={mapView}
+              backdrop={encounterBackdrop}
+              onSaveIdea={saveIdea}
+            />
           ) : session.gateEncounter ? (
             <LegacyGatePanel
               session={session}

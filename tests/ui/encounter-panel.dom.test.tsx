@@ -329,8 +329,11 @@ it("plays a gated scene connection and returns with the same possessions, transc
     await click(ui.host, "Follow the lead to the watchtower →");
     expect(ui.engine.getSession().id).toBe("connected-ui");
     expect(ui.host.textContent).toContain("Brass key");
-    expect(ui.host.querySelector(".chat-log")!.textContent).toContain("Edda points");
+    // Only the place the player is in, until the earlier events are asked for.
     expect(ui.host.querySelector(".chat-log")!.textContent).toContain("Grass bends");
+    expect(ui.host.querySelector(".chat-log")!.textContent).not.toContain("Edda points");
+    await click(ui.host, "Earlier events");
+    expect(ui.host.querySelector(".chat-log")!.textContent).toContain("Edda points");
     await click(ui.host, "Read the note");
     await click(ui.host, "Return to the village →");
     expect(
@@ -347,11 +350,8 @@ it("plays a gated scene connection and returns with the same possessions, transc
       "Adventure completed",
     );
     expect(ui.host.querySelector(".chat-log")!.textContent).toContain("Thank you for finding out");
-    expect(
-      ui.host.querySelectorAll(".message__attribution")[
-        ui.host.querySelectorAll(".message__attribution").length - 1
-      ]!.textContent,
-    ).toBe("Edda");
+    const people = ui.host.querySelectorAll(".play-row--person .play-row__label");
+    expect(people[people.length - 1]!.textContent).toBe("Edda");
     expect(ui.host.textContent).toContain("Brass key");
   } finally {
     await ui.close();
@@ -397,12 +397,16 @@ it("answers a spoken greeting and a misspelled question as Edda, opening the aut
     await type(ui.host, 0, "Hi");
     await click(ui.host, "Say");
     expect(ui.host.querySelector(".chat-log")!.textContent).toContain("“Hello,” Edda says.");
-    expect(ui.host.querySelectorAll(".message__attribution")[2]!.textContent).toBe("Edda");
+    expect(ui.host.querySelectorAll(".play-row--person .play-row__label")[0]!.textContent).toBe(
+      "Edda",
+    );
     expect(ui.host.textContent).not.toContain("Follow the lead to the watchtower →");
     await type(ui.host, 0, "Edda what can you tell me about the messanger?");
     await click(ui.host, "Say");
     expect(ui.host.querySelector(".chat-log")!.textContent).toContain("Edda points");
-    expect(ui.host.querySelectorAll(".message__attribution")[4]!.textContent).toBe("Edda");
+    expect(ui.host.querySelectorAll(".play-row--person .play-row__label")[1]!.textContent).toBe(
+      "Edda",
+    );
     expect(ui.host.textContent).toContain("Follow the lead to the watchtower →");
     expect(ui.engine.getSession().encounter!.state.attempts).toHaveLength(1);
     expect(ui.host.textContent).not.toContain("words alone");
@@ -532,10 +536,11 @@ it("lets the character answer a free line, keeping the engine's text as the reco
     await type(ui.host, 0, "Lovely weather today.");
     await click(ui.host, "Say");
     expect(ui.host.querySelector(".chat-log")!.textContent).toContain(REPLY);
-    const names = Array.from(ui.host.querySelectorAll(".message__attribution")).map(
+    const names = Array.from(ui.host.querySelectorAll(".play-row--person .play-row__label")).map(
       (n) => n.textContent,
     );
-    expect(names.at(-1)).toBe("Edda");
+    // A line the AI wrote is marked as improvised.
+    expect(names.at(-1)).toBe("EddaImprovised");
     const session = ui.engine.getSession();
     const turn = narratorTurns(session).at(-1)!;
     expect(turn.content).toBe(REPLY);

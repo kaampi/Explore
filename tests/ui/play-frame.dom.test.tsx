@@ -34,6 +34,12 @@ vi.mock("../../src/ui/audio/GameAudio", () => ({
 
 beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  HTMLDialogElement.prototype.showModal = function () {
+    this.setAttribute("open", "");
+  };
+  HTMLDialogElement.prototype.close = function () {
+    this.removeAttribute("open");
+  };
   localStorage.clear();
   phase = "idle";
   const built = connectedAdventureExample();
@@ -201,6 +207,57 @@ it("keeps the old toolbar for a conversation, which has no frame", async () => {
     expect(ui.host.querySelector(".sb-play-toolbar")).not.toBeNull();
     expect(ui.host.querySelector(".play-top")).toBeNull();
     expect(ui.host.querySelector(".play-view")).toBeNull();
+  } finally {
+    await ui.close();
+  }
+});
+
+function addLines() {
+  const conversation = session.conversation as Record<string, unknown>[];
+  conversation.push(
+    { turn: 2, role: "player", content: "Ask Edda about the messenger" },
+    { turn: 3, role: "character", toldBy: "narrator", content: "Edda points to the north path." },
+    { turn: 4, role: "player", content: "Look around" },
+    { turn: 5, role: "character", toldBy: "narrator", content: "The square is quiet." },
+  );
+}
+const ideaText = () =>
+  Array.from(document.querySelectorAll("dialog textarea, dialog input")).map(
+    (field) => (field as HTMLTextAreaElement).value,
+  );
+
+it("keeps one line of the story as an idea, with just that line", async () => {
+  addLines();
+  const ui = await mount();
+  try {
+    const row = Array.from(ui.host.querySelectorAll(".play-row--narrator")).find((r) =>
+      r.textContent?.includes("Edda points to the north path."),
+    )!;
+    await act(async () => {
+      row.querySelector<HTMLButtonElement>('[aria-label="Save this line as an idea"]')!.click();
+    });
+    const shown = ideaText().join("\n");
+    expect(shown).toContain("Edda points to the north path.");
+    expect(shown).not.toContain("The square is quiet.");
+    expect(shown).not.toContain("Ask Edda about the messenger");
+  } finally {
+    await ui.close();
+  }
+});
+
+it("keeps the last three lines as an idea from the main button in the top row", async () => {
+  addLines();
+  const ui = await mount();
+  try {
+    const button = ui.host.querySelector<HTMLButtonElement>(".play-top__idea")!;
+    expect(button.textContent).toBe("Save idea");
+    expect(button.className).toContain("ui-button--primary");
+    await act(async () => button.click());
+    const shown = ideaText().join("\n");
+    expect(shown).toContain("Edda points to the north path.");
+    expect(shown).toContain("Look around");
+    expect(shown).toContain("The square is quiet.");
+    expect(shown).not.toContain("Ask Edda about the messenger");
   } finally {
     await ui.close();
   }

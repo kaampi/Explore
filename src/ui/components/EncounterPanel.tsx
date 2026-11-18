@@ -3,17 +3,13 @@ import { useArrivalResidents } from "./useArrivalResidents";
 import { useTranslate } from "../i18n/LanguageProvider";
 import { PlayerInventory } from "./PlayerInventory";
 import { itemRevealed } from "../../game/itemVisibility";
-import {
-  adventureHistoryEntry,
-  adventureOptions,
-  adventureCompleted,
-} from "../../game/AdventureEngine";
+import { adventureOptions, adventureCompleted } from "../../game/AdventureEngine";
 import { CombatStage } from "../combat/CombatStage";
 import { projectFighters } from "../combat/fighters";
 import { useCombatPlayback } from "../combat/useCombatPlayback";
 import { CombatPlaybackOverlay } from "../combat/CombatPlaybackOverlay";
 import { lineOfSight } from "../../game/geometry";
-import { CombatLog, encounterCombatLog, isCombatRecord } from "./CombatLog";
+import { CombatLog, encounterCombatLog } from "./CombatLog";
 import { HealthMeter } from "./HealthMeter";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Session } from "@state/StateSchema";
@@ -23,11 +19,14 @@ import type { EncounterAction, EncounterRequest } from "../../game/EncounterSche
 import { actionBlock, attackTarget, combatOver, hostile } from "../../game/EncounterEngine";
 import { publicCommands } from "../../game/catalog";
 import type { DoPlan, SayPlan } from "../../session/encounterAI";
-import { actionLabel, statName } from "../../game/narration";
+import { actionLabel } from "../../game/narration";
 import { greetingTarget, spokenInteraction } from "../../game/dialogue";
 import { encounterRules } from "../../game/rules";
 import { ActionSaveError } from "../../persistence/ActionSaveError";
 import { PlayFrame } from "../play/PlayFrame";
+import { StoryLog } from "../play/StoryLog";
+import { storyRows } from "../play/storyRows";
+import { storySegments } from "../../game/AdventureEngine";
 
 const REPLY_FAILED =
   "The reply could not be written, so the scene shows the plain result. Nothing else changed.";
@@ -45,10 +44,13 @@ export function EncounterPanel({
   onHome,
   mapView,
   backdrop,
+  onSaveIdea,
 }: {
   onHome: (session: Session) => void;
   mapView?: ReactNode;
   backdrop?: ReactNode;
+  /** Keeps a line of the story as an idea. Without it the lines have no "Save idea". */
+  onSaveIdea?: (turns: number[]) => void;
 }) {
   const t = useTranslate();
   const {
@@ -83,9 +85,9 @@ export function EncounterPanel({
     free?: boolean;
     sceneId?: string;
   } | null>(null);
+  const [earlier, setEarlier] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const lock = useRef(false),
-    log = useRef<HTMLDivElement>(null),
     current = useRef(s);
   current.current = s;
   const ended = s.phase === "defeated" || s.phase === "complete";
@@ -104,20 +106,6 @@ export function EncounterPanel({
       : `${s.actors[playback.actorId]?.name ?? playback.actorId}’s turn`;
   const busy = saving || waiting !== null || playback.active || saveFailed,
     commands = publicCommands(game).map((command) => command.action);
-  const visibleTurns = session.conversation.filter(
-    (_turn, index) =>
-      index === 0 ||
-      !isCombatRecord(
-        adventureHistoryEntry(
-          session,
-          session.conversation[index] as { actionId?: string; actionSceneId?: string },
-          index,
-        ),
-      ),
-  ).length;
-  useEffect(() => {
-    log.current?.scrollTo?.({ top: log.current.scrollHeight, behavior: "smooth" });
-  }, [visibleTurns]);
   // A world that invents residents gives an empty place its people once, on arrival.
   const arrivedAt = session.adventure?.currentSceneId;
   const [populating, setPopulating] = useState(false);
@@ -283,10 +271,6 @@ export function EncounterPanel({
     setNotice(
       "Please make the target and action clearer, or choose an action from the panel. The scene is unchanged.",
     );
-  }
-  function speakerNameFor(actorId: string | undefined) {
-    if (!actorId) return undefined;
-    return s.actors[actorId]?.name ?? session.adventure?.actors[actorId]?.name;
   }
   function chance(action: EncounterAction) {
     if (action.kind === "attack")
@@ -491,72 +475,44 @@ export function EncounterPanel({
                 onArtwork={setCombatArtwork}
               />
             )}
-            <div className="chat-log" ref={log} hidden={arena}>
-              {(
-                session.conversation as {
-                  turn: number;
-                  role: string;
-                  content: string;
-                  actionId?: string;
-                  actionSceneId?: string;
-                  speakerId?: string;
-                  speakerName?: string;
-                }[]
-              ).map((turn, index) => {
-                const mine = turn.role === "player",
-                  entry = index ? adventureHistoryEntry(session, turn, index) : undefined;
-                if (isCombatRecord(entry)) return null;
-                return (
-                  <div
-                    key={turn.turn}
-                    className={`message message--${mine ? "player" : "character message--narrator"}`}
-                    onContextMenu={(event) => {
-                      event.preventDefault();
-                      setMenu({
-                        x: event.clientX,
-                        y: event.clientY,
-                        text: turn.content,
-                        free: (turn as { ai?: { kind?: string } }).ai?.kind === "free-reply",
-                        ...(turn.actionSceneId ? { sceneId: turn.actionSceneId } : {}),
-                      });
-                    }}
-                  >
-                    <span className="message__attribution">
-                      {mine
-                        ? player.name
-                        : (speakerNameFor(turn.speakerId ?? entry?.speakerId) ??
-                          turn.speakerName ??
-                          "Narrator")}
-                    </span>
-                    <div className="message__bubble">
-                      <div className="message__content">
-                        <span className="message__body">{turn.content}</span>
-                        {!mine &&
-                          entry?.checks.map((check, i) => (
-                            <div className="gate-check-summary" key={i}>
-                              {s.actors[check.actorId]?.name ??
-                                session.adventure?.actors[check.actorId]?.name ??
-                                check.actorId}{" "}
-                              · {statName(d, check.stat)}: {check.roll} / {check.target} ·{" "}
-                              {check.degree}
-                              {check.damage ? ` · ${check.damage} damage` : ""}
-                            </div>
-                          ))}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-              {draftReply && (
-                <div className="message message--character message--narrator">
-                  <div className="message__bubble">
-                    <div className="message__content">
-                      <span className="message__body">{draftReply}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+            <StoryLog
+              rows={storyRows(session, { earlier })}
+              {...(draftReply ? { draftReply } : {})}
+              hidden={arena}
+              showTime={!!session.adventure?.links.some((link) => link.minutes !== undefined)}
+              hasEarlier={storySegments(session).length > 1}
+              earlier={earlier}
+              onToggleEarlier={() => setEarlier(!earlier)}
+              canRemember={!!session.adventure}
+              onSaveIdea={onSaveIdea ? (turn) => onSaveIdea([turn]) : undefined}
+              onRemember={(row) =>
+                void rememberPlaceNote(noteFrom(row.text), row.sceneId)
+                  .then(() =>
+                    setNotice(
+                      t("rememberedAt", {
+                        place:
+                          session.adventure?.scenes.find(
+                            (scene) =>
+                              scene.id === (row.sceneId ?? session.adventure!.currentSceneId),
+                          )?.name ?? "this place",
+                      }),
+                    ),
+                  )
+                  .catch((error: unknown) =>
+                    setNotice(error instanceof Error ? error.message : "Could not remember this."),
+                  )
+              }
+              onRowMenu={(event, row) => {
+                event.preventDefault();
+                setMenu({
+                  x: event.clientX,
+                  y: event.clientY,
+                  text: row.kind === "do" ? row.label : row.text,
+                  free: row.kind === "person" && row.improvised,
+                  ...(row.kind === "person" && row.sceneId ? { sceneId: row.sceneId } : {}),
+                });
+              }}
+            />
           </div>
           <div className="gate-scene-composer">
             {populating && (
