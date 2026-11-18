@@ -61,7 +61,67 @@ it("checks quietly at startup and changes the button to a download action when a
     expect(ui.host.querySelector("[role=status]")).toBeNull();
     await act(async () => ui.host.querySelector("button")!.click());
     expect(open).toHaveBeenCalledWith(UPDATE_DOWNLOADS, "_blank", "noopener,noreferrer");
-    expect(request).toHaveBeenCalledTimes(1);
+    // The check at startup, and the look for the newest build when the button is pressed.
+    expect(request).toHaveBeenCalledTimes(2);
+  } finally {
+    await ui.close();
+  }
+});
+it("opens the page of the newest finished build, with the installer on it", async () => {
+  const runPage = "https://github.com/kaampi/Explore/actions/runs/44336323996";
+  request.mockImplementation(async (url: string) =>
+    String(url).includes("/actions/workflows/")
+      ? { ok: true, status: 200, json: async () => ({ workflow_runs: [{ html_url: runPage }] }) }
+      : response(2),
+  );
+  const ui = mount(),
+    open = vi.spyOn(window, "open").mockImplementation(() => null);
+  try {
+    await ui.render();
+    await act(async () => ui.host.querySelector("button")!.click());
+    expect(open).toHaveBeenCalledWith(runPage, "_blank", "noopener,noreferrer");
+    expect(
+      request.mock.calls.some((call) =>
+        String(call[0]).includes("desktop-build.yml/runs?status=success&branch=main"),
+      ),
+    ).toBe(true);
+  } finally {
+    await ui.close();
+  }
+});
+it("falls back to the list of builds when the newest build cannot be found or is not a GitHub run page", async () => {
+  for (const answer of [
+    { ok: false, status: 500 },
+    { ok: true, status: 200, json: async () => ({ workflow_runs: [] }) },
+    {
+      ok: true,
+      status: 200,
+      json: async () => ({ workflow_runs: [{ html_url: "https://evil.example/x" }] }),
+    },
+  ]) {
+    request.mockImplementation(async (url: string) =>
+      String(url).includes("/actions/workflows/") ? answer : response(2),
+    );
+    const ui = mount(),
+      open = vi.spyOn(window, "open").mockImplementation(() => null);
+    try {
+      await ui.render();
+      await act(async () => ui.host.querySelector("button")!.click());
+      expect(open).toHaveBeenLastCalledWith(UPDATE_DOWNLOADS, "_blank", "noopener,noreferrer");
+    } finally {
+      await ui.close();
+    }
+  }
+  request.mockImplementation(async (url: string) => {
+    if (String(url).includes("/actions/workflows/")) throw new Error("Offline");
+    return response(2);
+  });
+  const ui = mount(),
+    open = vi.spyOn(window, "open").mockImplementation(() => null);
+  try {
+    await ui.render();
+    await act(async () => ui.host.querySelector("button")!.click());
+    expect(open).toHaveBeenLastCalledWith(UPDATE_DOWNLOADS, "_blank", "noopener,noreferrer");
   } finally {
     await ui.close();
   }
