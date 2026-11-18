@@ -1,0 +1,199 @@
+/*
+  Buttons. Five kinds and no more: primary, secondary, quiet, danger and idea, plus the icon
+  button. The old class names share the rule with the new ones until they are gone from the
+  views: see "Gamla klass" in the design decision. Colours and sizes come from tokens.css.
+  `:root` in front lifts the rules above the app's own `.sandbox-root button` defaults.
+*/
+:root
+  :is(
+    .ui-button,
+    .sb-button,
+    .setup-start,
+    .storyboard-primary,
+    .anatomy-primary,
+    .anatomy-button,
+    .studio-list__btn,
+    .anatomy-danger
+  ) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--control);
+  padding: 0 var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font: 500 14px/1.3 var(--font-ui);
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 120ms,
+    border-color 120ms;
+}
+
+/* Primary: the one main action of a view. Every old button class starts out as primary. */
+:root :is(.ui-button--primary, .sb-button, .setup-start, .storyboard-primary, .anatomy-primary) {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+:root
+  :is(
+    .ui-button--primary,
+    .sb-button,
+    .setup-start,
+    .storyboard-primary,
+    .anatomy-primary
+  ):hover:not(:disabled) {
+  background: var(--accent-strong-hover);
+  border-color: var(--accent-strong-hover);
+}
+
+/* Secondary: everything else. */
+:root
+  :is(
+    .ui-button--secondary,
+    .sb-button--secondary,
+    .sb-button--cream,
+    .studio-list__btn,
+    .anatomy-button
+  ) {
+  background: var(--panel-raised);
+  border-color: var(--border);
+  color: var(--text);
+  font-weight: 500;
+}
+:root
+  :is(
+    .ui-button--secondary,
+    .sb-button--secondary,
+    .sb-button--cream,
+    .studio-list__btn,
+    .anatomy-button
+  ):hover:not(:disabled) {
+  border-color: var(--text-faint);
+}
+
+/* Danger: like secondary, with red text. Filled only in a confirmation dialog. */
+:root :is(.ui-button--danger, .sb-button--danger, .anatomy-danger) {
+  background: var(--panel-raised);
+  border-color: var(--border);
+  color: var(--accent-danger);
+  font-weight: 500;
+}
+:root :is(.ui-button--danger, .sb-button--danger, .anatomy-danger):hover:not(:disabled) {
+  border-color: var(--accent-danger);
+}
+:root .ui-button--danger.ui-button--filled {
+  background: var(--accent-danger);
+  border-color: var(--accent-danger);
+  color: var(--on-danger);
+}
+
+/* Idea: only "Save idea", Explore's own main thing. Brass, as the palette says. */
+:root .ui-button--idea {
+  background: transparent;
+  border-color: var(--highlight);
+  color: var(--highlight);
+  font-weight: 500;
+}
+:root .ui-button--idea:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--highlight) 12%, transparent);
+}
+
+/* Quiet: small actions in running text and lists. No surface; underlined on hover. */
+:root :is(.ui-button--quiet, .setup-text-btn, .sb-link) {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 0;
+  padding: var(--space-1) 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--accent);
+  font: 500 14px/1.3 var(--font-ui);
+  text-decoration: none;
+  cursor: pointer;
+}
+:root :is(.ui-button--quiet, .setup-text-btn, .sb-link):hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+/* Sizes and the icon button. */
+:root .ui-button--compact {
+  min-height: var(--control-compact);
+  padding: 0 var(--space-3);
+}
+:root .ui-button--icon {
+  width: var(--control);
+  min-width: var(--control);
+  padding: 0;
+}
+:root .ui-button--icon.ui-button--compact {
+  width: var(--control-compact);
+  min-width: var(--control-compact);
+}
+:root .ui-button--icon svg,
+:root .ui-button__icon {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+/* Focus, disabled and busy, for every button above. */
+:root
+  :is(
+    .ui-button,
+    .sb-button,
+    .setup-start,
+    .storyboard-primary,
+    .anatomy-primary,
+    .anatomy-button,
+    .studio-list__btn,
+    .anatomy-danger,
+    .setup-text-btn,
+    .sb-link
+  ):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+:root
+  :is(
+    .ui-button,
+    .sb-button,
+    .setup-start,
+    .storyboard-primary,
+    .anatomy-primary,
+    .anatomy-button,
+    .studio-list__btn,
+    .anatomy-danger,
+    .setup-text-btn,
+    .sb-link
+  ):disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+:root .ui-button[aria-busy="true"] {
+  cursor: progress;
+}
+.ui-button__spinner {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: ui-button-spin 700ms linear infinite;
+}
+@keyframes ui-button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-button__spinner {
+    animation-duration: 2s;
+  }
+}

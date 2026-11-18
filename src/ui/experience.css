@@ -14,13 +14,6 @@
 .sandbox-root button {
   color: inherit;
 }
-.sandbox-root .setup-start:not(:disabled) {
-  background: var(--accent-strong);
-  color: var(--on-accent);
-}
-.sandbox-root .setup-start:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--accent-strong) 82%, black);
-}
 .sandbox-root button:disabled {
   cursor: not-allowed;
   opacity: 0.48;
@@ -143,7 +136,7 @@
   border-radius: 7px;
   background: none;
   text-align: left;
-  color: #84676a;
+  color: var(--accent);
   font-size: 20px;
   line-height: 1.35;
 }
@@ -152,7 +145,7 @@
 }
 .sb-sidebar nav > button.is-active {
   background: var(--panel-raised);
-  color: #84676a;
+  color: var(--accent);
   font-weight: 600;
 }
 .sb-sidebar__quote {
@@ -304,36 +297,7 @@
   font: italic 13px Georgia;
   color: #e4e6ce;
 }
-.sb-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 15px;
-  padding: 11px 18px;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  background: var(--accent-active);
-  color: var(--panel) !important;
-  font-size: 12px;
-  font-weight: 600;
-  text-decoration: none;
-  line-height: 1.4;
-}
-.sb-button:hover {
-  filter: brightness(1.08);
-}
-.sb-button--danger {
-  background: #a32d3b;
-  color: #fff !important;
-}
 .sb-delete-conversation.sb-link {
-  color: var(--accent-danger) !important;
-}
-.sb-button--cream {
-  background: #e8eddc;
-  color: #294738 !important;
-}
-.sb-link {
   background: none;
   border: 0;
   padding: 4px 0;
@@ -341,9 +305,6 @@
   color: var(--accent-active) !important;
   font-size: 11px;
   text-decoration: none;
-}
-.sb-link:hover {
-  text-decoration: underline;
 }
 .sb-icon {
   border: 0;

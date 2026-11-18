@@ -1300,23 +1300,6 @@ textarea:focus-visible {
   gap: 8px;
 }
 
-.setup-text-btn {
-  background: none;
-  border: none;
-  color: var(--accent-player);
-  font-size: 12px;
-  padding: 0;
-}
-
-.setup-text-btn:hover {
-  color: var(--text);
-}
-
-.setup-text-btn:disabled {
-  color: var(--text-faint);
-  cursor: not-allowed;
-}
-
 .setup-file {
   position: absolute;
   width: 1px;
@@ -1538,22 +1521,6 @@ textarea.setup-field__story {
   flex-direction: column;
   gap: 10px;
   margin-top: 8px;
-}
-
-.setup-start {
-  background: var(--accent-active);
-  color: #0e2622;
-  border: none;
-  border-radius: 8px;
-  padding: 12px 16px;
-  font-weight: 600;
-  font-size: 14px;
-}
-
-.setup-start:disabled {
-  background: var(--border);
-  color: var(--text-faint);
-  cursor: not-allowed;
 }
 
 .setup-example {
@@ -1798,27 +1765,6 @@ textarea.setup-field__story {
   margin-bottom: 12px;
 }
 
-.studio-list__btn {
-  width: 100%;
-  background: var(--panel-raised);
-  border: 1px solid var(--border);
-  color: var(--text);
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.studio-list__btn:hover:not(:disabled) {
-  border-color: var(--text-dim);
-}
-
-.studio-list__btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 .studio-list__items {
   list-style: none;
   margin: 0;
@@ -1904,8 +1850,6 @@ textarea.setup-field__story {
 
 .studio-list--portraits .studio-list__head .setup-start {
   width: 100%;
-  padding: 10px 14px;
-  font-size: 13px;
 }
 
 .studio-list--portraits .studio-list__name {
@@ -2300,7 +2244,6 @@ textarea.setup-field__story {
 
 .studio-sheet__actions .setup-start {
   width: auto;
-  padding: 10px 18px;
 }
 
 .studio-adventure {

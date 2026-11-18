@@ -52,6 +52,13 @@ for (const [mode, set] of Object.entries(modes())) {
     expect(contrastRatio(set["--on-accent"]!, set["--accent-strong"]!)).toBeGreaterThanOrEqual(4.5);
     expect(contrastRatio(set["--on-highlight"]!, set["--highlight"]!)).toBeGreaterThanOrEqual(4.5);
   });
+
+  it(`a main button still reads when hovered, and a filled danger button reads, in the ${mode} palette`, () => {
+    expect(
+      contrastRatio(set["--on-accent"]!, set["--accent-strong-hover"]!),
+    ).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(set["--on-danger"]!, set["--accent-danger"]!)).toBeGreaterThanOrEqual(4.5);
+  });
 }
 
 it("applies the dark palette to the page itself as well as to the app frame", () => {
@@ -86,7 +93,7 @@ function stylesheets(dir: string): string[] {
  * dice and combat effects aside); this limit is lowered as the stylesheets are moved to the
  * variables, and must never be raised.
  */
-const DIRECT_COLOUR_LIMIT = 408;
+const DIRECT_COLOUR_LIMIT = 392;
 
 it("counts the colours written directly in stylesheets, and lets the number only go down", () => {
   let count = 0;
@@ -97,4 +104,57 @@ it("counts the colours written directly in stylesheets, and lets the number only
         .match(/#[0-9a-fA-F]{3,8}\b|\brgba?\(|\bhsla?\(/g) ?? []
     ).length;
   expect(count).toBeLessThanOrEqual(DIRECT_COLOUR_LIMIT);
+});
+
+it("keeps the hover colour of the main button in tokens.css, as a fixed value", () => {
+  expect(css("tokens.css")).toMatch(/--accent-strong-hover:\s*#[0-9a-f]{6}/i);
+  expect(css("page-system.css")).toMatch(/--page-accent-hover:\s*var\(--accent-strong-hover\)/);
+});
+
+/** Old button class names still used in the views. Lowered as views move to <Button>; never raised. */
+const OLD_BUTTON_CLASS_LIMIT = 175;
+
+function sources(dir: string): string[] {
+  return readdirSync(dir).flatMap((name) => {
+    const path = join(dir, name);
+    if (statSync(path).isDirectory()) return sources(path);
+    return name.endsWith(".tsx") ? [path] : [];
+  });
+}
+
+it("counts the old button classes in the views, and lets the number only go down", () => {
+  const old =
+    /\b(sb-button(?:--\w+)?|setup-start|storyboard-primary|anatomy-primary|anatomy-button|studio-list__btn|setup-text-btn|sb-link|anatomy-danger)\b/g;
+  let count = 0;
+  for (const path of sources("src/ui"))
+    count += (readFileSync(path, "utf8").match(old) ?? []).length;
+  expect(count).toBeLessThanOrEqual(OLD_BUTTON_CLASS_LIMIT);
+});
+
+it("gives the old button classes one rule each in controls.css, not one per view", () => {
+  for (const name of [
+    "sb-button",
+    "setup-start",
+    "storyboard-primary",
+    "anatomy-primary",
+    "anatomy-button",
+    "studio-list__btn",
+    "sb-link",
+    "setup-text-btn",
+  ]) {
+    const rules = stylesheets("src/ui")
+      .filter((path) => basename(path) !== "controls.css")
+      .flatMap((path) =>
+        (
+          readFileSync(path, "utf8").match(
+            new RegExp(`\\.${name}(?![\\w-])[^{]*\\{[^}]*\\}`, "g"),
+          ) ?? []
+        ).filter((rule) =>
+          /(background|border|color|padding|font)/.test(rule.slice(rule.indexOf("{"))),
+        ),
+      );
+    // What is left outside controls.css is layout or a view's own override, never the look of the button.
+    for (const rule of rules)
+      expect(rule, name).not.toMatch(/background:\s*var\(--(accent-active|page-accent)\)/);
+  }
 });

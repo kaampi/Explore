@@ -28,6 +28,20 @@
   --accent-danger: #a3404a;
   /* kaampi's magenta: the logo and the "AI connected" signal, nothing else. */
   --signal: #ff008f;
+  --accent-strong-hover: #5b4347;
+  --on-danger: #ffffff;
+  --shadow-menu: 0 10px 30px rgb(36 38 43 / 0.16);
+
+  /* Sizes, the same in both modes. */
+  --radius-sm: 6px; /* buttons, fields, chips */
+  --radius: 10px; /* menus, cards, panels */
+  --control: 40px; /* height of buttons and fields */
+  --control-compact: 32px; /* toolbars, the map studio, rows in menus */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
 
   /* Older names, kept so existing rules keep working. */
   --accent-active: var(--success);
@@ -60,5 +74,8 @@
   --accent-locked: #d8b26e;
   --accent-danger: #f09a9a;
   --signal: #ff008f;
+  --accent-strong-hover: #6e5357;
+  --on-danger: #15181e;
+  --shadow-menu: 0 10px 30px rgb(0 0 0 / 0.45);
   color-scheme: dark;
 }

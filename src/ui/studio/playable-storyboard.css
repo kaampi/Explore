@@ -732,15 +732,6 @@
 .storyboard-action-options > fieldset {
   margin-top: 8px;
 }
-.playable-storyboard button.storyboard-primary {
-  background: var(--adventure-accent);
-  border-color: var(--adventure-accent);
-  color: white;
-  font-weight: 600;
-}
-.playable-storyboard button.storyboard-primary:hover:not(:disabled) {
-  background: #74585c;
-}
 .storyboard-back {
   justify-self: start;
 }
