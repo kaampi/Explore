@@ -1,43 +1,9 @@
 /* Shared product frame. Play themes are scoped to .sb-themed-play only. */
 .sandbox-root {
-  --bg: #f6f4ef;
-  --panel: #fcfbf7;
-  --panel-raised: #f0efe7;
-  --border: #dcded3;
-  --border-soft: #e6e6dd;
-  --text: #29332d;
-  --text-dim: #687366;
-  --text-faint: #7d8678;
-  --accent-active: #3d654e;
-  --accent-player: #426b7a;
-  --accent-ai: #77648a;
-  --accent-locked: #8c642c;
-  --accent-danger: #a9434c;
-  --subhead: #795f31;
-  --font-ui: "Barlow", system-ui, sans-serif;
-  --font-dialogue: Georgia, serif;
-  color-scheme: light;
   min-height: 100%;
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-ui);
-}
-.sandbox-root[data-shell="dark"] {
-  --bg: #1b2421;
-  --panel: #222e28;
-  --panel-raised: #2c3931;
-  --border: #3a483f;
-  --border-soft: #303d34;
-  --text: #e7e9df;
-  --text-dim: #b4bdae;
-  --text-faint: #9aa78f;
-  --accent-active: #bdd0a8;
-  --accent-player: #a3c9d7;
-  --accent-ai: #c4b4d2;
-  --accent-locked: #d8b478;
-  --accent-danger: #f2989b;
-  --subhead: #d6c698;
-  color-scheme: dark;
 }
 .sandbox-root button,
 .sandbox-root input,
@@ -49,11 +15,11 @@
   color: inherit;
 }
 .sandbox-root .setup-start:not(:disabled) {
-  background: #bdd0a8;
-  color: #18382c;
+  background: var(--accent-strong);
+  color: var(--on-accent);
 }
 .sandbox-root .setup-start:hover:not(:disabled) {
-  background: #cdddbe;
+  background: color-mix(in srgb, var(--accent-strong) 82%, black);
 }
 .sandbox-root button:disabled {
   cursor: not-allowed;

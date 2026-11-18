@@ -1,7 +1,7 @@
 /* Shared library-page language, based on Anatomy. Scoped away from scene themes. */
 .sandbox-root {
-  --page-accent: #84676a;
-  --page-accent-hover: #70565a;
+  --page-accent: var(--accent-strong);
+  --page-accent-hover: color-mix(in srgb, var(--accent-strong) 82%, black);
   --page-space: 32px;
   --page-radius: 12px;
 }

@@ -1,0 +1,63 @@
+/*
+  Explore's colours and type, in one place. Every colour in the product frame comes from these
+  variables, light on the frame and dark when the shell is dark. Components never write a colour
+  of their own, except the map's terrain, illustrations, dice and combat effects.
+  The palette and its rules: the design decision "Explores grundpalett".
+*/
+:root,
+.sandbox-root {
+  --bg: #f4f4f2;
+  --panel: #fcfcfb;
+  --panel-raised: #e9e9e6;
+  --border: #d6d6d1;
+  --border-soft: #e2e2de;
+  --text: #24262b;
+  --text-dim: #565b65;
+  --text-faint: #5f656f;
+  /* Plum, Explore's colour: links, marks and focus (accent), and button surfaces (accent-strong). */
+  --accent: #6e5357;
+  --accent-strong: #6e5357;
+  --on-accent: #ffffff;
+  /* Brass: discoveries, bookmarks, choices on lines. Not for buttons. */
+  --highlight: #7f5b1b;
+  --on-highlight: #ffffff;
+  --success: #3f6b4c;
+  --accent-player: #3e6578;
+  --accent-ai: #6d5a84;
+  --accent-locked: #7f5b1b;
+  --accent-danger: #a3404a;
+  /* kaampi's magenta: the logo and the "AI connected" signal, nothing else. */
+  --signal: #ff008f;
+
+  /* Older names, kept so existing rules keep working. */
+  --accent-active: var(--success);
+  --subhead: var(--accent);
+
+  --font-ui: "Barlow", system-ui, sans-serif;
+  --font-dialogue: Georgia, serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  color-scheme: light;
+}
+.sandbox-root[data-shell="dark"] {
+  --bg: #15181e;
+  --panel: #1c2028;
+  --panel-raised: #252a34;
+  --border: #353c49;
+  --border-soft: #2a303b;
+  --text: #e7e9ee;
+  --text-dim: #b6bcc8;
+  --text-faint: #8f97a6;
+  --accent: #c9a3a9;
+  --accent-strong: #84676a;
+  --on-accent: #ffffff;
+  --highlight: #d8b26e;
+  --on-highlight: #15181e;
+  --success: #8fd0a8;
+  --accent-player: #9cc3e6;
+  --accent-ai: #c4b2e0;
+  --accent-locked: #d8b26e;
+  --accent-danger: #f09a9a;
+  --signal: #ff008f;
+  color-scheme: dark;
+}

@@ -1,3 +1,4 @@
+import "./tokens.css";
 import { CodexConnection } from "./connection/CodexConnection";
 import { UpdateProvider } from "./home/UpdateProvider";
 import { attachLorebooks } from "../lore/attachLorebooks";
