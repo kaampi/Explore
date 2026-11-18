@@ -20,7 +20,7 @@ import { brushPath, smoothBrushPath } from "@library/forestBrush";
 import type { TerrainBrushMode } from "./ForestBrush";
 import { mapLabelIds } from "./mapDetail";
 import { BrushTerrain, ForestBrushInput } from "./ForestBrush";
-import { MapContextMenu } from "./MapContextMenu";
+import { Menu, type MenuItem } from "../components/Menu";
 import { attachRoadJunction } from "@library/mapJunctions";
 import { CrossingInformation } from "./CrossingInformation";
 import { EncounterFields } from "./EncounterFields";
@@ -586,6 +586,124 @@ export function WorldMapStudio({
     });
     setSelected("");
     setContext(null);
+  }
+  /** What the right-click menu holds: for a place on the map, or for the empty map. */
+  function placeMenuItems(menu: NonNullable<typeof context>): MenuItem[] {
+    const nodeId = menu.nodeId;
+    const node = nodeId ? map.nodes.find((n) => n.id === nodeId) : undefined;
+    if (!nodeId || !node) {
+      return [
+        {
+          label: "Add from template…",
+          onSelect: () => {
+            setTemplatePosition({
+              x: Math.max(5, Math.min(95, menu.mapX)),
+              y: Math.max(5, Math.min(95, menu.mapY)),
+            });
+            setTemplates(true);
+          },
+        },
+        {
+          label: mapType === "world" ? "Add map entity" : "Add place",
+          onSelect: () => {
+            const x = Math.max(10, Math.min(90, menu.mapX)),
+              y = Math.max(10, Math.min(90, menu.mapY));
+            if (mapType === "world") setEntityPicker({ x, y });
+            else add("Place", "New place", x, y);
+          },
+        },
+        {
+          kind: "color",
+          label: "Change background color",
+          ariaLabel: "Map background color",
+          value: mapBackgroundColor(map, level),
+          onChange: (value) =>
+            update(
+              level
+                ? {
+                    ...map,
+                    nodes: map.nodes.map((n) =>
+                      n.id === level ? { ...n, mapBackground: value } : n,
+                    ),
+                  }
+                : { ...map, background: value },
+            ),
+        },
+      ];
+    }
+    const isSettlement = node.kind.toLowerCase() === "settlement";
+    return [
+      ...(mapType === "world" && !isSettlement
+        ? [
+            {
+              label: "Build settlement here…",
+              onSelect: () => startSettlementAt(menu.mapX, menu.mapY),
+            },
+          ]
+        : []),
+      ...(isSettlement
+        ? [
+            {
+              label: "Build settlement…",
+              onSelect: () => {
+                setLevel(nodeId);
+                setSelected("");
+              },
+            },
+          ]
+        : []),
+      ...(!autoSettlement(node)
+        ? [
+            {
+              label: "Edit shape",
+              onSelect: () => {
+                setSelected(nodeId);
+                setShapeEditing(true);
+                setTool("move");
+              },
+            },
+          ]
+        : []),
+      {
+        label: "Add subarea",
+        onSelect: () => setEntityPicker({ x: node.x, y: node.y, parentId: node.id }),
+      },
+      {
+        kind: "color",
+        label: "Change color",
+        ariaLabel: "Place color",
+        value: node.color ?? "#d7dfca",
+        onChange: (value) =>
+          update({
+            ...map,
+            nodes: map.nodes.map((n) => (n.id === nodeId ? { ...n, color: value } : n)),
+          }),
+      },
+      {
+        label: "Duplicate",
+        onSelect: () => {
+          if (node.interior) {
+            const next = duplicateInteriorBuilding(map, node.id);
+            update(next);
+            setSelected(next.nodes[map.nodes.length]!.id);
+            return;
+          }
+          const id = crypto.randomUUID();
+          const copy = {
+            ...structuredClone(node),
+            id,
+            placeId: id,
+            name: node.name + " (copy)",
+            x: Math.min(90, node.x + 5),
+            y: Math.min(90, node.y + 5),
+          };
+          update({ ...map, nodes: [...map.nodes, copy] });
+          setSelected(id);
+        },
+      },
+      { kind: "separator" },
+      { label: "Delete", danger: true, onSelect: () => removeMapPlace(nodeId) },
+    ];
   }
   function subareaTypes(parentId: string): string[] {
     const kind = map.nodes.find((n) => n.id === parentId)?.kind.toLowerCase();
@@ -3637,20 +3755,21 @@ export function WorldMapStudio({
         )}
       </fieldset>
       {crossingMenu && (
-        <MapContextMenu
-          anchor={{ x: crossingMenu.x, y: crossingMenu.y }}
+        <Menu
+          label="Crossing"
+          at={{ x: crossingMenu.x, y: crossingMenu.y }}
           scope={menuScope.current}
           onClose={() => setCrossingMenu(null)}
-        >
-          {[
-            ["bridge", "Bridge"],
-            ["ferry", "Ferry"],
-            ["none", "No crossing"],
-          ].map(([type, label]) => (
-            <button
-              key={type}
-              role="menuitem"
-              onClick={() => {
+          items={[
+            ...(
+              [
+                ["bridge", "Bridge"],
+                ["ferry", "Ferry"],
+                ["none", "No crossing"],
+              ] as const
+            ).map(([type, label]) => ({
+              label,
+              onSelect: () => {
                 update({
                   ...map,
                   crossings: [
@@ -3660,32 +3779,26 @@ export function WorldMapStudio({
                       id: crossingMenu.id,
                       routeId: crossingMenu.routeId,
                       riverId: crossingMenu.riverId,
-                      type: type as "bridge" | "ferry" | "none",
+                      type,
                     },
                   ],
                 });
                 setCrossingSelected(crossingMenu.id);
                 setSelected("");
                 setRouteSelected("");
-                setCrossingMenu(null);
-              }}
-            >
-              {label}
-            </button>
-          ))}
-          <button
-            role="menuitem"
-            onClick={() => {
-              setCrossingSelected(crossingMenu.id);
-              setSelected("");
-              setRouteSelected("");
-              setCrossingMenu(null);
-            }}
-          >
-            Crossing details…
-          </button>
-          <button onClick={() => setCrossingMenu(null)}>Cancel</button>
-        </MapContextMenu>
+              },
+            })),
+            { kind: "separator" as const },
+            {
+              label: "Crossing details…",
+              onSelect: () => {
+                setCrossingSelected(crossingMenu.id);
+                setSelected("");
+                setRouteSelected("");
+              },
+            },
+          ]}
+        />
       )}
       {entityPicker && (
         <div className="world-map__entity-picker" role="dialog" aria-label="Add map entity">
@@ -3705,167 +3818,13 @@ export function WorldMapStudio({
         </div>
       )}
       {context && (
-        <MapContextMenu
-          anchor={{ x: context.x, y: context.y }}
+        <Menu
+          label={context.nodeId ? "Place actions" : "Map actions"}
+          at={{ x: context.x, y: context.y }}
           scope={menuScope.current}
           onClose={() => setContext(null)}
-        >
-          {mapType === "world" &&
-            !map.nodes.some(
-              (n) => n.id === context.nodeId && n.kind.toLowerCase() === "settlement",
-            ) && (
-              <button role="menuitem" onClick={() => startSettlementAt(context.mapX, context.mapY)}>
-                Build settlement here…
-              </button>
-            )}
-          {context.nodeId ? (
-            <>
-              {map.nodes.find((n) => n.id === context.nodeId)?.kind.toLowerCase() ===
-                "settlement" && (
-                <button
-                  role="menuitem"
-                  onClick={() => {
-                    setLevel(context.nodeId!);
-                    setSelected("");
-                    setContext(null);
-                  }}
-                >
-                  Build settlement…
-                </button>
-              )}
-              {!map.nodes.some((n) => n.id === context.nodeId && autoSettlement(n)) && (
-                <button
-                  role="menuitem"
-                  onClick={() => {
-                    setSelected(context.nodeId!);
-                    setShapeEditing(true);
-                    setTool("move");
-                    setContext(null);
-                  }}
-                >
-                  Edit shape
-                </button>
-              )}
-              <button
-                role="menuitem"
-                onClick={() => {
-                  const n = map.nodes.find((n) => n.id === context.nodeId);
-                  if (!n) return;
-                  setEntityPicker({ x: n.x, y: n.y, parentId: n.id });
-                  setContext(null);
-                }}
-              >
-                Add subarea
-              </button>
-              <label>
-                Change color
-                <input
-                  aria-label="Place color"
-                  type="color"
-                  value={map.nodes.find((n) => n.id === context.nodeId)?.color ?? "#d7dfca"}
-                  onChange={(e) =>
-                    update({
-                      ...map,
-                      nodes: map.nodes.map((n) =>
-                        n.id === context.nodeId ? { ...n, color: e.target.value } : n,
-                      ),
-                    })
-                  }
-                />
-              </label>
-              <button
-                role="menuitem"
-                onClick={() => {
-                  const original = map.nodes.find((n) => n.id === context.nodeId);
-                  if (!original) return;
-                  if (original.interior) {
-                    const next = duplicateInteriorBuilding(map, original.id);
-                    update(next);
-                    setSelected(next.nodes[map.nodes.length]!.id);
-                    setContext(null);
-                    return;
-                  }
-                  const id = crypto.randomUUID();
-                  const copy = {
-                    ...structuredClone(original),
-                    id,
-                    placeId: id,
-                    name: original.name + " (copy)",
-                    x: Math.min(90, original.x + 5),
-                    y: Math.min(90, original.y + 5),
-                  };
-                  update({ ...map, nodes: [...map.nodes, copy] });
-                  setSelected(id);
-                  setContext(null);
-                }}
-              >
-                Duplicate
-              </button>
-              <button
-                role="menuitem"
-                className="world-map__menu-danger"
-                onClick={() => removeMapPlace(context.nodeId!)}
-              >
-                Delete
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                role="menuitem"
-                onClick={() => {
-                  setTemplatePosition({
-                    x: Math.max(5, Math.min(95, context.mapX)),
-                    y: Math.max(5, Math.min(95, context.mapY)),
-                  });
-                  setTemplates(true);
-                  setContext(null);
-                }}
-              >
-                Add from template…
-              </button>
-              <button
-                role="menuitem"
-                onClick={() => {
-                  mapType === "world"
-                    ? setEntityPicker({
-                        x: Math.max(10, Math.min(90, context.mapX)),
-                        y: Math.max(10, Math.min(90, context.mapY)),
-                      })
-                    : add(
-                        "Place",
-                        "New place",
-                        Math.max(10, Math.min(90, context.mapX)),
-                        Math.max(10, Math.min(90, context.mapY)),
-                      );
-                  setContext(null);
-                }}
-              >
-                {mapType === "world" ? "Add map entity" : "Add place"}
-              </button>
-              <label>
-                Change background color
-                <input
-                  aria-label="Map background color"
-                  type="color"
-                  value={mapBackgroundColor(map, level)}
-                  onChange={(e) =>
-                    update(
-                      level
-                        ? {
-                            ...map,
-                            nodes: map.nodes.map((n) =>
-                              n.id === level ? { ...n, mapBackground: e.target.value } : n,
-                            ),
-                          }
-                        : { ...map, background: e.target.value },
-                    )
-                  }
-                />
-              </label>
-            </>
-          )}
-        </MapContextMenu>
+          items={placeMenuItems(context)}
+        />
       )}
       {message && (
         <p className="world-map__notice" role="status">

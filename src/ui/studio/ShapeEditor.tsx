@@ -1,4 +1,4 @@
-import { MapContextMenu } from "./MapContextMenu";
+import { Menu, type MenuItem } from "../components/Menu";
 import { mapPosition, rotatePoint } from "@library/mapGeometry";
 import { useRef, useState } from "react";
 import type { MapNode } from "@library/worldMap";
@@ -64,6 +64,43 @@ export function ShapeEditor({
         if (d < best.d) best = { edge: i, t: j / 100, d };
       }
     return best;
+  }
+  /** What the right-click menu holds, for a node of the outline or for a stretch between two. */
+  function shapeMenuItems(at: NonNullable<typeof menu>): MenuItem[] {
+    const index = at.nodeIndex;
+    if (index !== undefined)
+      return [
+        { label: "Make Sharp", onSelect: () => changeMode("corner", index) },
+        { label: "Make Smooth", onSelect: () => changeMode("smooth", index) },
+        { label: "Make Free", onSelect: () => changeMode("free", index) },
+        { kind: "separator" },
+        {
+          label: "Delete",
+          danger: true,
+          disabled: points.length <= 3,
+          reason: "An outline needs at least three nodes.",
+          onSelect: () => {
+            onChange(points.filter((_, i) => i !== index));
+            setChosen(null);
+          },
+        },
+      ];
+    return [
+      {
+        label: "Add node",
+        onSelect: () => {
+          onChange(splitEdge(points, at.edge, Math.max(0.01, Math.min(0.99, at.t))));
+          setChosen(at.edge + 1);
+        },
+      },
+      {
+        label: pending ? "Finish connection here" : "Start connection here",
+        onSelect: () => {
+          const p = curvePoint(points[at.edge]!, points[(at.edge + 1) % points.length]!, at.t);
+          pending ? onFinish(p) : onStart(p);
+        },
+      },
+    ];
   }
   function changeMode(mode: "corner" | "smooth" | "free", index = chosen) {
     if (index === null) return;
@@ -250,73 +287,13 @@ export function ShapeEditor({
           );
         })}
       {menu && (
-        <MapContextMenu anchor={menu.at} scope={root.current} onClose={() => setMenu(null)}>
-          {menu.nodeIndex !== undefined ? (
-            <>
-              <button
-                onClick={() => {
-                  changeMode("corner", menu.nodeIndex!);
-                  setMenu(null);
-                }}
-              >
-                Make Sharp
-              </button>
-              <button
-                onClick={() => {
-                  changeMode("smooth", menu.nodeIndex!);
-                  setMenu(null);
-                }}
-              >
-                Make Smooth
-              </button>
-              <button
-                onClick={() => {
-                  changeMode("free", menu.nodeIndex!);
-                  setMenu(null);
-                }}
-              >
-                Make Free
-              </button>
-              <button
-                className="world-map__menu-danger"
-                disabled={points.length <= 3}
-                onClick={() => {
-                  onChange(points.filter((_, i) => i !== menu.nodeIndex));
-                  setChosen(null);
-                  setMenu(null);
-                }}
-              >
-                Delete
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                onClick={() => {
-                  onChange(splitEdge(points, menu.edge, Math.max(0.01, Math.min(0.99, menu.t))));
-                  setChosen(menu.edge + 1);
-                  setMenu(null);
-                }}
-              >
-                Add node
-              </button>
-              <button
-                onClick={() => {
-                  const p = curvePoint(
-                    points[menu.edge]!,
-                    points[(menu.edge + 1) % points.length]!,
-                    menu.t,
-                  );
-                  pending ? onFinish(p) : onStart(p);
-                  setMenu(null);
-                }}
-              >
-                {pending ? "Finish connection here" : "Start connection here"}
-              </button>
-            </>
-          )}
-          <button onClick={() => setMenu(null)}>Cancel</button>
-        </MapContextMenu>
+        <Menu
+          label={menu.nodeIndex !== undefined ? "Node actions" : "Outline actions"}
+          at={menu.at}
+          scope={root.current}
+          onClose={() => setMenu(null)}
+          items={shapeMenuItems(menu)}
+        />
       )}
     </g>
   );

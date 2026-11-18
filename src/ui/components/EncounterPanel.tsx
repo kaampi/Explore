@@ -18,7 +18,7 @@ import { HealthMeter } from "./HealthMeter";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Session } from "@state/StateSchema";
 import { useEngine } from "../EngineStore";
-import { MessageMenu } from "./MessageMenu";
+import { Menu } from "./Menu";
 import type { EncounterAction, EncounterRequest } from "../../game/EncounterSchema";
 import { actionBlock, attackTarget, combatOver, hostile } from "../../game/EncounterEngine";
 import { publicCommands } from "../../game/catalog";
@@ -365,16 +365,16 @@ export function EncounterPanel({
     <>
       <div className={`chat-panel gate-scene-panel${arena ? " gate-scene-panel--combat" : ""}`}>
         {menu && (
-          <MessageMenu
-            x={menu.x}
-            y={menu.y}
+          <Menu
+            label="Message actions"
+            at={{ x: menu.x, y: menu.y }}
             onClose={() => setMenu(null)}
             items={[
               ...(menu.free && session.adventure
                 ? [
                     {
                       label: t("rememberThis"),
-                      action: () => {
+                      onSelect: () => {
                         rememberPlaceNote(noteFrom(menu.text), menu.sceneId)
                           .then(() =>
                             setNotice(
@@ -399,7 +399,7 @@ export function EncounterPanel({
                 : []),
               {
                 label: "Copy",
-                action: () => {
+                onSelect: () => {
                   void navigator.clipboard?.writeText(menu.text);
                 },
               },

@@ -93,7 +93,7 @@ function stylesheets(dir: string): string[] {
  * dice and combat effects aside); this limit is lowered as the stylesheets are moved to the
  * variables, and must never be raised.
  */
-const DIRECT_COLOUR_LIMIT = 392;
+const DIRECT_COLOUR_LIMIT = 389;
 
 it("counts the colours written directly in stylesheets, and lets the number only go down", () => {
   let count = 0;

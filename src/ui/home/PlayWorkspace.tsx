@@ -23,7 +23,7 @@ import { portraitSrc } from "../studio/portrait";
 import { playerCheckStats } from "../../checks/playerCheck";
 import gateBackground from "../assets/gate-play-background.jpg";
 import { BackgroundDialog } from "../themes/BackgroundSettings";
-import { MessageMenu } from "../components/MessageMenu";
+import { Menu } from "../components/Menu";
 import { PlayMapCard } from "../components/PlayMapCard";
 import { usePlayMap } from "../components/usePlayMap";
 import { isGateTestSession } from "../../session/gateTest";
@@ -156,13 +156,13 @@ export function PlayWorkspace({
         </div>
       </div>
       {backgroundMenu && (
-        <MessageMenu
-          x={backgroundMenu.x}
-          y={backgroundMenu.y}
+        <Menu
+          label="Background actions"
+          at={{ x: backgroundMenu.x, y: backgroundMenu.y }}
           onClose={() => setBackgroundMenu(null)}
           items={[
-            { label: "Choose background…", action: () => setBackgroundOpen(true) },
-            { label: "Customize appearance…", action: onAppearance },
+            { label: "Choose background…", onSelect: () => setBackgroundOpen(true) },
+            { label: "Customize appearance…", onSelect: onAppearance },
           ]}
         />
       )}

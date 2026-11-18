@@ -1,5 +1,6 @@
 import "./tokens.css";
 import "./controls.css";
+import "./menu.css";
 import { CodexConnection } from "./connection/CodexConnection";
 import { UpdateProvider } from "./home/UpdateProvider";
 import { attachLorebooks } from "../lore/attachLorebooks";

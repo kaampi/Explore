@@ -38,7 +38,7 @@ import {
 } from "../../library/interiorFurniture";
 import type { XY } from "../../library/mapShapes";
 import { sceneImagesFromFile } from "./portrait";
-import { MapContextMenu } from "./MapContextMenu";
+import { Menu } from "../components/Menu";
 import "./interior.css";
 
 const path = (p: XY[]) => "M" + p.map((v) => `${v.x * 8},${v.y * 6}`).join("L") + "Z";
@@ -1053,13 +1053,13 @@ export function InteriorEditor({
         </aside>
       </fieldset>
       {context && (
-        <MapContextMenu anchor={context} scope={scope.current} onClose={() => setContext(null)}>
-          {toolList.map((t) => (
-            <button key={t} role="menuitem" type="button" onClick={() => chooseTool(t)}>
-              {toolInfo(t).label}
-            </button>
-          ))}
-        </MapContextMenu>
+        <Menu
+          label="Interior tools"
+          at={context}
+          scope={scope.current}
+          onClose={() => setContext(null)}
+          items={toolList.map((t) => ({ label: toolInfo(t).label, onSelect: () => chooseTool(t) }))}
+        />
       )}
     </div>
   );
