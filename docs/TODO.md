@@ -74,3 +74,7 @@ Compared with [RPG in a Box](https://rpginabox.com/), a tool for making graphica
 - [ ] Abilities with effects that can be used in combat, besides weapons. Needs a rules decision on what an ability may do.
 
 Not for Explore: voxel art, grid maps, real-time combat, a scripting language of its own.
+
+## Update from inside the app
+
+"Update and restart" with Tauri's updater plugin, instead of downloading the installer by hand. It needs a signing key kept as a secret in GitHub, and the installer to be signed with it. Until then the **Update available** button leads to a short box with the three steps (see `docs/release-download.sv.md`).

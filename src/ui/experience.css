@@ -3249,6 +3249,15 @@
   border-color: #ffdb8b;
   box-shadow: 0 0 0 3px #f3bd5926;
 }
+.sb-update-steps {
+  display: grid;
+  gap: 14px;
+  margin: 0 0 16px;
+  padding-left: 1.4em;
+}
+.sb-update-steps li > div {
+  margin-top: 8px;
+}
 .sb-update-check__fallback {
   display: grid;
   gap: 10px;

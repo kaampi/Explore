@@ -279,7 +279,7 @@ export function HomeScreen({
             <em>{t("hsAWorldOfPossibilities")}</em>
           </h1>
           <p>{t("tagline")}</p>
-          <CheckUpdates />
+          <CheckUpdates repo={repo} />
         </div>
       </section>
       <PlayStartPaths
