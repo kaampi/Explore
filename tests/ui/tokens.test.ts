@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
 import { expect, it } from "vitest";
@@ -211,11 +212,10 @@ it("marks only a few true exceptions in the dice, combat and roll stylesheets, e
     expect(mark).toMatch(/palette-exempt: (effect|illustration|the dice tray)/);
 });
 
-it("gives every part of every map tool picture a fill of its own or the text colour, never the browser's black", async () => {
+it("gives every part of every map tool picture a fill of its own or the text colour, never the browser's black", () => {
   const map = readFileSync("src/ui/studio/worldMap.css", "utf8");
   // What a part with no fill of its own inherits from the picture: the text colour.
   expect(map).toMatch(/\.world-map__tool-icon svg\s*\{[^}]*fill:\s*currentColor/);
-  const { JSDOM } = await import("jsdom");
   const SHAPES = "path, circle, rect, ellipse, polygon, polyline, line";
   const fillOf = (element: Element): string | undefined => {
     for (let node: Element | null = element; node; node = node.parentElement) {
@@ -226,10 +226,11 @@ it("gives every part of every map tool picture a fill of its own or the text col
     return undefined;
   };
   for (const name of ["select-move", "edit-nodes", "connect-entities", "brush"]) {
-    const svg = new JSDOM(readFileSync(`src/ui/studio/map-tools/${name}.svg`, "utf8"), {
-      contentType: "image/svg+xml",
-    }).window.document;
-    const parts: Element[] = Array.from(svg.querySelectorAll<Element>(SHAPES));
+    const svg = new DOMParser().parseFromString(
+      readFileSync(`src/ui/studio/map-tools/${name}.svg`, "utf8"),
+      "image/svg+xml",
+    );
+    const parts = Array.from(svg.querySelectorAll(SHAPES));
     expect(parts.length, name).toBeGreaterThan(0);
     for (const part of parts) {
       const fill = fillOf(part);
