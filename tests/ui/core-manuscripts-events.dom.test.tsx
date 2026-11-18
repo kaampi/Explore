@@ -111,6 +111,12 @@ it("creates scene drafts from chosen events into a new adventure, with no game c
 
     const [campaign] = await repo.listCampaigns();
     expect(campaign!.name).toBe("Night Keys");
+    // With no world from the manuscript yet, one is made, and the adventure belongs to it.
+    const [world] = await repo.listRealms();
+    expect(world!.name).toBe("Night Keys");
+    expect(world!.coreOrigin?.projectId).toBe("book-one");
+    expect(campaign!.realmId).toBe(world!.id);
+    expect(campaign!.mapWorldId).toBeUndefined();
     expect(campaign!.scenes.map((s) => s.name)).toEqual(["The messenger vanishes"]);
     const scene = campaign!.scenes[0]!;
     expect(scene.encounter).toBeUndefined();

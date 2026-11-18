@@ -219,10 +219,28 @@ export function CoreManuscripts({ repo }: { repo: IndexedDBRepository }) {
       const events = selected.manuscript.bible
         .filter((section) => section.kind === "events")
         .flatMap((section) => section.entities);
-      const target =
-        draftTarget === "new"
-          ? newCampaignTemplate({ name: selected.manuscript.title.trim() || "Manuscript" })
-          : campaigns.find((item) => item.id === draftTarget);
+      const origin = {
+        workspaceId: selected.workspaceId,
+        projectId: selected.projectId,
+        revision: selected.revision,
+      };
+      let target: CampaignTemplate | undefined;
+      if (draftTarget === "new") {
+        // A new adventure belongs to the manuscript's world, so its places can be used in it.
+        const { realm, created } = manuscriptWorld(
+          await repo.listRealms(),
+          origin,
+          selected.manuscript.title,
+        );
+        if (created) await repo.saveRealm(realm);
+        target = newCampaignTemplate({
+          name: selected.manuscript.title.trim() || "Manuscript",
+          realmId: realm.id,
+          ...(realm.worldMap ? { mapWorldId: realm.id } : {}),
+        });
+      } else {
+        target = campaigns.find((item) => item.id === draftTarget);
+      }
       if (!target) throw new Error("That adventure is gone. Choose another.");
       const result = addEventDrafts({
         campaign: target,
