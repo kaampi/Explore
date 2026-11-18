@@ -28,6 +28,8 @@ import { Menu } from "../components/Menu";
 import { PlayMapCard } from "../components/PlayMapCard";
 import { usePlayMap } from "../components/usePlayMap";
 import { isGateTestSession } from "../../session/gateTest";
+import { PlayTopBar } from "../play/PlayTopBar";
+import { formatGameTime } from "../../state/gameClock";
 
 export function PlayWorkspace({
   onHome,
@@ -73,6 +75,15 @@ export function PlayWorkspace({
       />
     ) : undefined;
   const withSidebar = withRules || Boolean(mapModel);
+  // An engine scene has its own frame: a top row and three columns.
+  const framed = !!session.encounter;
+  const run = session.adventure;
+  const placeName =
+    run?.scenes.find((scene) => scene.id === run.currentSceneId)?.name ||
+    session.encounter?.definition.title ||
+    title ||
+    primaryCharacter(session)?.name ||
+    "Your exploration";
   const gatePreview = isGateTestSession(session) && library.active.backgroundMode === "scene";
   const checkStats = playerCheckStats(session);
   const streaming = phase === "streaming";
@@ -83,79 +94,100 @@ export function PlayWorkspace({
   }, [phase, refresh]);
   return (
     <div className="sb-play-workspace">
-      <div className="sb-play-toolbar">
-        {portrait && (
-          <img
-            className="sb-play-portrait"
-            src={portrait}
-            alt={`${person?.name ?? "Character"} portrait`}
-          />
-        )}
-        <div className="sb-play-title">
-          <strong>
-            {session.encounter?.definition.title ||
-              title ||
-              primaryCharacter(session)?.name ||
-              "Your exploration"}
-          </strong>
-          <span>{session.scene?.location}</span>
-        </div>
-        <div className="sb-play-tools">
-          <GameAudio key={session.id} conversationId={session.id} />
-          <button
-            type="button"
-            className="sb-link"
-            aria-pressed={castOpen}
-            onClick={() => setCastOpen(!castOpen)}
-          >
-            {t("pwCast")}
-          </button>
-          <button type="button" className="sb-link" onClick={onAppearance}>
-            ◐ Appearance
-          </button>
-          <button
-            type="button"
-            className="sb-link"
-            aria-expanded={settingsOpen}
-            onClick={() => setSettingsOpen(!settingsOpen)}
-          >
-            {t("settings")}
-          </button>
-          <button
-            type="button"
-            className="sb-link"
-            aria-pressed={inspectorOpen}
-            onClick={() => setInspectorOpen(!inspectorOpen)}
-          >
-            {t("pwInspector")}
-          </button>
-          <button
-            type="button"
-            className="sb-play-exit"
-            aria-label="Exit conversation"
-            disabled={streaming}
-            title={
-              streaming ? "Wait for the reply to finish" : "Return home; keep this conversation"
-            }
-            onClick={() => onHome(session)}
-          >
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-              focusable="false"
+      {framed ? (
+        <PlayTopBar
+          placeName={placeName}
+          time={
+            run && run.links.some((link) => link.minutes !== undefined)
+              ? formatGameTime(run.clockMinutes)
+              : undefined
+          }
+          onHome={() => onHome(session)}
+          homeDisabled={streaming}
+          sound={<GameAudio key={session.id} conversationId={session.id} />}
+          onAppearance={onAppearance}
+          aiOpen={settingsOpen}
+          onToggleAi={() => setSettingsOpen(!settingsOpen)}
+          inspectorOpen={inspectorOpen}
+          onToggleInspector={() => setInspectorOpen(!inspectorOpen)}
+          castOpen={castOpen}
+          onToggleCast={() => setCastOpen(!castOpen)}
+        />
+      ) : (
+        <div className="sb-play-toolbar">
+          {portrait && (
+            <img
+              className="sb-play-portrait"
+              src={portrait}
+              alt={`${person?.name ?? "Character"} portrait`}
+            />
+          )}
+          <div className="sb-play-title">
+            <strong>
+              {session.encounter?.definition.title ||
+                title ||
+                primaryCharacter(session)?.name ||
+                "Your exploration"}
+            </strong>
+            <span>{session.scene?.location}</span>
+          </div>
+          <div className="sb-play-tools">
+            <GameAudio key={session.id} conversationId={session.id} />
+            <button
+              type="button"
+              className="sb-link"
+              aria-pressed={castOpen}
+              onClick={() => setCastOpen(!castOpen)}
             >
-              <path d="M16 6V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2M10 12h12m-4-4 4 4-4 4" />
-            </svg>
-          </button>
+              {t("pwCast")}
+            </button>
+            <button type="button" className="sb-link" onClick={onAppearance}>
+              ◐ Appearance
+            </button>
+            <button
+              type="button"
+              className="sb-link"
+              aria-expanded={settingsOpen}
+              onClick={() => setSettingsOpen(!settingsOpen)}
+            >
+              {t("settings")}
+            </button>
+            <button
+              type="button"
+              className="sb-link"
+              aria-pressed={inspectorOpen}
+              onClick={() => setInspectorOpen(!inspectorOpen)}
+            >
+              {t("pwInspector")}
+            </button>
+            <button
+              type="button"
+              className="sb-play-exit"
+              aria-label="Exit conversation"
+              disabled={streaming}
+              title={
+                streaming ? "Wait for the reply to finish" : "Return home; keep this conversation"
+              }
+              onClick={() => onHome(session)}
+            >
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+                focusable="false"
+              >
+                <path d="M16 6V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2M10 12h12m-4-4 4 4-4 4" />
+              </svg>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
       {backgroundMenu && (
         <Menu
           label="Background actions"
@@ -198,7 +230,7 @@ export function PlayWorkspace({
             event.preventDefault();
             setBackgroundMenu({ x: event.clientX, y: event.clientY });
           }}
-          className={`sb-themed-play${withSidebar ? " sb-themed-play--rules" : ""}${gatePreview ? " sb-themed-play--gate-preview" : ""}`}
+          className={`sb-themed-play${withSidebar ? " sb-themed-play--rules" : ""}${framed ? " sb-themed-play--framed" : ""}${gatePreview ? " sb-themed-play--gate-preview" : ""}`}
           data-shell={shellForTheme(library.active)}
           style={{
             ...playThemeStyle(library.active),

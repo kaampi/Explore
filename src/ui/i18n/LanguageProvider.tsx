@@ -368,6 +368,16 @@ const labels = {
     epSaveReturnHome: "Save & return home ↗",
     pwCast: "Cast",
     pwInspector: "Inspector",
+    pvToOverview: "To overview",
+    pvToOverviewTitle: "Save and go back to the overview",
+    pvToOverviewWait: "Wait for the reply to finish",
+    pvAppearance: "Appearance",
+    pvAiModel: "AI and model",
+    pvLanguage: "Language",
+    pvMenu: "Menu",
+    pvPlaceAndPeople: "The place and the people",
+    pvInTheScene: "In the scene",
+    pvScenePicture: "Picture of the place",
     pwSetUpAi: "Set up AI",
     pwAtYourFingertips: "At your fingertips",
     pwTakeAChance: "Take a chance",
@@ -1066,6 +1076,16 @@ const labels = {
     epSaveReturnHome: "Spara och gå hem ↗",
     pwCast: "Rollista",
     pwInspector: "Inspektör",
+    pvToOverview: "Till översikten",
+    pvToOverviewTitle: "Spara och gå tillbaka till översikten",
+    pvToOverviewWait: "Vänta tills svaret är klart",
+    pvAppearance: "Utseende",
+    pvAiModel: "AI och modell",
+    pvLanguage: "Språk",
+    pvMenu: "Meny",
+    pvPlaceAndPeople: "Platsen och personerna",
+    pvInTheScene: "I scenen",
+    pvScenePicture: "Bild av platsen",
     pwSetUpAi: "Ställ in AI",
     pwAtYourFingertips: "Inom räckhåll",
     pwTakeAChance: "Chansa",
@@ -1764,6 +1784,16 @@ const labels = {
     epSaveReturnHome: "Lagre og gå hjem ↗",
     pwCast: "Rolleliste",
     pwInspector: "Inspektør",
+    pvToOverview: "Til oversikten",
+    pvToOverviewTitle: "Lagre og gå tilbake til oversikten",
+    pvToOverviewWait: "Vent til svaret er ferdig",
+    pvAppearance: "Utseende",
+    pvAiModel: "AI og modell",
+    pvLanguage: "Språk",
+    pvMenu: "Meny",
+    pvPlaceAndPeople: "Stedet og personene",
+    pvInTheScene: "I scenen",
+    pvScenePicture: "Bilde av stedet",
     pwSetUpAi: "Sett opp AI",
     pwAtYourFingertips: "Innen rekkevidde",
     pwTakeAChance: "Ta en sjanse",
@@ -2161,6 +2191,12 @@ export const languageOptions: { value: InterfaceLanguage; label: string }[] = [
  * For components deep in the interface. Without a LanguageProvider (a test, a stand-alone
  * view) it gives English instead of failing.
  */
+/** The interface language and how to change it, or nothing when there is no LanguageProvider. */
+export function useLanguageControls():
+  { language: InterfaceLanguage; setLanguage: (language: InterfaceLanguage) => void } | undefined {
+  const value = useContext(LanguageContext);
+  return value ? { language: value.language, setLanguage: value.setLanguage } : undefined;
+}
 export function useTranslate(): Translate {
   const value = useContext(LanguageContext);
   return (key, values) => translate(value?.language ?? "en", key, values);

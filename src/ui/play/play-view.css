@@ -1,0 +1,146 @@
+/* The frame of the play view for an engine scene. Colours come from tokens.css. */
+.play-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: 56px;
+  padding: 0 var(--space-6);
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.play-top__home {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--accent);
+  font: 500 14px/1.3 var(--font-ui);
+  cursor: pointer;
+}
+.play-top__home:hover:not(:disabled) {
+  background: var(--panel-raised);
+}
+.play-top__home:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.play-top__home:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.play-top__place {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font:
+    500 20px/1.3 Georgia,
+    serif;
+  color: var(--text);
+}
+.play-top__time {
+  color: var(--text-dim);
+  font: 400 14px/1.3 var(--font-ui);
+  white-space: nowrap;
+}
+.play-top__tools {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-left: auto;
+}
+.play-top__menu {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Three columns: the place and the people, the story, what is in the scene. */
+.play-view {
+  display: grid;
+  grid-template-columns: minmax(220px, 26%) minmax(0, 1fr) minmax(240px, 22%);
+  height: 100%;
+  min-height: 0;
+}
+.play-view__left,
+.play-view__right {
+  min-height: 0;
+  overflow: auto;
+}
+.play-view__left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border-right: 1px solid var(--border);
+  background: var(--panel);
+}
+.play-view__center {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+}
+.play-view__right > .sb-game-toolbox {
+  height: 100%;
+  min-height: 0;
+}
+.play-view__scene {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  isolation: isolate;
+}
+.play-view__scene-name {
+  position: absolute;
+  inset: auto 0 0 0;
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  color: var(--photo-text);
+  font:
+    500 16px/1.3 Georgia,
+    serif;
+  background: linear-gradient(0deg, color-mix(in srgb, var(--scrim) 65%, transparent), transparent);
+}
+.play-view__scene--empty {
+  display: grid;
+  place-items: center;
+}
+.play-view__scene--empty .play-view__scene-name {
+  position: static;
+  background: none;
+  color: var(--text);
+}
+@media (max-width: 1100px) {
+  .play-view {
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: auto;
+    overflow: auto;
+  }
+  .play-view__left,
+  .play-view__right {
+    overflow: visible;
+    border: 0;
+  }
+  .play-view__center {
+    min-height: 60dvh;
+  }
+}
+
+/* An engine scene is one frame, not the old chat and its sidebar side by side. */
+.sb-themed-play.sb-themed-play--framed {
+  display: block;
+  grid-template-columns: none;
+  grid-template-rows: none;
+}
+.sb-themed-play.sb-themed-play--framed > .play-view {
+  height: 100%;
+}

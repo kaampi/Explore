@@ -101,7 +101,7 @@ it("shows the real inn floor map and switches the encounter backdrop when enteri
     go("Enter the inn");
     await render();
     expect(host.querySelector("aside .play-map-card")).not.toBeNull();
-    expect(host.querySelector(".chat-stage--backdrop .chat-log__backdrop img")).not.toBeNull();
+    expect(host.querySelector(".play-view__scene .chat-log__backdrop img")).not.toBeNull();
     const warm = host.querySelector(".chat-log__backdrop img")!.getAttribute("src");
     for (const action of [
       { kind: "interaction", interactionId: "take-key" },
