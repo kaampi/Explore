@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { act } from "react";
+import { StrictMode, act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import {
@@ -118,6 +118,23 @@ it("closes on Escape and gives focus back, and closes on Tab", async () => {
   close.mockClear();
   await key(document.querySelector('[role="menu"]')!, "Tab");
   expect(close).toHaveBeenCalledOnce();
+  button.remove();
+});
+
+it("gives focus back after Escape in React's strict mode, which runs effects twice", async () => {
+  const button = document.createElement("button");
+  document.body.append(button);
+  button.focus();
+  const close = vi.fn();
+  await render(
+    <StrictMode>
+      <Menu label="Actions" at={{ x: 10, y: 10 }} items={items()} onClose={close} />
+    </StrictMode>,
+  );
+  expect(document.activeElement).not.toBe(button);
+  await key(document.querySelector('[role="menu"]')!, "Escape");
+  expect(close).toHaveBeenCalled();
+  expect(document.activeElement).toBe(button);
   button.remove();
 });
 

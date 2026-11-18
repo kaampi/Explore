@@ -100,7 +100,12 @@ export function Menu({
   const id = useId(),
     menu = useRef<HTMLDivElement>(null),
     close = useRef(onClose),
-    openerRef = useRef(opener);
+    openerRef = useRef(opener),
+    // What had focus when the menu was made. Kept from the first render: React in development runs
+    // effects twice, and by the second time the menu's own row has focus.
+    focusBefore = useRef<Element | null>(null);
+  if (focusBefore.current === null && typeof document !== "undefined")
+    focusBefore.current = document.activeElement;
   close.current = onClose;
   openerRef.current = opener;
   const [position, setPosition] = useState(at);
@@ -120,7 +125,6 @@ export function Menu({
   }, [at.x, at.y, items]);
 
   useLayoutEffect(() => {
-    const previous = document.activeElement;
     window.dispatchEvent(new CustomEvent(MENU_OPEN, { detail: id }));
     const outside = (event: Event) => {
       if (!(event.target instanceof Node)) return;
@@ -139,7 +143,12 @@ export function Menu({
         event.preventDefault();
         event.stopPropagation();
         close.current();
-        if (previous instanceof HTMLElement || previous instanceof SVGElement) previous.focus();
+        const previous = focusBefore.current;
+        if (
+          (previous instanceof HTMLElement || previous instanceof SVGElement) &&
+          !menu.current?.contains(previous)
+        )
+          previous.focus();
       }
     };
     const resize = () => close.current();
