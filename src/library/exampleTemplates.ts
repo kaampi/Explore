@@ -1,3 +1,4 @@
+import { localizeRuleset, type ExampleLanguage } from "./exampleRulesetTexts";
 import {
   CharacterTemplateSchema,
   FALLBACK_REALM_ID,
@@ -145,6 +146,12 @@ export const EXAMPLE_VOICE_TOLKIEN_ID = "example-voice-tolkien";
 export const EXAMPLE_VOICE_FREIGHTER_ID = "example-voice-freighter";
 export const EXAMPLE_RULESET_FANTASY_ID = "example-ruleset-fantasy";
 export const EXAMPLE_RULESET_CLOSENESS_ID = "example-ruleset-closeness";
+export const EXAMPLE_RULESET_SCIFI_ID = "example-ruleset-scifi";
+export const EXAMPLE_RULESET_NOIR_ID = "example-ruleset-noir";
+export const EXAMPLE_RULESET_HORROR_ID = "example-ruleset-horror";
+export const EXAMPLE_RULESET_COZY_ID = "example-ruleset-cozy";
+export const EXAMPLE_RULESET_ROMANCE_ID = "example-ruleset-romance";
+export const EXAMPLE_RULESET_REALITY_ID = "example-ruleset-reality";
 export const EXAMPLE_OBJECT_RING_ID = "example-object-one-ring";
 export const EXAMPLE_OBJECT_KEY_ID = "example-object-guest-key";
 export const EXAMPLE_OBJECT_LIGHTSABER_ID = "example-object-lightsaber";
@@ -233,11 +240,13 @@ export function exampleVoiceTemplates(): VoiceTemplate[] {
 export function exampleFantasyRuleset(): RulesetTemplate {
   return RulesetTemplateSchema.parse({
     id: EXAMPLE_RULESET_FANTASY_ID,
-    name: "Klassisk fantasy",
+    name: "Classic fantasy",
+    image: "/rulesets/fantasy.webp",
+    playerHealth: 25,
     attributes: [
       {
         id: "strength",
-        name: "Styrka",
+        name: "Strength",
         kind: "number",
         min: 1,
         max: 18,
@@ -248,7 +257,7 @@ export function exampleFantasyRuleset(): RulesetTemplate {
       },
       {
         id: "dexterity",
-        name: "Smidighet",
+        name: "Dexterity",
         kind: "number",
         min: 1,
         max: 18,
@@ -258,7 +267,7 @@ export function exampleFantasyRuleset(): RulesetTemplate {
       },
       {
         id: "intelligence",
-        name: "Intelligens",
+        name: "Intelligence",
         kind: "number",
         min: 1,
         max: 18,
@@ -269,7 +278,7 @@ export function exampleFantasyRuleset(): RulesetTemplate {
       },
       {
         id: "wisdom",
-        name: "Visdom",
+        name: "Wisdom",
         kind: "number",
         min: 1,
         max: 18,
@@ -280,12 +289,32 @@ export function exampleFantasyRuleset(): RulesetTemplate {
       },
       {
         id: "charisma",
-        name: "Karisma",
+        name: "Charisma",
         kind: "number",
         min: 1,
         max: 18,
         highMeaning: "Wins people over, holds a room, makes a request land as reasonable.",
         lowMeaning: "Talks past people, is easy to dismiss, struggles to rally anyone.",
+      },
+      {
+        id: "melee",
+        name: "Melee",
+        kind: "number",
+        min: 1,
+        max: 18,
+        highMeaning:
+          "Hits hard and often with a blade, an axe or bare hands, and keeps their footing in a brawl.",
+        lowMeaning: "Swings wildly, is easily disarmed and is better off keeping out of a fight.",
+      },
+      {
+        id: "ranged",
+        name: "Ranged",
+        kind: "number",
+        min: 1,
+        max: 18,
+        highMeaning:
+          "Hits what they aim at with a bow, a sling or a thrown knife, even at a distance.",
+        lowMeaning: "Misses more often than not and is as likely to hit a friend.",
       },
     ],
     source: "example",
@@ -297,11 +326,11 @@ export function exampleFantasyRuleset(): RulesetTemplate {
 export function exampleClosenessRuleset(): RulesetTemplate {
   return RulesetTemplateSchema.parse({
     id: EXAMPLE_RULESET_CLOSENESS_ID,
-    name: "Förtroende",
+    name: "Trust",
     attributes: [
       {
         id: "safety",
-        name: "Trygghet",
+        name: "Safety",
         kind: "number",
         min: 0,
         max: 100,
@@ -313,7 +342,7 @@ export function exampleClosenessRuleset(): RulesetTemplate {
       },
       {
         id: "suspicion",
-        name: "Misstänksamhet",
+        name: "Suspicion",
         kind: "number",
         min: 0,
         max: 100,
@@ -325,7 +354,7 @@ export function exampleClosenessRuleset(): RulesetTemplate {
       },
       {
         id: "warmth",
-        name: "Värme",
+        name: "Warmth",
         kind: "number",
         min: 0,
         max: 100,
@@ -344,8 +373,285 @@ export function exampleClosenessRuleset(): RulesetTemplate {
   });
 }
 
-export function exampleRulesetTemplates(): RulesetTemplate[] {
-  return [exampleFantasyRuleset(), exampleClosenessRuleset()];
+type Value = [id: string, name: string, high: string, low: string, maxShift?: number];
+
+/** A genre rule-set: a few values from 0 to 100. A value is the chance, in a hundred, of getting it right; 50 is an ordinary person. */
+function genreRuleset(args: {
+  id: string;
+  name: string;
+  image?: string;
+  playerHealth: number;
+  values: Value[];
+}): RulesetTemplate {
+  return RulesetTemplateSchema.parse({
+    id: args.id,
+    name: args.name,
+    ...(args.image ? { image: args.image } : {}),
+    playerHealth: args.playerHealth,
+    attributes: args.values.map(([id, name, highMeaning, lowMeaning, maxShift]) => ({
+      id,
+      name,
+      kind: "number",
+      min: 0,
+      max: 100,
+      highMeaning,
+      lowMeaning,
+      ...(maxShift ? { maxShift } : {}),
+    })),
+    source: "example",
+    createdAt: STAMP,
+    updatedAt: STAMP,
+  });
+}
+
+const MELEE: Value = [
+  "melee",
+  "Melee",
+  "Fights well up close, with a weapon or bare hands.",
+  "Fights badly up close and is better off avoiding it.",
+];
+const RANGED: Value = [
+  "ranged",
+  "Ranged",
+  "Hits what they aim at, even at a distance.",
+  "Misses more often than not at a distance.",
+];
+
+export function exampleGenreRulesets(): RulesetTemplate[] {
+  return [
+    genreRuleset({
+      id: EXAMPLE_RULESET_SCIFI_ID,
+      name: "Sci-fi",
+      image: "/rulesets/scifi.webp",
+      playerHealth: 20,
+      values: [
+        [
+          "tech",
+          "Tech",
+          "Repairs, hacks and bends machines to their will.",
+          "Is lost around machines and breaks what they touch.",
+        ],
+        [
+          "piloting",
+          "Piloting",
+          "Flies anything with steady hands, in a dock or in a firefight.",
+          "Should not be given the controls.",
+        ],
+        [
+          "science",
+          "Science",
+          "Understands how things work and notices what does not add up.",
+          "Takes what the instruments say on trust.",
+        ],
+        [
+          "composure",
+          "Composure",
+          "Stays calm when the alarms go off and decisions cost lives.",
+          "Freezes or snaps when pressure rises.",
+        ],
+        MELEE,
+        [
+          "ranged",
+          "Ranged",
+          "Hits what they aim at with a sidearm or a rifle, even across a deck.",
+          "Misses more often than not and is a danger to the crew.",
+        ],
+      ],
+    }),
+    genreRuleset({
+      id: EXAMPLE_RULESET_NOIR_ID,
+      name: "Noir",
+      image: "/rulesets/noir.webp",
+      playerHealth: 15,
+      values: [
+        [
+          "perception",
+          "Perception",
+          "Sees the detail that gives a liar away: a stain, a wrong word, a lit window.",
+          "Walks past the clue and believes the first story they hear.",
+        ],
+        [
+          "persuasion",
+          "Persuasion",
+          "Talks people into telling more than they meant to.",
+          "Is brushed off, lied to and shown the door.",
+        ],
+        [
+          "contacts",
+          "Contacts",
+          "Knows someone in every bar, precinct and back office.",
+          "Is a stranger everywhere and has no one to call.",
+        ],
+        [
+          "nerve",
+          "Nerve",
+          "Keeps a straight face with a gun in the room and a threat in the air.",
+          "Sweats, stammers and gives themselves away.",
+        ],
+        MELEE,
+        RANGED,
+      ],
+    }),
+    genreRuleset({
+      id: EXAMPLE_RULESET_HORROR_ID,
+      name: "Horror",
+      image: "/rulesets/horror.webp",
+      playerHealth: 12,
+      values: [
+        [
+          "nerve",
+          "Nerve",
+          "Goes on when something moves in the dark.",
+          "Bolts, freezes or screams at the first sign of it.",
+        ],
+        [
+          "perception",
+          "Perception",
+          "Hears the step on the stairs and sees what is wrong with the room.",
+          "Notices too late.",
+        ],
+        [
+          "agility",
+          "Agility",
+          "Slips away, climbs, hides and gets out in time.",
+          "Is slow, loud and easy to catch.",
+        ],
+        [
+          "strength",
+          "Strength",
+          "Forces a door, drags a body, holds on.",
+          "Is overpowered by almost anything.",
+        ],
+        [
+          "sanity",
+          "Sanity",
+          "Keeps hold of what is real, even after what they have seen.",
+          "Sees things that are not there and cannot trust their own mind.",
+          10,
+        ],
+        [
+          "melee",
+          "Melee",
+          "Fights back when cornered, with whatever is at hand.",
+          "Fighting is the last thing that will help; running is better.",
+        ],
+      ],
+    }),
+    genreRuleset({
+      id: EXAMPLE_RULESET_COZY_ID,
+      name: "Cozy",
+      playerHealth: 10,
+      values: [
+        [
+          "care",
+          "Care",
+          "Notices who needs a hand, a word or a cup of tea.",
+          "Means well but misses what others need.",
+        ],
+        [
+          "curiosity",
+          "Curiosity",
+          "Asks the question that opens a story and finds what was hidden.",
+          "Lets things be, and what is hidden stays hidden.",
+        ],
+        [
+          "handiness",
+          "Handiness",
+          "Bakes, mends and makes things that turn out well.",
+          "Burns the bread and drops the cup, with good cheer.",
+        ],
+        [
+          "calm",
+          "Calm",
+          "Settles a room and takes the heat out of a quarrel.",
+          "Fusses, rushes and stirs things up.",
+        ],
+        [
+          "humor",
+          "Humor",
+          "Makes people laugh, even on a grey day.",
+          "The joke lands flat, kindly.",
+        ],
+      ],
+    }),
+    genreRuleset({
+      id: EXAMPLE_RULESET_ROMANCE_ID,
+      name: "Romance",
+      playerHealth: 10,
+      values: [
+        [
+          "charm",
+          "Charm",
+          "Makes people feel seen and wants more of their company.",
+          "Is awkward and overlooked at the party.",
+        ],
+        [
+          "empathy",
+          "Empathy",
+          "Reads what is meant behind what is said.",
+          "Misses the hint and says the wrong thing at the wrong time.",
+        ],
+        [
+          "humor",
+          "Humor",
+          "Breaks the ice and makes a quiet moment light.",
+          "The joke falls flat, and the silence after it is long.",
+        ],
+        [
+          "courage",
+          "Courage",
+          "Says what they feel and takes the first step.",
+          "Waits, hints and lets the moment pass.",
+        ],
+        [
+          "honesty",
+          "Honesty",
+          "Is plain about what they want and what they have done.",
+          "Hides behind half-truths, and it shows.",
+        ],
+      ],
+    }),
+    genreRuleset({
+      id: EXAMPLE_RULESET_REALITY_ID,
+      name: "Reality",
+      image: "/rulesets/reality.webp",
+      playerHealth: 20,
+      values: [
+        [
+          "strength",
+          "Strength",
+          "Lifts, pushes and holds what others cannot.",
+          "Struggles with anything heavy.",
+        ],
+        [
+          "agility",
+          "Agility",
+          "Quick, steady and good with their hands.",
+          "Slow, clumsy and drops things.",
+        ],
+        [
+          "intelligence",
+          "Intelligence",
+          "Works things out and learns fast.",
+          "Needs things explained twice.",
+        ],
+        ["charisma", "Charisma", "Gets a hearing and is believed.", "Is talked over and ignored."],
+        [
+          "endurance",
+          "Endurance",
+          "Keeps going when others give up.",
+          "Tires quickly and gives up early.",
+        ],
+        MELEE,
+      ],
+    }),
+  ];
+}
+
+/** The rule-sets that come with the app, in the language of the interface. */
+export function exampleRulesetTemplates(language: ExampleLanguage = "en"): RulesetTemplate[] {
+  const all = [exampleFantasyRuleset(), exampleClosenessRuleset(), ...exampleGenreRulesets()];
+  return language === "en" ? all : all.map((set) => localizeRuleset(set, language));
 }
 
 export function exampleRingObject(): ObjectTemplate {

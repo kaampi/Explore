@@ -190,6 +190,9 @@ export function skillIdFor(
   const byId = scales.find((scale) => scale.id === text);
   if (byId) return byId.id;
   const lower = text.trim().toLowerCase();
+  // The id in any capitals too, so a card that says "Melee" finds the skill whatever it is called.
+  const byIdAnyCase = scales.find((scale) => scale.id.toLowerCase() === lower);
+  if (byIdAnyCase) return byIdAnyCase.id;
   const byName = scales.find((scale) => scale.name.trim().toLowerCase() === lower);
   if (byName) return byName.id;
   // The adventure changed rule-set and the author said what the old skill is now.

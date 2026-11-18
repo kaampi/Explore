@@ -62,12 +62,12 @@ describe("ruleset templates", () => {
 
   it("ships a fantasy example without locking it to a character", () => {
     const set = exampleFantasyRuleset();
-    expect(set.name).toBe("Klassisk fantasy");
+    expect(set.name).toBe("Classic fantasy");
     expect(set.attributes.map((a) => a.id)).toContain("wisdom");
     expect(set.attributes.some((a) => a.role === "desire")).toBe(false);
   });
 
-  it("marks Värme as the closeness signal on the Förtroende example", () => {
+  it("marks Warmth as the closeness signal on the Trust example", () => {
     const set = exampleClosenessRuleset();
     expect(set.attributes.find((a) => a.id === "warmth")?.role).toBe("desire");
     expect(set.attributes.filter((a) => a.role === "desire")).toHaveLength(1);

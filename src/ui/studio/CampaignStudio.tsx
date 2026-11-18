@@ -1,4 +1,4 @@
-import { useTranslate } from "../i18n/LanguageProvider";
+import { useInterfaceLanguage, useTranslate } from "../i18n/LanguageProvider";
 import { syncAdventure } from "../../library/sceneSync";
 import { remapAttribute } from "../../library/sceneParts";
 import { RuleSetChange } from "./RuleSetChange";
@@ -215,6 +215,7 @@ export function CampaignStudio({
   onOneOff: () => void;
 }) {
   const t = useTranslate();
+  const language = useInterfaceLanguage();
   const [campaigns, setCampaigns] = useState<CampaignTemplate[]>([]);
   const [characters, setCharacters] = useState<CharacterTemplate[]>([]);
   const [places, setPlaces] = useState<PlaceTemplate[]>([]);
@@ -299,7 +300,7 @@ export function CampaignStudio({
   }, [repo, resume]);
 
   const visibleVoices = mergeWithExamples(voices, exampleVoiceTemplates());
-  const visibleRulesets = mergeWithExamples(rulesets, exampleRulesetTemplates());
+  const visibleRulesets = mergeWithExamples(rulesets, exampleRulesetTemplates(language));
   const visibleObjects = mergeWithExamples(objects, exampleObjectTemplates());
   const visibleCharacters = mergeWithExamples(characters, [exampleCharacterTemplate()]);
   const visiblePlaces = mergeWithExamples(

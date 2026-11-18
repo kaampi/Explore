@@ -1,4 +1,4 @@
-import { useTranslate } from "../i18n/LanguageProvider";
+import { useInterfaceLanguage, useTranslate } from "../i18n/LanguageProvider";
 import { useEffect, useState } from "react";
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 import {
@@ -37,6 +37,7 @@ type Draft = {
   name: string;
   attributes: AttrDraft[];
   playerHealth: string;
+  image?: string | undefined;
   source: LibrarySource;
   createdAt?: string;
 };
@@ -88,6 +89,7 @@ function draftFrom(template: RulesetTemplate): Draft {
     attributes:
       template.attributes.length > 0 ? template.attributes.map(attrFromDef) : [emptyAttr()],
     playerHealth: template.playerHealth !== undefined ? String(template.playerHealth) : "",
+    image: template.image,
     source: template.source,
     createdAt: template.createdAt,
   };
@@ -170,6 +172,7 @@ function meaningSaveHint(attributes: AttributeDef[]): string | undefined {
 
 export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
   const t = useTranslate();
+  const language = useInterfaceLanguage();
   const [library, setLibrary] = useState<RulesetTemplate[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -197,7 +200,7 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
   }, [repo]);
 
   const savedIds = new Set(library.map((item) => item.id));
-  const items = mergeWithExamples(library, exampleRulesetTemplates());
+  const items = mergeWithExamples(library, exampleRulesetTemplates(language));
 
   function open(id: string) {
     const item = items.find((row) => row.id === id);
@@ -237,6 +240,7 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
         name,
         attributes,
         ...(playerHealth !== undefined ? { playerHealth } : {}),
+        ...(draft.image ? { image: draft.image } : {}),
         source: draft.source,
       });
       const previous = library.find((item) => item.id === built.id);
@@ -276,6 +280,7 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
           id: item.id,
           name: item.name,
           caption: sourceCaption(item.source, savedIds.has(item.id)),
+          ...(item.image ? { thumb: item.image } : {}),
         }))}
         selectedId={selectedId}
         onSelect={open}

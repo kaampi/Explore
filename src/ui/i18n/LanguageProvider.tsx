@@ -2158,6 +2158,10 @@ export const languageOptions: { value: InterfaceLanguage; label: string }[] = [
  * For components deep in the interface. Without a LanguageProvider (a test, a stand-alone
  * view) it gives English instead of failing.
  */
+/** The language of the interface, English when there is no provider. */
+export function useInterfaceLanguage(): InterfaceLanguage {
+  return useContext(LanguageContext)?.language ?? "en";
+}
 export function useTranslate(): Translate {
   const value = useContext(LanguageContext);
   return (key, values) => translate(value?.language ?? "en", key, values);

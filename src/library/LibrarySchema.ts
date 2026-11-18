@@ -193,6 +193,8 @@ export const RulesetTemplateSchema = z.object({
   attributes: z.array(AttributeDefSchema).default(() => []),
   /** Health the player starts with in an adventure. Missing: 20. */
   playerHealth: z.number().int().min(1).max(200).optional(),
+  /** A picture for the card: the path of a file the app ships with. */
+  image: z.string().min(1).optional(),
   source: LibrarySourceSchema.default("player"),
   createdAt: z.string(),
   updatedAt: z.string(),
