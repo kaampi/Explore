@@ -1138,7 +1138,7 @@ export function PlayableStoryboard({
         <Menu
           at={{ x: context.x, y: context.y }}
           label="Storyboard actions"
-          portalTarget={root.current ?? undefined}
+          scope={root.current}
           items={menuItems}
           onClose={() => setContext(null)}
         />
