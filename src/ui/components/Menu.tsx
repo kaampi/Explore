@@ -81,6 +81,7 @@ export function Menu({
   items,
   onClose,
   scope,
+  opener,
   portalTarget,
 }: {
   label: string;
@@ -89,12 +90,19 @@ export function Menu({
   onClose: () => void;
   /** An element near the menu's origin: the menu goes in its dialog, or else in the app frame. */
   scope?: Element | null;
+  /**
+   * The button that opened the menu. A press on it does not count as outside: the button's own
+   * click closes the menu, so it is not opened again by the same click.
+   */
+  opener?: Element | null;
   portalTarget?: Element | undefined;
 }) {
   const id = useId(),
     menu = useRef<HTMLDivElement>(null),
-    close = useRef(onClose);
+    close = useRef(onClose),
+    openerRef = useRef(opener);
   close.current = onClose;
+  openerRef.current = opener;
   const [position, setPosition] = useState(at);
 
   if (import.meta.env.DEV) {
@@ -115,7 +123,9 @@ export function Menu({
     const previous = document.activeElement;
     window.dispatchEvent(new CustomEvent(MENU_OPEN, { detail: id }));
     const outside = (event: Event) => {
-      if (event.target instanceof Node && !menu.current?.contains(event.target)) close.current();
+      if (!(event.target instanceof Node)) return;
+      if (menu.current?.contains(event.target) || openerRef.current?.contains(event.target)) return;
+      close.current();
     };
     const other = (event: Event) => {
       if ((event as CustomEvent<string>).detail !== id) close.current();
@@ -298,19 +308,26 @@ export function MenuButton({
   items,
   size,
   className,
+  bare,
 }: {
   label: string;
   items: readonly MenuItem[];
   size?: "normal" | "compact";
   className?: string;
+  /** Only the class given here, for a place that has its own look for the button. */
+  bare?: boolean;
 }) {
   const [at, setAt] = useState<{ x: number; y: number } | null>(null);
   const button = useRef<HTMLButtonElement>(null);
   const classes = [
-    "ui-button",
-    "ui-button--quiet",
-    "ui-button--icon",
-    size === "compact" ? "ui-button--compact" : "",
+    ...(bare
+      ? []
+      : [
+          "ui-button",
+          "ui-button--quiet",
+          "ui-button--icon",
+          size === "compact" ? "ui-button--compact" : "",
+        ]),
     className ?? "",
   ]
     .filter(Boolean)
@@ -343,6 +360,7 @@ export function MenuButton({
           at={at}
           items={items}
           scope={button.current}
+          opener={button.current}
           onClose={() => {
             setAt(null);
             button.current?.focus();
@@ -368,8 +386,9 @@ function inTextControl(target: EventTarget | null) {
  * is selected, nothing happens, so that Copy and Paste keep working.
  */
 export function useContextMenu(label: string, items: readonly MenuItem[]) {
-  const [at, setAt] = useState<{ x: number; y: number } | null>(null);
+  const [at, setAt] = useState<{ x: number; y: number; scope: Element } | null>(null);
   const timer = useRef<number | undefined>(undefined);
+  const element = useRef<Element | null>(null);
   const pressed = useRef(false);
   const origin = useRef({ x: 0, y: 0 });
   const stop = useCallback(() => {
@@ -381,23 +400,28 @@ export function useContextMenu(label: string, items: readonly MenuItem[]) {
     onContextMenu: (event: ReactMouseEvent) => {
       if (inTextControl(event.target) || window.getSelection()?.toString()) return;
       event.preventDefault();
-      setAt({ x: event.clientX, y: event.clientY });
+      setAt({ x: event.clientX, y: event.clientY, scope: event.currentTarget as Element });
     },
     onKeyDown: (event: ReactKeyboardEvent) => {
       if (inTextControl(event.target)) return;
       if (event.key !== "ContextMenu" && !(event.shiftKey && event.key === "F10")) return;
       event.preventDefault();
       const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-      setAt({ x: rect.left + 8, y: rect.top + Math.min(rect.height, 40) });
+      setAt({
+        x: rect.left + 8,
+        y: rect.top + Math.min(rect.height, 40),
+        scope: event.currentTarget as Element,
+      });
     },
     onPointerDown: (event: ReactPointerEvent) => {
       if (event.pointerType === "mouse" || inTextControl(event.target)) return;
       origin.current = { x: event.clientX, y: event.clientY };
+      element.current = event.currentTarget as Element;
       pressed.current = false;
       stop();
       timer.current = window.setTimeout(() => {
         pressed.current = true;
-        setAt(origin.current);
+        if (element.current) setAt({ ...origin.current, scope: element.current });
       }, LONG_PRESS_MS);
     },
     onPointerMove: (event: ReactPointerEvent) => {
@@ -419,7 +443,7 @@ export function useContextMenu(label: string, items: readonly MenuItem[]) {
     },
   };
   const menu: ReactNode = at ? (
-    <Menu label={label} at={at} items={items} onClose={() => setAt(null)} />
+    <Menu label={label} at={at} items={items} scope={at.scope} onClose={() => setAt(null)} />
   ) : null;
   return { bind, menu };
 }

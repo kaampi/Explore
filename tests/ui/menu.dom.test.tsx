@@ -332,6 +332,45 @@ it("opens the same rows from a right click, Shift+F10 and the Menu key as from t
   expect(labels()).toEqual(fromClick);
 });
 
+it("opens a right-click menu inside the dialog it was opened in, not behind it", async () => {
+  const dialog = document.createElement("dialog");
+  document.body.append(dialog);
+  const element = await render(<Target list={items()} />, dialog);
+  const target = element.querySelector<HTMLElement>('[data-testid="target"]')!;
+  await act(async () => {
+    target.dispatchEvent(
+      new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 30, clientY: 40 }),
+    );
+  });
+  expect(document.querySelector('[role="menu"]')!.closest("dialog")).toBe(dialog);
+  await key(document.querySelector('[role="menu"]')!, "Escape");
+
+  await key(target, "F10", { shiftKey: true });
+  expect(document.querySelector('[role="menu"]')!.closest("dialog")).toBe(dialog);
+  await key(document.querySelector('[role="menu"]')!, "Escape");
+  dialog.remove();
+});
+
+it("closes the menu on a second click on the ⋯ button, and does not open it again", async () => {
+  const element = await render(<MenuButton label="More" items={items()} />);
+  const button = element.querySelector("button")!;
+  // What a browser sends for one click: press, release, then click. React has drawn what the press
+  // changed before the click arrives, so each event gets its own turn.
+  const click = async () => {
+    for (const type of ["pointerdown", "mousedown", "pointerup", "mouseup", "click"])
+      await act(async () => {
+        button.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true }));
+      });
+  };
+  await click();
+  expect(document.querySelector('[role="menu"]')).not.toBeNull();
+  await click();
+  expect(document.querySelector('[role="menu"]')).toBeNull();
+  expect(button.getAttribute("aria-expanded")).toBe("false");
+  await click();
+  expect(document.querySelector('[role="menu"]')).not.toBeNull();
+});
+
 it("opens from a long press of 500 ms on a touch screen, and not from a short one", async () => {
   vi.useFakeTimers();
   const element = await render(<Target list={items()} />);

@@ -72,7 +72,20 @@
     .studio-list__btn,
     .anatomy-button
   ):hover:not(:disabled) {
+  background: var(--panel-raised);
   border-color: var(--text-faint);
+}
+
+/* A button that is both an Anatomy button and primary is primary: the main action wins. */
+:root .anatomy-button.anatomy-primary {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+:root .anatomy-button.anatomy-primary:hover:not(:disabled) {
+  background: var(--accent-strong-hover);
+  border-color: var(--accent-strong-hover);
 }
 
 /* Danger: like secondary, with red text. Filled only in a confirmation dialog. */
@@ -83,12 +96,17 @@
   font-weight: 500;
 }
 :root :is(.ui-button--danger, .sb-button--danger, .anatomy-danger):hover:not(:disabled) {
+  background: var(--panel-raised);
   border-color: var(--accent-danger);
 }
 :root .ui-button--danger.ui-button--filled {
   background: var(--accent-danger);
   border-color: var(--accent-danger);
   color: var(--on-danger);
+}
+:root .ui-button--danger.ui-button--filled:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent-danger) 85%, var(--text));
+  border-color: transparent;
 }
 
 /* Idea: only "Save idea", Explore's own main thing. Brass, as the palette says. */
