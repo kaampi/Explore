@@ -54,6 +54,16 @@ for (const [mode, set] of Object.entries(modes())) {
   });
 }
 
+it("applies the dark palette to the page itself as well as to the app frame", () => {
+  expect(css("tokens.css")).toMatch(
+    /:root\[data-shell="dark"\],\s*\.sandbox-root\[data-shell="dark"\]\s*\{/,
+  );
+});
+
+it("writes no fallback colour inside a variable, since the variables always exist", () => {
+  expect(css("experience.css")).not.toMatch(/\.message-context-menu[^}]*var\(--[\w-]+,\s*#/);
+});
+
 it("keeps the palette in one place: the old colour sets are gone", () => {
   expect(css("styles.css")).not.toMatch(/:root\s*\{/);
   expect(css("styles.css")).not.toMatch(/--(bg|panel|text|border|accent[\w-]*)\s*:/);
@@ -76,7 +86,7 @@ function stylesheets(dir: string): string[] {
  * dice and combat effects aside); this limit is lowered as the stylesheets are moved to the
  * variables, and must never be raised.
  */
-const DIRECT_COLOUR_LIMIT = 412;
+const DIRECT_COLOUR_LIMIT = 408;
 
 it("counts the colours written directly in stylesheets, and lets the number only go down", () => {
   let count = 0;

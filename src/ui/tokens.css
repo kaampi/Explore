@@ -39,6 +39,7 @@
 
   color-scheme: light;
 }
+:root[data-shell="dark"],
 .sandbox-root[data-shell="dark"] {
   --bg: #15181e;
   --panel: #1c2028;

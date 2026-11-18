@@ -103,6 +103,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       })),
     setShell: (shell) => setLibrary((state) => ({ ...state, shell })),
   };
+  // The page itself and anything drawn straight into <body> (menus, say) follow the shell too.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.setAttribute("data-shell", library.shell);
+    return () => root.removeAttribute("data-shell");
+  }, [library.shell]);
   return (
     <Context.Provider value={value}>
       <div className="sandbox-root" data-shell={library.shell}>
