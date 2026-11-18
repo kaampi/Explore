@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { ListRow, type RowStatus } from "../components/ListRow";
+import type { MenuItem } from "../components/Menu";
 
 export function StudioList({
   heading,
@@ -14,9 +16,16 @@ export function StudioList({
   renderPortrait,
   layout = "rows",
   columns = 1,
+  itemMenu,
 }: {
   heading: string;
-  items: { id: string; name: string; caption?: string; thumb?: string }[];
+  items: {
+    id: string;
+    name: string;
+    caption?: string;
+    thumb?: string;
+    statuses?: RowStatus[];
+  }[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   onNew: () => void;
@@ -28,8 +37,12 @@ export function StudioList({
   renderPortrait?: (item: { id: string; thumb?: string }) => ReactNode;
   layout?: "rows" | "portraits";
   columns?: 1 | 2;
+  /** What can be done with one thing in the list. Without it a row has no "⋯". */
+  itemMenu?: (item: { id: string; name: string }) => MenuItem[];
 }) {
   const portraits = layout === "portraits";
+  // The new button is a plain button; when there is nothing yet it is the main one.
+  const newClass = items.length === 0 ? "setup-start" : "studio-list__btn";
   const listClass = [
     "studio-list",
     portraits ? "studio-list--portraits" : "",
@@ -47,21 +60,13 @@ export function StudioList({
         )}
         {secondaryAction ? (
           <div className="studio-list__head-actions">
-            <button
-              type="button"
-              className={portraits ? "setup-start" : "setup-text-btn"}
-              onClick={onNew}
-            >
+            <button type="button" className={newClass} onClick={onNew}>
               {newLabel}
             </button>
             {secondaryAction}
           </div>
         ) : (
-          <button
-            type="button"
-            className={portraits ? "setup-start" : "setup-text-btn"}
-            onClick={onNew}
-          >
+          <button type="button" className={newClass} onClick={onNew}>
             {newLabel}
           </button>
         )}
@@ -71,25 +76,25 @@ export function StudioList({
       {items.length === 0 && <p className="inspector-empty">{empty}</p>}
       <ul className="studio-list__items">
         {items.map((item) => (
-          <li key={item.id}>
-            <button
-              type="button"
-              className={`studio-list__item ${selectedId === item.id ? "studio-list__item--active" : ""} ${item.thumb || portraits ? "studio-list__item--thumb" : ""}`}
-              onClick={() => onSelect(item.id)}
-            >
-              {renderPortrait ? (
+          <ListRow
+            key={item.id}
+            name={item.name}
+            description={item.caption}
+            statuses={item.statuses ?? []}
+            selected={selectedId === item.id}
+            onSelect={() => onSelect(item.id)}
+            menu={itemMenu?.(item) ?? []}
+            variant={portraits ? "card" : "row"}
+            media={
+              renderPortrait ? (
                 renderPortrait(item)
               ) : item.thumb ? (
                 <img className="studio-list__thumb" src={item.thumb} alt="" />
               ) : portraits ? (
                 <span className="studio-list__thumb studio-list__thumb--empty" aria-hidden="true" />
-              ) : null}
-              <span className="studio-list__copy">
-                <span className="studio-list__name">{item.name}</span>
-                {item.caption ? <span className="studio-list__caption">{item.caption}</span> : null}
-              </span>
-            </button>
-          </li>
+              ) : undefined
+            }
+          />
         ))}
       </ul>
     </aside>

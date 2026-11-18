@@ -232,12 +232,6 @@
 .sb-studio-wrap .studio-list {
   padding: 32px 20px;
 }
-.sb-studio-wrap .studio-list__item {
-  border-radius: 8px;
-}
-.sb-studio-wrap .studio-list__item--active {
-  color: var(--accent);
-}
 .sb-studio-wrap .setup-kicker,
 .sb-studio-wrap .setup-field__label {
   font-family: var(--font-ui);

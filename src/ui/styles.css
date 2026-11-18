@@ -1771,37 +1771,6 @@ textarea.setup-field__story {
   padding: 0;
 }
 
-.studio-list__item {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  width: 100%;
-  background: none;
-  border: none;
-  text-align: left;
-  padding: 8px 10px;
-  border-radius: 8px;
-  color: var(--text-dim);
-  margin-bottom: 2px;
-}
-
-.studio-list__item:hover {
-  background: var(--panel-raised);
-  color: var(--text);
-}
-
-.studio-list__item--active {
-  background: var(--panel-raised);
-  color: var(--accent-active);
-}
-
-.studio-list__item--thumb {
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
-}
-
 .studio-list__thumb {
   width: 36px;
   height: 36px;
@@ -1814,16 +1783,6 @@ textarea.setup-field__story {
 .studio-list__thumb--empty {
   display: block;
   background: var(--panel-raised);
-}
-
-.studio-list--portraits .studio-list__item,
-.studio-list--portraits .studio-list__item--thumb {
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 10px;
-  margin-bottom: 8px;
-  text-align: center;
 }
 
 .studio-list--portraits .studio-list__thumb,
@@ -1848,22 +1807,22 @@ textarea.setup-field__story {
   color: var(--text);
 }
 
-.studio-list--portraits .studio-list__head .setup-start {
+.studio-list--portraits .studio-list__head .setup-start,
+.studio-list--portraits .studio-list__head .studio-list__btn {
   width: 100%;
 }
 
-.studio-list--portraits .studio-list__name {
+.studio-list--portraits .ui-row__name {
   font-size: 18px;
-  color: var(--text);
   text-align: center;
 }
 
-.studio-list--portraits .studio-list__copy {
+.studio-list--portraits .ui-row__copy {
   align-items: center;
   width: 100%;
 }
 
-.studio-list--portraits .studio-list__caption {
+.studio-list--portraits .ui-row__desc {
   text-align: center;
 }
 
@@ -1874,35 +1833,14 @@ textarea.setup-field__story {
   align-items: start;
 }
 
-.studio-list--cols-2 .studio-list__item,
-.studio-list--cols-2.studio-list--portraits .studio-list__item {
-  margin-bottom: 0;
-}
-
 .studio-list--cols-2.studio-list--portraits .studio-list__thumb,
 .studio-list--cols-2.studio-list--portraits .studio-list__thumb--empty {
   width: 112px;
   height: 112px;
 }
 
-.studio-list--cols-2.studio-list--portraits .studio-list__name {
+.studio-list--cols-2.studio-list--portraits .ui-row__name {
   font-size: 15px;
-}
-
-.studio-list__copy {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.studio-list__name {
-  font-size: 14px;
-}
-
-.studio-list__caption {
-  font-size: 11px;
-  color: var(--text-faint);
 }
 
 .studio-sheet {
