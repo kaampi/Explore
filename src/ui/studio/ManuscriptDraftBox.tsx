@@ -54,6 +54,13 @@ export function ManuscriptDraftBox({
   const things = draft.suggestedObjectIds
     .map((id) => library.objects.find((card) => card.id === id))
     .filter((card): card is ObjectTemplate => !!card);
+  /** Why a place cannot be used in this adventure, if it cannot: another world, or off the map. */
+  const adventureWorld = campaign.mapWorldId || campaign.realmId;
+  const placeReason = (place: PlaceTemplate): string | undefined => {
+    if (adventureWorld && place.realmId !== adventureWorld) return t("mdbOtherWorld");
+    if (mapped && !mapPlaces?.some((entry) => entry.place.id === place.id)) return t("mdbMapped");
+    return undefined;
+  };
   const places = [draft.suggestedPlaceId, ...draft.otherPlaceIds]
     .map((id) => library.places.find((card) => card.id === id))
     .filter((card): card is PlaceTemplate => !!card);
@@ -119,14 +126,8 @@ export function ManuscriptDraftBox({
                 <button
                   key={place.id}
                   type="button"
-                  disabled={
-                    busy || (mapped && !mapPlaces?.some((entry) => entry.place.id === place.id))
-                  }
-                  title={
-                    mapped && !mapPlaces?.some((entry) => entry.place.id === place.id)
-                      ? t("mdbMapped")
-                      : undefined
-                  }
+                  disabled={busy || !!placeReason(place)}
+                  title={placeReason(place)}
                   onClick={() => onUsePlace(place)}
                 >
                   {t("mdbUsePlace", { name: place.name })}
