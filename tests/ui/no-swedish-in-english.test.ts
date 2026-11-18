@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { expect, it } from "vitest";
 
 /** Words that only Swedish uses. Texts in these files must come from the language lists. */
@@ -48,7 +48,7 @@ function files(dir: string): string[] {
 it("keeps Swedish text out of the interface unless a language list or a listed exception has it", () => {
   const found: string[] = [];
   for (const path of files("src/ui")) {
-    const name = path.split("/").at(-1)!;
+    const name = basename(path);
     readFileSync(path, "utf8")
       .split("\n")
       .forEach((text, index) => {
