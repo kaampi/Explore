@@ -188,3 +188,10 @@ it("gives the Save map button the main button's colours", () => {
 it("does not give the hero's update button a colour of its own", () => {
   expect(css("experience.css")).not.toMatch(/sb-update-check > \.sb-button\s*\{[^}]*background/);
 });
+
+it("turns the lightness of the map tool pictures over in the dark mode, so the arrow is not black on dark", () => {
+  const map = readFileSync("src/ui/studio/worldMap.css", "utf8");
+  expect(map).toMatch(
+    /\.sandbox-root\[data-shell="dark"\] \.world-map__tool-image\s*\{[^}]*filter:\s*invert\(1\)/,
+  );
+});

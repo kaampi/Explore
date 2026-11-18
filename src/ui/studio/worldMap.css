@@ -667,6 +667,12 @@
   object-fit: contain;
   pointer-events: none;
 }
+/* The tool pictures are drawn in dark lines for a light button. In the dark mode the lightness is
+   turned over and the colours are kept, so the arrow is not black on dark. */
+:root[data-shell="dark"] .world-map__tool-image,
+.sandbox-root[data-shell="dark"] .world-map__tool-image {
+  filter: invert(1) hue-rotate(180deg);
+}
 .world-map__connection-details label {
   display: grid;
   gap: 6px;
