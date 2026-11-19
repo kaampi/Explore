@@ -24,6 +24,7 @@ interface Appearance {
   save: (name: string) => void;
   remove: (id: string) => void;
   setShell: (shell: ThemeLibrary["shell"]) => void;
+  setSimpleFrames: (on: boolean) => void;
 }
 const Context = createContext<Appearance | null>(null);
 export function ThemeProvider({ children }: { children: ReactNode }) {
@@ -102,6 +103,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         saved: state.saved.filter((item) => item.id !== id),
       })),
     setShell: (shell) => setLibrary((state) => ({ ...state, shell })),
+    setSimpleFrames: (on) => setLibrary((state) => ({ ...state, simpleFrames: on })),
   };
   // The page itself and anything drawn straight into <body> (menus, say) follow the shell too.
   useEffect(() => {

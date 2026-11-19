@@ -7,7 +7,7 @@ import {
   shellForTheme,
   type PlayTheme,
 } from "./theme";
-import { SET_PARTS } from "../play/ornament";
+import { SET_PARTS, useSystemAsk } from "../play/ornament";
 import { useTranslate } from "../i18n/LanguageProvider";
 import { playThemeStyle, useAppearance } from "./ThemeProvider";
 import { backgroundFromFile } from "./themeStorage";
@@ -33,7 +33,9 @@ const ORNAMENT_LABELS = {
 
 export function AppearanceSettingsContent({ onClose }: { onClose: () => void }) {
   const t = useTranslate();
-  const { library, conversationId, ready, error, update, select, save, remove } = useAppearance();
+  const { library, conversationId, ready, error, update, select, save, remove, setSimpleFrames } =
+    useAppearance();
+  const systemAsk = useSystemAsk();
   const [name, setName] = useState("");
   const [imageError, setImageError] = useState<string | null>(null);
   const [loadingImage, setLoadingImage] = useState(false);
@@ -237,6 +239,19 @@ export function AppearanceSettingsContent({ onClose }: { onClose: () => void }) 
                 <option value="full">{t("apLevelFull")}</option>
               </select>
             </label>
+            <label className="setup-check">
+              <input
+                type="checkbox"
+                checked={!!library.simpleFrames}
+                onChange={(event) => setSimpleFrames(event.target.checked)}
+              />
+              {t("apSimpleFrames")}
+            </label>
+            {(systemAsk.reducedMotion || systemAsk.moreContrast) && (
+              <p className="sheet-note" role="note">
+                {t("apSystemAsksSimple")}
+              </p>
+            )}
             {range("Text size", "textSize", 15, 26, 1, `${theme.textSize}px`)}
             {range("Reading width", "textWidth", 480, 1000, 20, `${theme.textWidth}px`)}
           </div>

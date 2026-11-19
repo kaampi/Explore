@@ -7,6 +7,7 @@ import { PRESET_THEMES } from "../../src/ui/themes/theme";
 import { LanguageProvider } from "../../src/ui/i18n/LanguageProvider";
 
 const update = vi.fn();
+const setSimpleFrames = vi.fn();
 vi.mock("../../src/ui/themes/ThemeProvider", () => ({
   useAppearance: () => ({
     library: { active: PRESET_THEMES[0], saved: [], shell: "light", conversations: {} },
@@ -14,6 +15,7 @@ vi.mock("../../src/ui/themes/ThemeProvider", () => ({
     ready: true,
     error: null,
     update,
+    setSimpleFrames,
     select: () => {},
     save: () => {},
     remove: () => {},
@@ -61,4 +63,36 @@ it("lets the player choose the ornament set and how much of it, and offers every
   expect(Array.from(levels.options).map((o) => o.value)).toEqual(["none", "light", "full"]);
   await pick(levels, "light");
   expect(update).toHaveBeenLastCalledWith({ ornamentLevel: "light" });
+});
+
+it("has a choice for simple frames, and tells when the system asks for them", async () => {
+  const host = await mount();
+  const box = Array.from(host.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')).find(
+    (input) => input.closest("label")?.textContent?.includes("Simple frames"),
+  )!;
+  expect(box).toBeTruthy();
+  expect(box.checked).toBe(false);
+  await act(async () => box.click());
+  expect(setSimpleFrames).toHaveBeenLastCalledWith(true);
+  // Nothing asks the system for it here, so there is no note about it.
+  expect(host.querySelector('[role="note"]')).toBeNull();
+
+  document.body.innerHTML = "";
+  Object.defineProperty(window, "matchMedia", {
+    value: (q: string) => ({
+      matches: q.includes("prefers-contrast"),
+      media: q,
+      addEventListener() {},
+      removeEventListener() {},
+    }),
+    configurable: true,
+  });
+  try {
+    const asked = await mount();
+    expect(asked.querySelector('[role="note"]')!.textContent).toContain(
+      "less motion or more contrast",
+    );
+  } finally {
+    Object.defineProperty(window, "matchMedia", { value: undefined, configurable: true });
+  }
 });

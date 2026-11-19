@@ -30,7 +30,7 @@ import { usePlayMap } from "../components/usePlayMap";
 import { isGateTestSession } from "../../session/gateTest";
 import { PlayTopBar } from "../play/PlayTopBar";
 import { Journal } from "../play/Journal";
-import { OrnamentProvider, ornamentVars } from "../play/ornament";
+import { OrnamentProvider, ornamentVars, useSimpleFrames } from "../play/ornament";
 import { captureIdea, type Idea } from "../../ideas/IdeaSchema";
 import { IdeaEditor } from "../ideas/IdeaEditor";
 import { formatGameTime } from "../../state/gameClock";
@@ -119,11 +119,13 @@ export function PlayWorkspace({
   const streaming = phase === "streaming";
   const readiness = modelReadiness(discovery, session.runtime.model);
   const canSend = readiness === "ready";
+  // Plain frames: chosen by the player, or asked for by the system (less motion, more contrast).
+  const simpleFrames = useSimpleFrames(!!library.simpleFrames);
   useEffect(() => {
     if (phase === "error") void refresh();
   }, [phase, refresh]);
   return (
-    <OrnamentProvider theme={library.active}>
+    <OrnamentProvider theme={library.active} simple={simpleFrames}>
       <div className="sb-play-workspace">
         {framed ? (
           <PlayTopBar
@@ -296,7 +298,7 @@ export function PlayWorkspace({
             data-shell={shellForTheme(library.active)}
             style={{
               ...playThemeStyle(library.active),
-              ...ornamentVars(library.active),
+              ...ornamentVars(library.active, { simple: simpleFrames }),
               ...(gatePreview ? { backgroundImage: `url(${gateBackground})` } : {}),
             }}
           >

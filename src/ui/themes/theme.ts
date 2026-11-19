@@ -134,6 +134,8 @@ export const ThemeLibrarySchema = z.object({
   conversations: z.record(PlayThemeSchema).default({}),
   saved: z.array(PlayThemeSchema).max(50),
   shell: z.enum(["light", "dark"]),
+  /** The player wants plain frames whatever the theme draws. Kept apart from the theme. */
+  simpleFrames: z.boolean().default(false),
 });
 export type ThemeLibrary = z.infer<typeof ThemeLibrarySchema>;
 export function defaultThemeLibrary(): ThemeLibrary {
@@ -143,6 +145,7 @@ export function defaultThemeLibrary(): ThemeLibrary {
     saved: [],
     conversations: {},
     shell: "light",
+    simpleFrames: false,
   };
 }
 export function rgb(hex: string): string {

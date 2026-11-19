@@ -419,6 +419,9 @@ const labels = {
     pvWhatYouKnow: "What you know",
     pvNothingKnownYet: "You have not found out anything yet.",
     pvShowMap: "Show map",
+    apSimpleFrames: "Simple frames: no ornaments, whatever the theme",
+    apSystemAsksSimple:
+      "Your system asks for less motion or more contrast, so the frames are plain.",
     icThings: "Things",
     icNotes: "Notes",
     icData: "Data",
@@ -1233,6 +1236,9 @@ const labels = {
     pvWhatYouKnow: "Vad du vet",
     pvNothingKnownYet: "Du har inte fått veta något än.",
     pvShowMap: "Visa karta",
+    apSimpleFrames: "Enkla ramar: inga ornament, vilket tema det än är",
+    apSystemAsksSimple:
+      "Ditt system ber om mindre rörelse eller högre kontrast, så ramarna är enkla.",
     icThings: "Saker",
     icNotes: "Lappar",
     icData: "Data",
@@ -2047,6 +2053,9 @@ const labels = {
     pvWhatYouKnow: "Hva du vet",
     pvNothingKnownYet: "Du har ikke funnet ut noe ennå.",
     pvShowMap: "Vis kart",
+    apSimpleFrames: "Enkle rammer: ingen ornamentikk, uansett tema",
+    apSystemAsksSimple:
+      "Systemet ditt ber om mindre bevegelse eller høyere kontrast, så rammene er enkle.",
     icThings: "Ting",
     icNotes: "Lapper",
     icData: "Data",
