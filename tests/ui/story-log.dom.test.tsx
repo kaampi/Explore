@@ -83,9 +83,9 @@ it("draws each kind of line in its own way: prose with no label, labels for you,
   expect(host.querySelector(".play-row--narrator")!.textContent).toContain(
     "A messenger has not returned.",
   );
-  expect(text(host, ".play-row--say .play-row__label")).toEqual(["You · Say"]);
+  expect(text(host, ".play-row--say .play-row__label")).toEqual(["You · Talk"]);
   expect(host.querySelector(".play-row--say blockquote")!.textContent).toBe("“Where is he?”");
-  expect(text(host, ".play-row--do .play-row__label")).toEqual(["You · Do"]);
+  expect(text(host, ".play-row--do .play-row__label")).toEqual(["You · Act"]);
   expect(host.querySelector(".play-row--do p")!.textContent).toBe("Force the stiff gate");
   expect(text(host, ".play-row--person .play-row__label")).toEqual(["Edda", "EddaImprovised"]);
   // A line that already has quotes does not get a second pair.

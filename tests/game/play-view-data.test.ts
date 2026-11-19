@@ -502,3 +502,52 @@ describe("what an outcome can teach", () => {
     ).toThrow();
   });
 });
+
+describe("commandKind and groupedCommands", () => {
+  it("tells talking, things, looking, doors and moving apart, and sorts every choice into a group", async () => {
+    const { commandKind, groupedCommands } = await import("../../src/game/catalog");
+    const { session } = messenger();
+    const game = session.encounter!;
+    const take = newOpportunity("Take the lantern", "You take it.");
+    take.requiresItems = ["lantern"];
+    game.definition.interactions.push(take, newOpportunity("Study the well", "It is deep."));
+    game.state.barriers.gate = {
+      id: "gate",
+      name: "Gate",
+      open: false,
+      locked: false,
+      blocked: false,
+      position: game.state.actors.player!.position,
+    };
+
+    const kind = (label: string) => {
+      const command = publicCommands(game).find((c) => c.label === label)!;
+      return commandKind(game, command);
+    };
+    expect(kind("Ask Edda about the messenger")).toBe("talk");
+    expect(kind("Take the lantern")).toBe("item");
+    expect(kind("Study the well")).toBe("look");
+    expect(kind("Look around")).toBe("look");
+    expect(kind("Open · Gate")).toBe("door");
+
+    const groups = groupedCommands(game);
+    expect(groups.map((g) => g.group)).toEqual(["people", "things", "places"]);
+    expect(labels(groups[0]!.commands)).toEqual(["Ask Edda about the messenger"]);
+    expect(labels(groups[1]!.commands)).toEqual(["Take the lantern", "Study the well"]);
+    expect(labels(groups[2]!.commands)).toContain("Look around");
+    // Nothing is lost, and nothing is in two groups.
+    expect(groups.flatMap((g) => g.commands)).toHaveLength(publicCommands(game).length);
+  });
+
+  it("keeps a blocked choice in its group with the reason, and leaves out empty groups", async () => {
+    const { groupedCommands } = await import("../../src/game/catalog");
+    const { session } = messenger();
+    const game = session.encounter!;
+    game.state.attempts.push(game.definition.interactions[0]!.id);
+
+    const people = groupedCommands(game).find((g) => g.group === "people")!;
+
+    expect(people.commands[0]!.blocked).toMatch(/already resolved/i);
+    expect(groupedCommands(game).map((g) => g.group)).not.toContain("fight");
+  });
+});

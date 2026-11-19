@@ -17,14 +17,15 @@ import { useEngine } from "../EngineStore";
 import { Menu } from "./Menu";
 import type { EncounterAction, EncounterRequest } from "../../game/EncounterSchema";
 import { actionBlock, attackTarget, combatOver, hostile } from "../../game/EncounterEngine";
-import { publicCommands } from "../../game/catalog";
+import { groupedCommands, publicCommands, suggestedCommands } from "../../game/catalog";
 import type { DoPlan, SayPlan } from "../../session/encounterAI";
 import { actionLabel } from "../../game/narration";
-import { greetingTarget, spokenInteraction } from "../../game/dialogue";
+import { greetingTarget, present, spokenInteraction } from "../../game/dialogue";
 import { encounterRules } from "../../game/rules";
 import { ActionSaveError } from "../../persistence/ActionSaveError";
 import { PlayFrame } from "../play/PlayFrame";
 import { StoryLog } from "../play/StoryLog";
+import { WhatDoYouDo } from "../play/WhatDoYouDo";
 import { storyRows } from "../play/storyRows";
 import { storySegments } from "../../game/AdventureEngine";
 
@@ -86,11 +87,18 @@ export function EncounterPanel({
     sceneId?: string;
   } | null>(null);
   const [earlier, setEarlier] = useState(false);
+  const [mode, setMode] = useState<"say" | "do">("say");
+  const [talkingTo, setTalkingTo] = useState("");
   const abortRef = useRef<AbortController | null>(null);
   const lock = useRef(false),
     current = useRef(s);
   current.current = s;
   const ended = s.phase === "defeated" || s.phase === "complete";
+  // Who the player talks to: the person they chose, if still here; otherwise the first one here.
+  const people = Object.values(s.actors)
+    .filter((actor) => present(d, s, actor))
+    .map((actor) => ({ id: actor.id, name: actor.name }));
+  const addressee = people.find((person) => person.id === talkingTo)?.id ?? people[0]?.id ?? "";
   const playback = useCombatPlayback(session, () => {
     const now = current.current;
     if (now.phase === "combat" && now.actors[d.playerId]!.actionsLeft === 0 && !saveFailed) {
@@ -220,7 +228,7 @@ export function EncounterPanel({
     abortRef.current = controller;
     setNotice("");
     setWaiting("interpreting");
-    const plan = await planEncounterSay(line, controller.signal)
+    const plan = await planEncounterSay(line, controller.signal, addressee || undefined)
       .catch((): SayPlan => ({ kind: "plain" }))
       .finally(() => {
         abortRef.current = null;
@@ -567,57 +575,37 @@ export function EncounterPanel({
               </div>
             )}
             {!ended || playback.active ? (
-              <div className="gate-composer-fields">
-                {waiting && (
-                  <p role="status">
-                    {waiting === "interpreting"
-                      ? "Working out what you mean…"
-                      : "Writing the reply…"}{" "}
-                    <button type="button" onClick={() => abortRef.current?.abort()}>
-                      Cancel
-                    </button>
-                  </p>
-                )}
-                <label>
-                  {t("epSaySomething")}
-                  <textarea
-                    rows={3}
-                    disabled={busy}
-                    value={say}
-                    maxLength={1000}
-                    onChange={(event) => setSay(event.target.value)}
-                    placeholder={t("epYourCharacterSWords")}
-                  />
-                  <button
-                    type="button"
-                    disabled={busy || !say.trim()}
-                    onClick={() => void submitSay()}
-                  >
-                    {t("epSay")}
-                  </button>
-                </label>
-                <label>
-                  {t("epDoSomething")}
-                  <textarea
-                    rows={3}
-                    disabled={busy}
-                    value={text}
-                    maxLength={1000}
-                    onChange={(event) => {
-                      setText(event.target.value);
-                      setPending(null);
-                    }}
-                    placeholder={t("epDescribeTheTargetAnd")}
-                  />
-                  <button
-                    type="button"
-                    disabled={busy || !text.trim()}
-                    onClick={() => void submitDo()}
-                  >
-                    {t("epReviewAction")}
-                  </button>
-                </label>
-              </div>
+              <WhatDoYouDo
+                game={game}
+                suggestions={suggestedCommands(game, addressee || undefined)}
+                groups={groupedCommands(game)}
+                people={people}
+                addresseeId={addressee}
+                onAddressee={setTalkingTo}
+                mode={mode}
+                onMode={setMode}
+                say={say}
+                text={text}
+                onSay={setSay}
+                onText={(value) => {
+                  setText(value);
+                  setPending(null);
+                }}
+                busy={busy}
+                waiting={waiting}
+                onCancelWaiting={() => abortRef.current?.abort()}
+                onChoose={(command) => choose(command.action)}
+                onSubmitSay={() => void submitSay()}
+                onSubmitDo={() => void submitDo()}
+                titleFor={(command) =>
+                  command.blocked ??
+                  (command.action.kind === "interaction"
+                    ? d.interactions.find(
+                        (i) => i.id === (command.action as { interactionId: string }).interactionId,
+                      )?.description
+                    : undefined)
+                }
+              />
             ) : (
               <p>{t("epThisEncounterHasEnded")}</p>
             )}

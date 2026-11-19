@@ -163,7 +163,7 @@ it("keeps the engine panel, not the chat's dice panel, when the adventure has a 
       await new Promise((resolve) => setTimeout(resolve, 60));
     });
     expect(session.ruleset?.name).toBe("Classic");
-    expect(host.textContent).toContain("Say something");
+    expect(host.querySelector('textarea[aria-label="Say something"]')).not.toBeNull();
     expect(host.textContent).not.toContain("Roll the dice");
   } finally {
     await act(async () => root.unmount());
