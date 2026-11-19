@@ -53,7 +53,9 @@ async function storedBundle(
  * Put a bundled example into the library, once. When its adventure is already there, with its
  * world, places and people, those are used and nothing new is made, so trying an example again does
  * not fill the library with copies. An example made before copies were kept apart is recognised by
- * its name. If a part has been deleted, the example is made again whole.
+ * its name. If a part of it has been deleted, a new whole copy is made beside it. Nothing is ever
+ * removed or overwritten here: a copy the player has changed, even one with a part missing, stays
+ * as it is.
  */
 export async function installExampleOnce(
   repo: IndexedDBRepository,
@@ -74,8 +76,8 @@ export async function installExampleOnce(
     const stored = await storedBundle(repo, campaign);
     if (stored) return stored;
   }
-  // Nothing whole to use: make it, and let go of leftovers that cannot be played.
-  for (const campaign of known) await repo.deleteCampaign(campaign.id);
+  // Nothing whole to use: make a new copy. What is there already is left alone, and the new
+  // parts have ids of their own, so nothing is written over.
   await repo.saveRealm(fresh.realm);
   if (fresh.rules) await repo.saveRuleset(fresh.rules);
   for (const place of fresh.places) await repo.savePlace(place);
