@@ -650,6 +650,14 @@
 .sb-dialog--wide {
   width: min(880px, calc(100vw - 32px));
 }
+.sb-dialog--side {
+  width: min(440px, 100vw);
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0 0 0 auto;
+  border-radius: 0;
+  border-width: 0 0 0 1px;
+}
 .sb-dialog::backdrop {
   background: color-mix(in srgb, var(--scrim) 52%, transparent);
   backdrop-filter: blur(4px);

@@ -54,6 +54,7 @@ export function SceneColumn({
   footer,
   collapsed,
   onToggleCollapsed,
+  onJournal,
   onGo,
   onAction,
 }: {
@@ -70,6 +71,8 @@ export function SceneColumn({
   /** The column is folded to a narrow strip. */
   collapsed: boolean;
   onToggleCollapsed: () => void;
+  /** Opens the journal, where everything the player knows is. */
+  onJournal?: () => void;
   onGo: (wayId: string) => void;
   onAction: (action: EncounterAction) => void;
 }) {
@@ -218,6 +221,11 @@ export function SceneColumn({
               </li>
             ))}
           </ul>
+        )}
+        {onJournal && (
+          <button type="button" className="ui-button ui-button--quiet" onClick={onJournal}>
+            {t("pvJournalSeeAll")}
+          </button>
         )}
       </section>
       {mapView && (

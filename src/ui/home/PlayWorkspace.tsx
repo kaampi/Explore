@@ -29,6 +29,7 @@ import { PlayMapCard } from "../components/PlayMapCard";
 import { usePlayMap } from "../components/usePlayMap";
 import { isGateTestSession } from "../../session/gateTest";
 import { PlayTopBar } from "../play/PlayTopBar";
+import { Journal } from "../play/Journal";
 import { captureIdea, type Idea } from "../../ideas/IdeaSchema";
 import { IdeaEditor } from "../ideas/IdeaEditor";
 import { formatGameTime } from "../../state/gameClock";
@@ -50,7 +51,7 @@ export function PlayWorkspace({
   onAppearance: () => void;
 }) {
   const t = useTranslate();
-  const { useSession, phase, setOllamaModel, saveEncounter } = useEngine();
+  const { useSession, phase, setOllamaModel, saveEncounter, forgetPlaceNote } = useEngine();
   const { discovery, refresh, chooseModel } = useConnection();
   const [connectionOpen, setConnectionOpen] = useState(false);
   const session = useSession();
@@ -58,6 +59,7 @@ export function PlayWorkspace({
   const portrait = portraitSrc(person ? session.characters[person.id]?.portraitDataUrl : undefined);
   const { library } = useAppearance();
   const [castOpen, setCastOpen] = useState(false);
+  const [journalOpen, setJournalOpen] = useState(false);
   const [inspectorOpen, setInspectorOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [checkRequest, setCheckRequest] = useState(0);
@@ -138,6 +140,7 @@ export function PlayWorkspace({
           }}
           homeDisabled={streaming}
           onSaveIdea={saveRecentIdea}
+          onJournal={() => setJournalOpen(true)}
           sound={<GameAudio key={session.id} conversationId={session.id} />}
           onAppearance={onAppearance}
           aiOpen={settingsOpen}
@@ -233,6 +236,13 @@ export function PlayWorkspace({
           ]}
         />
       )}
+      {journalOpen && framed && (
+        <Journal
+          session={session}
+          onForget={(sceneId, index) => void forgetPlaceNote(sceneId, index).catch(() => {})}
+          onClose={() => setJournalOpen(false)}
+        />
+      )}
       {backgroundOpen && <BackgroundDialog onClose={() => setBackgroundOpen(false)} />}
       {ideaNote && (
         <p role="alert" className="play-view__note">
@@ -288,7 +298,12 @@ export function PlayWorkspace({
           }}
         >
           {session.encounter ? (
-            <EncounterPanel mapView={mapView} backdrop={encounterBackdrop} onSaveIdea={saveIdea} />
+            <EncounterPanel
+              mapView={mapView}
+              backdrop={encounterBackdrop}
+              onSaveIdea={saveIdea}
+              onJournal={() => setJournalOpen(true)}
+            />
           ) : session.gateEncounter ? (
             <LegacyGatePanel
               session={session}

@@ -9,6 +9,7 @@ import {
   adventureOptions,
   knownThings,
   peopleMet,
+  placesVisited,
   sceneWays,
 } from "../../src/game/AdventureEngine";
 import { publicCommands, suggestedCommands } from "../../src/game/catalog";
@@ -355,6 +356,46 @@ describe("knownThings", () => {
       INITIAL_GAME_MINUTES,
     ]);
     expect(known[1]!.text).toBe("Edda points to the north path.");
+  });
+});
+
+describe("placesVisited", () => {
+  it("lists the places in the order the player came to them, with the game time then", () => {
+    const { session } = messenger();
+    expect(placesVisited(session)).toEqual([
+      {
+        sceneId: session.adventure!.currentSceneId,
+        place: "A missing messenger",
+        minutes: INITIAL_GAME_MINUTES,
+      },
+    ]);
+
+    const engine = new StateEngine(structuredClone(session), new EventLog());
+    const s = engine.getSession();
+    // Edda's lead opens the way to the watchtower.
+    engine.executeEncounterAction(
+      {
+        id: "ask",
+        expectedRevision: s.encounter!.state.revision,
+        expectedSceneId: s.encounter!.definition.id,
+        action: { kind: "interaction", interactionId: s.encounter!.definition.interactions[0]!.id },
+      },
+      () => 0.34,
+    );
+    const after = engine.getSession();
+    const way = adventureOptions(after)[0]!;
+    const link = after.adventure!.links.find((l) => l.id === way.id)!;
+    engine.transitionAdventure({
+      id: "go",
+      linkId: way.id,
+      expectedStateVersion: after.stateVersion,
+    });
+
+    const visited = placesVisited(engine.getSession());
+    expect(visited).toHaveLength(2);
+    expect(visited[0]!.place).toBe("A missing messenger");
+    expect(visited[1]!.sceneId).toBe(link.toSceneId);
+    expect(visited[1]!.minutes).toBe(INITIAL_GAME_MINUTES + (link.minutes ?? 0));
   });
 });
 

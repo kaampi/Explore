@@ -5,11 +5,14 @@ export function Modal({
   onClose,
   children,
   wide = false,
+  side = false,
 }: {
   title: string;
   onClose: () => void;
   children: ReactNode;
   wide?: boolean;
+  /** A panel from the right edge, as tall as the window. */
+  side?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -22,7 +25,7 @@ export function Modal({
   return (
     <dialog
       ref={ref}
-      className={`sb-dialog${wide ? " sb-dialog--wide" : ""}`}
+      className={`sb-dialog${wide ? " sb-dialog--wide" : ""}${side ? " sb-dialog--side" : ""}`}
       onCancel={(event) => {
         event.preventDefault();
         onClose();

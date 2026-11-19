@@ -333,6 +333,26 @@ export function knownThings(session: Session): KnownThing[] {
   return found.reverse();
 }
 
+export type PlaceVisited = {
+  sceneId: string;
+  place: string;
+  /** Game time when the player first came to the place, in minutes. */
+  minutes: number;
+};
+
+/** The places the player has been to, in the order they first came to them, with the time then. */
+export function placesVisited(session: Session): PlaceVisited[] {
+  const run = session.adventure;
+  if (!run) return [];
+  const first = run.scenes.find((scene) => scene.id === run.currentSceneId) ?? run.scenes[0]!;
+  const start = run.transitions[0]?.from ?? first.id;
+  return visitedScenes(run, start).map(({ sceneId, minutes }) => ({
+    sceneId,
+    place: run.scenes.find((scene) => scene.id === sceneId)?.name ?? sceneId,
+    minutes,
+  }));
+}
+
 export type PersonMet = {
   actorId: string;
   name: string;

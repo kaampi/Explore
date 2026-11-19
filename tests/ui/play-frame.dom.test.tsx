@@ -139,6 +139,35 @@ it("shows the place's name in the top row, and its time only when the adventure 
   }
 });
 
+it("opens the journal from the top row or from What you know, and closes it again", async () => {
+  HTMLDialogElement.prototype.showModal = function () {
+    this.setAttribute("open", "");
+  };
+  HTMLDialogElement.prototype.close = function () {
+    this.removeAttribute("open");
+  };
+  const ui = await mount();
+  try {
+    const open = Array.from(ui.host.querySelectorAll<HTMLButtonElement>(".play-top__journal"));
+    expect(open).toHaveLength(1);
+    expect(document.querySelector('dialog[aria-label="Journal"]')).toBeNull();
+    await act(async () => open[0]!.click());
+    expect(document.querySelector('dialog[aria-label="Journal"]')).not.toBeNull();
+    await act(async () =>
+      document.querySelector<HTMLButtonElement>('dialog[aria-label="Journal"] .sb-icon')!.click(),
+    );
+    expect(document.querySelector('dialog[aria-label="Journal"]')).toBeNull();
+
+    const link = Array.from(ui.host.querySelectorAll<HTMLButtonElement>(".play-scene button")).find(
+      (b) => b.textContent === "See everything in the journal",
+    )!;
+    await act(async () => link.click());
+    expect(document.querySelector('dialog[aria-label="Journal"]')).not.toBeNull();
+  } finally {
+    await ui.close();
+  }
+});
+
 it("stays in the scene and says so when saving on the way out fails", async () => {
   const onHome = vi.fn();
   saveFails = true;

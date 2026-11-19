@@ -46,11 +46,14 @@ export function EncounterPanel({
   mapView,
   backdrop,
   onSaveIdea,
+  onJournal,
 }: {
   mapView?: ReactNode;
   backdrop?: ReactNode;
   /** Keeps a line of the story as an idea. Without it the lines have no "Save idea". */
   onSaveIdea?: (turns: number[]) => void;
+  /** Opens the journal. */
+  onJournal?: () => void;
 }) {
   const t = useTranslate();
   const {
@@ -650,6 +653,7 @@ export function EncounterPanel({
               <CombatLog entries={encounterCombatLog(game)} active={s.phase === "combat"} />
             ) : undefined
           }
+          {...(onJournal ? { onJournal } : {})}
           collapsed={collapsedRight}
           onToggleCollapsed={() => setCollapsedRight(!collapsedRight)}
         />
