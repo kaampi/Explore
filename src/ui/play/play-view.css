@@ -819,15 +819,20 @@
 .chat-stage {
   position: relative;
 }
-.play-notices {
+.play-arrival-layer {
   position: absolute;
   inset: 0;
   z-index: 5;
   pointer-events: none;
   display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: center;
+  justify-content: center;
+  align-items: flex-start;
+}
+.play-notices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
 }
 .play-arrival {
   margin-top: 48px;
@@ -850,12 +855,8 @@
   font-size: 20px;
   font-weight: 500;
 }
-.play-notices__stack {
-  display: grid;
-  gap: 8px;
-  margin-top: auto;
-  margin-bottom: 22px;
-  justify-items: center;
+.play-notices:empty {
+  display: none;
 }
 .play-notice {
   padding: 8px 16px;
@@ -864,7 +865,6 @@
   background: color-mix(in srgb, var(--panel) 94%, transparent);
   border: 1px solid var(--border);
   border-radius: 999px;
-  box-shadow: var(--shadow-menu);
   animation: play-notice 3s ease both;
 }
 .play-notice span {

@@ -176,7 +176,7 @@ it("says in words why a way is locked, not only in a tooltip", async () => {
     ],
   });
   const reason = host.querySelector(".play-scene__reason");
-  expect(reason?.textContent).toBe("Shut by Town gate");
+  expect(reason?.textContent).toBe("Town gate is locked");
 });
 
 it("folds to a strip with one button, and unfolds again", async () => {
@@ -240,4 +240,40 @@ it("closes an open thing card when the player comes to another scene", async () 
   expect(host.querySelector(".play-scene__thing-card")).toBeNull();
   await draw(here);
   expect(host.querySelector(".play-scene__thing-card")).toBeNull();
+});
+
+it("tells a locked way from a closed one and a blocked one, in words", async () => {
+  const { host } = await render({
+    ways: [
+      { id: "a", label: "The gate", toSceneId: "x", status: "locked", blockedBy: "Town gate" },
+      {
+        id: "b",
+        label: "The kitchen",
+        toSceneId: "y",
+        status: "closed",
+        blockedBy: "Kitchen door",
+      },
+      {
+        id: "c",
+        label: "The cellar",
+        toSceneId: "z",
+        status: "blocked",
+        blockedBy: "Cellar hatch",
+      },
+    ],
+  });
+  const ways = Array.from(host.querySelectorAll<HTMLElement>(".play-scene__list > li"));
+  expect(ways.map((li) => li.querySelector("small")!.textContent)).toEqual([
+    "Locked",
+    "Closed",
+    "Blocked",
+  ]);
+  expect(
+    Array.from(host.querySelectorAll(".play-scene__reason")).map((r) => r.textContent),
+  ).toEqual(["Town gate is locked", "Kitchen door is closed", "Cellar hatch is blocked"]);
+  expect(
+    Array.from(host.querySelectorAll<HTMLButtonElement>(".play-scene__way")).every(
+      (b) => b.disabled,
+    ),
+  ).toBe(true);
 });

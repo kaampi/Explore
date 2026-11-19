@@ -64,6 +64,11 @@ export const AdventureRunSchema = z.object({
   /** Places whose residents have been settled once, however it went. They are never populated again. */
   settled: z.array(z.string().min(1)).default([]),
   goal: AdventureGoalSchema.optional(),
+  /**
+   * The number of the last turn of the story at the moment the goal was reached, so that the
+   * story can tell of it there. Missing: not reached yet, or reached before this was kept.
+   */
+  goalReachedTurn: z.number().int().nonnegative().optional(),
   /** Keyed by actor id, for example "npc:<characterId>". Older runs have none. */
   cast: z.record(PersonaSchema).default({}),
   /**

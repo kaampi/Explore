@@ -3,7 +3,7 @@ import { connectedAdventureExample } from "../../src/library/playableCampaign";
 import { startPlayableCampaign } from "../../src/session/adventureStart";
 import { StateEngine } from "../../src/state/StateEngine";
 import { EventLog } from "../../src/events/EventLog";
-import { adventureOptions } from "../../src/game/AdventureEngine";
+import { adventureOptions, knownThings } from "../../src/game/AdventureEngine";
 import { arrivalBetween, notableEvents } from "../../src/ui/play/notableEvents";
 import { storyRows } from "../../src/ui/play/storyRows";
 import { innVisitExample } from "../../src/scenarios/innVisit";
@@ -133,6 +133,54 @@ describe("arrivalBetween", () => {
       place: after.adventure!.scenes.find((s) => s.id === link.toSceneId)!.name,
       minutes: link.minutes ?? 0,
     });
+  });
+});
+
+describe("an outcome that gives a thing", () => {
+  function innPlay(learned?: string) {
+    const built = innVisitExample();
+    if (learned)
+      for (const scene of built.campaign.scenes)
+        for (const action of scene.encounter?.definition.interactions ?? [])
+          if (action.id === "take-key") action.success.learned = learned;
+    const first = startPlayableCampaign(
+      built.campaign,
+      built.campaign.scenes[0]!,
+      built.places,
+      "inn-gives",
+      [built.realm],
+    );
+    const engine = new StateEngine(structuredClone(first), new EventLog());
+    const enter = engine.getSession();
+    engine.transitionAdventure({
+      id: "enter",
+      linkId: adventureOptions(enter).find((o) => o.label === "Enter the inn")!.id,
+      expectedStateVersion: enter.stateVersion,
+    });
+    const room = engine.getSession();
+    const s = engine.getSession();
+    engine.executeEncounterAction({
+      id: "key",
+      expectedSceneId: s.sceneId!,
+      expectedRevision: s.encounter!.state.revision,
+      action: { kind: "interaction", interactionId: "take-key" },
+    });
+    return { before: room, after: engine.getSession() };
+  }
+
+  it("is told by the pack, not as a discovery, unless the author wrote what is learned", () => {
+    const plain = innPlay();
+    expect(knownThings(plain.after)).toEqual([]);
+    expect(notableEvents(plain.before, plain.after)).toEqual([{ kind: "item", text: "Brass key" }]);
+
+    const written = innPlay("The key to the store room was on the counter.");
+    expect(knownThings(written.after).map((thing) => thing.text)).toEqual([
+      "The key to the store room was on the counter.",
+    ]);
+    expect(notableEvents(written.before, written.after).map((n) => n.kind)).toEqual([
+      "learned",
+      "item",
+    ]);
   });
 });
 

@@ -216,11 +216,24 @@ export type SceneWay = {
   toSceneId: string;
   /** Travel time in minutes, when the way has one. */
   minutes?: number;
-  /** "locked": a door holds it shut. The player can still see that it is there. */
-  status: "available" | "locked";
-  /** The name of the first door that is shut, for a locked way. */
+  /**
+   * A door holds it shut, and the player can still see that it is there: "locked" (it needs a key
+   * or another way of opening), "closed" (unlocked, but not opened yet) or "blocked" (something is
+   * in the way).
+   */
+  status: "available" | "locked" | "closed" | "blocked";
+  /** The name of the first door that is shut, for a way that is not available. */
   blockedBy?: string;
 };
+
+/** Why a door holds a way shut: locked first, then blocked, and otherwise just closed. */
+function doorState(door: { locked?: boolean; blocked?: boolean } | undefined) {
+  return door?.locked
+    ? ("locked" as const)
+    : door?.blocked
+      ? ("blocked" as const)
+      : ("closed" as const);
+}
 
 /**
  * Every way out of the scene the player is in. A way held shut by a door is shown as locked, so the
@@ -249,7 +262,7 @@ export function sceneWays(session: Session): SceneWay[] {
         label: link.label || run.scenes.find((s) => s.id === link.toSceneId)!.name,
         toSceneId: link.toSceneId,
         ...(link.minutes !== undefined ? { minutes: link.minutes } : {}),
-        status: shut === undefined ? ("available" as const) : ("locked" as const),
+        status: shut === undefined ? ("available" as const) : doorState(doors[shut]),
         ...(shut !== undefined ? { blockedBy: doors[shut]?.name ?? shut } : {}),
       };
     });
@@ -288,6 +301,11 @@ function setsDiscovery(effects: { kind: string; flag?: string }[]): boolean {
   return effects.some((e) => e.kind === "flag" && !e.flag?.startsWith("failed:"));
 }
 
+/** Whether an outcome hands the player something: that is told by the pack, not as a discovery. */
+function givesThing(effects: { kind: string }[]): boolean {
+  return effects.some((e) => e.kind === "take-item" || e.kind === "transfer-item");
+}
+
 /** The first sentence of a text, at most 200 characters. */
 function firstSentence(text: string): string {
   const sentence = /^[\s\S]*?[.!?…](?=\s|$)/.exec(text.trim())?.[0] ?? text.trim();
@@ -322,7 +340,11 @@ export function knownThings(session: Session): KnownThing[] {
         if (event.kind !== "interaction") continue;
         const interaction = game.definition.interactions.find((i) => i.id === event.interactionId);
         const outcome = [interaction?.success, interaction?.failure].find(
-          (candidate) => candidate?.text === event.text && setsDiscovery(candidate.effects),
+          (candidate) =>
+            candidate?.text === event.text &&
+            setsDiscovery(candidate.effects) &&
+            // An outcome that gives a thing is a discovery only when the author wrote what is learned.
+            (!givesThing(candidate.effects) || !!candidate.learned?.trim()),
         );
         if (!outcome) continue;
         const text = outcome.learned?.replace(/\s+/g, " ").trim() || firstSentence(outcome.text);

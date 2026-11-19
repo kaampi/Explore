@@ -1,6 +1,10 @@
 import { encounterDescription } from "../game/sceneDescription";
 import { applyAdventurePresentation } from "../session/adventurePresentation";
-import { advanceAdventure, adventureHistoryEntry } from "../game/AdventureEngine";
+import {
+  advanceAdventure,
+  adventureCompleted,
+  adventureHistoryEntry,
+} from "../game/AdventureEngine";
 import { canNarrateOutcome, isFreeReplyEntry } from "../game/narration";
 import { PersonaSchema, type AdventureTransition, type Persona } from "../game/AdventureSchema";
 import { DEFAULT_PLAYER_HEALTH, NEUTRAL_TEAM, healthFor } from "../library/sceneParts";
@@ -154,6 +158,7 @@ export class StateEngine {
       },
     );
     this.session.storyFlags = [...new Set([...this.session.storyFlags, ...next.state.flags])];
+    this.noteGoalReached();
     if (this.session.player)
       this.session.player.position = {
         ...this.session.player.position,
@@ -168,6 +173,16 @@ export class StateEngine {
       payload: entry,
     });
     this.session.events.push(event);
+  }
+  /** When the goal has just been reached, remember where in the story that was. Only once. */
+  private noteGoalReached(): void {
+    const run = this.session.adventure;
+    if (!run?.goal || run.goalReachedTurn !== undefined || !adventureCompleted(this.session))
+      return;
+    const turns = this.session.conversation.map((t) =>
+      typeof t === "object" && t !== null && "turn" in t ? Number(t.turn) || 0 : 0,
+    );
+    run.goalReachedTurn = Math.max(0, ...turns);
   }
   /**
    * Put AI wording on a turn the engine has already settled. This is presentation only: it
@@ -354,6 +369,7 @@ export class StateEngine {
       content: encounterDescription(next.game.definition, next.game.state),
       adventureSceneId: next.target.id,
     });
+    this.noteGoalReached();
     const event = this.eventLog.append({
       turn: this.session.stateVersion,
       timestamp: new Date().toISOString(),
