@@ -55,7 +55,7 @@ export function WhatDoYouDo({
     fight: t("pvGroupFight"),
   };
   return (
-    <section className="play-do" aria-labelledby="play-do-title">
+    <section className="play-do" id="play-do" tabIndex={-1} aria-labelledby="play-do-title">
       <h2 id="play-do-title" className="play-do__title">
         {t("pvWhatDoYouDo")}
       </h2>

@@ -470,6 +470,18 @@ export function EncounterPanel({
               </span>
             )}
           </div>
+          {(!ended || playback.active) && (
+            <a
+              href="#play-do"
+              className="play-skip"
+              onClick={(event) => {
+                event.preventDefault();
+                document.getElementById("play-do")?.focus();
+              }}
+            >
+              {t("pvSkipToDo")}
+            </a>
+          )}
           <div className={`chat-stage${arena ? " chat-stage--combat" : ""}`}>
             <PlayArrival arrival={marks.arrival} />
             {arena && (

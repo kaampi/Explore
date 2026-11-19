@@ -156,15 +156,83 @@ it("shows no 'Save idea' without a place to keep it, and no 'Remember this' outs
 });
 
 it("announces new lines politely, and each action can be reached with the keyboard", async () => {
-  const { host } = await render({ onSaveIdea: vi.fn() });
+  const { host } = await render({ onSaveIdea: vi.fn(), onRemember: vi.fn() });
 
   const log = host.querySelector(".play-story__log")!;
   expect(log.getAttribute("role")).toBe("log");
   expect(log.getAttribute("aria-live")).toBe("polite");
-  // The actions are real buttons in the line: tab reaches them, and focus shows them.
-  const action = host.querySelector<HTMLButtonElement>(".play-row__action")!;
-  expect(action.tabIndex).not.toBe(-1);
-  expect(action.tagName).toBe("BUTTON");
+  // The actions are real buttons in the line, and focus shows them. Only the current line's can be tabbed to.
+  const action = host.querySelectorAll<HTMLButtonElement>(".play-row__action");
+  expect(action[0]!.tagName).toBe("BUTTON");
+  expect(Array.from(action).filter((a) => a.tabIndex !== -1)).toHaveLength(2);
+});
+
+const tabStops = (host: HTMLElement) =>
+  Array.from(
+    host.querySelectorAll<HTMLElement>(".play-story__log [tabindex], .play-story__log button"),
+  ).filter((el) => el.tabIndex >= 0);
+const press = (el: Element, key: string) =>
+  act(async () => {
+    el.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+  });
+
+it("is one stop on the tab key, however long the story is: the current line and its buttons", async () => {
+  const many: StoryRow[] = Array.from({ length: 40 }, (_, i) => ({
+    kind: "narrator" as const,
+    key: `n${i}`,
+    turn: i + 1,
+    text: `Line ${i}`,
+  }));
+  const { host } = await render({ rows: many, onSaveIdea: vi.fn() });
+
+  // The newest line is the one to land on: the line and its one button, not forty of each.
+  const stops = tabStops(host);
+  expect(stops).toHaveLength(2);
+  expect(stops[0]!.dataset.rowKey).toBe("n39");
+  expect(stops[1]!.classList.contains("play-row__action")).toBe(true);
+  expect(stops[1]!.closest("[data-row-key]")!.getAttribute("data-row-key")).toBe("n39");
+});
+
+it("moves between the lines with the arrow keys, taking its tab stop and its buttons along", async () => {
+  const { host } = await render({ onSaveIdea: vi.fn() });
+  const row = (key: string) => host.querySelector<HTMLElement>(`[data-row-key="${key}"]`)!;
+  const current = () => tabStops(host)[0]!.dataset.rowKey;
+
+  expect(current()).toBe("i");
+  row("i").focus();
+  await press(row("i"), "ArrowUp");
+  expect(current()).toBe("p");
+  expect(document.activeElement).toBe(row("p"));
+  // The buttons of the line now current are the ones to tab to.
+  expect(
+    tabStops(host).map((el) => el.closest("[data-row-key]")!.getAttribute("data-row-key")),
+  ).toEqual(["p", "p"]);
+
+  await press(row("p"), "Home");
+  expect(current()).toBe("d");
+  expect(document.activeElement).toBe(row("d"));
+  await press(row("d"), "ArrowUp");
+  expect(current()).toBe("d");
+  await press(row("d"), "End");
+  expect(current()).toBe("i");
+  await press(row("i"), "ArrowDown");
+  expect(current()).toBe("i");
+  await press(row("i"), "ArrowUp");
+  await press(row("p"), "ArrowDown");
+  expect(current()).toBe("i");
+});
+
+it("lets the arrow keys be pressed on a line's button, and keeps other keys alone", async () => {
+  const { host } = await render({ onSaveIdea: vi.fn() });
+  const button = host.querySelector<HTMLButtonElement>('[data-row-key="i"] .play-row__action')!;
+  button.focus();
+  await press(button, "ArrowUp");
+  expect(tabStops(host)[0]!.dataset.rowKey).toBe("p");
+  const other = new KeyboardEvent("keydown", { key: "a", bubbles: true, cancelable: true });
+  await act(async () => {
+    host.querySelector(".play-story__log")!.dispatchEvent(other);
+  });
+  expect(other.defaultPrevented).toBe(false);
 });
 
 it("offers the earlier events only when there are some, and says whether they are shown", async () => {
