@@ -1,3 +1,4 @@
+import { ItemSlot, NamePlate } from "./ornament";
 import { useEffect, useState, type ReactNode } from "react";
 import type { EncounterGame, EncounterAction } from "../../game/EncounterSchema";
 import type { KnownThing, SceneWay } from "../../game/AdventureEngine";
@@ -124,7 +125,7 @@ export function SceneColumn({
     <aside className="sb-game-toolbox gate-scene-toolbox play-scene" aria-label={t("pvInTheScene")}>
       {!inPanel && (
         <div className="play-scene__head">
-          <h2 className="play-scene__title">{t("pvInTheScene")}</h2>
+          <NamePlate className="play-scene__title">{t("pvInTheScene")}</NamePlate>
           {!inPanel && (
             <button
               type="button"
@@ -180,14 +181,13 @@ export function SceneColumn({
           <ul className="play-scene__list">
             {things.map((thing) => (
               <li key={thing.id}>
-                <button
-                  type="button"
+                <ItemSlot
                   className="play-scene__thing"
                   aria-expanded={openThing === thing.id}
                   onClick={() => setOpenThing(openThing === thing.id ? null : thing.id)}
                 >
                   {thing.name}
-                </button>
+                </ItemSlot>
               </li>
             ))}
           </ul>

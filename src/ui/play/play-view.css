@@ -112,6 +112,7 @@
 }
 .play-view__scene--empty {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   place-items: center;
 }
 .play-view__scene--empty .play-view__scene-name {

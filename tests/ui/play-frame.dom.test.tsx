@@ -33,8 +33,9 @@ vi.mock("../../src/ui/connection/ConnectionProvider", () => ({
   useConnection: () => ({ discovery: {}, refresh: () => {}, chooseModel: () => {} }),
 }));
 vi.mock("../../src/ui/connection/connection", () => ({ modelReadiness: () => "ready" }));
+let activeTheme: Record<string, unknown> = { backgroundMode: "none", background: "#f4efe3" };
 vi.mock("../../src/ui/themes/ThemeProvider", () => ({
-  useAppearance: () => ({ library: { active: { backgroundMode: "none", background: "#f4efe3" } } }),
+  useAppearance: () => ({ library: { active: activeTheme } }),
   playThemeStyle: () => ({}),
 }));
 vi.mock("../../src/ui/audio/GameAudio", () => ({
@@ -50,6 +51,7 @@ beforeEach(() => {
     this.removeAttribute("open");
   };
   localStorage.clear();
+  activeTheme = { backgroundMode: "none", background: "#f4efe3" };
   phase = "idle";
   saveFails = false;
   saveEncounter.mockClear();
@@ -390,6 +392,62 @@ it("folds the whole left column to a strip, and the frame follows", async () => 
     );
     expect(frame.classList.contains("play-view--collapsed")).toBe(true);
     expect(localStorage.getItem("explore-play-left-collapsed")).toBe("1");
+  } finally {
+    await ui.close();
+  }
+});
+
+const marksOf = (host: HTMLElement, selector: string) =>
+  host.querySelector(selector)?.getAttribute("data-orn-set");
+
+it("uses the ornament parts, drawn plain without ornaments, so the view looks as before", async () => {
+  const ui = await mount();
+  try {
+    for (const selector of [
+      ".play-view__scene",
+      ".play-person",
+      ".play-story",
+      ".play-view__right",
+      ".play-person__name",
+      ".play-do__title",
+      ".play-row--divider",
+    ])
+      expect(marksOf(ui.host, selector), selector).toBe("plain");
+    expect(ui.host.querySelector(".sb-themed-play")!.getAttribute("style") ?? "").not.toContain(
+      "data:image",
+    );
+  } finally {
+    await ui.close();
+  }
+});
+
+it("draws the parts in the set of the theme, with the pictures made from its colours", async () => {
+  activeTheme = {
+    backgroundMode: "none",
+    background: "#14110d",
+    panel: "#211b14",
+    accent: "#c9a24a",
+    ornament: "forged",
+    ornamentLevel: "full",
+    headingFont: "cinzel",
+  };
+  const ui = await mount();
+  try {
+    for (const selector of [
+      ".play-view__scene",
+      ".play-person",
+      ".play-story",
+      ".play-view__right",
+      ".play-person__name",
+      ".play-do__title",
+      ".play-row--divider",
+      ".play-do__suggestion",
+    ])
+      expect(marksOf(ui.host, selector), selector).toBe("forged");
+    const style = ui.host.querySelector<HTMLElement>(".sb-themed-play")!;
+    expect(style.style.getPropertyValue("--ornament")).toBe("#c9a24a");
+    expect(style.style.getPropertyValue("--ornament-frame")).toContain("data:image/svg+xml");
+    expect(style.style.getPropertyValue("--heading-font")).toContain("Cinzel");
   } finally {
     await ui.close();
   }

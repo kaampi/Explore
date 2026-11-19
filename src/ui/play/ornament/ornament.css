@@ -1,0 +1,273 @@
+/*
+ * The ornament parts. Everything here is drawn from the variables of the theme (--ornament,
+ * --ornament-hi, --ornament-dim and the pictures made from them), so no colour is written in a
+ * part. `plain` draws nothing: the parts are then only the elements they stand for.
+ * See docs/ornaments.sv.md.
+ */
+
+/* ---- Frame ---------------------------------------------------------------------------- */
+.orn-frame {
+  position: relative;
+}
+.orn-frame[data-orn-set="forged"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  box-sizing: border-box;
+  border: 18px solid transparent;
+  border-image: var(--ornament-frame) 18 / 18px stretch;
+  pointer-events: none;
+}
+/* The column of the scene scrolls inside its frame, so that the frame stays where it is. */
+.play-view__right.orn-frame[data-orn-set="forged"] {
+  overflow: hidden;
+}
+.play-view__right.orn-frame[data-orn-set="forged"] > .sb-game-toolbox {
+  padding-inline: 24px;
+  padding-block: 24px;
+}
+/* Cards and the story keep their text clear of the frame. */
+.play-person.orn-frame[data-orn-set="forged"] {
+  padding: 24px 22px;
+}
+.play-story.orn-frame[data-orn-set="forged"] {
+  padding: 8px 6px;
+}
+/* The small picture in the folded strip is too small for a frame. */
+.orn-frame.play-view__scene--thumb::before {
+  display: none;
+}
+
+/* ---- Name plate ----------------------------------------------------------------------- */
+.orn-nameplate[data-orn-set="forged"] {
+  box-sizing: border-box;
+  justify-self: start;
+  width: fit-content;
+  position: relative;
+  isolation: isolate;
+  display: inline-block;
+  padding: 0.4em 1.9em;
+  margin-block: 0;
+  font-family: var(--heading-font, Cinzel, serif);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  line-height: 1.3;
+  text-transform: uppercase;
+  color: var(--ornament-plate-text);
+  background: var(--ornament);
+  clip-path: polygon(
+    0 50%,
+    0.8em 0,
+    calc(100% - 0.8em) 0,
+    100% 50%,
+    calc(100% - 0.8em) 100%,
+    0.8em 100%
+  );
+}
+.orn-nameplate[data-orn-set="forged"]::before {
+  content: "";
+  position: absolute;
+  inset: 1.5px;
+  z-index: -1;
+  background: var(--ornament-plate-bg);
+  clip-path: polygon(
+    0 50%,
+    0.75em 0,
+    calc(100% - 0.75em) 0,
+    100% 50%,
+    calc(100% - 0.75em) 100%,
+    0.75em 100%
+  );
+}
+/* On the picture of the place the sign sits at the foot of it. */
+/* Without a picture the name is in the middle of the empty box, not at the foot of a picture. */
+.play-view__scene--empty .orn-nameplate[data-orn-set="forged"].play-view__scene-name {
+  position: static;
+  inset: auto;
+  transform: none;
+  justify-self: center;
+  max-width: 100%;
+}
+.orn-nameplate[data-orn-set="forged"].play-view__scene-name {
+  position: absolute;
+  inset: auto auto 14px 50%;
+  width: max-content;
+  max-width: calc(100% - 28px);
+  transform: translateX(-50%);
+  text-align: center;
+}
+
+/* ---- Divider -------------------------------------------------------------------------- */
+.orn-divider[data-orn-set="plain"]:not(.play-row) {
+  display: none;
+}
+.orn-divider[data-orn-set="forged"]:not(.play-row) {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0;
+}
+.orn-divider[data-orn-set="forged"]:not(.play-row)::before,
+.orn-divider[data-orn-set="forged"]:not(.play-row)::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--ornament-dim);
+}
+.orn-divider__mark {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  background: var(--ornament);
+  transform: rotate(45deg);
+}
+.orn-divider[data-orn-set="forged"].play-row .orn-divider__mark {
+  display: none;
+}
+.orn-divider[data-orn-set="forged"].play-row > span::before,
+.orn-divider[data-orn-set="forged"].play-row > span::after {
+  content: "◆" / "";
+  margin-inline: 0.6em;
+  font-size: 0.65em;
+  color: var(--ornament);
+}
+
+/* ---- Medallion ------------------------------------------------------------------------ */
+.orn-medallion[data-orn-set="plain"] {
+  display: contents;
+}
+.orn-medallion[data-orn-set="forged"] {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  padding: 9px;
+  background: var(--ornament-medallion) center / 100% 100% no-repeat;
+}
+
+/* ---- Note ----------------------------------------------------------------------------- */
+.orn-note[data-orn-set="forged"] {
+  position: relative;
+  padding: 18px 22px;
+  background: var(--ornament-note-bg);
+  color: var(--ornament-note-text);
+  clip-path: polygon(
+    0 2%,
+    3% 0,
+    8% 1.5%,
+    15% 0,
+    24% 1%,
+    33% 0,
+    44% 1.5%,
+    56% 0,
+    67% 1%,
+    78% 0,
+    88% 1.5%,
+    96% 0,
+    100% 2%,
+    99% 20%,
+    100% 38%,
+    98.5% 60%,
+    100% 80%,
+    99% 100%,
+    92% 98.5%,
+    80% 100%,
+    66% 98.5%,
+    52% 100%,
+    38% 99%,
+    24% 100%,
+    12% 98.5%,
+    4% 100%,
+    0 98%,
+    1% 78%,
+    0 58%,
+    1.2% 38%,
+    0 18%
+  );
+}
+/* The words lie on the parchment itself, in the note's own colour: no box of their own. */
+.orn-note[data-orn-set="forged"] h3,
+.orn-note[data-orn-set="forged"] p {
+  padding: 0;
+  background: none;
+  border-radius: 0;
+  color: var(--ornament-note-text);
+  font-family: "IM Fell English", Georgia, serif;
+}
+.orn-note[data-orn-set="forged"] h3 {
+  margin: 0 0 8px;
+}
+/* The grain is only at the edges: the text is on a smooth surface. */
+.orn-note[data-orn-set="forged"][data-orn-level="full"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: var(--ornament-grain);
+  mask-image: radial-gradient(ellipse at center, transparent 62%, currentColor 100%);
+  -webkit-mask-image: radial-gradient(ellipse at center, transparent 62%, currentColor 100%);
+  pointer-events: none;
+}
+.orn-note[data-orn-set="forged"][data-orn-level="full"] {
+  transform: rotate(-0.6deg);
+}
+
+/* ---- Item slot ------------------------------------------------------------------------ */
+.orn-slot[data-orn-set="forged"] {
+  background: color-mix(in srgb, var(--ornament) 8%, var(--ornament-dark));
+  color: var(--ornament-slot-text);
+  border: 1px solid var(--ornament);
+  border-radius: 2px;
+  box-shadow:
+    inset 0 0 0 2px var(--ornament-darkest),
+    inset 0 0 0 3px var(--ornament-dim);
+}
+.orn-slot[data-orn-set="forged"]:hover {
+  background: color-mix(in srgb, var(--ornament) 16%, var(--ornament-dark));
+}
+.orn-slot[data-orn-set="forged"]:focus-visible {
+  outline: 2px solid var(--ornament-hi);
+  outline-offset: 2px;
+}
+
+/* ---- Check card ----------------------------------------------------------------------- */
+.orn-check[data-orn-set="forged"] {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0 6px 6px;
+}
+.orn-check__seal {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  background: var(--ornament-seal) center / 100% 100% no-repeat;
+  color: var(--ornament-seal-ink);
+  font: 700 14px/1 var(--heading-font, Cinzel, serif);
+}
+
+/* ---- Choice row ----------------------------------------------------------------------- */
+.orn-choice[data-orn-set="forged"] {
+  position: relative;
+  border-radius: 0;
+  border: 0;
+  border-bottom: 1px solid var(--ornament-dim);
+  background: transparent;
+  padding-left: 26px;
+}
+.orn-choice[data-orn-set="forged"]::before {
+  content: "";
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  margin-top: -3.5px;
+  background: var(--ornament);
+  transform: rotate(45deg);
+}
+.orn-choice[data-orn-set="forged"]:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ornament) 10%, transparent);
+}

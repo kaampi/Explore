@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Modal } from "../components/Modal";
+import { Frame } from "./ornament";
 import type { PlayLayout } from "./usePlayLayout";
 import { useTranslate } from "../i18n/LanguageProvider";
 import "./play-view.css";
@@ -67,9 +68,9 @@ export function PlayFrame({
           </Modal>
         )
       ) : (
-        <section className="play-view__right" aria-label={t("pvInTheScene")}>
+        <Frame as="section" className="play-view__right" aria-label={t("pvInTheScene")}>
           {right}
-        </section>
+        </Frame>
       )}
     </div>
   );

@@ -1,0 +1,22 @@
+/* Typefaces for the ornament sets. Each is under the SIL Open Font License (see the OFL.txt next to it). */
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  src: url(/fonts/cinzel/cinzel-variable.ttf) format('truetype');
+}
+@font-face {
+  font-family: 'IM Fell English';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/fonts/imfell/imfell-english-regular.ttf) format('truetype');
+}
+@font-face {
+  font-family: 'IM Fell English';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/fonts/imfell/imfell-english-italic.ttf) format('truetype');
+}

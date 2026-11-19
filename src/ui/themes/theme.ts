@@ -1,6 +1,21 @@
 import { z } from "zod";
 
 /** Presentation only. No prompts, scripts, external URLs, or engine state. */
+/** The ornament sets that come with the app, and how much of them is drawn. See docs/ornaments.sv.md. */
+export const ORNAMENT_SETS = ["plain", "forged", "hull"] as const;
+export const ORNAMENT_LEVELS = ["none", "light", "full"] as const;
+/** The typefaces for headings that come with the app. */
+export const HEADING_FONTS = [
+  "newsreader",
+  "cinzel",
+  "cormorant",
+  "exo",
+  "special-elite",
+  "im-fell",
+  "nunito",
+  "inter",
+] as const;
+
 export const PlayThemeSchema = z.object({
   version: z.literal(1),
   id: z.string().min(1).max(100),
@@ -17,6 +32,11 @@ export const PlayThemeSchema = z.object({
   backgroundMode: z.enum(["scene", "custom", "none", "pattern"]),
   backgroundPattern: z.enum(["bubbles", "linen", "cork", "tweed", "geometric"]).default("linen"),
   patternStrength: z.number().min(0).max(1).default(0.5),
+  /** The set of ornaments around the places where the story is: frames, signs, notes. */
+  ornament: z.enum(ORNAMENT_SETS).default("plain"),
+  /** "none": thin lines only, as plain. "light": frames and signs. "full": everything. */
+  ornamentLevel: z.enum(ORNAMENT_LEVELS).default("full"),
+  headingFont: z.enum(HEADING_FONTS).default("newsreader"),
   backgroundDataUrl: z
     .string()
     .regex(/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/)
@@ -34,6 +54,9 @@ const base = {
   backgroundMode: "scene" as const,
   backgroundPattern: "linen" as const,
   patternStrength: 0.5,
+  ornament: "plain" as const,
+  ornamentLevel: "full" as const,
+  headingFont: "newsreader" as const,
 };
 export const PRESET_THEMES: PlayTheme[] = [
   {
@@ -77,6 +100,18 @@ export const PRESET_THEMES: PlayTheme[] = [
     font: "sans",
     backgroundMode: "none",
     panelOpacity: 1,
+  },
+  {
+    ...base,
+    id: "fantasy",
+    name: "Fantasy",
+    background: "#101217",
+    panel: "#1a1d24",
+    text: "#ece7dd",
+    accent: "#c9a66b",
+    backdropDim: 0.5,
+    ornament: "forged",
+    headingFont: "cinzel",
   },
 ];
 export const ThemeLibrarySchema = z.object({

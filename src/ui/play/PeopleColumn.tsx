@@ -1,8 +1,12 @@
 import type { KeyboardEvent, ReactNode } from "react";
 import { useTranslate } from "../i18n/LanguageProvider";
 import type { PersonCard } from "./personCard";
+import { Frame, Medallion, NamePlate } from "./ornament";
 
 function Face({ card, small = false }: { card: PersonCard; small?: boolean }) {
+  return <Medallion>{face(card, small)}</Medallion>;
+}
+function face(card: PersonCard, small: boolean) {
   return card.portrait ? (
     <img
       className={`play-person__face${small ? " play-person__face--small" : ""}`}
@@ -110,45 +114,49 @@ export function PeopleColumn({
   if (banner)
     return (
       <div className="play-people play-people--banner">
-        <div
+        <Frame
           className={`play-view__scene play-view__scene--banner${backdrop ? "" : " play-view__scene--empty"}`}
           role="img"
           aria-label={`${t("pvScenePicture")}: ${sceneName}`}
         >
           {backdrop}
-          <p className="play-view__scene-name">{sceneName}</p>
-        </div>
+          <NamePlate as="p" className="play-view__scene-name">
+            {sceneName}
+          </NamePlate>
+        </Frame>
         {cards.length > 0 ? tabs : <p className="play-people__empty">{t("pvNobodyHere")}</p>}
       </div>
     );
   if (collapsed)
     return (
       <div className="play-people play-people--collapsed">
-        <div
+        <Frame
           className="play-view__scene play-view__scene--thumb"
           role="img"
           aria-label={`${t("pvScenePicture")}: ${sceneName}`}
         >
           {backdrop}
-        </div>
+        </Frame>
         {tabs}
         {toggle}
       </div>
     );
   return (
     <div className="play-people">
-      <div
+      <Frame
         className={`play-view__scene${backdrop ? "" : " play-view__scene--empty"}`}
         role="img"
         aria-label={`${t("pvScenePicture")}: ${sceneName}`}
       >
         {backdrop}
-        <p className="play-view__scene-name">{sceneName}</p>
-      </div>
+        <NamePlate as="p" className="play-view__scene-name">
+          {sceneName}
+        </NamePlate>
+      </Frame>
       {selected ? (
         <>
           {cards.length > 1 && tabs}
-          <div
+          <Frame
             className="play-person"
             id="play-person-card"
             role={cards.length > 1 ? "tabpanel" : undefined}
@@ -156,14 +164,14 @@ export function PeopleColumn({
           >
             <Face card={selected} />
             <div className="play-person__text">
-              <h2 className="play-person__name">{selected.name}</h2>
+              <NamePlate className="play-person__name">{selected.name}</NamePlate>
               {statuses[selected.id] && (
                 <span className="play-person__status">{statuses[selected.id]}</span>
               )}
               {selected.line && <p className="play-person__line">{selected.line}</p>}
               {selected.mood && <p className="play-person__mood">{selected.mood}</p>}
             </div>
-          </div>
+          </Frame>
         </>
       ) : (
         <p className="play-people__empty">{t("pvNobodyHere")}</p>
