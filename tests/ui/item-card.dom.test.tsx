@@ -6,6 +6,7 @@ import { PlayerInventory } from "../../src/ui/components/PlayerInventory";
 import { LanguageProvider } from "../../src/ui/i18n/LanguageProvider";
 import { OrnamentProvider } from "../../src/ui/play/ornament";
 import { innVisitExample } from "../../src/scenarios/innVisit";
+import { gatehouseExample } from "../../src/scenarios/gatehouse";
 import { loadingBayScenario } from "../../src/ui/home/encounterScenario";
 import { startPlayableCampaign } from "../../src/session/adventureStart";
 import { StateEngine } from "../../src/state/StateEngine";
@@ -175,9 +176,7 @@ it("leaves out By the rules when the game has no rule-set values, and shows a we
   const without = await mount(session);
   await without.click("Inspect Knife");
   expect(part("According to the rules")).toBeNull();
-  await act(async () =>
-    dialog().querySelector<HTMLButtonElement>(".sb-dialog__actions button")!.click(),
-  );
+  await act(async () => dialog().querySelector<HTMLButtonElement>(".item-card__close")!.click());
 
   session.encounter!.definition.rules.attributes = [
     { id: "Melee", name: "Melee", min: 0, max: 100 },
@@ -293,4 +292,53 @@ it("tells weapons and resources by their type word", async () => {
   const name = depot.encounter!.definition.weapons.find((w) => w.id === weapon)!.name;
   await click(`Inspect ${name}`);
   expect(dialog().querySelector(".item-card__type")!.textContent).toBe("Weapon");
+});
+
+it("is the dialog itself: no panel around it, one heading, no old Close button, and it closes with the cross and with Escape", async () => {
+  const { engine, act2 } = innGame();
+  act2({ kind: "interaction", interactionId: "take-key" });
+  const { click } = await mount(engine.getSession());
+  await click("Inspect Brass key");
+
+  expect(dialog().classList.contains("sb-dialog--bare")).toBe(true);
+  // The dialog has no heading or close button of its own: the card has them.
+  expect(dialog().querySelector(".sb-dialog__heading")).toBeNull();
+  expect(dialog().querySelector(".sb-dialog__actions")).toBeNull();
+  expect(dialog().querySelectorAll("h2")).toHaveLength(0);
+  expect(dialog().querySelectorAll(".item-card__name")).toHaveLength(1);
+  expect(dialog().querySelector(".item-card__name")!.tagName).toBe("H3");
+  expect(
+    Array.from(dialog().querySelectorAll("button")).some((b) => b.textContent === "Close"),
+  ).toBe(false);
+  expect(dialog().getAttribute("aria-label")).toBe("Brass key");
+  const cross = dialog().querySelector<HTMLButtonElement>(".item-card__close")!;
+  expect(cross.getAttribute("aria-label")).toBe("Close dialog");
+
+  await act(async () => cross.click());
+  expect(document.querySelector("dialog")).toBeNull();
+
+  // Escape asks the dialog to cancel, which closes it.
+  await click("Inspect Brass key");
+  await act(async () => {
+    dialog().dispatchEvent(new Event("cancel", { cancelable: true }));
+  });
+  expect(document.querySelector("dialog")).toBeNull();
+});
+
+it("shows a button for a thing the player carries that an action needs, such as a pick for a lock", async () => {
+  const gate = gatehouseExample();
+  const session = startPlayableCampaign(
+    gate.campaign,
+    gate.campaign.scenes[0]!,
+    gate.places,
+    "pick",
+    [gate.realm],
+    { characters: gate.characters, rulesets: [gate.rules] },
+  );
+  const { click } = await mount(session);
+  await click("Inspect Lockpick");
+
+  const main = dialog().querySelector(".item-card__actions .ui-button--primary");
+  expect(main!.textContent).toBe("Pick the lock");
+  expect(dialog().textContent).toContain("Part of: Pick the lock");
 });

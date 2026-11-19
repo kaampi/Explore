@@ -87,8 +87,16 @@ export function ItemCard({
   );
   if (card.readableContent)
     return (
-      <Modal title={card.name} onClose={onClose} hiddenTitle>
+      <Modal title={card.name} onClose={onClose} bare>
         <Frame className="item-card item-card--note">
+          <button
+            type="button"
+            className="sb-icon item-card__close"
+            onClick={onClose}
+            aria-label={t("closeDialog")}
+          >
+            ×
+          </button>
           <NamePlate as="h3" className="item-card__name">
             {card.name}
           </NamePlate>
@@ -98,11 +106,6 @@ export function ItemCard({
           </NoteCard>
           {actions}
         </Frame>
-        <div className="sb-dialog__actions">
-          <button type="button" onClick={onClose}>
-            Close
-          </button>
-        </div>
       </Modal>
     );
   const sentences = card.uses.map((use) =>
@@ -113,8 +116,16 @@ export function ItemCard({
         : t("icAction", { label: use.text }),
   );
   return (
-    <Modal title={card.name} onClose={onClose} hiddenTitle>
+    <Modal title={card.name} onClose={onClose} bare>
       <Frame className="item-card">
+        <button
+          type="button"
+          className="sb-icon item-card__close"
+          onClick={onClose}
+          aria-label={t("closeDialog")}
+        >
+          ×
+        </button>
         <NamePlate as="h3" className="item-card__name">
           {card.name}
         </NamePlate>
@@ -173,11 +184,6 @@ export function ItemCard({
         )}
         {actions}
       </Frame>
-      <div className="sb-dialog__actions">
-        <button type="button" onClick={onClose}>
-          Close
-        </button>
-      </div>
     </Modal>
   );
 }

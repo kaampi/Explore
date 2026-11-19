@@ -238,7 +238,7 @@ function Slot({
         {...context.bind}
       >
         <span className="player-inventory__icon">
-          <ItemIcon name={iconFor({ icon: entry.icon, tags: entry.tags })} size={26} />
+          <ItemIcon name={iconFor(entry)} size={26} />
         </span>
         <span className="player-inventory__name">
           {entry.name}

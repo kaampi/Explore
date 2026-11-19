@@ -116,7 +116,7 @@ it("does not announce pre-existing possessions as new on reload and never change
     const before = structuredClone(ui.engine.getSession());
     await ui.click("Inspect Brass key");
     expect(ui.engine.getSession()).toEqual(before);
-    await ui.click("Close");
+    await ui.click("Close dialog");
     expect(ui.engine.getSession()).toEqual(before);
   } finally {
     await ui.close();

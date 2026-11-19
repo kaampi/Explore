@@ -134,6 +134,21 @@ describe("item icons", () => {
     expect(ITEM_ICONS).toContain("generic");
   });
 
+  it("look at the name when there are no tags, and at how a weapon strikes", () => {
+    expect(iconFor({ name: "Brass key" })).toBe("key");
+    expect(iconFor({ name: "Lockpick" })).toBe("tool");
+    expect(iconFor({ name: "Guest ledger" })).toBe("letter");
+    // Tags come before the name, and the name before the weapon's kind.
+    expect(iconFor({ name: "Brass key", tags: ["relic"] })).toBe("ring");
+    expect(iconFor({ name: "Pulse knife", weaponKind: "melee" })).toBe("dagger");
+    expect(iconFor({ name: "Sword", weaponKind: "melee" })).toBe("sword");
+    expect(iconFor({ name: "Shock baton", weaponKind: "melee" })).toBe("sword");
+    expect(iconFor({ name: "Pulse pistol", weaponKind: "ranged" })).toBe("tool");
+    expect(iconFor({ name: "Pebble" })).toBe("generic");
+    // What the author chose comes before everything.
+    expect(iconFor({ icon: "bread", name: "Brass key", weaponKind: "melee" })).toBe("bread");
+  });
+
   it("know a magical thing by the tag magic", () => {
     expect(isMagic({ tags: ["relic", "Magic"] })).toBe(true);
     expect(isMagic({ tags: ["magical-ish"] })).toBe(false);

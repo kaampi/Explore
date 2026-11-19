@@ -36,15 +36,26 @@ const TAG_ICONS: ReadonlyArray<readonly [RegExp, ItemIcon]> = [
   [/\b(tool|wrench|hammer|pick|lockpick|kit)\b/, "tool"],
 ];
 
-/** The picture for a thing: the one chosen, else one from its tags, else the neutral one. */
+/**
+ * The picture for a thing: the one chosen, else one from its tags, else one from its name, and for
+ * a weapon one from how it strikes (a sword, or a dagger for a knife), else the neutral one.
+ */
 export function iconFor(item: {
   icon?: string | undefined;
   tags?: readonly string[] | undefined;
+  name?: string | undefined;
+  weaponKind?: "melee" | "ranged" | undefined;
 }): ItemIcon {
   if (item.icon && (ITEM_ICONS as readonly string[]).includes(item.icon))
     return item.icon as ItemIcon;
-  const tags = (item.tags ?? []).join(" ").toLowerCase();
-  return TAG_ICONS.find(([pattern]) => pattern.test(tags))?.[1] ?? "generic";
+  const from = (text: string) => TAG_ICONS.find(([pattern]) => pattern.test(text))?.[1];
+  const byTags = from((item.tags ?? []).join(" ").toLowerCase());
+  if (byTags) return byTags;
+  const byName = from((item.name ?? "").toLowerCase());
+  if (byName) return byName;
+  if (item.weaponKind === "melee") return "sword";
+  if (item.weaponKind === "ranged") return "tool";
+  return "generic";
 }
 
 /** Whether a thing is magical: it has the tag `magic`. Shown as a word, never as a colour. */

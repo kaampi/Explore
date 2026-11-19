@@ -1076,11 +1076,38 @@
   height: 8px;
 }
 
-/* The info card of a thing. */
+/* The info card of a thing: it is the dialog itself, with no panel of the dialog around it. */
+.sb-dialog.sb-dialog--bare {
+  width: min(540px, calc(100vw - 32px));
+  padding: 0;
+  overflow: visible;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
 .item-card {
+  position: relative;
   display: grid;
   gap: var(--space-3);
-  padding: var(--space-4);
+  padding: var(--space-5) var(--space-5);
+  background: var(--panel);
+  color: var(--text);
+}
+.item-card.orn-frame[data-orn-set="plain"] {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-menu);
+}
+.item-card.orn-frame:not([data-orn-set="plain"]) {
+  padding: 28px 28px 24px;
+  box-shadow: var(--shadow-menu);
+}
+.item-card__close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
 }
 .item-card__type {
   margin: 0;
