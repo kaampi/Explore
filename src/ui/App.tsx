@@ -8,6 +8,7 @@ import { attachLorebooks } from "../lore/attachLorebooks";
 import { IdeaLibrary } from "./ideas/IdeaLibrary";
 import { GuidePanel, GuideHost, openGuide } from "./guide/GuidePanel";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import type { PlayTheme } from "./themes/theme";
 import { EngineProvider, useEngine, type ChatPhase } from "./EngineStore";
 import { StudioShell } from "./studio/StudioShell";
 import { ConnectionProvider } from "./connection/ConnectionProvider";
@@ -88,10 +89,19 @@ function HeaderAppearanceToggle() {
   );
 }
 
-function ConversationAppearance({ id }: { id: string | null }) {
+function ConversationAppearance({
+  id,
+  authorTheme,
+}: {
+  id: string | null;
+  authorTheme?: PlayTheme | undefined;
+}) {
   const { ready, activateConversation } = useAppearance();
+  const author = useRef(authorTheme);
+  author.current = authorTheme;
   useLayoutEffect(() => {
-    if (ready) activateConversation(id);
+    // The author's look is only for a game seen for the first time; the player's change stays.
+    if (ready) activateConversation(id, author.current);
   }, [ready, id, activateConversation]);
   return null;
 }
@@ -374,7 +384,10 @@ function SandboxApp() {
     );
   const workspace = (
     <>
-      <ConversationAppearance id={view === "play" ? (session?.id ?? null) : null} />
+      <ConversationAppearance
+        id={view === "play" ? (session?.id ?? null) : null}
+        authorTheme={view === "play" ? session?.authorTheme : undefined}
+      />
       <header className="sb-header">
         <div className="sb-header-start">
           <button

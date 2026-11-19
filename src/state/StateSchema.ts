@@ -6,6 +6,7 @@ import { EncounterGameSchema } from "../game/EncounterSchema";
 import { CombatArtworkSchema } from "./combatArtwork";
 import { RoutePlanSchema } from "@library/routePlan";
 import { z } from "zod";
+import { PlayThemeSchema } from "../ui/themes/theme";
 
 /**
  * Canonical Data Model — Master Spec §54.
@@ -704,6 +705,11 @@ export const SessionSchema = z.object({
   /** Library campaign this play came from. Missing = a one-off scene. */
   campaignId: z.string().min(1).optional(),
   adventure: AdventureRunSchema.optional(),
+  /**
+   * The look the author gave this game: the adventure's theme, else the world's. Kept when the game
+   * starts, so that it is applied once, and the player's own change after that stays.
+   */
+  authorTheme: PlayThemeSchema.optional(),
   /** Authored scene that was Started. Studio uses this to land after new scene. */
   sceneId: z.string().min(1).optional(),
   player: PlayerStateSchema.optional(),

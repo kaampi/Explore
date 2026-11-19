@@ -1,3 +1,4 @@
+import { AuthorThemePicker } from "../themes/AuthorThemePicker";
 import { useTranslate } from "../i18n/LanguageProvider";
 import { syncAdventure } from "../../library/sceneSync";
 import { remapAttribute } from "../../library/sceneParts";
@@ -948,6 +949,18 @@ export function CampaignStudio({
                 />
               </label>
             </section>
+            <FormSection title={t("atLook")}>
+              <AuthorThemePicker
+                value={draft.theme}
+                hint={t("atAdventureHint")}
+                showLabel={false}
+                onChange={(theme) => {
+                  const next = { ...draft };
+                  delete next.theme;
+                  setDraft(theme ? { ...next, theme } : next);
+                }}
+              />
+            </FormSection>
             <FormSection
               title={t("cstRealm")}
               action={

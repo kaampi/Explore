@@ -24,12 +24,20 @@ export function applyPlayTheme(
       : { defaultPlay: { ...theme } }),
   };
 }
+/**
+ * The theme in use for a conversation. One the player has set for it stays. A game seen for the
+ * first time takes the look its author gave it, if it has one; otherwise the player's own default.
+ * The player's default is never replaced by an author's theme.
+ */
 export function activatePlayTheme(
   library: ThemeLibrary,
   conversationId: string | null,
+  authorTheme?: PlayTheme,
 ): ThemeLibrary {
   const fallback = library.defaultPlay ?? library.active;
-  const theme = conversationId ? (library.conversations[conversationId] ?? fallback) : fallback;
+  const theme = conversationId
+    ? (library.conversations[conversationId] ?? authorTheme ?? fallback)
+    : fallback;
   return {
     ...library,
     defaultPlay: { ...fallback },
