@@ -9,6 +9,7 @@ import {
 import { formatGameTime } from "../../state/gameClock";
 import { useTranslate } from "../i18n/LanguageProvider";
 import type { StoryRow } from "./storyRows";
+import { CheckCard, Divider, Frame, NamePlate } from "./ornament";
 
 /** Words only get quotes when nobody has put any in: an answer that tells and quotes is left as it is. */
 const HAS_QUOTE = /[“”"«»]/;
@@ -124,9 +125,9 @@ export function StoryLog({
     </span>
   );
   return (
-    <section className="play-story" aria-label={t("pvStory")} hidden={hidden}>
+    <Frame as="section" className="play-story" aria-label={t("pvStory")} hidden={hidden}>
       <header className="play-story__head">
-        <h2>{t("pvStory")}</h2>
+        <NamePlate>{t("pvStory")}</NamePlate>
         {hasEarlier && (
           <button
             type="button"
@@ -155,10 +156,10 @@ export function StoryLog({
         {rows.map((row) => {
           if (row.kind === "divider")
             return (
-              <div key={row.key} {...nav(row.key)} className="play-row play-row--divider">
+              <Divider key={row.key} {...nav(row.key)} className="play-row play-row--divider">
                 <span>{row.place}</span>
                 {showTime && <time>{formatGameTime(row.minutes)}</time>}
-              </div>
+              </Divider>
             );
           if (row.kind === "goal")
             return (
@@ -168,12 +169,17 @@ export function StoryLog({
             );
           if (row.kind === "check")
             return (
-              <div key={row.key} {...nav(row.key)} className="play-row play-row--check">
+              <CheckCard
+                key={row.key}
+                {...nav(row.key)}
+                roll={row.roll}
+                className="play-row play-row--check"
+              >
                 <span aria-hidden="true">◇</span>
                 <span className="visually-hidden">{t("pvRollLabel")}: </span>
                 {row.skill} · {row.roll} / {row.target} · {degree[row.degree]}
                 {row.damage ? ` · ${row.damage}` : ""}
-              </div>
+              </CheckCard>
             );
           const menu = (event: MouseEvent) => onRowMenu(event, row);
           if (row.kind === "narrator")
@@ -249,6 +255,6 @@ export function StoryLog({
           ↓ {t("pvToLatest")}
         </button>
       )}
-    </section>
+    </Frame>
   );
 }

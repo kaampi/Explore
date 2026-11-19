@@ -1,6 +1,14 @@
 import { useRef, useState } from "react";
 import { Modal } from "../components/Modal";
-import { PRESET_THEMES, contrastRatio, shellForTheme, type PlayTheme } from "./theme";
+import {
+  ORNAMENT_SETS,
+  PRESET_THEMES,
+  contrastRatio,
+  shellForTheme,
+  type PlayTheme,
+} from "./theme";
+import { SET_PARTS } from "../play/ornament";
+import { useTranslate } from "../i18n/LanguageProvider";
 import { playThemeStyle, useAppearance } from "./ThemeProvider";
 import { backgroundFromFile } from "./themeStorage";
 import { PatternSettings, BACKGROUND_PATTERNS } from "./BackgroundSettings";
@@ -13,7 +21,18 @@ export function AppearanceDialog({ onClose }: { onClose: () => void }) {
   );
 }
 
+/** The sets a player can choose: plain, and every set that draws itself. */
+const AVAILABLE_ORNAMENTS = ORNAMENT_SETS.filter(
+  (set) => set === "plain" || SET_PARTS[set].length > 0,
+);
+const ORNAMENT_LABELS = {
+  plain: "apOrnamentPlain",
+  forged: "apOrnamentForged",
+  hull: "apOrnamentHull",
+} as const;
+
 export function AppearanceSettingsContent({ onClose }: { onClose: () => void }) {
+  const t = useTranslate();
   const { library, conversationId, ready, error, update, select, save, remove } = useAppearance();
   const [name, setName] = useState("");
   const [imageError, setImageError] = useState<string | null>(null);
@@ -188,6 +207,34 @@ export function AppearanceSettingsContent({ onClose }: { onClose: () => void }) 
               >
                 <option value="serif">Book · serif</option>
                 <option value="sans">Clean · sans serif</option>
+              </select>
+            </label>
+            <label className="sb-field">
+              {t("apOrnaments")}
+              <select
+                value={theme.ornament}
+                onChange={(event) =>
+                  update({ ornament: event.target.value as PlayTheme["ornament"] })
+                }
+              >
+                {AVAILABLE_ORNAMENTS.map((set) => (
+                  <option key={set} value={set}>
+                    {t(ORNAMENT_LABELS[set])}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="sb-field">
+              {t("apOrnamentLevel")}
+              <select
+                value={theme.ornamentLevel}
+                onChange={(event) =>
+                  update({ ornamentLevel: event.target.value as PlayTheme["ornamentLevel"] })
+                }
+              >
+                <option value="none">{t("apLevelNone")}</option>
+                <option value="light">{t("apLevelLight")}</option>
+                <option value="full">{t("apLevelFull")}</option>
               </select>
             </label>
             {range("Text size", "textSize", 15, 26, 1, `${theme.textSize}px`)}

@@ -7,6 +7,7 @@ import {
   type InventoryEntry,
 } from "../../session/playerInventory";
 import { Modal } from "./Modal";
+import { ItemSlot, NoteCard } from "../play/ornament";
 import "./playerInventory.css";
 
 function InventoryIcon({ kind }: { kind: InventoryEntry["kind"] }) {
@@ -138,8 +139,7 @@ export function PlayerInventory({
                 <ul>
                   {group.map((entry) => (
                     <li key={entry.key}>
-                      <button
-                        type="button"
+                      <ItemSlot
                         className={
                           "player-inventory__item" +
                           (recent.includes(entry.key) ? " player-inventory__item--new" : "")
@@ -164,7 +164,7 @@ export function PlayerInventory({
                             ›
                           </span>
                         )}
-                      </button>
+                      </ItemSlot>
                     </li>
                   ))}
                 </ul>
@@ -208,10 +208,10 @@ export function PlayerInventory({
               </dl>
             )}
             {item.readableContent && (
-              <div className="inventory-detail__reading">
+              <NoteCard className="inventory-detail__reading">
                 <h3>Read</h3>
                 <p>{item.readableContent}</p>
-              </div>
+              </NoteCard>
             )}
             {!!choices.length && (
               <div className="inventory-detail__actions">

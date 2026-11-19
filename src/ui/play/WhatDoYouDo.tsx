@@ -1,3 +1,4 @@
+import { ChoiceRow, NamePlate } from "./ornament";
 import { useState } from "react";
 import { commandKind, type CommandGroup, type PublicCommand } from "../../game/catalog";
 import type { EncounterGame } from "../../game/EncounterSchema";
@@ -56,14 +57,13 @@ export function WhatDoYouDo({
   };
   return (
     <section className="play-do" id="play-do" tabIndex={-1} aria-labelledby="play-do-title">
-      <h2 id="play-do-title" className="play-do__title">
+      <NamePlate id="play-do-title" className="play-do__title">
         {t("pvWhatDoYouDo")}
-      </h2>
+      </NamePlate>
       <div className="play-do__suggestions">
         {suggestions.map((command) => (
-          <button
+          <ChoiceRow
             key={JSON.stringify(command.action)}
-            type="button"
             className="play-do__suggestion"
             disabled={busy}
             title={titleFor(command)}
@@ -71,7 +71,7 @@ export function WhatDoYouDo({
           >
             <CommandIcon kind={commandKind(game, command)} />
             {command.label}
-          </button>
+          </ChoiceRow>
         ))}
         <button
           type="button"
@@ -150,8 +150,7 @@ export function WhatDoYouDo({
               <ul>
                 {entry.commands.map((command) => (
                   <li key={JSON.stringify(command.action)}>
-                    <button
-                      type="button"
+                    <ChoiceRow
                       className="play-do__choice"
                       aria-disabled={command.blocked ? true : undefined}
                       title={titleFor(command)}
@@ -168,7 +167,7 @@ export function WhatDoYouDo({
                           <small className="play-do__reason">{command.blocked}</small>
                         )}
                       </span>
-                    </button>
+                    </ChoiceRow>
                   </li>
                 ))}
               </ul>

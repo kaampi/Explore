@@ -30,6 +30,7 @@ import { usePlayMap } from "../components/usePlayMap";
 import { isGateTestSession } from "../../session/gateTest";
 import { PlayTopBar } from "../play/PlayTopBar";
 import { Journal } from "../play/Journal";
+import { OrnamentProvider, ornamentVars } from "../play/ornament";
 import { captureIdea, type Idea } from "../../ideas/IdeaSchema";
 import { IdeaEditor } from "../ideas/IdeaEditor";
 import { formatGameTime } from "../../state/gameClock";
@@ -122,292 +123,295 @@ export function PlayWorkspace({
     if (phase === "error") void refresh();
   }, [phase, refresh]);
   return (
-    <div className="sb-play-workspace">
-      {framed ? (
-        <PlayTopBar
-          placeName={placeName}
-          time={
-            run && run.links.some((link) => link.minutes !== undefined)
-              ? formatGameTime(run.clockMinutes)
-              : undefined
-          }
-          onHome={() => {
-            // The scene is saved on the way out, as the old "Save & return home" did.
-            saveEncounter().then(
-              () => onHome(session),
-              () => setIdeaNote("Saving is unavailable, so you are still here. Try again."),
-            );
-          }}
-          homeDisabled={streaming}
-          onSaveIdea={saveRecentIdea}
-          onJournal={() => setJournalOpen(true)}
-          sound={<GameAudio key={session.id} conversationId={session.id} />}
-          onAppearance={onAppearance}
-          aiOpen={settingsOpen}
-          onToggleAi={() => setSettingsOpen(!settingsOpen)}
-          inspectorOpen={inspectorOpen}
-          onToggleInspector={() => setInspectorOpen(!inspectorOpen)}
-          castOpen={castOpen}
-          onToggleCast={() => setCastOpen(!castOpen)}
-        />
-      ) : (
-        <div className="sb-play-toolbar">
-          {portrait && (
-            <img
-              className="sb-play-portrait"
-              src={portrait}
-              alt={`${person?.name ?? "Character"} portrait`}
-            />
-          )}
-          <div className="sb-play-title">
-            <strong>
-              {session.encounter?.definition.title ||
-                title ||
-                primaryCharacter(session)?.name ||
-                "Your exploration"}
-            </strong>
-            <span>{session.scene?.location}</span>
-          </div>
-          <div className="sb-play-tools">
-            <GameAudio key={session.id} conversationId={session.id} />
-            <button
-              type="button"
-              className="sb-link"
-              aria-pressed={castOpen}
-              onClick={() => setCastOpen(!castOpen)}
-            >
-              {t("pwCast")}
-            </button>
-            <button type="button" className="sb-link" onClick={onAppearance}>
-              ◐ Appearance
-            </button>
-            <button
-              type="button"
-              className="sb-link"
-              aria-expanded={settingsOpen}
-              onClick={() => setSettingsOpen(!settingsOpen)}
-            >
-              {t("settings")}
-            </button>
-            <button
-              type="button"
-              className="sb-link"
-              aria-pressed={inspectorOpen}
-              onClick={() => setInspectorOpen(!inspectorOpen)}
-            >
-              {t("pwInspector")}
-            </button>
-            <button
-              type="button"
-              className="sb-play-exit"
-              aria-label="Exit conversation"
-              disabled={streaming}
-              title={
-                streaming ? "Wait for the reply to finish" : "Return home; keep this conversation"
-              }
-              onClick={() => onHome(session)}
-            >
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-                focusable="false"
-              >
-                <path d="M16 6V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2M10 12h12m-4-4 4 4-4 4" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      )}
-      {backgroundMenu && (
-        <Menu
-          label="Background actions"
-          at={{ x: backgroundMenu.x, y: backgroundMenu.y }}
-          onClose={() => setBackgroundMenu(null)}
-          items={[
-            { label: "Choose background…", onSelect: () => setBackgroundOpen(true) },
-            { label: "Customize appearance…", onSelect: onAppearance },
-          ]}
-        />
-      )}
-      {journalOpen && framed && (
-        <Journal
-          session={session}
-          onForget={(sceneId, index) => void forgetPlaceNote(sceneId, index).catch(() => {})}
-          onClose={() => setJournalOpen(false)}
-        />
-      )}
-      {backgroundOpen && <BackgroundDialog onClose={() => setBackgroundOpen(false)} />}
-      {ideaNote && (
-        <p role="alert" className="play-view__note">
-          {ideaNote}
-        </p>
-      )}
-      {idea && (
-        <IdeaEditor
-          idea={idea}
-          repo={repo}
-          onClose={() => setIdea(null)}
-          onSaved={() => {
-            setIdea(null);
-            setIdeaNote("");
-          }}
-        />
-      )}
-      {settingsOpen && <StatusBar />}
-      {!canSend && !session.gateEncounter && !session.encounter && (
-        <div className="sb-play-connection" role="status">
-          <span>
-            {readiness === "checking"
-              ? "Checking your local AI…"
-              : readiness === "missing-model"
-                ? "Choose an installed model to hear a reply."
-                : "Your conversation is ready. Connect local AI to hear a reply."}
-          </span>
-          <button type="button" className="sb-link" onClick={() => setConnectionOpen(true)}>
-            {t("pwSetUpAi")}
-          </button>
-        </div>
-      )}
-      <div
-        className={`sb-play-layout${castOpen ? " sb-play-layout--cast" : ""}${inspectorOpen ? " sb-play-layout--inspector" : ""}`}
-      >
-        {castOpen && <CastPanel />}
-        <div
-          onContextMenu={(event) => {
-            const target = event.target as HTMLElement;
-            if (
-              !target.closest(".chat-stage") ||
-              target.closest(".message,button,input,textarea,select,a,[role=dialog]")
-            )
-              return;
-            event.preventDefault();
-            setBackgroundMenu({ x: event.clientX, y: event.clientY });
-          }}
-          className={`sb-themed-play${withSidebar ? " sb-themed-play--rules" : ""}${framed ? " sb-themed-play--framed" : ""}${gatePreview ? " sb-themed-play--gate-preview" : ""}`}
-          data-shell={shellForTheme(library.active)}
-          style={{
-            ...playThemeStyle(library.active),
-            ...(gatePreview ? { backgroundImage: `url(${gateBackground})` } : {}),
-          }}
-        >
-          {session.encounter ? (
-            <EncounterPanel
-              mapView={mapView}
-              backdrop={encounterBackdrop}
-              onSaveIdea={saveIdea}
-              onJournal={() => setJournalOpen(true)}
-            />
-          ) : session.gateEncounter ? (
-            <LegacyGatePanel
-              session={session}
-              repo={repo}
-              onHome={onHome}
-              onStartNew={onStartGatehouse ?? (() => onHome(session))}
-            />
-          ) : (
-            <>
-              <ChatPanel
-                gameTools={withRules}
-                partyTarget={partyTarget}
-                checkRequest={checkRequest}
-                repo={repo}
-                conversationTitle={title}
-                onIdeas={onIdeas}
-                canSend={canSend}
-                onCheckConnection={() => setConnectionOpen(true)}
+    <OrnamentProvider theme={library.active}>
+      <div className="sb-play-workspace">
+        {framed ? (
+          <PlayTopBar
+            placeName={placeName}
+            time={
+              run && run.links.some((link) => link.minutes !== undefined)
+                ? formatGameTime(run.clockMinutes)
+                : undefined
+            }
+            onHome={() => {
+              // The scene is saved on the way out, as the old "Save & return home" did.
+              saveEncounter().then(
+                () => onHome(session),
+                () => setIdeaNote("Saving is unavailable, so you are still here. Try again."),
+              );
+            }}
+            homeDisabled={streaming}
+            onSaveIdea={saveRecentIdea}
+            onJournal={() => setJournalOpen(true)}
+            sound={<GameAudio key={session.id} conversationId={session.id} />}
+            onAppearance={onAppearance}
+            aiOpen={settingsOpen}
+            onToggleAi={() => setSettingsOpen(!settingsOpen)}
+            inspectorOpen={inspectorOpen}
+            onToggleInspector={() => setInspectorOpen(!inspectorOpen)}
+            castOpen={castOpen}
+            onToggleCast={() => setCastOpen(!castOpen)}
+          />
+        ) : (
+          <div className="sb-play-toolbar">
+            {portrait && (
+              <img
+                className="sb-play-portrait"
+                src={portrait}
+                alt={`${person?.name ?? "Character"} portrait`}
               />
-              {withSidebar && (
-                <aside
-                  className={"sb-game-toolbox" + (!withRules ? " sb-game-toolbox--map-only" : "")}
-                  aria-label="Game tools"
+            )}
+            <div className="sb-play-title">
+              <strong>
+                {session.encounter?.definition.title ||
+                  title ||
+                  primaryCharacter(session)?.name ||
+                  "Your exploration"}
+              </strong>
+              <span>{session.scene?.location}</span>
+            </div>
+            <div className="sb-play-tools">
+              <GameAudio key={session.id} conversationId={session.id} />
+              <button
+                type="button"
+                className="sb-link"
+                aria-pressed={castOpen}
+                onClick={() => setCastOpen(!castOpen)}
+              >
+                {t("pwCast")}
+              </button>
+              <button type="button" className="sb-link" onClick={onAppearance}>
+                ◐ Appearance
+              </button>
+              <button
+                type="button"
+                className="sb-link"
+                aria-expanded={settingsOpen}
+                onClick={() => setSettingsOpen(!settingsOpen)}
+              >
+                {t("settings")}
+              </button>
+              <button
+                type="button"
+                className="sb-link"
+                aria-pressed={inspectorOpen}
+                onClick={() => setInspectorOpen(!inspectorOpen)}
+              >
+                {t("pwInspector")}
+              </button>
+              <button
+                type="button"
+                className="sb-play-exit"
+                aria-label="Exit conversation"
+                disabled={streaming}
+                title={
+                  streaming ? "Wait for the reply to finish" : "Return home; keep this conversation"
+                }
+                onClick={() => onHome(session)}
+              >
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                  focusable="false"
                 >
-                  {mapView && <section className="sb-game-toolbox__map">{mapView}</section>}
-                  {withRules && (
-                    <>
-                      <header>
-                        <span className="sb-game-toolbox__eyebrow">YOUR ADVENTURE</span>
-                        <h2>{t("pwAtYourFingertips")}</h2>
-                        <p>{session.ruleset?.name}</p>
-                      </header>
-                      <section className="sb-game-toolbox__checks">
-                        <h3>{t("pwTakeAChance")}</h3>
-                        <p>{t("pwDescribeWhatYouWant")}</p>
-                        <button
-                          type="button"
-                          className="sb-game-toolbox__roll"
-                          disabled={
-                            streaming || !canSend || !!session.journey || checkStats.length === 0
-                          }
-                          onClick={() => setCheckRequest((value) => value + 1)}
-                        >
-                          <span aria-hidden="true">◇</span>
-                          {t("pwRollTheDice")}
-                        </button>
-                        {checkStats.length === 0 && <small>{t("pwAddNumericStatsTo")}</small>}
-                        {!!session.journey && <small>{t("pwFinishOrPauseYour")}</small>}
-                      </section>
-                      <section>
-                        <h3>{session.player?.name || "Your character"}</h3>
-                        <dl>
-                          {checkStats.map((stat) => (
-                            <div key={stat.id}>
-                              <dt>{stat.name}</dt>
-                              <dd>{stat.value}</dd>
-                            </div>
-                          ))}
-                        </dl>
-                      </section>
-                      <PlayerInventory session={session} busy={streaming} />
-                      <section
-                        className="sb-game-toolbox__party"
-                        aria-label="Party and prospects"
-                        ref={setPartyTarget}
-                      />
-                      <section className="sb-game-toolbox__session">
-                        <h3>{t("pwYourStoryStaysWith")}</h3>
-                        <p>{t("pwYourConversationAndResolved")}</p>
-                        <button
-                          type="button"
-                          className="sb-link"
-                          disabled={streaming}
-                          onClick={() => onHome(session)}
-                        >
-                          Save & return home ↗
-                        </button>
-                      </section>
-                    </>
-                  )}
-                </aside>
-              )}
-            </>
-          )}
-        </div>
-        {inspectorOpen && <InspectorPanel />}
-      </div>
-      {connectionOpen && (
-        <Modal title={t("pwYourLocalAi")} onClose={() => setConnectionOpen(false)}>
-          <ConnectionHelp
-            model={session.runtime.model}
-            disabled={streaming}
-            onModelChange={(model) => {
-              chooseModel(model);
-              setOllamaModel(model);
+                  <path d="M16 6V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2M10 12h12m-4-4 4 4-4 4" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+        {backgroundMenu && (
+          <Menu
+            label="Background actions"
+            at={{ x: backgroundMenu.x, y: backgroundMenu.y }}
+            onClose={() => setBackgroundMenu(null)}
+            items={[
+              { label: "Choose background…", onSelect: () => setBackgroundOpen(true) },
+              { label: "Customize appearance…", onSelect: onAppearance },
+            ]}
+          />
+        )}
+        {journalOpen && framed && (
+          <Journal
+            session={session}
+            onForget={(sceneId, index) => void forgetPlaceNote(sceneId, index).catch(() => {})}
+            onClose={() => setJournalOpen(false)}
+          />
+        )}
+        {backgroundOpen && <BackgroundDialog onClose={() => setBackgroundOpen(false)} />}
+        {ideaNote && (
+          <p role="alert" className="play-view__note">
+            {ideaNote}
+          </p>
+        )}
+        {idea && (
+          <IdeaEditor
+            idea={idea}
+            repo={repo}
+            onClose={() => setIdea(null)}
+            onSaved={() => {
+              setIdea(null);
+              setIdeaNote("");
             }}
           />
-          <div className="sb-dialog__actions">
-            <button type="button" className="sb-button" onClick={() => setConnectionOpen(false)}>
-              {canSend ? "Back to the conversation" : "Keep exploring"}
+        )}
+        {settingsOpen && <StatusBar />}
+        {!canSend && !session.gateEncounter && !session.encounter && (
+          <div className="sb-play-connection" role="status">
+            <span>
+              {readiness === "checking"
+                ? "Checking your local AI…"
+                : readiness === "missing-model"
+                  ? "Choose an installed model to hear a reply."
+                  : "Your conversation is ready. Connect local AI to hear a reply."}
+            </span>
+            <button type="button" className="sb-link" onClick={() => setConnectionOpen(true)}>
+              {t("pwSetUpAi")}
             </button>
           </div>
-        </Modal>
-      )}
-    </div>
+        )}
+        <div
+          className={`sb-play-layout${castOpen ? " sb-play-layout--cast" : ""}${inspectorOpen ? " sb-play-layout--inspector" : ""}`}
+        >
+          {castOpen && <CastPanel />}
+          <div
+            onContextMenu={(event) => {
+              const target = event.target as HTMLElement;
+              if (
+                !target.closest(".chat-stage") ||
+                target.closest(".message,button,input,textarea,select,a,[role=dialog]")
+              )
+                return;
+              event.preventDefault();
+              setBackgroundMenu({ x: event.clientX, y: event.clientY });
+            }}
+            className={`sb-themed-play${withSidebar ? " sb-themed-play--rules" : ""}${framed ? " sb-themed-play--framed" : ""}${gatePreview ? " sb-themed-play--gate-preview" : ""}`}
+            data-shell={shellForTheme(library.active)}
+            style={{
+              ...playThemeStyle(library.active),
+              ...ornamentVars(library.active),
+              ...(gatePreview ? { backgroundImage: `url(${gateBackground})` } : {}),
+            }}
+          >
+            {session.encounter ? (
+              <EncounterPanel
+                mapView={mapView}
+                backdrop={encounterBackdrop}
+                onSaveIdea={saveIdea}
+                onJournal={() => setJournalOpen(true)}
+              />
+            ) : session.gateEncounter ? (
+              <LegacyGatePanel
+                session={session}
+                repo={repo}
+                onHome={onHome}
+                onStartNew={onStartGatehouse ?? (() => onHome(session))}
+              />
+            ) : (
+              <>
+                <ChatPanel
+                  gameTools={withRules}
+                  partyTarget={partyTarget}
+                  checkRequest={checkRequest}
+                  repo={repo}
+                  conversationTitle={title}
+                  onIdeas={onIdeas}
+                  canSend={canSend}
+                  onCheckConnection={() => setConnectionOpen(true)}
+                />
+                {withSidebar && (
+                  <aside
+                    className={"sb-game-toolbox" + (!withRules ? " sb-game-toolbox--map-only" : "")}
+                    aria-label="Game tools"
+                  >
+                    {mapView && <section className="sb-game-toolbox__map">{mapView}</section>}
+                    {withRules && (
+                      <>
+                        <header>
+                          <span className="sb-game-toolbox__eyebrow">YOUR ADVENTURE</span>
+                          <h2>{t("pwAtYourFingertips")}</h2>
+                          <p>{session.ruleset?.name}</p>
+                        </header>
+                        <section className="sb-game-toolbox__checks">
+                          <h3>{t("pwTakeAChance")}</h3>
+                          <p>{t("pwDescribeWhatYouWant")}</p>
+                          <button
+                            type="button"
+                            className="sb-game-toolbox__roll"
+                            disabled={
+                              streaming || !canSend || !!session.journey || checkStats.length === 0
+                            }
+                            onClick={() => setCheckRequest((value) => value + 1)}
+                          >
+                            <span aria-hidden="true">◇</span>
+                            {t("pwRollTheDice")}
+                          </button>
+                          {checkStats.length === 0 && <small>{t("pwAddNumericStatsTo")}</small>}
+                          {!!session.journey && <small>{t("pwFinishOrPauseYour")}</small>}
+                        </section>
+                        <section>
+                          <h3>{session.player?.name || "Your character"}</h3>
+                          <dl>
+                            {checkStats.map((stat) => (
+                              <div key={stat.id}>
+                                <dt>{stat.name}</dt>
+                                <dd>{stat.value}</dd>
+                              </div>
+                            ))}
+                          </dl>
+                        </section>
+                        <PlayerInventory session={session} busy={streaming} />
+                        <section
+                          className="sb-game-toolbox__party"
+                          aria-label="Party and prospects"
+                          ref={setPartyTarget}
+                        />
+                        <section className="sb-game-toolbox__session">
+                          <h3>{t("pwYourStoryStaysWith")}</h3>
+                          <p>{t("pwYourConversationAndResolved")}</p>
+                          <button
+                            type="button"
+                            className="sb-link"
+                            disabled={streaming}
+                            onClick={() => onHome(session)}
+                          >
+                            Save & return home ↗
+                          </button>
+                        </section>
+                      </>
+                    )}
+                  </aside>
+                )}
+              </>
+            )}
+          </div>
+          {inspectorOpen && <InspectorPanel />}
+        </div>
+        {connectionOpen && (
+          <Modal title={t("pwYourLocalAi")} onClose={() => setConnectionOpen(false)}>
+            <ConnectionHelp
+              model={session.runtime.model}
+              disabled={streaming}
+              onModelChange={(model) => {
+                chooseModel(model);
+                setOllamaModel(model);
+              }}
+            />
+            <div className="sb-dialog__actions">
+              <button type="button" className="sb-button" onClick={() => setConnectionOpen(false)}>
+                {canSend ? "Back to the conversation" : "Keep exploring"}
+              </button>
+            </div>
+          </Modal>
+        )}
+      </div>
+    </OrnamentProvider>
   );
 }
