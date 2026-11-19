@@ -71,9 +71,27 @@ it("draws plain, with nothing added, when there is no theme or the set is plain"
   expect(plain.innerHTML).toBe(none.innerHTML);
 });
 
-it("falls back on plain for a set that does not draw a part (the hull set, for now)", async () => {
+it("draws the hull set too, in every part", async () => {
   const host = await draw({ ornament: "hull", ornamentLevel: "full" });
-  expect(marks(host)).toEqual(Array(8).fill("plain"));
+  expect(marks(host)).toEqual(Array(8).fill("hull"));
+});
+
+it("sets how far the ring gauge of a roll goes, between 0 and 1", async () => {
+  const gauge = async (fraction: number) =>
+    (
+      await draw(
+        { ornament: "hull" },
+        false,
+        <CheckCard roll={34} fraction={fraction}>
+          Roll
+        </CheckCard>,
+      )
+    )
+      .querySelector<HTMLElement>(".orn-check")!
+      .style.getPropertyValue("--gauge");
+  expect(await gauge(0.34)).toBe("0.34");
+  expect(await gauge(7)).toBe("1");
+  expect(await gauge(-1)).toBe("0");
 });
 
 it("looks the same at level none, and with plain frames, as plain does", async () => {

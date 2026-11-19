@@ -7,6 +7,8 @@ export function Modal({
   children,
   wide = false,
   side = false,
+  hiddenTitle = false,
+  bare = false,
 }: {
   title: string;
   onClose: () => void;
@@ -14,6 +16,13 @@ export function Modal({
   wide?: boolean;
   /** A panel from the right edge, as tall as the window. */
   side?: boolean;
+  /** The title is only the name of the dialog for a screen reader: the content has its own heading. */
+  hiddenTitle?: boolean;
+  /**
+   * The content is the dialog itself: no panel, no heading and no close button of the dialog's own.
+   * The content brings its own way to close; Escape and a click outside close it as always.
+   */
+  bare?: boolean;
 }) {
   const t = useTranslate();
   const ref = useRef<HTMLDialogElement>(null);
@@ -40,7 +49,7 @@ export function Modal({
   return (
     <dialog
       ref={ref}
-      className={`sb-dialog${wide ? " sb-dialog--wide" : ""}${side ? " sb-dialog--side" : ""}`}
+      className={`sb-dialog${wide ? " sb-dialog--wide" : ""}${side ? " sb-dialog--side" : ""}${bare ? " sb-dialog--bare" : ""}`}
       onCancel={(event) => {
         event.preventDefault();
         onClose();
@@ -58,12 +67,14 @@ export function Modal({
           onClose();
       }}
     >
-      <div className="sb-dialog__heading">
-        <h2>{title}</h2>
-        <button type="button" className="sb-icon" onClick={onClose} aria-label={t("closeDialog")}>
-          ×
-        </button>
-      </div>
+      {!bare && (
+        <div className="sb-dialog__heading">
+          <h2 className={hiddenTitle ? "visually-hidden" : undefined}>{title}</h2>
+          <button type="button" className="sb-icon" onClick={onClose} aria-label={t("closeDialog")}>
+            ×
+          </button>
+        </div>
+      )}
       {children}
     </dialog>
   );

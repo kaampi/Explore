@@ -1,3 +1,4 @@
+import { itemExtras } from "./itemIcons";
 import { syncScene } from "./sceneSync";
 import {
   EncounterGameSchema,
@@ -117,6 +118,7 @@ export function makePlayableScene(
           description: o.note,
           ...(o.readableContent ? { readableContent: o.readableContent } : {}),
           ...(o.imageDataUrl ? { imageDataUrl: o.imageDataUrl } : {}),
+          ...itemExtras(o),
         })),
       hostilities: [],
       interactions: scene.encounter?.definition.interactions ?? [],

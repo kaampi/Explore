@@ -222,6 +222,8 @@ export const ObjectTemplateSchema = z.object({
   storyId: z.string().min(1).optional(),
   placeId: z.string().min(1).optional(),
   imageDataUrl: z.string().optional(),
+  /** One of the pictures in `ITEM_ICONS`. Missing: one is taken from the tags. */
+  icon: z.string().optional(),
   storyRole: z.enum(["background", "useful", "critical"]).optional(),
   storyImportance: z.string().optional(),
   startingLocation: ObjectLocationSchema.optional(),

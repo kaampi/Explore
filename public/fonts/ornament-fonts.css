@@ -20,3 +20,17 @@
   font-display: swap;
   src: url(/fonts/imfell/imfell-english-italic.ttf) format('truetype');
 }
+@font-face {
+  font-family: 'Oxanium';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url(/fonts/oxanium/oxanium-variable.ttf) format('truetype');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url(/fonts/jetbrains-mono/jetbrains-mono-variable.ttf) format('truetype');
+}

@@ -1,3 +1,4 @@
+import { itemExtras } from "./itemIcons";
 import type {
   CampaignScene,
   CampaignTemplate,
@@ -168,6 +169,7 @@ function syncItems(game: EncounterGame, library: SceneLibrary) {
       requiresFlags: item.requiresFlags,
       ...(card.readableContent ? { readableContent: card.readableContent } : {}),
       ...(card.imageDataUrl ? { imageDataUrl: card.imageDataUrl } : {}),
+      ...itemExtras(card),
     };
   });
 }
@@ -233,6 +235,7 @@ function syncStartItems(
         requiresFlags: [],
         ...(card.readableContent ? { readableContent: card.readableContent } : {}),
         ...(card.imageDataUrl ? { imageDataUrl: card.imageDataUrl } : {}),
+        ...itemExtras(card),
       });
     player.inventory.push(card.id);
   }

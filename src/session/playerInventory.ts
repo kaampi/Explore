@@ -14,6 +14,11 @@ export type InventoryEntry = {
   readableContent?: string | undefined;
   imageDataUrl?: string | undefined;
   container?: string | undefined;
+  /** The picture chosen for the thing, and its tags, which a picture can be taken from. */
+  icon?: string | undefined;
+  tags?: string[] | undefined;
+  /** A weapon is hand to hand or ranged: its picture follows from that. */
+  weaponKind?: "melee" | "ranged" | undefined;
   facts?: Array<{ label: string; value: string }>;
 };
 const nameOf = (id: string) => id.replace(/[-_]/g, " ").replace(/^./, (c) => c.toUpperCase());
@@ -35,6 +40,8 @@ export function playerInventory(session: Session): InventoryEntry[] {
           description: item?.description,
           readableContent: item?.readableContent,
           imageDataUrl: item?.imageDataUrl,
+          icon: item?.icon,
+          tags: item?.tags,
         };
       }),
       ...player.weapons.map((id) => {
@@ -44,6 +51,7 @@ export function playerInventory(session: Session): InventoryEntry[] {
           id,
           name: weapon?.name ?? nameOf(id),
           kind: "weapon" as const,
+          weaponKind: weapon?.kind,
           quantity: 1,
           description: weapon?.kind === "ranged" ? "A ranged weapon." : "A melee weapon.",
           facts: weapon
@@ -98,6 +106,7 @@ export function playerInventory(session: Session): InventoryEntry[] {
       quantity: 1,
       description: object.note,
       readableContent: object.readableContent,
+      tags: object.tags,
       ...(object.startingLocation?.kind === "object"
         ? {
             container: objects.find(
@@ -127,7 +136,9 @@ export function inventoryActions(session: Session, entry: InventoryEntry) {
       interaction.excludesFlags.some((f) => s.flags.includes(f))
     )
       continue;
+    // An action that hands the thing over, or one that needs it: the pick for a lock, say.
     if (
+      interaction.requiresItems.includes(entry.id) ||
       [...interaction.success.effects, ...interaction.failure.effects].some(
         (effect) =>
           effect.kind === "transfer-item" &&

@@ -178,3 +178,87 @@
   color: var(--text-dim, #736965);
   margin-bottom: 10px;
 }
+
+/* The pack as a grid of compartments, five across, with two tabs. */
+.player-inventory__tabs {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 10px;
+  border-bottom: 1px solid var(--border);
+}
+.player-inventory__tab {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-dim);
+  font: 500 13px/1.3 inherit;
+  cursor: pointer;
+}
+.player-inventory__tab[aria-selected="true"] {
+  border-bottom-color: var(--accent);
+  color: var(--text);
+  font-weight: 600;
+}
+.player-inventory ul.player-inventory__grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+.player-inventory__grid > li {
+  position: relative;
+  aspect-ratio: 1;
+}
+.player-inventory__grid .player-inventory__item {
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+  padding: 4px;
+  gap: 2px;
+  text-align: center;
+}
+.player-inventory__grid .player-inventory__name {
+  flex: none;
+  max-height: 2.4em;
+  overflow: hidden;
+  font-size: 9px;
+  line-height: 1.2;
+  overflow-wrap: break-word;
+}
+.player-inventory__grid .player-inventory__quantity {
+  position: absolute;
+  right: 4px;
+  bottom: 2px;
+  font-size: 11px;
+}
+.player-inventory__grid .player-inventory__new {
+  position: absolute;
+  left: 4px;
+  top: 2px;
+  font-size: 8px;
+  line-height: 1;
+}
+.player-inventory__empty-slot {
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  opacity: 0.5;
+}
+.player-inventory__more {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  z-index: 2;
+  min-width: 22px;
+  min-height: 22px;
+  padding: 0;
+  opacity: 0;
+}
+.player-inventory__grid > li:hover .player-inventory__more,
+.player-inventory__grid > li:focus-within .player-inventory__more {
+  opacity: 1;
+}
+@media (hover: none) {
+  .player-inventory__more {
+    opacity: 1;
+  }
+}

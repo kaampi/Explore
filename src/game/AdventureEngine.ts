@@ -387,6 +387,57 @@ export function placesVisited(session: Session): PlaceVisited[] {
   }));
 }
 
+export type ItemOrigin = {
+  sceneId: string;
+  place: string;
+  /** Game time when the player first came to the place, in minutes. Missing outside an adventure. */
+  minutes?: number;
+};
+
+/**
+ * Where and when the player got a thing: the place of the first action that handed it over, with
+ * the time they came to the place. A thing the player started with, or one with no history, has no
+ * origin.
+ */
+export function itemOrigin(session: Session, itemId: string): ItemOrigin | null {
+  const handedOver = (game: EncounterGame): boolean =>
+    game.history.some((entry) =>
+      entry.events.some((event) => {
+        if (event.kind !== "interaction") return false;
+        const interaction = game.definition.interactions.find((i) => i.id === event.interactionId);
+        const outcome = [interaction?.success, interaction?.failure].find(
+          (candidate) => candidate?.text === event.text,
+        );
+        return !!outcome?.effects.some(
+          (effect) =>
+            (effect.kind === "take-item" && effect.itemId === itemId) ||
+            (effect.kind === "transfer-item" &&
+              effect.itemId === itemId &&
+              effect.to === game.definition.playerId),
+        );
+      }),
+    );
+  const run = session.adventure;
+  if (!run) {
+    const game = session.encounter;
+    return game && handedOver(game)
+      ? { sceneId: game.definition.id, place: game.definition.title }
+      : null;
+  }
+  const first = run.scenes.find((scene) => scene.id === run.currentSceneId) ?? run.scenes[0]!;
+  const start = run.transitions[0]?.from ?? first.id;
+  for (const { sceneId, minutes } of visitedScenes(run, start)) {
+    const game = gameOfScene(session, sceneId);
+    if (game && handedOver(game))
+      return {
+        sceneId,
+        place: run.scenes.find((scene) => scene.id === sceneId)?.name ?? sceneId,
+        minutes,
+      };
+  }
+  return null;
+}
+
 export type PersonMet = {
   actorId: string;
   name: string;

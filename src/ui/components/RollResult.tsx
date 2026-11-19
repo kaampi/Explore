@@ -1,4 +1,5 @@
 import { useId } from "react";
+import { CheckCard, Frame, NamePlate, useOrnament } from "../play/ornament";
 import "./roll-result.css";
 
 type Degree = "exceptional" | "success" | "failure" | "severe";
@@ -38,6 +39,42 @@ export function RollResult({
     exceptional: "Critical success",
     severe: "Critical fail",
   }[outcome];
+  const { set } = useOrnament("frame");
+  if (set !== "plain")
+    // In a theme with ornaments the result is the theme's own: its frame, its sign, its seal.
+    return (
+      <section
+        className="roll-result roll-result--ornamented"
+        data-outcome={good ? "success" : "failure"}
+        data-degree={outcome}
+        role="status"
+        aria-live="polite"
+        aria-label={`Dice result: ${label}`}
+      >
+        <Frame className="roll-result__card">
+          <NamePlate as="strong" className="roll-result__title">
+            {label}
+          </NamePlate>
+          {detail && <span className="roll-result__detail">{detail}</span>}
+          <CheckCard roll={roll} fraction={roll / 100} className="roll-result__check">
+            <p className="roll-result__numbers">
+              Needed {target} or lower
+              <br />
+              {rolledBy ? `${rolledBy} rolled` : "You got"} <b>{roll}</b>
+            </p>
+          </CheckCard>
+          <button
+            type="button"
+            className="roll-result__ok"
+            autoFocus
+            disabled={closing}
+            onClick={onConfirm}
+          >
+            OK
+          </button>
+        </Frame>
+      </section>
+    );
   return (
     <section
       className="roll-result"

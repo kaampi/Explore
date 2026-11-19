@@ -5,6 +5,7 @@ import { useOrnament } from "./context";
 export function CheckCard({
   roll,
   mark,
+  fraction,
   className = "",
   children,
   ...rest
@@ -12,6 +13,8 @@ export function CheckCard({
   roll: number;
   /** A small mark for the plain look, which has no seal. */
   mark?: string;
+  /** How far round the ring gauge goes, 0 to 1, in the sets that have one. */
+  fraction?: number;
 } & HTMLAttributes<HTMLElement>) {
   const { set, level } = useOrnament("check");
   return (
@@ -19,6 +22,9 @@ export function CheckCard({
       className={`orn-check ${className}`.trim()}
       data-orn-set={set}
       data-orn-level={level}
+      {...(fraction !== undefined
+        ? { style: { "--gauge": Math.min(Math.max(fraction, 0), 1) } as React.CSSProperties }
+        : {})}
       {...rest}
     >
       {set !== "plain" ? (

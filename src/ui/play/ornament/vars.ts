@@ -1,7 +1,14 @@
 import type { CSSProperties } from "react";
 import { contrastRatio } from "../../themes/theme";
 import { effectiveOrnament, type OrnamentSetId } from "./sets";
-import { frameImage, grainImage, medallionImage, sealImage, type OrnamentColors } from "./svg";
+import {
+  frameImage,
+  grainImage,
+  medallionImage,
+  scanlineImage,
+  sealImage,
+  type OrnamentColors,
+} from "./svg";
 
 /** A colour as `#rrggbb`, or the fallback when it is not one (a theme read from an old file). */
 const hexOr = (value: string | undefined, fallback: string) =>
@@ -45,6 +52,21 @@ export function inkOn(bg: string): string {
 
 /** The colours of the note card, which are the same in every theme so that it reads the same. */
 export const NOTE_COLORS = { bg: "#e8dcc0", text: "#3a2d1c" } as const;
+/** The colours of the note in each set: parchment in the forged set, a decoded message in the hull. */
+const AMBER = "#e3a63a";
+export const NOTE_COLORS_BY_SET = {
+  forged: NOTE_COLORS,
+  hull: { bg: "#0d1b21", text: "#c7f0e6" },
+} as const;
+
+/** The typefaces of the parts of each set: for signs and numbers, and for the note. */
+const SET_FONTS = {
+  forged: { sign: "Cinzel, Georgia, serif", note: '"IM Fell English", Georgia, serif' },
+  hull: {
+    sign: 'Oxanium, "Barlow", system-ui, sans-serif',
+    note: '"JetBrains Mono", ui-monospace, monospace',
+  },
+} as const;
 
 const HEADING_FONT_FAMILY: Record<string, string> = {
   newsreader: "Newsreader, Georgia, serif",
@@ -80,15 +102,32 @@ export function ornamentVars(
     "--ornament-frame": frameImage(set, level, colors),
     "--ornament-medallion": medallionImage(set, colors),
     "--ornament-seal": sealImage(set, colors),
-    "--ornament-grain": level === "full" && set !== "plain" ? grainImage() : "none",
+    "--ornament-grain":
+      level !== "full" || set === "plain"
+        ? "none"
+        : set === "hull"
+          ? scanlineImage(colors)
+          : grainImage(),
     "--ornament-plate-bg": plateColors(theme).bg,
     "--ornament-plate-text": plateColors(theme).text,
     "--ornament-seal-ink": inkOn(hexOr(theme.accent, "#795a32")),
     "--ornament-dark": "#14110d",
     "--ornament-darkest": "#0b0a08",
     "--ornament-slot-text": "#efe6d0",
-    "--ornament-note-bg": NOTE_COLORS.bg,
-    "--ornament-note-text": NOTE_COLORS.text,
+    "--ornament-note-bg": (NOTE_COLORS_BY_SET[set as "forged"] ?? NOTE_COLORS).bg,
+    "--ornament-note-text": (NOTE_COLORS_BY_SET[set as "forged"] ?? NOTE_COLORS).text,
+    "--ornament-font": SET_FONTS[set as "forged"]?.sign ?? "inherit",
+    "--ornament-note-font": SET_FONTS[set as "forged"]?.note ?? "inherit",
+    // In the hull set amber has the part that brass has in the others: discoveries, ideas, locks.
+    ...(set === "hull"
+      ? {
+          "--highlight": AMBER,
+          // The main button follows the theme's accent in the hull set (plum in the others).
+          "--accent-strong": colors.ornament,
+          "--accent-strong-hover": mixHex(colors.ornament, "#ffffff", 0.18),
+          "--on-accent": inkOn(colors.ornament),
+        }
+      : {}),
     "--heading-font": HEADING_FONT_FAMILY[theme.headingFont ?? "newsreader"],
   } as CSSProperties;
 }

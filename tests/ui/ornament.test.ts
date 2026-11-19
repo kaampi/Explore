@@ -8,6 +8,7 @@ import {
 } from "../../src/ui/play/ornament/sets";
 import {
   NOTE_COLORS,
+  NOTE_COLORS_BY_SET,
   inkOn,
   mixHex,
   ornamentColors,
@@ -64,8 +65,9 @@ describe("ornament sets", () => {
         expect(drawn === set || drawn === "plain", `${set}/${part}`).toBe(true);
         if (!SET_PARTS[set].includes(part)) expect(drawn).toBe("plain");
       }
-    // Forged draws every part itself.
+    // Forged and hull draw every part themselves.
     expect(SET_PARTS.forged).toEqual(ORNAMENT_PARTS);
+    expect(SET_PARTS.hull).toEqual(ORNAMENT_PARTS);
     // Plain draws none: it is the quiet look the parts fall back on.
     expect(SET_PARTS.plain).toEqual([]);
   });
@@ -120,9 +122,44 @@ describe("the variables of a theme's ornaments", () => {
   });
 
   it("make a frame of nine parts: one corner drawn once and mirrored", () => {
-    const svg = decodeURIComponent(frame(fantasy));
-    expect(svg.match(/<use /g)).toHaveLength(4);
-    expect(svg.match(/<g id="c">/g)).toHaveLength(1);
+    const hull = { ...fantasy, ornament: "hull" as const };
+    for (const theme of [fantasy, hull]) {
+      const svg = decodeURIComponent(frame(theme));
+      expect(svg.match(/<use /g)).toHaveLength(4);
+      expect(svg.match(/<g id="c">/g)).toHaveLength(1);
+    }
+  });
+
+  it("draw the hull frame with cut corners, in the theme's colours, with the ticks only at full", () => {
+    const hull = { ...fantasy, ornament: "hull" as const };
+    const full = decodeURIComponent(frame(hull));
+    const light = decodeURIComponent(frame({ ...hull, ornamentLevel: "light" }));
+    const colors = ornamentColors(hull);
+    // The outline is cut at the corners: a diagonal in the path.
+    expect(full).toMatch(/M1\.2 14 14 1\.2/);
+    expect(full).toContain(colors.ornament);
+    expect(full).toContain(colors.hi);
+    expect(light).not.toContain(colors.hi);
+    expect(frame({ ...hull, ornamentLevel: "none" })).toBe("none");
+    // The hull frame is not the forged one.
+    expect(full).not.toBe(decodeURIComponent(frame(fantasy)));
+  });
+
+  it("give each set its own typefaces and amber only in the hull set", () => {
+    const vars = (set: "forged" | "hull") =>
+      ornamentVars({ ...fantasy, ornament: set }) as Record<string, string>;
+    expect(vars("forged")["--ornament-font"]).toContain("Cinzel");
+    expect(vars("forged")["--ornament-note-font"]).toContain("IM Fell English");
+    expect(vars("hull")["--ornament-font"]).toContain("Oxanium");
+    expect(vars("hull")["--ornament-note-font"]).toContain("JetBrains Mono");
+    expect(vars("hull")["--highlight"]).toMatch(/^#[\da-f]{6}$/i);
+    expect(vars("forged")["--highlight"]).toBeUndefined();
+    // The main button takes the theme's accent in the hull set, and stays plum in the others.
+    expect(vars("hull")["--accent-strong"]).toBe(fantasy.accent);
+    expect(
+      contrastRatio(vars("hull")["--on-accent"]!, vars("hull")["--accent-strong"]!),
+    ).toBeGreaterThanOrEqual(4.5);
+    expect(vars("forged")["--accent-strong"]).toBeUndefined();
   });
 
   it("falls back on a colour of its own for a theme read from an old file with none", () => {
@@ -155,6 +192,20 @@ describe("the contrast of text on the ornaments", () => {
 
   it("is at least 4.5 : 1 for text on a note, which is the same in every theme", () => {
     expect(contrastRatio(NOTE_COLORS.text, NOTE_COLORS.bg)).toBeGreaterThanOrEqual(4.5);
+    for (const set of ["forged", "hull"] as const)
+      expect(
+        contrastRatio(NOTE_COLORS_BY_SET[set].text, NOTE_COLORS_BY_SET[set].bg),
+        set,
+      ).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("is at least 4.5 : 1 for the lettering of the Sci-fi theme's signs and of its text on its panel", () => {
+    const scifi = PRESET_THEMES.find((theme) => theme.id === "scifi")!;
+    expect(scifi).toMatchObject({ ornament: "hull" });
+    expect(contrastRatio(plateColors(scifi).text, plateColors(scifi).bg)).toBeGreaterThanOrEqual(
+      4.5,
+    );
+    expect(contrastRatio(scifi.text, scifi.panel)).toBeGreaterThanOrEqual(4.5);
   });
 
   it("mixes colours as hex", () => {

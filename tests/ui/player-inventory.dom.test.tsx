@@ -116,7 +116,7 @@ it("does not announce pre-existing possessions as new on reload and never change
     const before = structuredClone(ui.engine.getSession());
     await ui.click("Inspect Brass key");
     expect(ui.engine.getSession()).toEqual(before);
-    await ui.click("Close");
+    await ui.click("Close dialog");
     expect(ui.engine.getSession()).toEqual(before);
   } finally {
     await ui.close();
@@ -136,6 +136,8 @@ it("keeps the guest ledger readable after a return visit and clears selected ite
     });
     ui.dispatch({ kind: "interaction", interactionId: "take-ledger" });
     await ui.render();
+    // A thing that can be read is in the notes, not among the things.
+    await ui.click("Notes 1");
     await ui.click("Inspect Guest ledger");
     expect(ui.host.querySelector("dialog")!.textContent).toContain("pencilled note");
     const next = { ...structuredClone(ui.engine.getSession()), id: "another-conversation" };
