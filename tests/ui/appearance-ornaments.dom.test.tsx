@@ -44,13 +44,16 @@ const selectWith = (host: HTMLElement, value: string) =>
     Array.from(s.options).some((o) => o.value === value),
   )!;
 
-it("lets the player choose the ornament set and how much of it, and offers only sets that draw", async () => {
+it("lets the player choose the ornament set and how much of it, and offers every set that draws", async () => {
   const host = await mount();
 
   const sets = selectWith(host, "forged");
-  // The hull set is not offered until it draws something.
-  expect(Array.from(sets.options).map((o) => o.value)).toEqual(["plain", "forged"]);
-  expect(Array.from(sets.options).map((o) => o.textContent)).toEqual(["Neutral", "Fantasy"]);
+  expect(Array.from(sets.options).map((o) => o.value)).toEqual(["plain", "forged", "hull"]);
+  expect(Array.from(sets.options).map((o) => o.textContent)).toEqual([
+    "Neutral",
+    "Fantasy",
+    "Sci-fi",
+  ]);
   await pick(sets, "forged");
   expect(update).toHaveBeenLastCalledWith({ ornament: "forged" });
 

@@ -21,7 +21,7 @@ export type OrnamentSetId = (typeof ORNAMENT_SETS)[number];
 export const SET_PARTS: Record<OrnamentSetId, readonly OrnamentPart[]> = {
   plain: [],
   forged: ORNAMENT_PARTS,
-  hull: [],
+  hull: ORNAMENT_PARTS,
 };
 
 /** The set that draws a part: the chosen one if it has the part, otherwise `plain`. */

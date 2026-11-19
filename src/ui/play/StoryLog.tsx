@@ -173,6 +173,7 @@ export function StoryLog({
                 key={row.key}
                 {...nav(row.key)}
                 roll={row.roll}
+                fraction={row.roll / 100}
                 mark="◇"
                 className="play-row play-row--check"
               >

@@ -113,6 +113,19 @@ export const PRESET_THEMES: PlayTheme[] = [
     ornament: "forged",
     headingFont: "cinzel",
   },
+  {
+    ...base,
+    id: "scifi",
+    name: "Sci-fi",
+    background: "#0b1016",
+    panel: "#121a23",
+    text: "#dfe9f1",
+    accent: "#4fc3dc",
+    font: "sans",
+    backdropDim: 0.55,
+    ornament: "hull",
+    headingFont: "exo",
+  },
 ];
 export const ThemeLibrarySchema = z.object({
   version: z.literal(1),
