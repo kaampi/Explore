@@ -173,9 +173,9 @@ export function StoryLog({
                 key={row.key}
                 {...nav(row.key)}
                 roll={row.roll}
+                mark="◇"
                 className="play-row play-row--check"
               >
-                <span aria-hidden="true">◇</span>
                 <span className="visually-hidden">{t("pvRollLabel")}: </span>
                 {row.skill} · {row.roll} / {row.target} · {degree[row.degree]}
                 {row.damage ? ` · ${row.damage}` : ""}

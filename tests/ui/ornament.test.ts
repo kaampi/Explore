@@ -42,6 +42,13 @@ describe("the theme's ornament fields", () => {
     for (const theme of PRESET_THEMES) expect(PlayThemeSchema.parse(theme)).toEqual(theme);
     const fantasy = PRESET_THEMES.find((theme) => theme.id === "fantasy")!;
     expect(fantasy).toMatchObject({ ornament: "forged", headingFont: "cinzel" });
+    // The colours of the sketch.
+    expect(fantasy).toMatchObject({
+      background: "#101217",
+      panel: "#1a1d24",
+      text: "#ece7dd",
+      accent: "#c9a66b",
+    });
     // The four themes that were there before are still plain.
     for (const id of ["parchment", "forest", "neon", "quiet"])
       expect(PRESET_THEMES.find((theme) => theme.id === id)!.ornament).toBe("plain");

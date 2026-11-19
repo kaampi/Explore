@@ -4,10 +4,15 @@ import { useOrnament } from "./context";
 /** The outcome of a roll. In some sets the number is in a seal; the words are always there too. */
 export function CheckCard({
   roll,
+  mark,
   className = "",
   children,
   ...rest
-}: { roll: number } & HTMLAttributes<HTMLElement>) {
+}: {
+  roll: number;
+  /** A small mark for the plain look, which has no seal. */
+  mark?: string;
+} & HTMLAttributes<HTMLElement>) {
   const { set, level } = useOrnament("check");
   return (
     <div
@@ -16,10 +21,12 @@ export function CheckCard({
       data-orn-level={level}
       {...rest}
     >
-      {set !== "plain" && (
+      {set !== "plain" ? (
         <span className="orn-check__seal" aria-hidden="true">
           {roll}
         </span>
+      ) : (
+        mark && <span aria-hidden="true">{mark}</span>
       )}
       {children}
     </div>

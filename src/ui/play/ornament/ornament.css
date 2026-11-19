@@ -41,6 +41,7 @@
 
 /* ---- Name plate ----------------------------------------------------------------------- */
 .orn-nameplate[data-orn-set="forged"] {
+  box-sizing: border-box;
   justify-self: start;
   width: fit-content;
   position: relative;
@@ -81,7 +82,16 @@
   );
 }
 /* On the picture of the place the sign sits at the foot of it. */
+/* Without a picture the name is in the middle of the empty box, not at the foot of a picture. */
+.play-view__scene--empty .orn-nameplate[data-orn-set="forged"].play-view__scene-name {
+  position: static;
+  inset: auto;
+  transform: none;
+  justify-self: center;
+  max-width: 100%;
+}
 .orn-nameplate[data-orn-set="forged"].play-view__scene-name {
+  position: absolute;
   inset: auto auto 14px 50%;
   width: max-content;
   max-width: calc(100% - 28px);
@@ -176,10 +186,17 @@
     0 18%
   );
 }
+/* The words lie on the parchment itself, in the note's own colour: no box of their own. */
 .orn-note[data-orn-set="forged"] h3,
 .orn-note[data-orn-set="forged"] p {
-  color: inherit;
+  padding: 0;
+  background: none;
+  border-radius: 0;
+  color: var(--ornament-note-text);
   font-family: "IM Fell English", Georgia, serif;
+}
+.orn-note[data-orn-set="forged"] h3 {
+  margin: 0 0 8px;
 }
 /* The grain is only at the edges: the text is on a smooth surface. */
 .orn-note[data-orn-set="forged"][data-orn-level="full"]::before {

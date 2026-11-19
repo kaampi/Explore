@@ -113,3 +113,22 @@ it("lets a sign be another kind of element, so that a heading level is the page'
   expect(host.querySelector("p.orn-nameplate")).not.toBeNull();
   expect(host.querySelector("section.orn-frame")!.getAttribute("aria-label")).toBe("Story");
 });
+
+it("shows the old mark beside a roll in the plain look only, and the seal in its place in the forged one", async () => {
+  const roll = (
+    <CheckCard roll={34} mark="◇">
+      Roll
+    </CheckCard>
+  );
+  const plain = await draw({ ornament: "plain" }, false, roll);
+  expect(plain.textContent).toContain("◇");
+  expect(plain.querySelector(".orn-check__seal")).toBeNull();
+
+  const forged = await draw({ ornament: "forged" }, false, roll);
+  expect(forged.textContent).not.toContain("◇");
+  expect(forged.querySelector(".orn-check__seal")!.textContent).toBe("34");
+
+  // Drawn plain at level none as well.
+  const none = await draw({ ornament: "forged", ornamentLevel: "none" }, false, roll);
+  expect(none.textContent).toContain("◇");
+});
