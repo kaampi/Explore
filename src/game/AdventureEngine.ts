@@ -7,6 +7,7 @@ import {
 import { EncounterGameSchema, type EncounterGame } from "./EncounterSchema";
 import { validateEncounter } from "./EncounterEngine";
 import type { Session } from "../state/StateSchema";
+import { INITIAL_GAME_MINUTES } from "../state/gameClock";
 export function validateAdventure(run: AdventureRun) {
   const ids = run.scenes.map((scene) => scene.id);
   if (
@@ -202,4 +203,222 @@ export function unifyAdventureEquipment(run: AdventureRun) {
     scene.game.definition.items = [...items.values()];
   }
   return validateAdventure(run);
+}
+
+/** The flags that are set now: the story's and the live scene's. */
+function currentFlags(session: Session): Set<string> {
+  return new Set([...session.storyFlags, ...(session.encounter?.state.flags ?? [])]);
+}
+
+export type SceneWay = {
+  id: string;
+  label: string;
+  toSceneId: string;
+  /** Travel time in minutes, when the way has one. */
+  minutes?: number;
+  /** "locked": a door holds it shut. The player can still see that it is there. */
+  status: "available" | "locked";
+  /** The name of the first door that is shut, for a locked way. */
+  blockedBy?: string;
+};
+
+/**
+ * Every way out of the scene the player is in. A way held shut by a door is shown as locked, so the
+ * player knows it is there. A way that needs something the player has not found out yet is left out,
+ * so that nothing is given away.
+ */
+export function sceneWays(session: Session): SceneWay[] {
+  const run = session.adventure;
+  if (!run) return [];
+  const doors = adventureBarriers(session);
+  const flags = currentFlags(session);
+  return run.links
+    .filter(
+      (link) =>
+        link.fromSceneId === run.currentSceneId &&
+        link.requiresFlags.every((flag) => flags.has(flag)) &&
+        link.requiresAbsentFlags.every((flag) => !flags.has(flag)),
+    )
+    .map((link) => {
+      const shut = (link.requiresOpenBarriers ?? []).find((id) => {
+        const door = doors[id];
+        return !door?.open || door.locked || door.blocked;
+      });
+      return {
+        id: link.id,
+        label: link.label || run.scenes.find((s) => s.id === link.toSceneId)!.name,
+        toSceneId: link.toSceneId,
+        ...(link.minutes !== undefined ? { minutes: link.minutes } : {}),
+        status: shut === undefined ? ("available" as const) : ("locked" as const),
+        ...(shut !== undefined ? { blockedBy: doors[shut]?.name ?? shut } : {}),
+      };
+    });
+}
+
+/** The scenes the player has been in, in the order they first came to them, with the time then. */
+function visitedScenes(run: AdventureRun, startingScene: string) {
+  const order: { sceneId: string; minutes: number }[] = [];
+  let clock = INITIAL_GAME_MINUTES;
+  const note = (sceneId: string) => {
+    if (!order.some((entry) => entry.sceneId === sceneId)) order.push({ sceneId, minutes: clock });
+  };
+  note(startingScene);
+  for (const move of run.transitions) {
+    clock += run.links.find((link) => link.id === move.linkId)?.minutes ?? 0;
+    note(move.to);
+  }
+  note(run.currentSceneId);
+  return order;
+}
+
+/** The scene's game as it is now: the live one for this scene, the saved one for an earlier scene. */
+function gameOfScene(session: Session, sceneId: string): EncounterGame | undefined {
+  const run = session.adventure;
+  if (!run) return undefined;
+  if (sceneId === run.currentSceneId && session.encounter?.definition.id === sceneId)
+    return session.encounter;
+  return run.savedScenes[sceneId] ?? run.scenes.find((scene) => scene.id === sceneId)?.game;
+}
+
+/**
+ * Whether an outcome sets a discovery: it sets a flag. A flag named `failed:` is how Storyboard
+ * marks "it did not work", which is not something the player has found out.
+ */
+function setsDiscovery(effects: { kind: string; flag?: string }[]): boolean {
+  return effects.some((e) => e.kind === "flag" && !e.flag?.startsWith("failed:"));
+}
+
+/** The first sentence of a text, at most 200 characters. */
+function firstSentence(text: string): string {
+  const sentence = /^[\s\S]*?[.!?…](?=\s|$)/.exec(text.trim())?.[0] ?? text.trim();
+  return sentence.slice(0, 200).trim();
+}
+
+export type KnownThing = {
+  /** What the player found out: the outcome's `learned`, or else its first sentence. Never a flag name. */
+  text: string;
+  sceneId: string;
+  place: string;
+  /** Game time when the player first came to the place, in minutes. */
+  minutes: number;
+};
+
+/**
+ * What the player has found out in this game, newest first: the outcomes of the conversations and
+ * actions they went through that set a discovery. Time is when they first came to the place.
+ */
+export function knownThings(session: Session): KnownThing[] {
+  const run = session.adventure;
+  if (!run) return [];
+  const first = run.scenes.find((scene) => scene.id === run.currentSceneId) ?? run.scenes[0]!;
+  const start = run.transitions[0]?.from ?? first.id;
+  const found: KnownThing[] = [];
+  for (const { sceneId, minutes } of visitedScenes(run, start)) {
+    const game = gameOfScene(session, sceneId);
+    if (!game) continue;
+    const place = run.scenes.find((scene) => scene.id === sceneId)?.name ?? sceneId;
+    for (const entry of game.history)
+      for (const event of entry.events) {
+        if (event.kind !== "interaction") continue;
+        const interaction = game.definition.interactions.find((i) => i.id === event.interactionId);
+        const outcome = [interaction?.success, interaction?.failure].find(
+          (candidate) => candidate?.text === event.text && setsDiscovery(candidate.effects),
+        );
+        if (!outcome) continue;
+        const text = outcome.learned?.trim() || firstSentence(outcome.text);
+        if (text && !found.some((thing) => thing.text === text))
+          found.push({ text, sceneId, place, minutes });
+      }
+  }
+  return found.reverse();
+}
+
+export type PersonMet = {
+  actorId: string;
+  name: string;
+  /** The scene where the player first met them. */
+  sceneId: string;
+  place: string;
+  portraitDataUrl?: string;
+};
+
+/**
+ * Everyone the player has met: the people in every scene they have been in, and anyone who has
+ * spoken to them, in the order they were first met.
+ */
+export function peopleMet(session: Session): PersonMet[] {
+  const run = session.adventure;
+  if (!run) return [];
+  const first = run.scenes.find((scene) => scene.id === run.currentSceneId) ?? run.scenes[0]!;
+  const start = run.transitions[0]?.from ?? first.id;
+  const met: PersonMet[] = [];
+  for (const { sceneId } of visitedScenes(run, start)) {
+    const game = gameOfScene(session, sceneId);
+    if (!game) continue;
+    const place = run.scenes.find((scene) => scene.id === sceneId)?.name ?? sceneId;
+    const speakers = game.history.flatMap((entry) =>
+      entry.events.flatMap((event) => (event.kind === "speech-reply" ? [event.actorId] : [])),
+    );
+    const here = Object.values(game.state.actors).filter(
+      (actor) => actor.control === "npc" || speakers.includes(actor.id),
+    );
+    for (const actor of here) {
+      if (actor.id === game.definition.playerId || met.some((m) => m.actorId === actor.id))
+        continue;
+      const portrait = run.cast[actor.id]?.portraitDataUrl;
+      met.push({
+        actorId: actor.id,
+        name: actor.name,
+        sceneId,
+        place,
+        ...(portrait ? { portraitDataUrl: portrait } : {}),
+      });
+    }
+  }
+  return met;
+}
+
+export type StorySegment = {
+  sceneId: string;
+  place: string;
+  /** Game time when the player came to the place, in minutes. */
+  minutes: number;
+  /** The turns of the conversation that belong to this place: from the first, up to but not including the last. */
+  from: number;
+  to: number;
+};
+
+/**
+ * The conversation cut into the places the player has been in, in order. A place starts at the
+ * first turn, or at the turn that tells of an arrival, and runs until the next arrival. Each has
+ * the game time of the arrival. Outside an adventure there is one segment of everything.
+ */
+export function storySegments(session: Session): StorySegment[] {
+  const turns = session.conversation as { adventureSceneId?: unknown }[];
+  const run = session.adventure;
+  const nameOf = (sceneId: string) =>
+    run?.scenes.find((scene) => scene.id === sceneId)?.name ??
+    session.encounter?.definition.title ??
+    sceneId;
+  const firstScene = run
+    ? (run.transitions[0]?.from ?? run.currentSceneId)
+    : (session.sceneId ?? "");
+  const starts: { index: number; sceneId: string }[] = [{ index: 0, sceneId: firstScene }];
+  turns.forEach((turn, index) => {
+    if (index > 0 && typeof turn?.adventureSceneId === "string")
+      starts.push({ index, sceneId: turn.adventureSceneId });
+  });
+  let clock = INITIAL_GAME_MINUTES;
+  return starts.map((start, position) => {
+    if (position > 0)
+      clock +=
+        run?.links.find((link) => link.id === run.transitions[position - 1]?.linkId)?.minutes ?? 0;
+    return {
+      sceneId: start.sceneId,
+      place: nameOf(start.sceneId),
+      minutes: clock,
+      from: start.index,
+      to: starts[position + 1]?.index ?? turns.length,
+    };
+  });
 }

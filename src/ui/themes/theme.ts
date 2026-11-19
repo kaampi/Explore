@@ -112,3 +112,15 @@ export function contrastRatio(first: string, second: string): number {
     b = luminance(second);
   return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
 }
+
+/**
+ * Which palette suits a theme: the light one on a light background, the dark one on a dark one.
+ * Chosen by which of white and black reads better on the theme's background.
+ */
+export function shellForTheme(theme: { background?: string | undefined }): "light" | "dark" {
+  const background = theme.background;
+  if (!background || !/^#[\da-f]{6}$/i.test(background)) return "light";
+  return contrastRatio(background, "#ffffff") > contrastRatio(background, "#000000")
+    ? "dark"
+    : "light";
+}

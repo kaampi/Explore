@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { splitEdge, curvePoint, type ShapePoint, type XY } from "@library/mapShapes";
 import { openRoutePath } from "@library/mapRoutes";
-import { MapContextMenu } from "./MapContextMenu";
+import { Menu, type MenuItem } from "../components/Menu";
 
 type RouteMenu = { at: XY; point: XY; edge: number; t: number; nodeIndex?: number };
 export function RouteDrawing({
@@ -77,6 +77,50 @@ export function RouteDrawing({
       t: 0,
       nodeIndex: index,
     });
+  }
+  /** What the right-click menu holds, for a stretch of the route or for one of its nodes. */
+  function routeMenuItems(at: RouteMenu): MenuItem[] {
+    const index = at.nodeIndex;
+    const interior = index !== undefined && index > 0 && index < points.length - 1;
+    return [
+      ...(index === undefined
+        ? [
+            {
+              label: "Add node",
+              disabled: points.length >= 200,
+              reason: "A route can have at most 200 nodes.",
+              onSelect: () => {
+                onChange(splitEdge(points, at.edge, at.t));
+                setSelected(at.edge + 1);
+              },
+            },
+          ]
+        : []),
+      ...(interior
+        ? [
+            { label: "Make Sharp", onSelect: () => changeMode("corner") },
+            { label: "Make Smooth", onSelect: () => changeMode("smooth") },
+            { label: "Make Free", onSelect: () => changeMode("free") },
+          ]
+        : []),
+      ...(connect ? [{ label: "Start connection here", onSelect: () => connect(at.point) }] : []),
+      ...(onPlaceSettlement
+        ? [{ label: "Build settlement here…", onSelect: () => onPlaceSettlement(at.point) }]
+        : []),
+      ...(interior
+        ? [
+            { kind: "separator" as const },
+            {
+              label: "Delete",
+              danger: true,
+              onSelect: () => {
+                onChange(points.filter((_, i) => i !== index));
+                setSelected(null);
+              },
+            },
+          ]
+        : []),
+    ];
   }
   function changeMode(mode: "corner" | "smooth" | "free") {
     const index = menu?.nodeIndex;
@@ -367,57 +411,13 @@ export function RouteDrawing({
       />
       {active && controlsHost ? createPortal(controls, controlsHost) : controls}
       {menu && (
-        <MapContextMenu anchor={menu.at} scope={root.current} onClose={() => setMenu(null)}>
-          {menu.nodeIndex === undefined ? (
-            <button
-              type="button"
-              role="menuitem"
-              disabled={points.length >= 200}
-              onClick={() => {
-                onChange(splitEdge(points, menu.edge, menu.t));
-                setSelected(menu.edge + 1);
-              }}
-            >
-              Add node
-            </button>
-          ) : menu.nodeIndex > 0 && menu.nodeIndex < points.length - 1 ? (
-            <>
-              <button type="button" role="menuitem" onClick={() => changeMode("corner")}>
-                Make Sharp
-              </button>
-              <button type="button" role="menuitem" onClick={() => changeMode("smooth")}>
-                Make Smooth
-              </button>
-              <button type="button" role="menuitem" onClick={() => changeMode("free")}>
-                Make Free
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                className="world-map__menu-danger"
-                onClick={() => {
-                  onChange(points.filter((_, i) => i !== menu.nodeIndex));
-                  setSelected(null);
-                }}
-              >
-                Delete
-              </button>
-            </>
-          ) : null}
-          {connect && (
-            <button type="button" role="menuitem" onClick={() => connect(menu.point)}>
-              Start connection here
-            </button>
-          )}
-          {onPlaceSettlement && (
-            <button type="button" role="menuitem" onClick={() => onPlaceSettlement(menu.point)}>
-              Build settlement here…
-            </button>
-          )}
-          <button type="button" role="menuitem" onClick={() => setMenu(null)}>
-            Cancel
-          </button>
-        </MapContextMenu>
+        <Menu
+          label={menu.nodeIndex === undefined ? "Route actions" : "Route node actions"}
+          at={menu.at}
+          scope={root.current}
+          onClose={() => setMenu(null)}
+          items={routeMenuItems(menu)}
+        />
       )}
     </g>
   );

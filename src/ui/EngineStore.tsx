@@ -83,7 +83,12 @@ export interface EngineContextValue {
   executeEncounterAction: (request: EncounterRequest) => Promise<void>;
   saveEncounter: () => Promise<void>;
   /** How to treat a spoken line in an engine scene. Never changes the scene by itself. */
-  planEncounterSay: (text: string, signal?: AbortSignal) => Promise<SayPlan>;
+  planEncounterSay: (
+    text: string,
+    signal?: AbortSignal,
+    /** The person the player chose to talk to. */
+    addresseeId?: string,
+  ) => Promise<SayPlan>;
   /** What a described action may mean. Only ever a proposal for the player to review. */
   planEncounterDo: (text: string, signal?: AbortSignal) => Promise<DoPlan>;
   /** Add AI wording to a turn the engine has already settled and saved. */
@@ -894,12 +899,12 @@ export function EngineProvider({
         throw new ActionSaveError(error);
       }
     },
-    planEncounterSay: (text, signal) =>
+    planEncounterSay: (text, signal, addresseeId) =>
       planSay(
         stateEngine.getSession() as Session,
         text,
         discovery?.state === "available" ? pass1Adapter : undefined,
-        { signal, lastSpeakerId: lastSpeakerId(stateEngine.getSession() as Session) },
+        { signal, lastSpeakerId: lastSpeakerId(stateEngine.getSession() as Session), addresseeId },
       ),
     planEncounterDo: (text, signal) =>
       planDo(

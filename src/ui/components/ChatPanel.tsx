@@ -10,7 +10,7 @@ import { createPortal } from "react-dom";
 import { useEngine } from "../EngineStore";
 import { useAppearance } from "../themes/ThemeProvider";
 import { Dot } from "./Dot";
-import { MessageMenu } from "./MessageMenu";
+import { Menu, MenuButton, type MenuItem } from "./Menu";
 import { Modal } from "./Modal";
 import { BACKGROUND_PATTERNS } from "../themes/BackgroundSettings";
 import { displayCharacterName, narratorLabel, primaryCharacter } from "@session/createSession";
@@ -543,53 +543,46 @@ export function ChatPanel({
   useEffect(() => {
     if (checkRequest > 0) setCheckingAction(true);
   }, [checkRequest]);
+  const messageMenuItems = (turn: DisplayTurn): MenuItem[] => [
+    ...(repo ? [{ label: "Save as idea", onSelect: () => capture([turn.turn]) }] : []),
+    {
+      label: copiedTurn === turn.turn ? "Copied" : "Copy",
+      onSelect: () => {
+        void copyTurn(turn);
+      },
+    },
+    {
+      label: "Inspect",
+      onSelect: () => setInspectTurn(inspectTurn === turn.turn ? null : turn.turn),
+    },
+    { label: "Edit", onSelect: () => startEdit(turn) },
+    ...(canSend &&
+    canRegenerate &&
+    turn.role === "character" &&
+    turn.turn === conversation.at(-1)?.turn
+      ? [{ label: "Regenerate…", onSelect: () => setRegenerateOpen(true) }]
+      : []),
+    ...(canSend &&
+    !(turn.role === "character" && turn.turn === conversation.at(-1)?.turn) &&
+    chatBeatFor(liveTurns, turn.turn)
+      ? [
+          {
+            label: "Replay",
+            onSelect: () => {
+              void handleReplay(turn);
+            },
+          },
+        ]
+      : []),
+  ];
   return (
     <div className={repo ? "chat-panel chat-panel--ideas" : "chat-panel"}>
       {messageMenu && !busy && (
-        <MessageMenu
-          x={messageMenu.x}
-          y={messageMenu.y}
+        <Menu
+          label="Message actions"
+          at={{ x: messageMenu.x, y: messageMenu.y }}
           onClose={() => setMessageMenu(null)}
-          items={[
-            ...(repo
-              ? [{ label: "Save as idea", action: () => capture([messageMenu.turn.turn]) }]
-              : []),
-            {
-              label: copiedTurn === messageMenu.turn.turn ? "Copied" : "Copy",
-              action: () => {
-                void copyTurn(messageMenu.turn);
-              },
-            },
-            {
-              label: "Inspect",
-              action: () =>
-                setInspectTurn(
-                  inspectTurn === messageMenu.turn.turn ? null : messageMenu.turn.turn,
-                ),
-            },
-            { label: "Edit", action: () => startEdit(messageMenu.turn) },
-            ...(canSend &&
-            canRegenerate &&
-            messageMenu.turn.role === "character" &&
-            messageMenu.turn.turn === conversation.at(-1)?.turn
-              ? [{ label: "Regenerate…", action: () => setRegenerateOpen(true) }]
-              : []),
-            ...(canSend &&
-            !(
-              messageMenu.turn.role === "character" &&
-              messageMenu.turn.turn === conversation.at(-1)?.turn
-            ) &&
-            chatBeatFor(liveTurns, messageMenu.turn.turn)
-              ? [
-                  {
-                    label: "Replay",
-                    action: () => {
-                      void handleReplay(messageMenu.turn);
-                    },
-                  },
-                ]
-              : []),
-          ]}
+          items={messageMenuItems(messageMenu.turn)}
         />
       )}
       {regenerateOpen && (
@@ -831,18 +824,12 @@ export function ChatPanel({
                     <Dot kind={turn.role === "player" ? "player" : "ai"} />
                     {speakerLabel(turn, session, characterName)}
                     {!isEditing && !busy && (
-                      <button
-                        type="button"
+                      <MenuButton
+                        bare
                         className="message__act message__menu-trigger"
-                        aria-label={`Message actions for ${speakerLabel(turn, session, characterName)}`}
-                        aria-haspopup="menu"
-                        onClick={(event) => {
-                          const rect = event.currentTarget.getBoundingClientRect();
-                          setMessageMenu({ turn, x: rect.left, y: rect.bottom });
-                        }}
-                      >
-                        ⋯
-                      </button>
+                        label={`Message actions for ${speakerLabel(turn, session, characterName)}`}
+                        items={messageMenuItems(turn)}
+                      />
                     )}{" "}
                   </span>
 

@@ -100,8 +100,21 @@ it("shows the real inn floor map and switches the encounter backdrop when enteri
     await render();
     go("Enter the inn");
     await render();
-    expect(host.querySelector("aside .play-map-card")).not.toBeNull();
-    expect(host.querySelector(".chat-stage--backdrop .chat-log__backdrop img")).not.toBeNull();
+    // The map is on request: "Show map" opens it in a panel.
+    expect(host.querySelector(".play-map-card")).toBeNull();
+    HTMLDialogElement.prototype.showModal = function () {
+      this.setAttribute("open", "");
+    };
+    HTMLDialogElement.prototype.close = function () {
+      this.removeAttribute("open");
+    };
+    await act(async () =>
+      Array.from(host.querySelectorAll("aside button"))
+        .find((b) => b.textContent === "Show map")!
+        .dispatchEvent(new MouseEvent("click", { bubbles: true })),
+    );
+    expect(host.querySelector("dialog .play-map-card")).not.toBeNull();
+    expect(host.querySelector(".play-view__scene .chat-log__backdrop img")).not.toBeNull();
     const warm = host.querySelector(".chat-log__backdrop img")!.getAttribute("src");
     for (const action of [
       { kind: "interaction", interactionId: "take-key" },
@@ -163,7 +176,7 @@ it("keeps the engine panel, not the chat's dice panel, when the adventure has a 
       await new Promise((resolve) => setTimeout(resolve, 60));
     });
     expect(session.ruleset?.name).toBe("Classic");
-    expect(host.textContent).toContain("Say something");
+    expect(host.querySelector('textarea[aria-label="Say something"]')).not.toBeNull();
     expect(host.textContent).not.toContain("Roll the dice");
   } finally {
     await act(async () => root.unmount());

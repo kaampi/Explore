@@ -50,6 +50,7 @@ function personaFrom(person: CharacterTemplate, extra: PersonaSources = {}): Per
     appearance: clip(person.appearance, 600),
     ...(body ? { body: clip(body, 300) } : {}),
     ...(factions ? { factions: clip(factions, 300) } : {}),
+    ...(person.portraitDataUrl?.trim() ? { portraitDataUrl: person.portraitDataUrl.trim() } : {}),
   };
 }
 
@@ -67,6 +68,18 @@ function castFor(
     }
   }
   return cast;
+}
+
+/** How each person seems in each scene, when the author wrote it on the scene. */
+function moodsFor(campaign: CampaignTemplate): Record<string, Record<string, string>> {
+  const moods: Record<string, Record<string, string>> = {};
+  for (const scene of campaign.scenes) {
+    for (const pick of scene.people) {
+      const mood = clip(pick.mood ?? "", 600);
+      if (mood) (moods[scene.id] ??= {})[`npc:${pick.characterId}`] = mood;
+    }
+  }
+  return moods;
 }
 
 function narrationFor(campaign: CampaignTemplate, voices: VoiceTemplate[]): AdventureNarration {
@@ -181,6 +194,7 @@ export function startPlayableCampaign(
         links: campaign.sceneLinks,
         goal: campaign.goal,
         cast: castFor(campaign, sources.characters ?? [], sources),
+        moods: moodsFor(campaign),
         narration: narrationFor(campaign, sources.voices ?? []),
         ...(world?.openWorld?.generateResidents ? { openWorld: { generateResidents: true } } : {}),
         exampleId: campaign.exampleId,

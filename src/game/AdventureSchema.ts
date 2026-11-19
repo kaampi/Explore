@@ -19,7 +19,10 @@ export const AdventureGoalSchema = z.object({
   title: z.string().trim().min(1),
   requiresFlags: z.array(z.string().min(1)).min(1),
 });
-/** What the story AI may know about a person. Written by the author. No pictures, no secrets. */
+/**
+ * What the story AI may know about a person. Written by the author. No secrets. The portrait is
+ * for showing the person; it is never put into a prompt.
+ */
 export const PersonaSchema = z.object({
   name: z.string().min(1).max(120),
   pronoun: z.string().max(40).optional(),
@@ -31,6 +34,8 @@ export const PersonaSchema = z.object({
   body: z.string().max(300).optional(),
   /** The groups they belong to. Filled when the game starts. */
   factions: z.string().max(300).optional(),
+  /** Copied from the character card when the game starts. Only for showing the person. */
+  portraitDataUrl: z.string().optional(),
 });
 export type Persona = z.infer<typeof PersonaSchema>;
 export const AdventureNarrationSchema = z.object({
@@ -61,6 +66,11 @@ export const AdventureRunSchema = z.object({
   goal: AdventureGoalSchema.optional(),
   /** Keyed by actor id, for example "npc:<characterId>". Older runs have none. */
   cast: z.record(PersonaSchema).default({}),
+  /**
+   * How a person seems in one scene, by scene id and then actor id, as the author wrote it for
+   * that scene. It comes before the mood on the character card. Older runs have none.
+   */
+  moods: z.record(z.string(), z.record(z.string(), z.string().max(600))).default({}),
   narration: AdventureNarrationSchema.optional(),
   exampleId: z.string().optional(),
   exampleVersion: z.number().int().nonnegative().optional(),

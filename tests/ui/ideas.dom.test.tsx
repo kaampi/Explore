@@ -282,6 +282,23 @@ describe("idea capture journeys", () => {
     expect((await repo.listIdeas()).entries).toHaveLength(1);
     await repo.close();
   }, 15000);
+  it("gives focus back to the ⋯ button after Escape in the message menu", async () => {
+    await mount();
+    await create("Ari");
+    await send("Keep the focus.", "Of course.");
+    const trigger = container.querySelector<HTMLButtonElement>(".message__menu-trigger")!;
+    trigger.focus();
+    await click(trigger);
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    const menu = document.querySelector('[role="menu"]')!;
+    await act(async () => {
+      menu.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    expect(document.querySelector('[role="menu"]')).toBeNull();
+    // The same button is still there, and it is the one with focus.
+    expect(container.querySelector(".message__menu-trigger")).toBe(trigger);
+    expect(document.activeElement).toBe(trigger);
+  }, 15000);
   it("cancels capture without saving, and shows an empty idea library", async () => {
     await mount();
     await create("Ari");

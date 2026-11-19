@@ -29,7 +29,7 @@ import {
   mapPlaceForScene,
   type AdventureMapPlace,
 } from "../../library/adventureMap";
-import { MessageMenu } from "../components/MessageMenu";
+import { Menu, type MenuItem } from "../components/Menu";
 import type { Interaction } from "../../game/EncounterSchema";
 import {
   storyboardIssues,
@@ -49,6 +49,8 @@ import {
   isHostile,
   setDoorEffect,
   setFightBreaksOut,
+  setLearned,
+  learnedFrom,
 } from "../../library/sceneParts";
 import {
   INSPECTOR_MAX,
@@ -533,12 +535,14 @@ export function PlayableStoryboard({
       </fieldset>
     </details>
   );
-  const menuItems = context?.linkId
+  const menuItems: MenuItem[] = context?.linkId
     ? [
-        { label: t("psEditConnection"), action: () => selectLink(context.linkId!) },
+        { label: t("psEditConnection"), onSelect: () => selectLink(context.linkId!) },
+        { kind: "separator" as const },
         {
           label: t("psRemoveConnection"),
-          action: () => {
+          danger: true,
+          onSelect: () => {
             onChange({
               ...campaign,
               sceneLinks: campaign.sceneLinks.filter((item) => item.id !== context.linkId),
@@ -549,11 +553,11 @@ export function PlayableStoryboard({
       ]
     : context?.sceneId
       ? [
-          { label: "Edit scene", action: () => selectScene(context.sceneId!) },
-          ...(scene?.encounter ? [{ label: "Add action", action: addAction }] : []),
+          { label: "Edit scene", onSelect: () => selectScene(context.sceneId!) },
+          ...(scene?.encounter ? [{ label: "Add action", onSelect: addAction }] : []),
           {
             label: markedScenes.size > 1 ? t("psGroupSelectedScenes") : t("psGroupThisScene"),
-            action: () =>
+            onSelect: () =>
               addSection(
                 "group",
                 undefined,
@@ -561,35 +565,47 @@ export function PlayableStoryboard({
               ),
           },
           ...(campaign.scenes.length > 1
-            ? [{ label: t("psConnectToAnotherScene"), action: addLink }]
+            ? [{ label: t("psConnectToAnotherScene"), onSelect: addLink }]
             : []),
           ...(scene && issues.length === 0
-            ? [{ label: t("psTestThisScene2"), action: () => onPlay(scene) }]
+            ? [{ label: t("psTestThisScene2"), onSelect: () => onPlay(scene) }]
             : []),
           ...(campaign.scenes.length > 1
-            ? [{ label: t("psRemoveScene"), action: () => removeScene(context.sceneId!) }]
+            ? [
+                { kind: "separator" as const },
+                {
+                  label: t("psRemoveScene"),
+                  danger: true,
+                  onSelect: () => removeScene(context.sceneId!),
+                },
+              ]
             : []),
         ]
       : context?.sectionId && section
         ? [
             {
               label: section.collapsed ? "Expand" : "Collapse",
-              action: () => toggleSection(section.id),
+              onSelect: () => toggleSection(section.id),
             },
-            { label: t("psAddSceneToThis"), action: () => addScene(undefined, section.id) },
+            { label: t("psAddSceneToThis"), onSelect: () => addScene(undefined, section.id) },
             ...(section.kind === "act"
-              ? [{ label: t("psAddSceneGroup"), action: () => addSection("group") }]
+              ? [{ label: t("psAddSceneGroup"), onSelect: () => addSection("group") }]
               : []),
-            { label: t("psRemoveThisPart"), action: () => removeSection(section.id) },
+            { kind: "separator" as const },
+            {
+              label: t("psRemoveThisPart"),
+              danger: true,
+              onSelect: () => removeSection(section.id),
+            },
           ]
         : [
-            { label: t("psAddSceneHere"), action: () => addScene(context?.position) },
-            { label: t("psAddActHere"), action: () => addSection("act", context?.position) },
+            { label: t("psAddSceneHere"), onSelect: () => addScene(context?.position) },
+            { label: t("psAddActHere"), onSelect: () => addSection("act", context?.position) },
             {
               label: t("psAddSceneGroupHere"),
-              action: () => addSection("group", context?.position),
+              onSelect: () => addSection("group", context?.position),
             },
-            ...(onSave ? [{ label: t("psSaveAdventure"), action: onSave }] : []),
+            ...(onSave ? [{ label: t("psSaveAdventure"), onSelect: onSave }] : []),
           ];
 
   const sectionInspector = section && (
@@ -1121,11 +1137,10 @@ export function PlayableStoryboard({
       aria-label="Playable adventure editor"
     >
       {context && !busy && (
-        <MessageMenu
-          x={context.x}
-          y={context.y}
+        <Menu
+          at={{ x: context.x, y: context.y }}
           label="Storyboard actions"
-          portalTarget={root.current ?? undefined}
+          scope={root.current}
           items={menuItems}
           onClose={() => setContext(null)}
         />
@@ -1424,6 +1439,16 @@ function SceneActions({
               onChange={(event) =>
                 patch(action.id, { success: { ...action.success, text: event.target.value } })
               }
+            />
+          </label>
+          <label>
+            {t("psWhatPlayerLearns")}
+            <input
+              data-action-field="learned"
+              maxLength={200}
+              value={learnedFrom(scene, action.id)}
+              placeholder={t("psWhatPlayerLearnsHint")}
+              onChange={(event) => onChange(setLearned(scene, action.id, event.target.value))}
             />
           </label>
           {action.success.effects.map(

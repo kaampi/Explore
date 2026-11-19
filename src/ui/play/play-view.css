@@ -1,0 +1,703 @@
+/* The frame of the play view for an engine scene. Colours come from tokens.css. */
+.play-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: 56px;
+  padding: 0 var(--space-6);
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.play-top__home {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--accent);
+  font: 500 14px/1.3 var(--font-ui);
+  cursor: pointer;
+}
+.play-top__home:hover:not(:disabled) {
+  background: var(--panel-raised);
+}
+.play-top__home:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.play-top__home:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.play-top__place {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font:
+    500 20px/1.3 Georgia,
+    serif;
+  color: var(--text);
+}
+.play-top__time {
+  color: var(--text-dim);
+  font: 400 14px/1.3 var(--font-ui);
+  white-space: nowrap;
+}
+.play-top__tools {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-left: auto;
+}
+.play-top__menu {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Three columns: the place and the people, the story, what is in the scene. */
+.play-view {
+  display: grid;
+  grid-template-columns: minmax(220px, 26%) minmax(0, 1fr) minmax(240px, 22%);
+  height: 100%;
+  min-height: 0;
+}
+.play-view__left,
+.play-view__right {
+  min-height: 0;
+  overflow: auto;
+}
+.play-view__left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border-right: 1px solid var(--border);
+  background: var(--panel);
+}
+.play-view__center {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+}
+.play-view__right > .sb-game-toolbox {
+  height: 100%;
+  min-height: 0;
+}
+.play-view__scene {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  isolation: isolate;
+}
+.play-view__scene-name {
+  position: absolute;
+  inset: auto 0 0 0;
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  color: var(--photo-text);
+  font:
+    500 16px/1.3 Georgia,
+    serif;
+  background: linear-gradient(0deg, color-mix(in srgb, var(--scrim) 65%, transparent), transparent);
+}
+.play-view__scene--empty {
+  display: grid;
+  place-items: center;
+}
+.play-view__scene--empty .play-view__scene-name {
+  position: static;
+  background: none;
+  color: var(--text);
+}
+@media (max-width: 1100px) {
+  .play-view {
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: auto;
+    overflow: auto;
+  }
+  .play-view__left,
+  .play-view__right {
+    overflow: visible;
+    border: 0;
+  }
+  .play-view__center {
+    min-height: 60dvh;
+  }
+}
+
+/* An engine scene is one frame, not the old chat and its sidebar side by side. */
+.sb-themed-play.sb-themed-play--framed {
+  display: block;
+  grid-template-columns: none;
+  grid-template-rows: none;
+}
+.sb-themed-play.sb-themed-play--framed > .play-view {
+  height: 100%;
+}
+
+/* The story. Prose has no bubble; what is said and done has a label and a line at the side. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+.play-story {
+  position: relative;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.play-story[hidden] {
+  display: none;
+}
+.play-story__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-6) 0;
+}
+.play-story__head h2 {
+  margin: 0;
+  font: 600 13px/1.4 var(--font-ui);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.play-story__earlier,
+.play-story__latest {
+  min-height: var(--control-compact);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--panel-raised);
+  color: var(--text);
+  font: 500 13px/1.3 var(--font-ui);
+  cursor: pointer;
+}
+.play-story__earlier[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.play-story__latest {
+  position: absolute;
+  right: var(--space-6);
+  bottom: var(--space-4);
+  box-shadow: var(--shadow-menu);
+}
+.play-story__log {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.play-row {
+  position: relative;
+  width: min(100%, var(--play-width, 760px));
+  font-family: var(--play-font, Georgia, serif);
+  font-size: var(--play-size, 19px);
+  line-height: 1.7;
+  color: var(--text);
+}
+.play-row p,
+.play-row blockquote {
+  margin: 0;
+}
+.play-row--divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font: 600 12px/1.4 var(--font-ui);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.play-row--divider::before,
+.play-row--divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.play-row--divider time {
+  font-weight: 500;
+}
+.play-row--say,
+.play-row--do,
+.play-row--person {
+  padding-left: var(--space-4);
+  border-left: 2px solid var(--border);
+}
+.play-row--person {
+  border-left-color: var(--accent);
+}
+.play-row--do p {
+  font-style: normal;
+  font-weight: 500;
+}
+.play-row--say blockquote,
+.play-row--person blockquote {
+  font-style: normal;
+}
+.play-row__label {
+  display: block;
+  font: 600 12px/1.4 var(--font-ui);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.play-row__label--person {
+  color: var(--accent);
+  text-transform: none;
+  letter-spacing: 0.02em;
+  font-size: 14px;
+}
+.play-row__mark {
+  margin-left: var(--space-2);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font: 500 11px/1.6 var(--font-ui);
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+.play-row--check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 0 0 var(--space-4);
+  font: 500 14px/1.5 var(--font-ui);
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+.play-row__actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  opacity: 0;
+  transition: opacity 120ms;
+}
+.play-row:hover .play-row__actions,
+.play-row:focus-within .play-row__actions {
+  opacity: 1;
+}
+@media (hover: none) {
+  .play-row__actions {
+    opacity: 1;
+  }
+}
+.play-row__action {
+  min-height: var(--control-compact);
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--accent);
+  font: 500 13px/1.3 var(--font-ui);
+  cursor: pointer;
+}
+.play-row__action:hover {
+  background: var(--panel-raised);
+}
+.play-row__action:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .play-row__actions {
+    transition: none;
+  }
+}
+
+/* "What do you do?": suggestions, more choices, and one field with two tabs. */
+.play-do {
+  display: grid;
+  gap: var(--space-3);
+}
+.play-do__title {
+  margin: 0;
+  font: 600 13px/1.4 var(--font-ui);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.play-do__suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.play-do__suggestion,
+.play-do__more {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--panel-raised);
+  color: var(--text);
+  font: 500 14px/1.3 var(--font-ui);
+  cursor: pointer;
+}
+.play-do__suggestion:hover:not(:disabled),
+.play-do__more:hover {
+  border-color: var(--accent);
+}
+.play-do__suggestion:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.play-do__more {
+  background: transparent;
+  color: var(--accent);
+}
+.play-do__icon {
+  flex: none;
+  color: var(--accent);
+}
+.play-do__tabs {
+  display: flex;
+  gap: var(--space-1);
+  border-bottom: 1px solid var(--border);
+}
+.play-do__tab {
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-dim);
+  font: 500 14px/1.3 var(--font-ui);
+  cursor: pointer;
+}
+.play-do__tab[aria-selected="true"] {
+  border-bottom-color: var(--accent);
+  color: var(--text);
+  font-weight: 600;
+}
+.play-do__tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.play-do__panel {
+  display: grid;
+  gap: var(--space-2);
+}
+.play-do__panel textarea {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 72px;
+  resize: vertical;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+}
+.play-do__to {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font: 400 13px/1.3 var(--font-ui);
+  color: var(--text-dim);
+}
+.play-do__submit {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-4);
+}
+.play-do__submit small {
+  margin-right: auto;
+  color: var(--text-dim);
+}
+.play-do__group h3 {
+  margin: var(--space-4) 0 var(--space-2);
+  font: 600 12px/1.4 var(--font-ui);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.play-do__group ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-1);
+}
+.play-do__choice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font: 400 14px/1.3 var(--font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+.play-do__choice:hover,
+.play-do__choice:focus-visible {
+  background: var(--panel-raised);
+}
+.play-do__choice[aria-disabled="true"] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.play-do__reason {
+  display: block;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+/* The left column: the person in focus, a tab for each person, and the narrow strip. */
+.play-people {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-height: 0;
+}
+.play-people--collapsed {
+  align-items: center;
+  gap: var(--space-3);
+}
+.play-view__scene--thumb {
+  width: 48px;
+  aspect-ratio: 1;
+  border-radius: var(--radius-sm);
+}
+.play-people__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  border-bottom: 1px solid var(--border);
+}
+.play-people--collapsed .play-people__tabs {
+  flex-direction: column;
+  align-items: center;
+  border-bottom: 0;
+}
+.play-people__tab {
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-dim);
+  font: 500 14px/1.3 var(--font-ui);
+  cursor: pointer;
+}
+.play-people__tab[aria-selected="true"] {
+  border-bottom-color: var(--accent);
+  color: var(--text);
+  font-weight: 600;
+}
+.play-people--collapsed .play-people__tab {
+  min-height: 0;
+  padding: 2px;
+  border: 2px solid transparent;
+  border-radius: 50%;
+}
+.play-people--collapsed .play-people__tab[aria-selected="true"] {
+  border-color: var(--accent);
+}
+.play-people__tab:focus-visible,
+.play-people__toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.play-person {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+.play-person__face {
+  flex: none;
+  width: 88px;
+  height: 88px;
+  border-radius: var(--radius);
+  object-fit: cover;
+  border: 1px solid var(--border);
+}
+.play-person__face--small {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+}
+.play-person__monogram {
+  display: grid;
+  place-items: center;
+  background: var(--panel-raised);
+  color: var(--accent);
+  font:
+    600 28px/1 Georgia,
+    serif;
+}
+.play-person__face--small.play-person__monogram {
+  font-size: 14px;
+}
+.play-person__text {
+  min-width: 0;
+}
+.play-person__name {
+  margin: 0;
+  font:
+    600 18px/1.3 Georgia,
+    serif;
+  color: var(--text);
+}
+.play-person__status {
+  display: inline-block;
+  margin-top: var(--space-1);
+  font: 500 12px/1.4 var(--font-ui);
+  color: var(--accent-danger);
+}
+.play-person__line {
+  margin: var(--space-1) 0 0;
+  font: 400 14px/1.45 var(--font-ui);
+  color: var(--text-dim);
+}
+.play-person__mood {
+  margin: var(--space-1) 0 0;
+  font:
+    italic 400 14px/1.45 Georgia,
+    serif;
+  color: var(--text-dim);
+}
+.play-people__empty {
+  margin: 0;
+  color: var(--text-dim);
+  font: 400 14px/1.45 var(--font-ui);
+}
+.play-people__toggle {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: 0 var(--space-2);
+  border: 0;
+  background: transparent;
+  color: var(--text-dim);
+  font: 500 13px/1.3 var(--font-ui);
+  cursor: pointer;
+}
+.play-people--collapsed .play-people__toggle {
+  align-self: center;
+  min-width: 44px;
+  justify-content: center;
+}
+.play-view--collapsed {
+  grid-template-columns: 76px minmax(0, 1fr) minmax(240px, 22%);
+}
+.play-view--collapsed .play-view__left {
+  padding: var(--space-3) var(--space-2);
+  align-items: center;
+}
+
+/* The right column: "In the scene". */
+.play-scene {
+  gap: 20px;
+}
+.play-scene .play-scene__title {
+  font-size: 11px;
+  font-family: inherit;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin: 0;
+}
+.play-scene__list,
+.play-scene__known,
+.play-scene__skills ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.play-scene__way,
+.play-scene__thing {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  padding: 9px 12px;
+  text-align: left;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.play-scene__way:hover:not(:disabled),
+.play-scene__thing:hover {
+  background: var(--hover-bg, color-mix(in srgb, var(--text) 6%, transparent));
+}
+.play-scene__way:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.play-scene__way small {
+  margin: 0;
+}
+.play-scene__thing-card {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.play-scene__thing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.play-scene__known li {
+  font-size: 13px;
+  line-height: 1.5;
+  padding-left: 10px;
+  border-left: 2px solid var(--border);
+}
+.play-scene__known small {
+  display: block;
+  margin: 2px 0 0;
+}
+.play-scene__skills summary {
+  cursor: pointer;
+  font-size: 13px;
+  margin: 10px 0 6px;
+}
+.play-scene__skills li {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}

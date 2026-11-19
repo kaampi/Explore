@@ -1,7 +1,7 @@
 /* Shared library-page language, based on Anatomy. Scoped away from scene themes. */
 .sandbox-root {
-  --page-accent: #84676a;
-  --page-accent-hover: #70565a;
+  --page-accent: var(--accent-strong);
+  --page-accent-hover: var(--accent-strong-hover);
   --page-space: 32px;
   --page-radius: 12px;
 }
@@ -29,7 +29,7 @@
   margin: 8px 0 12px;
 }
 .sb-home h1 em {
-  color: var(--page-accent);
+  color: var(--accent);
   font-style: normal;
   font-weight: inherit;
 }
@@ -37,47 +37,11 @@
 .sb-conversation-library .sb-eyebrow {
   font: 700 11px/1.6 var(--font-ui);
   letter-spacing: 0.13em;
-  color: var(--page-accent);
+  color: var(--accent);
 }
 .sb-section-heading {
   gap: 20px;
   flex-wrap: wrap;
-}
-.sb-home .sb-button,
-.sb-conversation-library .sb-button,
-.sb-guide .sb-button,
-.sb-lore-studio .sb-button,
-.sb-studio-wrap .sb-button {
-  min-height: 44px;
-  padding: 10px 16px;
-  border-radius: 9px;
-  background: var(--page-accent);
-  border: 1px solid var(--page-accent);
-  color: #fff !important;
-  font: 600 14px/1.4 var(--font-ui);
-  gap: 8px;
-}
-.sb-home .sb-button:hover,
-.sb-conversation-library .sb-button:hover,
-.sb-lore-studio .sb-button:hover,
-.sb-studio-wrap .sb-button:hover {
-  background: var(--page-accent-hover);
-  filter: none;
-}
-.sb-conversation-library .sb-button--secondary {
-  background: var(--panel);
-  color: var(--text) !important;
-  border-color: var(--border);
-}
-.sb-conversation-library .sb-button--secondary:hover {
-  border-color: var(--page-accent);
-  background: var(--panel-raised);
-}
-.sb-home .sb-button--danger,
-.sb-conversation-library .sb-button--danger,
-.sb-studio-wrap .sb-button--danger {
-  background: var(--accent-danger);
-  border-color: var(--accent-danger);
 }
 .sb-conversation-grid {
   gap: 20px;
@@ -222,7 +186,7 @@
   border-radius: 8px;
 }
 .sb-studio-wrap .studio-nav__tab--active {
-  color: var(--page-accent);
+  color: var(--accent);
   border-color: var(--border);
   background: var(--panel-raised);
   font-weight: 700;
@@ -265,31 +229,8 @@
     padding: 20px;
   }
 }
-/* Studio editors use the same controls without changing their field layouts. */
-.sandbox-root .sb-studio-wrap .setup-start:not(:disabled) {
-  background: var(--page-accent);
-  color: #fff;
-  border: 1px solid var(--page-accent);
-  border-radius: 9px;
-  min-height: 44px;
-  font: 600 14px/1.4 var(--font-ui);
-}
-.sandbox-root .sb-studio-wrap .setup-start:hover:not(:disabled) {
-  background: var(--page-accent-hover);
-}
 .sb-studio-wrap .studio-list {
   padding: 32px 20px;
-}
-.sb-studio-wrap .studio-list__btn {
-  min-height: 44px;
-  border-radius: 9px;
-  font-family: var(--font-ui);
-}
-.sb-studio-wrap .studio-list__item {
-  border-radius: 8px;
-}
-.sb-studio-wrap .studio-list__item--active {
-  color: var(--page-accent);
 }
 .sb-studio-wrap .setup-kicker,
 .sb-studio-wrap .setup-field__label {
@@ -321,7 +262,7 @@
   font: 700 10px/1.4 var(--font-ui);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--page-accent);
+  color: var(--accent);
   padding-left: 12px;
 }
 .studio-nav-group > div {
@@ -442,7 +383,7 @@
   place-items: center;
   height: 100%;
   font-size: 28px;
-  color: var(--page-accent);
+  color: var(--accent);
 }
 .sb-lore-import-actions {
   display: flex;

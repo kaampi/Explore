@@ -33,17 +33,17 @@
 }
 .world-map__canvas {
   width: 100%;
-  border: 1px solid var(--border, #aaa);
+  border: 1px solid var(--border);
   border-radius: 12px;
-  background: var(--panel, #fff);
-  color: var(--text, #26352e);
+  background: var(--panel);
+  color: var(--text);
 }
 .world-map__canvas [role="button"] {
   cursor: pointer;
 }
 .world-map__canvas [role="button"]:focus {
   outline: none;
-  stroke: #a85836;
+  stroke: var(--accent);
   stroke-width: 3;
 }
 .world-map aside {
@@ -64,7 +64,7 @@
   min-height: 80px;
 }
 .world-map__route {
-  border-top: 1px solid var(--border, #aaa);
+  border-top: 1px solid var(--border);
   padding: 12px 0;
 }
 @media (max-width: 850px) {
@@ -80,20 +80,6 @@
 .world-map__canvas [role="button"]:active {
   cursor: grabbing;
 }
-.world-map .world-map__context-menu button {
-  font-size: 11px;
-  line-height: 1.3;
-  padding: 5px 7px;
-  min-height: 0;
-  text-align: left;
-  border: 1px solid #ccc;
-  border-radius: 3px;
-  background: #fafafa;
-  color: #222;
-}
-.world-map .world-map__context-menu button:hover {
-  background: #eee;
-}
 /* Map studio — quiet controls, generous canvas, clear selection. */
 .world-map__toolbox {
   position: relative;
@@ -108,8 +94,8 @@
   gap: 5px;
   width: 170px;
   padding: 10px;
-  background: var(--panel, #fcfcf9);
-  border: 1px solid var(--map-line, #aaa);
+  background: var(--panel);
+  border: 1px solid var(--map-line);
   border-radius: 0 8px 8px 0;
 }
 .world-map__toolbox .world-map__brush-panel button {
@@ -120,11 +106,11 @@
   padding: 6px 10px;
 }
 .world-map {
-  --map-accent: #386b60;
-  --map-soft: #eaf1ed;
-  --map-line: var(--border, #dce1db);
-  --map-paper: var(--panel, #fff);
-  --map-ink: var(--text, #253d36);
+  --map-accent: var(--accent-strong);
+  --map-soft: var(--panel-raised);
+  --map-line: var(--border);
+  --map-paper: var(--panel);
+  --map-ink: var(--text);
   width: 100%;
   max-width: 1800px;
   box-sizing: border-box;
@@ -173,7 +159,7 @@
   background: var(--map-accent);
 }
 .world-map__save-state.is-dirty:before {
-  background: #bd8b3c;
+  background: var(--highlight);
 }
 .world-map button {
   display: inline-flex;
@@ -193,11 +179,11 @@
     background 0.15s,
     border-color 0.15s,
     box-shadow 0.15s;
-  box-shadow: 0 1px 2px #00000004;
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--scrim) 2%, transparent);
 }
 .world-map button:hover:not(:disabled) {
   border-color: var(--map-accent);
-  background: var(--panel-raised, #f3f5f1);
+  background: var(--panel-raised);
 }
 .world-map button:focus-visible,
 .world-map input:focus-visible,
@@ -212,19 +198,20 @@
 }
 .world-map button[aria-pressed="true"] {
   background: var(--map-soft);
-  border-color: #9bb9ad;
-  color: #224f43;
-  box-shadow: inset 0 0 0 1px #9bb9ad;
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
 }
 .world-map button.world-map__primary {
-  background: var(--map-accent);
-  color: white;
-  border-color: var(--map-accent);
+  background: var(--accent-strong);
+  color: var(--on-accent);
+  border-color: var(--accent-strong);
   padding-inline: 20px;
 }
 .world-map .world-map__primary:hover:not(:disabled) {
-  background: #29554b;
-  color: white;
+  background: var(--accent-strong-hover);
+  border-color: var(--accent-strong-hover);
+  color: var(--on-accent);
 }
 .world-map input:not([type="range"]):not([type="checkbox"]),
 .world-map select,
@@ -357,7 +344,7 @@
   border-radius: 12px;
   overflow: hidden;
   background: var(--map-paper);
-  box-shadow: 0 4px 18px #00000003;
+  box-shadow: 0 4px 18px color-mix(in srgb, var(--scrim) 2%, transparent);
 }
 .world-map__canvas-heading {
   display: flex;
@@ -377,7 +364,7 @@
   display: block;
   border: 0;
   border-radius: 0;
-  background: var(--panel, #fcfcf9);
+  background: var(--panel);
   min-height: 360px;
   max-height: 70vh;
 }
@@ -437,7 +424,7 @@
   margin: 6px 0;
 }
 .world-map__route {
-  background: var(--panel-raised, #f6f7f3);
+  background: var(--panel-raised);
   border: 1px solid var(--map-line);
   border-radius: 8px;
   padding: 12px;
@@ -452,13 +439,13 @@
   font-weight: 400;
 }
 .world-map__danger {
-  color: #a1483d !important;
+  color: var(--accent-danger) !important;
   margin-top: 18px;
   width: 100%;
 }
 .world-map__notice {
   padding: 12px 16px;
-  background: var(--panel-raised, #eef3ed);
+  background: var(--panel-raised);
   border: 1px solid var(--map-line);
   border-radius: 8px;
   font-size: 13px;
@@ -540,46 +527,6 @@
   border-block: 1px solid var(--map-line);
   padding: 6px 0;
 }
-.world-map__floating-menu {
-  position: fixed;
-  z-index: 1000;
-  width: 210px;
-  box-sizing: border-box;
-  padding: 6px;
-  background: var(--map-paper);
-  color: var(--map-ink);
-  border: 1px solid var(--map-line);
-  border-radius: 9px;
-  box-shadow: 0 8px 30px #0002;
-  display: grid;
-  gap: 3px;
-}
-.world-map__floating-menu button {
-  justify-content: flex-start;
-  border: 0;
-  box-shadow: none;
-  min-height: 32px;
-  font-size: 12px;
-}
-.world-map__floating-menu label {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 6px 8px;
-  font-size: 12px;
-}
-.world-map .world-map__floating-menu input[type="color"] {
-  width: 28px;
-  min-height: 26px;
-  height: 26px;
-  padding: 1px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.world-map__menu-danger {
-  color: #a1483d !important;
-}
 .world-map__entity-picker {
   position: fixed;
   z-index: 1100;
@@ -592,7 +539,7 @@
   border: 1px solid var(--map-line);
   border-radius: 14px;
   padding: 24px;
-  box-shadow: 0 16px 80px #0003;
+  box-shadow: var(--shadow-menu);
 }
 .world-map__entity-picker h3 {
   margin: 0 0 8px;
@@ -681,7 +628,7 @@
   display: flex;
   flex-direction: column;
   gap: 7px;
-  background: var(--panel-raised, #f3f5f1);
+  background: var(--panel-raised);
   box-sizing: border-box;
 }
 .world-map__toolbox button {
@@ -695,30 +642,25 @@
 }
 .world-map__toolbox button[aria-pressed="true"] {
   background: var(--map-soft);
-  border-color: #9bb9ad;
-  color: #224f43;
-}
-.world-map__tool-icon {
-  display: block;
-  width: 26px;
-  height: 26px;
-  background: currentColor;
-  mask-size: contain;
-  mask-position: center;
-  mask-repeat: no-repeat;
-  -webkit-mask-size: contain;
-  -webkit-mask-position: center;
-  -webkit-mask-repeat: no-repeat;
+  border-color: var(--accent);
+  color: var(--accent);
 }
 .world-map__toolbox button:hover:not(:disabled) {
   background: var(--map-paper);
 }
-.world-map__tool-image {
+.world-map__tool-icon {
   display: block;
   width: 28px;
   height: 28px;
-  object-fit: contain;
+  color: inherit;
   pointer-events: none;
+}
+.world-map__tool-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* A part with no fill of its own takes the text colour, not the browser's black. */
+  fill: currentColor;
 }
 .world-map__connection-details label {
   display: grid;
@@ -793,7 +735,7 @@
 }
 .world-map__settings--header[open] > summary {
   background: var(--map-soft);
-  color: #224f43;
+  color: var(--accent);
 }
 .world-map__settings--header > .world-map__toolbar {
   position: absolute;
@@ -805,7 +747,7 @@
   border: 1px solid var(--map-line);
   border-radius: 10px;
   padding: 18px;
-  box-shadow: 0 8px 25px #0001;
+  box-shadow: 0 8px 25px color-mix(in srgb, var(--scrim) 6%, transparent);
   gap: 14px;
   margin: 0;
 }
@@ -847,11 +789,11 @@
 .map-library__new,
 .map-library__form button,
 .map-library__close-actions button {
-  border: 1px solid var(--border, #ccd4ce);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px 16px;
-  background: var(--panel, #fff);
-  color: var(--text, #253d36);
+  background: var(--panel);
+  color: var(--text);
 }
 .map-library__cards {
   display: grid;
@@ -868,19 +810,19 @@
   text-align: left;
   gap: 8px;
   padding: 14px;
-  border: 1px solid var(--border, #ccd4ce);
+  border: 1px solid var(--border);
   border-radius: 12px;
-  background: var(--panel, #fff);
-  color: var(--text, #253d36);
+  background: var(--panel);
+  color: var(--text);
 }
 .map-library__card:hover {
-  border-color: #386b60;
-  box-shadow: 0 4px 20px #0001;
+  border-color: var(--accent);
+  box-shadow: 0 4px 20px color-mix(in srgb, var(--scrim) 6%, transparent);
 }
 .map-library__card svg {
   width: 100%;
   height: 150px;
-  background: var(--panel-raised, #f5f5ee);
+  background: var(--panel-raised);
   border-radius: 7px;
 }
 .map-library__card strong {
@@ -897,12 +839,12 @@
 }
 .map-library__open {
   margin-top: 8px;
-  color: #386b60;
+  color: var(--accent);
 }
 .map-library__empty {
   padding: 50px 20px;
   text-align: center;
-  border: 1px dashed var(--border, #ccd4ce);
+  border: 1px dashed var(--border);
   border-radius: 12px;
 }
 .map-library__form {
@@ -917,9 +859,9 @@
 .map-library__form select {
   font: inherit;
   padding: 9px;
-  border: 1px solid var(--border, #ccd4ce);
+  border: 1px solid var(--border);
   border-radius: 7px;
-  background: var(--panel, #fff);
+  background: var(--panel);
   color: inherit;
 }
 .map-library__close-actions {
@@ -957,9 +899,9 @@
   margin-top: 24px;
 }
 .world-information-browser > nav {
-  border: 1px solid var(--border, #dce1db);
+  border: 1px solid var(--border);
   border-radius: 12px;
-  background: var(--panel, #fff);
+  background: var(--panel);
   padding: 18px;
   max-height: 75vh;
   overflow: auto;
@@ -971,7 +913,7 @@
   list-style: none;
   margin: 4px 0;
   padding-left: 16px;
-  border-left: 1px solid var(--border, #dce1db);
+  border-left: 1px solid var(--border);
 }
 .world-information-browser nav button {
   display: block;
@@ -985,8 +927,8 @@
   font-size: 13px;
 }
 .world-information-browser nav button[aria-current="page"] {
-  background: #e7eee7;
-  color: #244d42;
+  background: var(--panel-raised);
+  color: var(--accent);
 }
 .world-information-browser nav small {
   display: block;
@@ -998,8 +940,8 @@
   margin: 8px 0;
 }
 .world-information-editor {
-  background: var(--panel, #fff);
-  border: 1px solid var(--border, #dce1db);
+  background: var(--panel);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 24px;
   max-height: 75vh;
@@ -1031,9 +973,9 @@
 .world-information-actions button,
 .world-information-editor form button {
   padding: 9px 14px;
-  border: 1px solid var(--border, #dce1db);
+  border: 1px solid var(--border);
   border-radius: 7px;
-  background: var(--panel-raised, #f5f6f1);
+  background: var(--panel-raised);
   color: inherit;
 }
 .world-information-editor > fieldset {
@@ -1056,10 +998,10 @@
   width: 100%;
   box-sizing: border-box;
   padding: 10px;
-  border: 1px solid var(--border, #dce1db);
+  border: 1px solid var(--border);
   border-radius: 7px;
   color: inherit;
-  background: var(--panel, #fff);
+  background: var(--panel);
 }
 .place-information-fields textarea {
   resize: vertical;
@@ -1122,7 +1064,7 @@
 }
 .place-information-gallery figure {
   margin: 8px 0;
-  background: var(--panel-raised, #f4f5ef);
+  background: var(--panel-raised);
   padding: 8px;
   border-radius: 8px;
 }
@@ -1148,7 +1090,7 @@
   margin: 0 0 8px;
 }
 .encounter-fields {
-  border: 1px solid var(--border, #dce1db);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 14px;
   margin: 16px 0;
@@ -1176,10 +1118,10 @@
   max-width: 100%;
   box-sizing: border-box;
   padding: 8px;
-  border: 1px solid var(--border, #dce1db);
+  border: 1px solid var(--border);
   border-radius: 6px;
   color: inherit;
-  background: var(--panel, #fff);
+  background: var(--panel);
 }
 .map-exit-editor {
   border: 1px solid var(--map-line);
@@ -1234,8 +1176,8 @@
   object-fit: contain;
 }
 .settlement-tools button[aria-pressed="true"] {
-  border-color: #86696d;
-  background: #86696d1a;
+  border-color: var(--accent-strong);
+  background: color-mix(in srgb, var(--accent-strong) 10%, transparent);
 }
 .settlement-placement-hint {
   display: flex;
@@ -1244,8 +1186,8 @@
   gap: 12px;
   padding: 10px 14px;
   margin: 8px 0;
-  background: #86696d12;
-  border: 1px solid #86696d55;
+  background: color-mix(in srgb, var(--accent-strong) 7%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-strong) 33%, transparent);
   border-radius: 8px;
   font-size: 13px;
 }
@@ -1294,7 +1236,7 @@
 .settlement-builder__intro small {
   font-size: 10px;
   letter-spacing: 0.15em;
-  color: #86696d;
+  color: var(--accent);
 }
 .settlement-builder__intro h3 {
   font:
@@ -1350,8 +1292,8 @@
   display: grid;
   gap: 7px;
   padding: 14px;
-  background: #86696d0c;
-  border: 1px solid #86696d24;
+  background: color-mix(in srgb, var(--accent-strong) 5%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-strong) 14%, transparent);
   border-radius: 8px;
   font-size: 12px;
 }
@@ -1364,7 +1306,7 @@
   height: 100%;
   min-height: 0;
   box-sizing: border-box;
-  border: 1px solid var(--border, #c9cdbd);
+  border: 1px solid var(--border);
   border-radius: 10px;
 }
 .settlement-builder > footer {
@@ -1391,9 +1333,9 @@
   cursor: pointer;
 }
 .settlement-builder button.world-map__primary {
-  background: #86696d;
-  border-color: #86696d;
-  color: #fff;
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+  color: var(--on-accent);
 }
 @media (max-width: 760px) {
   .settlement-builder__layout {

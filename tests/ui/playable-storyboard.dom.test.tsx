@@ -1028,3 +1028,51 @@ it("lists the rule-set's skills by name, stores the id, and shows the player's c
     host.remove();
   }
 });
+
+it("lets the author write what the player gets to know from an action", async () => {
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  const built = connectedAdventureExample(),
+    host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  let snapshot = built.campaign;
+  function Harness() {
+    const [campaign, setCampaign] = useState(built.campaign);
+    snapshot = campaign;
+    return (
+      <PlayableStoryboard
+        campaign={campaign}
+        places={built.places}
+        characters={built.characters}
+        objects={built.objects}
+        busy={false}
+        onChange={setCampaign}
+        onPlay={() => {}}
+      />
+    );
+  }
+  const learned = () => snapshot.scenes[0]!.encounter!.definition.interactions[0]!.success.learned;
+  try {
+    await act(async () => root.render(<Harness />));
+    const input = () => host.querySelector<HTMLInputElement>('input[data-action-field="learned"]')!;
+    expect(input().value).toBe("");
+    expect(host.textContent).toContain("What the player learns");
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
+        input(),
+        "Edda saw the messenger go north.",
+      );
+      input().dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(learned()).toBe("Edda saw the messenger go north.");
+    expect(input().value).toBe("Edda saw the messenger go north.");
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input(), "");
+      input().dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(learned()).toBeUndefined();
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});

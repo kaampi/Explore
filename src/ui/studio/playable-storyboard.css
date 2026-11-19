@@ -383,12 +383,6 @@
   border: 2px solid var(--adventure-accent);
   box-shadow: 0 3px 14px #86696d22;
 }
-.playable-storyboard--expanded .message-context-menu button {
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  text-align: left;
-}
 @media (max-width: 1100px) {
   .playable-storyboard--expanded .playable-storyboard__layout {
     grid-template-columns: 170px minmax(190px, 1fr) 290px;
@@ -732,15 +726,6 @@
 .storyboard-action-options > fieldset {
   margin-top: 8px;
 }
-.playable-storyboard button.storyboard-primary {
-  background: var(--adventure-accent);
-  border-color: var(--adventure-accent);
-  color: white;
-  font-weight: 600;
-}
-.playable-storyboard button.storyboard-primary:hover:not(:disabled) {
-  background: #74585c;
-}
 .storyboard-back {
   justify-self: start;
 }
@@ -773,7 +758,7 @@
 .storyboard-resize-handle:hover,
 .storyboard-resize-handle:focus-visible {
   opacity: 1;
-  background: var(--adventure-accent, var(--accent-active));
+  background: var(--adventure-accent, var(--accent));
   outline: none;
 }
 

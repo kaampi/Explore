@@ -18,15 +18,20 @@ import { ConnectionHelp } from "../connection/ConnectionHelp";
 import { Modal } from "../components/Modal";
 import { StatusBar } from "../components/StatusBar";
 import { playThemeStyle, useAppearance } from "../themes/ThemeProvider";
+import { shellForTheme } from "../themes/theme";
 import { GameAudio } from "../audio/GameAudio";
 import { portraitSrc } from "../studio/portrait";
 import { playerCheckStats } from "../../checks/playerCheck";
 import gateBackground from "../assets/gate-play-background.jpg";
 import { BackgroundDialog } from "../themes/BackgroundSettings";
-import { MessageMenu } from "../components/MessageMenu";
+import { Menu } from "../components/Menu";
 import { PlayMapCard } from "../components/PlayMapCard";
 import { usePlayMap } from "../components/usePlayMap";
 import { isGateTestSession } from "../../session/gateTest";
+import { PlayTopBar } from "../play/PlayTopBar";
+import { captureIdea, type Idea } from "../../ideas/IdeaSchema";
+import { IdeaEditor } from "../ideas/IdeaEditor";
+import { formatGameTime } from "../../state/gameClock";
 
 export function PlayWorkspace({
   onHome,
@@ -58,6 +63,8 @@ export function PlayWorkspace({
   const [checkRequest, setCheckRequest] = useState(0);
   const [partyTarget, setPartyTarget] = useState<HTMLElement | null>(null);
   const [backgroundOpen, setBackgroundOpen] = useState(false);
+  const [idea, setIdea] = useState<Idea | null>(null);
+  const [ideaNote, setIdeaNote] = useState("");
   const [backgroundMenu, setBackgroundMenu] = useState<{ x: number; y: number } | null>(null);
   const withRules = !!session.ruleset;
   const mapModel = usePlayMap(repo, session),
@@ -71,7 +78,39 @@ export function PlayWorkspace({
         locationKey={session.scene?.placeId ?? session.sceneId ?? ""}
       />
     ) : undefined;
+  /** Keep these lines of the story as an idea: open the editor with them. */
+  function saveIdea(turns: number[]) {
+    try {
+      setIdea(
+        captureIdea(
+          session,
+          turns,
+          title || session.encounter?.definition.title || "Your adventure",
+        ),
+      );
+      setIdeaNote("");
+    } catch (error) {
+      setIdeaNote(error instanceof Error ? error.message : "Could not capture this idea.");
+    }
+  }
+  /** The last three lines of the story, the ones just played. */
+  function saveRecentIdea() {
+    const turns = (session.conversation as { turn?: unknown }[])
+      .map((entry) => (typeof entry?.turn === "number" ? entry.turn : undefined))
+      .filter((turn): turn is number => turn !== undefined)
+      .slice(-3);
+    saveIdea(turns);
+  }
   const withSidebar = withRules || Boolean(mapModel);
+  // An engine scene has its own frame: a top row and three columns.
+  const framed = !!session.encounter;
+  const run = session.adventure;
+  const placeName =
+    run?.scenes.find((scene) => scene.id === run.currentSceneId)?.name ||
+    session.encounter?.definition.title ||
+    title ||
+    primaryCharacter(session)?.name ||
+    "Your exploration";
   const gatePreview = isGateTestSession(session) && library.active.backgroundMode === "scene";
   const checkStats = playerCheckStats(session);
   const streaming = phase === "streaming";
@@ -82,91 +121,129 @@ export function PlayWorkspace({
   }, [phase, refresh]);
   return (
     <div className="sb-play-workspace">
-      <div className="sb-play-toolbar">
-        {portrait && (
-          <img
-            className="sb-play-portrait"
-            src={portrait}
-            alt={`${person?.name ?? "Character"} portrait`}
-          />
-        )}
-        <div className="sb-play-title">
-          <strong>
-            {session.encounter?.definition.title ||
-              title ||
-              primaryCharacter(session)?.name ||
-              "Your exploration"}
-          </strong>
-          <span>{session.scene?.location}</span>
-        </div>
-        <div className="sb-play-tools">
-          <GameAudio key={session.id} conversationId={session.id} />
-          <button
-            type="button"
-            className="sb-link"
-            aria-pressed={castOpen}
-            onClick={() => setCastOpen(!castOpen)}
-          >
-            {t("pwCast")}
-          </button>
-          <button type="button" className="sb-link" onClick={onAppearance}>
-            ◐ Appearance
-          </button>
-          <button
-            type="button"
-            className="sb-link"
-            aria-expanded={settingsOpen}
-            onClick={() => setSettingsOpen(!settingsOpen)}
-          >
-            {t("settings")}
-          </button>
-          <button
-            type="button"
-            className="sb-link"
-            aria-pressed={inspectorOpen}
-            onClick={() => setInspectorOpen(!inspectorOpen)}
-          >
-            {t("pwInspector")}
-          </button>
-          <button
-            type="button"
-            className="sb-play-exit"
-            aria-label="Exit conversation"
-            disabled={streaming}
-            title={
-              streaming ? "Wait for the reply to finish" : "Return home; keep this conversation"
-            }
-            onClick={() => onHome(session)}
-          >
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-              focusable="false"
+      {framed ? (
+        <PlayTopBar
+          placeName={placeName}
+          time={
+            run && run.links.some((link) => link.minutes !== undefined)
+              ? formatGameTime(run.clockMinutes)
+              : undefined
+          }
+          onHome={() => onHome(session)}
+          homeDisabled={streaming}
+          onSaveIdea={saveRecentIdea}
+          sound={<GameAudio key={session.id} conversationId={session.id} />}
+          onAppearance={onAppearance}
+          aiOpen={settingsOpen}
+          onToggleAi={() => setSettingsOpen(!settingsOpen)}
+          inspectorOpen={inspectorOpen}
+          onToggleInspector={() => setInspectorOpen(!inspectorOpen)}
+          castOpen={castOpen}
+          onToggleCast={() => setCastOpen(!castOpen)}
+        />
+      ) : (
+        <div className="sb-play-toolbar">
+          {portrait && (
+            <img
+              className="sb-play-portrait"
+              src={portrait}
+              alt={`${person?.name ?? "Character"} portrait`}
+            />
+          )}
+          <div className="sb-play-title">
+            <strong>
+              {session.encounter?.definition.title ||
+                title ||
+                primaryCharacter(session)?.name ||
+                "Your exploration"}
+            </strong>
+            <span>{session.scene?.location}</span>
+          </div>
+          <div className="sb-play-tools">
+            <GameAudio key={session.id} conversationId={session.id} />
+            <button
+              type="button"
+              className="sb-link"
+              aria-pressed={castOpen}
+              onClick={() => setCastOpen(!castOpen)}
             >
-              <path d="M16 6V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2M10 12h12m-4-4 4 4-4 4" />
-            </svg>
-          </button>
+              {t("pwCast")}
+            </button>
+            <button type="button" className="sb-link" onClick={onAppearance}>
+              ◐ Appearance
+            </button>
+            <button
+              type="button"
+              className="sb-link"
+              aria-expanded={settingsOpen}
+              onClick={() => setSettingsOpen(!settingsOpen)}
+            >
+              {t("settings")}
+            </button>
+            <button
+              type="button"
+              className="sb-link"
+              aria-pressed={inspectorOpen}
+              onClick={() => setInspectorOpen(!inspectorOpen)}
+            >
+              {t("pwInspector")}
+            </button>
+            <button
+              type="button"
+              className="sb-play-exit"
+              aria-label="Exit conversation"
+              disabled={streaming}
+              title={
+                streaming ? "Wait for the reply to finish" : "Return home; keep this conversation"
+              }
+              onClick={() => onHome(session)}
+            >
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+                focusable="false"
+              >
+                <path d="M16 6V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2M10 12h12m-4-4 4 4-4 4" />
+              </svg>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
       {backgroundMenu && (
-        <MessageMenu
-          x={backgroundMenu.x}
-          y={backgroundMenu.y}
+        <Menu
+          label="Background actions"
+          at={{ x: backgroundMenu.x, y: backgroundMenu.y }}
           onClose={() => setBackgroundMenu(null)}
           items={[
-            { label: "Choose background…", action: () => setBackgroundOpen(true) },
-            { label: "Customize appearance…", action: onAppearance },
+            { label: "Choose background…", onSelect: () => setBackgroundOpen(true) },
+            { label: "Customize appearance…", onSelect: onAppearance },
           ]}
         />
       )}
       {backgroundOpen && <BackgroundDialog onClose={() => setBackgroundOpen(false)} />}
+      {ideaNote && (
+        <p role="alert" className="play-view__note">
+          {ideaNote}
+        </p>
+      )}
+      {idea && (
+        <IdeaEditor
+          idea={idea}
+          repo={repo}
+          onClose={() => setIdea(null)}
+          onSaved={() => {
+            setIdea(null);
+            setIdeaNote("");
+          }}
+        />
+      )}
       {settingsOpen && <StatusBar />}
       {!canSend && !session.gateEncounter && !session.encounter && (
         <div className="sb-play-connection" role="status">
@@ -197,14 +274,20 @@ export function PlayWorkspace({
             event.preventDefault();
             setBackgroundMenu({ x: event.clientX, y: event.clientY });
           }}
-          className={`sb-themed-play${withSidebar ? " sb-themed-play--rules" : ""}${gatePreview ? " sb-themed-play--gate-preview" : ""}`}
+          className={`sb-themed-play${withSidebar ? " sb-themed-play--rules" : ""}${framed ? " sb-themed-play--framed" : ""}${gatePreview ? " sb-themed-play--gate-preview" : ""}`}
+          data-shell={shellForTheme(library.active)}
           style={{
             ...playThemeStyle(library.active),
             ...(gatePreview ? { backgroundImage: `url(${gateBackground})` } : {}),
           }}
         >
           {session.encounter ? (
-            <EncounterPanel onHome={onHome} mapView={mapView} backdrop={encounterBackdrop} />
+            <EncounterPanel
+              onHome={onHome}
+              mapView={mapView}
+              backdrop={encounterBackdrop}
+              onSaveIdea={saveIdea}
+            />
           ) : session.gateEncounter ? (
             <LegacyGatePanel
               session={session}

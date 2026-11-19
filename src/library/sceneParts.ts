@@ -971,6 +971,38 @@ export function setFightBreaksOut(
   return finish(current, game);
 }
 
+/** What the player finds out from an action's outcome, as the author wrote it ("" when nothing). */
+export function learnedFrom(
+  scene: CampaignScene,
+  actionId: string,
+  outcome: "success" | "failure" = "success",
+): string {
+  const action = scene.encounter?.definition.interactions.find((item) => item.id === actionId);
+  return action?.[outcome].learned ?? "";
+}
+
+/**
+ * Write what the player finds out from an outcome, in a sentence for "What you know". An empty
+ * text removes it, and the first sentence of the outcome is shown instead.
+ */
+export function setLearned(
+  scene: CampaignScene,
+  actionId: string,
+  text: string,
+  outcome: "success" | "failure" = "success",
+): CampaignScene {
+  const current = requireGame(scene);
+  const game = structuredClone(current.encounter);
+  const action = game.definition.interactions.find((item) => item.id === actionId);
+  if (!action) throw new Error("That action is not in this scene.");
+  if (outcome === "failure" && !action.check)
+    throw new Error("Only an action that rolls can fail.");
+  const clean = text.replace(/\s+/g, " ").trim().slice(0, 200);
+  if (clean) action[outcome].learned = clean;
+  else delete action[outcome].learned;
+  return finish(current, game);
+}
+
 /** The door an outcome unlocks, and the one it opens (opening also unlocks). */
 export function doorEffects(
   scene: CampaignScene,

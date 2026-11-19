@@ -298,7 +298,7 @@ it("edits generated street junctions and smooth bends above places, preserves co
         }),
       ),
     );
-    await click(host, "Make Smooth");
+    await click(document.body, "Make Smooth");
     const handle = layer.querySelector('[aria-label="Route outgoing curve handle"]')!;
     expect(handle).toBeTruthy();
     const hx = Number(handle.getAttribute("cx")),
@@ -518,13 +518,13 @@ it("builds a location marker at the right-click position, cancels cleanly, and k
     expect(placement.parentElement!.querySelectorAll("rect")).toHaveLength(1);
     await click(host, "Cancel placement");
     await rightClick();
-    await click(host, "Build settlement here…");
+    await click(document.body, "Build settlement here…");
     expect(host.querySelector('[aria-label="Build settlement here"]')).not.toBeNull();
     expect((await repo.loadRealm(world.id)).worldMap!.nodes).toHaveLength(3);
     await click(host.querySelector("dialog")!, "Cancel");
     expect(host.querySelector("dialog")).toBeNull();
     await rightClick();
-    await click(host, "Build settlement here…");
+    await click(document.body, "Build settlement here…");
     await act(async () => {
       const input = host.querySelector<HTMLInputElement>(
         '[placeholder="Name your village or city"]',

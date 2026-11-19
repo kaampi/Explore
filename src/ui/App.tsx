@@ -1,3 +1,7 @@
+import "./tokens.css";
+import "./controls.css";
+import "./menu.css";
+import "./rows.css";
 import { CodexConnection } from "./connection/CodexConnection";
 import { UpdateProvider } from "./home/UpdateProvider";
 import { attachLorebooks } from "../lore/attachLorebooks";
@@ -27,6 +31,7 @@ import type { StudioResume } from "@persistence/IndexedDBRepository";
 import type { Session } from "@state/StateSchema";
 import type { StudioView } from "./studio/types";
 import "./styles.css";
+import "./dice.css";
 import "./experience.css";
 import "./page-system.css";
 

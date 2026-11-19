@@ -25,6 +25,7 @@
     url("../assets/fight-background.jpg") center bottom/cover no-repeat;
   animation: combat-stage-enter 0.35s ease-out;
 }
+/* palette-exempt: effect: the light behind the fighters */
 .combat-stage::before {
   content: "";
   position: absolute;
@@ -131,6 +132,7 @@
   justify-content: center;
   padding-top: 3px;
 }
+/* palette-exempt: effect: the glow under a fighter */
 .combat-fighter__figure::after {
   content: "";
   position: absolute;
@@ -143,7 +145,9 @@
   filter: blur(6px);
   z-index: -1;
 }
+/* palette-exempt: illustration: a fighter and their silhouette */
 .combat-fighter__art,
+/* palette-exempt: illustration: the silhouette of a fighter */
 .combat-silhouette {
   display: block;
   width: 100%;
@@ -158,6 +162,7 @@
   --figure-outline: #ac986f;
   filter: drop-shadow(0 0 9px #d2aa5555) drop-shadow(0 5px 4px #000b);
 }
+/* palette-exempt: illustration: the silhouette of an opponent */
 .combat-fighter--opponent .combat-silhouette {
   transform: scaleX(-1);
   --figure-outline: #bfa68c;
