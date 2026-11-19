@@ -11,6 +11,7 @@ export function PlayTopBar({
   homeDisabled,
   homeTitle,
   onSaveIdea,
+  onJournal,
   sound,
   onAppearance,
   aiOpen,
@@ -28,6 +29,8 @@ export function PlayTopBar({
   homeTitle?: string | undefined;
   /** Keeps the last lines of the story as an idea. Without it there is no button. */
   onSaveIdea?: (() => void) | undefined;
+  /** Opens the journal. */
+  onJournal: () => void;
   /** The sound control. It stays mounted, so that what is playing keeps playing. */
   sound?: ReactNode;
   onAppearance: () => void;
@@ -99,6 +102,13 @@ export function PlayTopBar({
             {t("pvSaveIdea")}
           </button>
         )}
+        <button
+          type="button"
+          className="play-top__journal ui-button ui-button--quiet"
+          onClick={onJournal}
+        >
+          {t("pvJournal")}
+        </button>
         {sound}
         <MenuButton label={t("pvMenu")} items={items} className="play-top__menu" />
       </div>

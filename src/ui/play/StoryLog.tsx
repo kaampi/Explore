@@ -112,6 +112,12 @@ export function StoryLog({
                 {showTime && <time>{formatGameTime(row.minutes)}</time>}
               </div>
             );
+          if (row.kind === "goal")
+            return (
+              <div key={row.key} className="play-row play-row--goal">
+                <span aria-hidden="true">✓</span>&nbsp;{t("pvGoalReached", { goal: row.title })}
+              </div>
+            );
           if (row.kind === "check")
             return (
               <div key={row.key} className="play-row play-row--check">

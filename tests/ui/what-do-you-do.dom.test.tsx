@@ -140,6 +140,22 @@ it("opens every choice in groups, and shows a blocked one with its reason withou
   expect(host.querySelector("dialog")).toBeNull();
 });
 
+it("gives focus back to More choices when the list of choices is closed", async () => {
+  const { host } = await render(setup(4));
+  const more = host.querySelector<HTMLButtonElement>(".play-do__more")!;
+  await act(async () => more.focus());
+
+  await act(async () => more.click());
+  const close = document.querySelector<HTMLButtonElement>("dialog .sb-icon")!;
+  // A browser moves focus into the dialog when it opens.
+  await act(async () => close.focus());
+  expect(document.activeElement).toBe(close);
+  await act(async () => close.click());
+
+  expect(document.querySelector("dialog")).toBeNull();
+  expect(document.activeElement).toBe(more);
+});
+
 it("has the two tabs Talk and Act over one field, and keeps a draft for each", async () => {
   const { host } = await render();
   const tabs = Array.from(host.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
