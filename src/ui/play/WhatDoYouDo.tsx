@@ -13,9 +13,6 @@ export function WhatDoYouDo({
   game,
   suggestions,
   groups,
-  people,
-  addresseeId,
-  onAddressee,
   mode,
   onMode,
   say,
@@ -33,10 +30,6 @@ export function WhatDoYouDo({
   game: EncounterGame;
   suggestions: PublicCommand[];
   groups: CommandGroup[];
-  /** Who is here to be talked to. */
-  people: { id: string; name: string }[];
-  addresseeId: string;
-  onAddressee: (id: string) => void;
   mode: "say" | "do";
   onMode: (mode: "say" | "do") => void;
   say: string;
@@ -125,18 +118,6 @@ export function WhatDoYouDo({
               Cancel
             </button>
           </p>
-        )}
-        {mode === "say" && people.length > 1 && (
-          <label className="play-do__to">
-            {t("pvTalkTo")}
-            <select value={addresseeId} onChange={(event) => onAddressee(event.target.value)}>
-              {people.map((person) => (
-                <option key={person.id} value={person.id}>
-                  {person.name}
-                </option>
-              ))}
-            </select>
-          </label>
         )}
         <textarea
           rows={3}

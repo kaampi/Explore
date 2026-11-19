@@ -11,14 +11,17 @@ export function PlayFrame({
   left,
   center,
   right,
+  collapsed = false,
 }: {
+  /** The left column is folded to a narrow strip. */
+  collapsed?: boolean;
   left: ReactNode;
   center: ReactNode;
   right: ReactNode;
 }) {
   const t = useTranslate();
   return (
-    <div className="play-view">
+    <div className={`play-view${collapsed ? " play-view--collapsed" : ""}`}>
       <section className="play-view__left" aria-label={t("pvPlaceAndPeople")}>
         {left}
       </section>

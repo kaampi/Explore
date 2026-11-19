@@ -352,8 +352,8 @@ it("plays a gated scene connection and returns with the same possessions, transc
       "Adventure completed",
     );
     expect(ui.host.querySelector(".chat-log")!.textContent).toContain("Thank you for finding out");
-    const people = ui.host.querySelectorAll(".play-row--person .play-row__label");
-    expect(people[people.length - 1]!.textContent).toBe("Edda");
+    // What the author wrote as the outcome is the narrator's, not a line Edda said.
+    expect(ui.host.querySelector(".play-row--person")).toBeNull();
     expect(ui.host.textContent).toContain("Brass key");
   } finally {
     await ui.close();
@@ -406,9 +406,7 @@ it("answers a spoken greeting and a misspelled question as Edda, opening the aut
     await type(ui.host, 0, "Edda what can you tell me about the messanger?");
     await click(ui.host, "Say");
     expect(ui.host.querySelector(".chat-log")!.textContent).toContain("Edda points");
-    expect(ui.host.querySelectorAll(".play-row--person .play-row__label")[1]!.textContent).toBe(
-      "Edda",
-    );
+    expect(ui.host.querySelectorAll(".play-row--person")).toHaveLength(1);
     expect(ui.host.textContent).toContain("Follow the lead to the watchtower →");
     expect(ui.engine.getSession().encounter!.state.attempts).toHaveLength(1);
     expect(ui.host.textContent).not.toContain("words alone");
@@ -650,7 +648,7 @@ it("shows the same reply after the saved game is loaded again", async () => {
   }
 });
 
-it("sends what is said to the person chosen under Talk to, even when the line names someone else", async () => {
+it("sends what is said to the person chosen in the tabs, even when the line names someone else", async () => {
   const model = fakeModel();
   const seed = messengerSeed("talk-to");
   const eddaId = Object.keys(seed.encounter!.state.actors).find((id) => id.startsWith("npc:"))!;
@@ -662,15 +660,10 @@ it("sends what is said to the person chosen under Talk to, even when the line na
   const ui = mount(seed, false, () => 0.34, model.provider);
   try {
     await ui.render();
-    const select = ui.host.querySelector<HTMLSelectElement>(".play-do__to select")!;
-    expect(Array.from(select.options).map((o) => o.textContent)).toEqual(["Edda", "Hob"]);
-    await act(async () => {
-      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")!.set!.call(
-        select,
-        "npc:hob",
-      );
-      select.dispatchEvent(new Event("change", { bubbles: true }));
-    });
+    const tabs = Array.from(ui.host.querySelectorAll<HTMLButtonElement>(".play-people__tab"));
+    expect(tabs.map((tab) => tab.textContent)).toEqual(["Edda", "Hob"]);
+    await act(async () => tabs[1]!.click());
+    expect(tabs[1]!.getAttribute("aria-selected")).toBe("true");
     await type(ui.host, 0, "Edda, how are you today?");
     await click(ui.host, "Say");
     const turn = narratorTurns(ui.engine.getSession()).at(-1) as { speakerId?: string };

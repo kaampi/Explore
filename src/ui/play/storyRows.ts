@@ -108,8 +108,11 @@ export function storyRows(session: Session, options: { earlier?: boolean } = {})
         });
       const speaker = nameOfActor(turn.speakerId ?? entry?.speakerId) ?? turn.speakerName;
       const improvised = turn.ai?.kind === "free-reply";
+      // A person's own words: a greeting, or a line the AI wrote for them. What the author wrote
+      // as the outcome of an action is told by the narrator, even when it quotes someone.
+      const theirOwn = improvised || !!entry?.events.some((event) => event.kind === "speech-reply");
       rows.push(
-        speaker && speaker !== player?.name
+        theirOwn && speaker && speaker !== player?.name
           ? {
               kind: "person",
               key: `t${turn.turn}`,

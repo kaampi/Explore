@@ -92,20 +92,16 @@ describe("storyRows", () => {
     expect(rows[1]).toMatchObject({ text: expect.stringContaining("Edda waits") });
   });
 
-  it("tells an action by its name and a conversation's outcome as the person's line, with no roll when none was made", () => {
+  it("tells an action by its name and its outcome as the narrator's prose, even when it quotes a person", () => {
     const { session } = game();
     const { engine, act } = play(session);
     act({ kind: "interaction", interactionId: session.encounter!.definition.interactions[0]!.id });
 
     const rows = storyRows(engine.getSession());
 
-    expect(kinds(rows)).toEqual(["divider", "narrator", "do", "person"]);
+    expect(kinds(rows)).toEqual(["divider", "narrator", "do", "narrator"]);
     expect(rows[2]).toMatchObject({ label: "Ask Edda about the messenger" });
-    expect(rows[3]).toMatchObject({
-      name: "Edda",
-      improvised: false,
-      text: expect.stringContaining("Edda points"),
-    });
+    expect(rows[3]).toMatchObject({ text: expect.stringContaining("You now know where to look.") });
   });
 
   it("tells a roll in one row between the action and its outcome, with the skill by name", () => {

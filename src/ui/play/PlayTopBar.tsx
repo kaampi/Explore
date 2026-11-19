@@ -85,7 +85,7 @@ export function PlayTopBar({
       </button>
       <h1 className="play-top__place">{placeName}</h1>
       {time && (
-        <span className="play-top__time" aria-label="Game time">
+        <span className="play-top__time" aria-label={t("pvGameTime")}>
           {time}
         </span>
       )}
@@ -93,7 +93,7 @@ export function PlayTopBar({
         {onSaveIdea && (
           <button
             type="button"
-            className="play-top__idea ui-button ui-button--primary"
+            className="play-top__idea ui-button ui-button--idea"
             onClick={onSaveIdea}
           >
             {t("pvSaveIdea")}

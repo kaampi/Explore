@@ -191,10 +191,7 @@ it("keeps the sound control mounted in the top row, and the picture of the place
     expect(left.querySelector(".play-view__scene")!.getAttribute("aria-label")).toBe(
       "Picture of the place: A missing messenger",
     );
-    expect(left.textContent).toContain("People nearby");
-    expect(left.textContent).toContain("Edda");
-    // The people are not also listed in the column on the right.
-    expect(ui.host.querySelector(".play-view__right")!.textContent).not.toContain("People nearby");
+    expect(left.querySelector(".play-person__name")!.textContent).toBe("Edda");
   } finally {
     await ui.close();
   }
@@ -251,13 +248,28 @@ it("keeps the last three lines as an idea from the main button in the top row", 
   try {
     const button = ui.host.querySelector<HTMLButtonElement>(".play-top__idea")!;
     expect(button.textContent).toBe("Save idea");
-    expect(button.className).toContain("ui-button--primary");
+    expect(button.className).toContain("ui-button--idea");
     await act(async () => button.click());
     const shown = ideaText().join("\n");
     expect(shown).toContain("Edda points to the north path.");
     expect(shown).toContain("Look around");
     expect(shown).toContain("The square is quiet.");
     expect(shown).not.toContain("Ask Edda about the messenger");
+  } finally {
+    await ui.close();
+  }
+});
+
+it("folds the whole left column to a strip, and the frame follows", async () => {
+  const ui = await mount();
+  try {
+    const frame = ui.host.querySelector(".play-view")!;
+    expect(frame.classList.contains("play-view--collapsed")).toBe(false);
+    await act(async () =>
+      ui.host.querySelector<HTMLButtonElement>(".play-people__toggle")!.click(),
+    );
+    expect(frame.classList.contains("play-view--collapsed")).toBe(true);
+    expect(localStorage.getItem("explore-play-left-collapsed")).toBe("1");
   } finally {
     await ui.close();
   }

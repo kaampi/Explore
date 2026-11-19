@@ -37,7 +37,6 @@ async function render(game = setup(), overrides: Partial<Parameters<typeof WhatD
     choose: vi.fn<(c: PublicCommand) => void>(),
     say: vi.fn(),
     act: vi.fn(),
-    addressee: vi.fn(),
   };
   function Harness() {
     const [mode, setMode] = useState<"say" | "do">("say");
@@ -49,9 +48,6 @@ async function render(game = setup(), overrides: Partial<Parameters<typeof WhatD
           game={game}
           suggestions={suggestedCommands(game)}
           groups={groupedCommands(game)}
-          people={[{ id: "a", name: "Edda" }]}
-          addresseeId="a"
-          onAddressee={calls.addressee}
           mode={mode}
           onMode={setMode}
           say={say}
@@ -193,22 +189,6 @@ it("moves between the tabs with the arrow keys, and only the chosen tab is in th
   expect(host.querySelector('[role="tabpanel"]')!.getAttribute("aria-labelledby")).toBe(
     "play-do-tab-do",
   );
-});
-
-it("asks who to talk to only when more than one person is here, and only under Talk", async () => {
-  const one = await render();
-  expect(one.host.querySelector(".play-do__to")).toBeNull();
-  const two = await render(setup(), {
-    people: [
-      { id: "a", name: "Edda" },
-      { id: "b", name: "Hob" },
-    ],
-  });
-  const select = two.host.querySelector<HTMLSelectElement>(".play-do__to select")!;
-  expect(two.host.querySelector(".play-do__to")!.textContent).toContain("Talk to");
-  expect(Array.from(select.options).map((o) => o.textContent)).toEqual(["Edda", "Hob"]);
-  await act(async () => two.host.querySelectorAll<HTMLButtonElement>('[role="tab"]')[1]!.click());
-  expect(two.host.querySelector(".play-do__to")).toBeNull();
 });
 
 it("speaks Swedish when the interface is Swedish", async () => {

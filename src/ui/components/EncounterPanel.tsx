@@ -26,6 +26,9 @@ import { ActionSaveError } from "../../persistence/ActionSaveError";
 import { PlayFrame } from "../play/PlayFrame";
 import { StoryLog } from "../play/StoryLog";
 import { WhatDoYouDo } from "../play/WhatDoYouDo";
+import { PeopleColumn } from "../play/PeopleColumn";
+import { personCard } from "../play/personCard";
+import { useStoredFlag } from "../play/useStoredFlag";
 import { storyRows } from "../play/storyRows";
 import { storySegments } from "../../game/AdventureEngine";
 
@@ -89,6 +92,7 @@ export function EncounterPanel({
   const [earlier, setEarlier] = useState(false);
   const [mode, setMode] = useState<"say" | "do">("say");
   const [talkingTo, setTalkingTo] = useState("");
+  const [collapsedLeft, setCollapsedLeft] = useStoredFlag("explore-play-left-collapsed");
   const abortRef = useRef<AbortController | null>(null);
   const lock = useRef(false),
     current = useRef(s);
@@ -357,48 +361,37 @@ export function EncounterPanel({
   const sceneName =
     session.adventure?.scenes.find((scene) => scene.id === session.adventure!.currentSceneId)
       ?.name ?? d.title;
+  const statuses = Object.fromEntries(
+    people.flatMap((person) => {
+      const actor = s.actors[person.id]!;
+      const word =
+        actor.hp === 0
+          ? "Incapacitated"
+          : actor.disposition !== "active"
+            ? actor.disposition
+            : actor.defending
+              ? "Defending"
+              : hostile(d, player, actor)
+                ? "Hostile"
+                : "";
+      return word ? [[person.id, word] as const] : [];
+    }),
+  );
   const leftColumn = (
-    <>
-      <div
-        className={`play-view__scene${backdrop ? "" : " play-view__scene--empty"}`}
-        role="img"
-        aria-label={`${t("pvScenePicture")}: ${sceneName}`}
-      >
-        {backdrop}
-        <p className="play-view__scene-name">{sceneName}</p>
-      </div>
-      {Object.keys(s.actors).length > 1 && (
-        <section>
-          <h3>{t("epPeopleNearby")}</h3>
-          {Object.values(s.actors)
-            .filter((a) => a.id !== d.playerId)
-            .map((actor) => (
-              <div key={actor.id}>
-                <HealthMeter
-                  name={actor.name}
-                  value={fighters.opponents.find((a) => a.id === actor.id)?.hp ?? actor.hp}
-                  max={actor.maxHp}
-                />
-                <p>
-                  {d.places.find((p) => p.id === actor.position)!.name} ·{" "}
-                  {actor.hp === 0
-                    ? "Incapacitated"
-                    : actor.disposition !== "active"
-                      ? actor.disposition
-                      : actor.defending
-                        ? "Defending"
-                        : hostile(d, player, actor)
-                          ? "Hostile"
-                          : "Neutral"}
-                </p>
-              </div>
-            ))}
-        </section>
-      )}
-    </>
+    <PeopleColumn
+      sceneName={sceneName}
+      backdrop={backdrop}
+      cards={people.map((person) => personCard(session, person.id, person.name))}
+      statuses={statuses}
+      selectedId={addressee}
+      onSelect={setTalkingTo}
+      collapsed={collapsedLeft}
+      onToggleCollapsed={() => setCollapsedLeft(!collapsedLeft)}
+    />
   );
   return (
     <PlayFrame
+      collapsed={collapsedLeft}
       left={leftColumn}
       center={
         <div className={`chat-panel gate-scene-panel${arena ? " gate-scene-panel--combat" : ""}`}>
@@ -579,9 +572,6 @@ export function EncounterPanel({
                 game={game}
                 suggestions={suggestedCommands(game, addressee || undefined)}
                 groups={groupedCommands(game)}
-                people={people}
-                addresseeId={addressee}
-                onAddressee={setTalkingTo}
                 mode={mode}
                 onMode={setMode}
                 say={say}
