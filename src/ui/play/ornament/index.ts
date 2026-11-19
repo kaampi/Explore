@@ -8,4 +8,5 @@ export { CheckCard } from "./CheckCard";
 export { ChoiceRow } from "./ChoiceRow";
 export { OrnamentProvider, useOrnament } from "./context";
 export { ornamentVars } from "./vars";
+export { useSimpleFrames, useSystemAsk } from "./usePrefersSimple";
 export { ORNAMENT_PARTS, SET_PARTS, setForPart, effectiveOrnament } from "./sets";

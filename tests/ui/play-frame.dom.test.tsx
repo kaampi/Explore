@@ -34,8 +34,9 @@ vi.mock("../../src/ui/connection/ConnectionProvider", () => ({
 }));
 vi.mock("../../src/ui/connection/connection", () => ({ modelReadiness: () => "ready" }));
 let activeTheme: Record<string, unknown> = { backgroundMode: "none", background: "#f4efe3" };
+let simpleFrames = false;
 vi.mock("../../src/ui/themes/ThemeProvider", () => ({
-  useAppearance: () => ({ library: { active: activeTheme } }),
+  useAppearance: () => ({ library: { active: activeTheme, simpleFrames } }),
   playThemeStyle: () => ({}),
 }));
 vi.mock("../../src/ui/audio/GameAudio", () => ({
@@ -52,6 +53,7 @@ beforeEach(() => {
   };
   localStorage.clear();
   activeTheme = { backgroundMode: "none", background: "#f4efe3" };
+  simpleFrames = false;
   phase = "idle";
   saveFails = false;
   saveEncounter.mockClear();
@@ -452,3 +454,54 @@ it("draws the parts in the set of the theme, with the pictures made from its col
     await ui.close();
   }
 });
+
+const fantasyTheme = {
+  backgroundMode: "none",
+  background: "#101217",
+  panel: "#1a1d24",
+  accent: "#c9a66b",
+  ornament: "forged",
+  ornamentLevel: "full",
+  headingFont: "cinzel",
+};
+const WHERE = [
+  ".play-view__scene",
+  ".play-person",
+  ".play-story",
+  ".play-view__right",
+  ".play-do__title",
+];
+
+it("draws plain frames in a theme with ornaments when the player has chosen simple frames", async () => {
+  activeTheme = fantasyTheme;
+  simpleFrames = true;
+  const ui = await mount();
+  try {
+    for (const selector of WHERE) expect(marksOf(ui.host, selector), selector).toBe("plain");
+    const style = ui.host.querySelector<HTMLElement>(".sb-themed-play")!.style;
+    expect(style.getPropertyValue("--ornament-frame")).toBe("none");
+  } finally {
+    await ui.close();
+  }
+});
+
+for (const [name, query] of [
+  ["less motion", "reduced-motion"],
+  ["more contrast", "prefers-contrast"],
+] as const)
+  it(`draws plain frames by itself when the system asks for ${name}`, async () => {
+    activeTheme = fantasyTheme;
+    const asks = (q: string) => ({
+      matches: q.includes(query),
+      media: q,
+      addEventListener() {},
+      removeEventListener() {},
+    });
+    Object.defineProperty(window, "matchMedia", { value: asks, configurable: true });
+    const ui = await mount();
+    try {
+      for (const selector of WHERE) expect(marksOf(ui.host, selector), selector).toBe("plain");
+    } finally {
+      await ui.close();
+    }
+  });
