@@ -264,6 +264,50 @@ it("automatically hands over after movement and confirms each opponent’s resul
   }
 });
 
+it("shows who has the turn on the left and everyone's turn and health on the right during a fight", async () => {
+  const seed = loadingBayScenario("depot-columns", "mock"),
+    s = seed.encounter!.state;
+  s.phase = "combat";
+  s.round = 2;
+  s.initiative = { order: ["courier", "officer", "drone", "sentry"], rolls: {} };
+  s.cursor = 0;
+  s.barriers.shutter!.open = true;
+  s.barriers.shutter!.locked = false;
+  s.actors.courier!.position = "cargo";
+  s.actors.officer!.hp = 5;
+  const ui = mount(seed);
+  try {
+    await ui.render();
+    const left = ui.host.querySelector(".play-view__left")!;
+    // Not "Nobody is here": the one whose turn it is, which is you.
+    expect(left.textContent).not.toContain("Nobody is here");
+    expect(left.querySelector(".play-person__name")!.textContent).toBe("Courier");
+    expect(left.querySelector(".play-person__status")!.textContent).toBe("Your turn");
+
+    const right = ui.host.querySelector(".play-view__right")!;
+    expect(right.querySelector(".play-scene__title")!.textContent).toBe("Combat · Round 2");
+    const order = Array.from(right.querySelectorAll(".play-combat__entry"));
+    expect(order.map((entry) => entry.querySelector("strong")!.textContent)).toEqual([
+      "Courier",
+      "Officer Vale",
+      "Patrol drone",
+      "Airlock sentry",
+    ]);
+    // Health for everyone, and the one with the turn marked.
+    expect(order[1]!.textContent).toContain("5 /");
+    expect(order.map((entry) => entry.getAttribute("aria-current"))).toEqual([
+      "step",
+      null,
+      null,
+      null,
+    ]);
+    // The scene's own parts are not there while the fight lasts.
+    expect(right.querySelector(".play-scene__list")).toBeNull();
+  } finally {
+    await ui.close();
+  }
+});
+
 it("presents a faster opponent first, then shows the player’s own saved result", async () => {
   const seed = loadingBayScenario("mixed-results", "mock"),
     s = seed.encounter!.state;
@@ -278,6 +322,13 @@ it("presents a faster opponent first, then shows the player’s own saved result
     await click(ui.host, "Pulse pistol · Patrol drone");
     expect(ui.engine.getSession().encounter!.history.at(-1)!.checks[0]!.actorId).toBe("officer");
     expect(ui.host.textContent).toContain("Officer Vale’s turn");
+    // The left column follows the turn: now it is Officer Vale's.
+    expect(ui.host.querySelector(".play-view__left .play-person__name")!.textContent).toBe(
+      "Officer Vale",
+    );
+    expect(ui.host.querySelector(".play-combat__entry--active strong")!.textContent).toBe(
+      "Officer Vale",
+    );
     await click(ui.host, "Finish animation");
     expect(ui.host.querySelector(".roll-result")?.textContent).toContain("Officer Vale rolled 100");
     await click(ui.host, "OK");
@@ -413,6 +464,35 @@ it("plays rolls in each scene without replaying saved rolls when travelling or r
     expect(ui.host.querySelector("[data-roll]")).toBeNull();
     expect(ui.host.querySelector('[aria-label="Resolved dice roll"]')).toBeNull();
     expect(ui.engine.getSession().encounter!.history).toHaveLength(1);
+  } finally {
+    await ui.close();
+  }
+});
+it("waits with the roll's line, the outcome and the marks until the dice have landed", async () => {
+  const built = connectedAdventureExample();
+  built.campaign.scenes[0]!.encounter!.definition.interactions[0]!.check = {
+    stat: "Observation",
+    modifier: 0,
+  };
+  const ui = mount(
+    startPlayableCampaign(built.campaign, built.campaign.scenes[0]!, built.places, "held-rows"),
+  );
+  try {
+    await ui.render();
+    await click(ui.host, "Ask Edda about the messenger");
+    // The dice are rolling. What the player did is told; what came of it is not.
+    expect(ui.host.querySelector("[data-roll]")).not.toBeNull();
+    const story = () => ui.host.querySelector(".play-story__log")!;
+    expect(story().textContent).toContain("Ask Edda about the messenger");
+    expect(story().textContent).not.toContain("Edda points to the north path");
+    expect(story().querySelector(".play-row--check")).toBeNull();
+    expect(ui.host.querySelector(".play-notice")).toBeNull();
+
+    await finishPlayback(ui.host);
+    // Now it is told: the roll, the outcome, and the mark for what the player found out.
+    expect(story().querySelector(".play-row--check")).not.toBeNull();
+    expect(story().textContent).toContain("Edda points to the north path");
+    expect(ui.host.querySelector(".play-notice")!.textContent).toContain("You found out");
   } finally {
     await ui.close();
   }

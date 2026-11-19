@@ -1,3 +1,4 @@
+import { installExampleOnce } from "./exampleLibrary";
 import { InteractionSchema, type Interaction } from "../game/EncounterSchema";
 import {
   newCampaignTemplate,
@@ -305,14 +306,7 @@ export function gatehouseExample() {
 
 /** Explicit example creation never replaces an existing authored adventure or saved playthrough. */
 export async function installGatehouseExample(repo: IndexedDBRepository) {
-  const built = gatehouseExample();
-  await repo.saveRealm(built.realm);
-  await repo.saveRuleset(built.rules);
-  for (const place of built.places) await repo.savePlace(place);
-  for (const person of built.characters) await repo.saveCharacter(person);
-  for (const thing of built.objects) await repo.saveObject(thing);
-  await repo.saveCampaign(built.campaign);
-  return built;
+  return installExampleOnce(repo, "bundled:city-gate", gatehouseExample);
 }
 
 export async function startGatehouseExample(repo: IndexedDBRepository, id: string, model?: string) {

@@ -21,6 +21,7 @@ const rows: StoryRow[] = [
   {
     kind: "check",
     key: "c",
+    turn: 3,
     actor: "Traveller",
     skill: "Strength",
     roll: 34,

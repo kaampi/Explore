@@ -1,3 +1,4 @@
+import { installExampleOnce } from "./exampleLibrary";
 import { EncounterGameSchema, InteractionSchema, type Interaction } from "../game/EncounterSchema";
 import {
   newRealmTemplate,
@@ -353,11 +354,10 @@ export function innVisitExample() {
 }
 /** Explicit example creation never replaces an existing authored map or saved playthrough. */
 export async function installInnExample(repo: IndexedDBRepository) {
-  const built = innVisitExample();
-  await repo.saveRealm(built.realm);
-  for (const place of built.places) await repo.savePlace(place);
-  await repo.saveCampaign(built.campaign);
-  return built;
+  return installExampleOnce(repo, "bundled:copper-lantern", () => {
+    const built = innVisitExample();
+    return { ...built, characters: [], objects: [] };
+  });
 }
 export async function startInnExample(repo: IndexedDBRepository, id: string, model?: string) {
   const built = await installInnExample(repo);

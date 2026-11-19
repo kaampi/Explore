@@ -2,6 +2,7 @@ import { useArrivalResidents } from "./useArrivalResidents";
 import { useTranslate } from "../i18n/LanguageProvider";
 import { PlayerInventory } from "./PlayerInventory";
 import { adventureCompleted, knownThings, sceneWays } from "../../game/AdventureEngine";
+import { CombatColumn, type TurnEntry } from "../play/CombatColumn";
 import { SceneColumn } from "../play/SceneColumn";
 import { CombatStage } from "../combat/CombatStage";
 import { projectFighters } from "../combat/fighters";
@@ -11,6 +12,7 @@ import { lineOfSight } from "../../game/geometry";
 import { CombatLog, encounterCombatLog } from "./CombatLog";
 import { HealthMeter } from "./HealthMeter";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import type { Session } from "@state/StateSchema";
 import { useEngine } from "../EngineStore";
 import { Menu } from "./Menu";
 import type { EncounterAction, EncounterRequest } from "../../game/EncounterSchema";
@@ -25,6 +27,7 @@ import { PlayFrame } from "../play/PlayFrame";
 import { StoryLog } from "../play/StoryLog";
 import { WhatDoYouDo } from "../play/WhatDoYouDo";
 import { PlayArrival, PlayNoticeStrip, useNotices } from "../play/PlayNotices";
+import { portraitSrc } from "../studio/portrait";
 import { PeopleColumn } from "../play/PeopleColumn";
 import { personCard } from "../play/personCard";
 import { usePlayLayout } from "../play/usePlayLayout";
@@ -42,6 +45,16 @@ export function noteFrom(text: string): string {
   const cut = line.slice(0, 300);
   const end = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("! "), cut.lastIndexOf("? "));
   return end > 80 ? cut.slice(0, end + 1) : cut.slice(0, 299).trimEnd() + "…";
+}
+
+/** The number of the last turn of the story. */
+function lastTurnOf(session: Session): number {
+  return Math.max(
+    0,
+    ...session.conversation.map((entry) =>
+      typeof entry === "object" && entry !== null && "turn" in entry ? Number(entry.turn) || 0 : 0,
+    ),
+  );
 }
 
 export function EncounterPanel({
@@ -93,7 +106,6 @@ export function EncounterPanel({
   const [earlier, setEarlier] = useState(false);
   const [mode, setMode] = useState<"say" | "do">("say");
   const [talkingTo, setTalkingTo] = useState("");
-  const marks = useNotices(session);
   const layout = usePlayLayout();
   const [collapsedLeft, setCollapsedLeft] = useStoredFlag("explore-play-left-collapsed");
   const [collapsedRight, setCollapsedRight] = useStoredFlag("explore-play-right-collapsed");
@@ -118,9 +130,13 @@ export function EncounterPanel({
   const arena = s.phase === "combat" || playback.combat;
   const turnLabel =
     playback.actorId === d.playerId
-      ? "Your turn"
-      : `${s.actors[playback.actorId]?.name ?? playback.actorId}’s turn`;
+      ? t("pvYourTurn")
+      : t("pvTurnOf", { name: s.actors[playback.actorId]?.name ?? playback.actorId });
   const busy = saving || waiting !== null || playback.active || saveFailed;
+  // The dice come first: while they roll, the line for the roll, its outcome and the marks wait.
+  const settledTurn = useRef(lastTurnOf(session));
+  if (!playback.active) settledTurn.current = lastTurnOf(session);
+  const marks = useNotices(session, playback.active);
   // A world that invents residents gives an empty place its people once, on arrival.
   const arrivedAt = session.adventure?.currentSceneId;
   const [populating, setPopulating] = useState(false);
@@ -382,13 +398,44 @@ export function EncounterPanel({
       return word ? [[person.id, word] as const] : [];
     }),
   );
+  const turnActor = s.actors[playback.actorId] ?? player;
+  // Everyone in the fight, in the order of their turns, with their health as the dice have shown it.
+  const known = new Map(
+    [fighters.player, ...fighters.opponents].map((fighter) => [fighter.id, fighter]),
+  );
+  const turnOrder: TurnEntry[] = (
+    s.initiative?.order ?? [fighters.player.id, ...fighters.opponents.map((o) => o.id)]
+  ).flatMap((id) => {
+    const actor = s.actors[id];
+    if (!actor) return [];
+    const fighter = known.get(id);
+    return [
+      {
+        id,
+        name: actor.name,
+        hp: fighter?.hp ?? playback.actors?.[id]?.hp ?? actor.hp,
+        maxHp: actor.maxHp,
+        status: fighter?.status ?? [],
+        active: id === turnActor.id,
+      },
+    ];
+  });
+  // In a fight the left column shows whoever has the turn, you included, not who is standing around.
+  const turnCard = {
+    ...personCard(session, turnActor.id, turnActor.name),
+    ...(turnActor.id === d.playerId
+      ? { portrait: portraitSrc(session.player?.portraitDataUrl) }
+      : {}),
+  };
   const leftColumn = (
     <PeopleColumn
       sceneName={sceneName}
       backdrop={backdrop}
-      cards={people.map((person) => personCard(session, person.id, person.name))}
-      statuses={statuses}
-      selectedId={addressee}
+      cards={
+        arena ? [turnCard] : people.map((person) => personCard(session, person.id, person.name))
+      }
+      statuses={arena ? { [turnActor.id]: turnLabel } : statuses}
+      selectedId={arena ? turnActor.id : addressee}
       onSelect={setTalkingTo}
       collapsed={layout === "medium" || (layout === "wide" && collapsedLeft)}
       onToggleCollapsed={() => setCollapsedLeft(!collapsedLeft)}
@@ -500,7 +547,10 @@ export function EncounterPanel({
               />
             )}
             <StoryLog
-              rows={storyRows(session, { earlier })}
+              rows={storyRows(session, {
+                earlier,
+                ...(playback.active ? { heldAfterTurn: settledTurn.current } : {}),
+              })}
               {...(draftReply ? { draftReply } : {})}
               hidden={arena}
               showTime={!!session.adventure?.links.some((link) => link.minutes !== undefined)}
@@ -632,54 +682,69 @@ export function EncounterPanel({
         </div>
       }
       right={
-        <SceneColumn
-          game={game}
-          ways={sceneWays(session)}
-          known={knownThings(session)}
-          busy={busy || s.phase === "combat" || ended}
-          mapView={mapView}
-          onGo={go}
-          onAction={choose}
-          header={
-            session.adventure ? (
-              <div className="play-scene__adventure">
-                <small>{session.adventure.goal ? t("yourAdventureEyebrow") : t("yourWorld")}</small>
-                <h3>{session.adventure.title}</h3>
-                {session.adventure.goal && (
-                  <div
-                    className={`adventure-goal${adventureCompleted(session) ? " adventure-goal--complete" : ""}`}
-                    role="status"
-                    aria-label="Adventure objective"
-                  >
-                    <strong>
-                      {adventureCompleted(session) ? "✓ Adventure completed" : "Your objective"}
-                    </strong>
-                    <p>{session.adventure.goal.title}</p>
-                    {adventureCompleted(session) && <small>{t("epYourProgressIsSaved")}</small>}
-                  </div>
-                )}
-                {!sceneWays(session).length && !adventureCompleted(session) && (
-                  <p>{t("epExploreThisSceneTo")}</p>
-                )}
-              </div>
-            ) : undefined
-          }
-          character={
-            <>
-              <HealthMeter name={player.name} value={fighters.player.hp} max={player.maxHp} />
-              <PlayerInventory session={session} busy={busy} onAction={choose} announce={false} />
-            </>
-          }
-          footer={
-            !playback.active ? (
-              <CombatLog entries={encounterCombatLog(game)} active={s.phase === "combat"} />
-            ) : undefined
-          }
-          {...(onJournal ? { onJournal } : {})}
-          collapsed={collapsedRight}
-          inPanel={layout === "narrow"}
-          onToggleCollapsed={() => setCollapsedRight(!collapsedRight)}
-        />
+        arena ? (
+          <CombatColumn
+            round={playback.round ?? s.round}
+            turnLabel={turnLabel}
+            entries={turnOrder}
+            footer={
+              !playback.active ? (
+                <CombatLog entries={encounterCombatLog(game)} active={s.phase === "combat"} />
+              ) : undefined
+            }
+          />
+        ) : (
+          <SceneColumn
+            game={game}
+            ways={sceneWays(session)}
+            known={knownThings(session)}
+            busy={busy || s.phase === "combat" || ended}
+            mapView={mapView}
+            onGo={go}
+            onAction={choose}
+            header={
+              session.adventure ? (
+                <div className="play-scene__adventure">
+                  <small>
+                    {session.adventure.goal ? t("yourAdventureEyebrow") : t("yourWorld")}
+                  </small>
+                  <h3>{session.adventure.title}</h3>
+                  {session.adventure.goal && (
+                    <div
+                      className={`adventure-goal${adventureCompleted(session) ? " adventure-goal--complete" : ""}`}
+                      role="status"
+                      aria-label="Adventure objective"
+                    >
+                      <strong>
+                        {adventureCompleted(session) ? "✓ Adventure completed" : "Your objective"}
+                      </strong>
+                      <p>{session.adventure.goal.title}</p>
+                      {adventureCompleted(session) && <small>{t("epYourProgressIsSaved")}</small>}
+                    </div>
+                  )}
+                  {!sceneWays(session).length && !adventureCompleted(session) && (
+                    <p>{t("epExploreThisSceneTo")}</p>
+                  )}
+                </div>
+              ) : undefined
+            }
+            character={
+              <>
+                <HealthMeter name={player.name} value={fighters.player.hp} max={player.maxHp} />
+                <PlayerInventory session={session} busy={busy} onAction={choose} announce={false} />
+              </>
+            }
+            footer={
+              !playback.active ? (
+                <CombatLog entries={encounterCombatLog(game)} active={s.phase === "combat"} />
+              ) : undefined
+            }
+            {...(onJournal ? { onJournal } : {})}
+            collapsed={collapsedRight}
+            inPanel={layout === "narrow"}
+            onToggleCollapsed={() => setCollapsedRight(!collapsedRight)}
+          />
+        )
       }
     />
   );

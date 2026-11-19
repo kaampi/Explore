@@ -13,14 +13,19 @@ const MAX_NOTICES = 3;
 
 export type Shown = Notice & { id: number };
 
-/** What to show now: the marks and the arrival, kept for a few seconds each. */
-export function useNotices(session: Session) {
+/**
+ * What to show now: the marks and the arrival, kept for a few seconds each. While `hold` is true
+ * (the dice are still rolling) nothing is shown and nothing is lost: what happened meanwhile is
+ * marked when the hold ends.
+ */
+export function useNotices(session: Session, hold = false) {
   const previous = useRef(session);
   const counter = useRef(0);
   const timers = useRef(new Set<number>());
   const [notices, setNotices] = useState<Shown[]>([]);
   const [arrival, setArrival] = useState<(Arrival & { id: number }) | null>(null);
   useEffect(() => {
+    if (hold) return;
     const before = previous.current;
     previous.current = session;
     if (before === session) return;
@@ -44,7 +49,7 @@ export function useNotices(session: Session) {
       setArrival({ ...came, id });
       later(() => setArrival((current) => (current?.id === id ? null : current)), ARRIVAL_MS);
     }
-  }, [session]);
+  }, [session, hold]);
   useEffect(
     () => () => {
       for (const timer of timers.current) window.clearTimeout(timer);

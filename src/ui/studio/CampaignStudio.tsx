@@ -6,6 +6,7 @@ import { BASIC_RULESET } from "../../library/basicRuleset";
 import { sceneFormat } from "../../library/sceneFormat";
 import { planNewPlace } from "../../library/campaignPlace";
 import { installInnExample } from "../../scenarios/innVisit";
+import { installExampleOnce } from "../../scenarios/exampleLibrary";
 import { EmmaInnExampleDialog } from "./EmmaInnExampleDialog";
 import { adventureMapPlaces, chooseAdventureMap } from "../../library/adventureMap";
 import { StoryboardEditor } from "./StoryboardEditor";
@@ -385,11 +386,10 @@ export function CampaignStudio({
     setBusy(true);
     setError(null);
     try {
-      const built = connectedAdventureExample();
-      await repo.saveRealm(built.realm);
-      for (const p of built.places) await repo.savePlace(p);
-      for (const c of built.characters) await repo.saveCharacter(c);
-      for (const o of built.objects) await repo.saveObject(o);
+      // The first time it is made; after that the one in the library is opened, not a new copy.
+      const built = await installExampleOnce(repo, "bundled:connected-messenger", () =>
+        connectedAdventureExample(),
+      );
       await refresh();
       setDraft(built.campaign);
       setTab("storyboard");
