@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type {
   CampaignScene,
   StoryboardChapter,
@@ -25,6 +25,14 @@ import {
 } from "@library/storyboardChapters";
 import { downloadJson } from "./studioShared";
 import { layoutStoryboard, type SectionCard, type StoryboardCard } from "./storyboardLayout";
+import {
+  routeMovingStoryboardLinks,
+  routeStoryboardDraft,
+  routeStoryboardLinks,
+  storyboardLinkBounds,
+  storyboardLinkPoint,
+  type LinkSides,
+} from "./storyboardRouting";
 
 /**
  * Storyboard — a free-canvas map of how this campaign's scenes connect,
@@ -45,30 +53,45 @@ function chapterColor(index: number): string {
   return CHAPTER_COLORS[index % CHAPTER_COLORS.length]!;
 }
 
-function port(card: StoryboardCard, outgoing: boolean, fraction = 0.5): StoryboardPosition {
-  return { x: card.pos.x + (outgoing ? card.width : 0), y: card.pos.y + card.height * fraction };
+const EMPTY_SECTIONS: StoryboardSection[] = [];
+
+type LinkEndpoints = { from: StoryboardCard; to: StoryboardCard };
+type LabelBox = { x: number; y: number; width: number; height: number };
+
+function sameCard(a: StoryboardCard, b: StoryboardCard): boolean {
+  const sameId =
+    "scene" in a
+      ? "scene" in b && a.scene.id === b.scene.id
+      : "section" in b && a.section.id === b.section.id;
+  return (
+    sameId &&
+    a.pos.x === b.pos.x &&
+    a.pos.y === b.pos.y &&
+    a.width === b.width &&
+    a.height === b.height
+  );
 }
 
-function curveControls(
-  a: StoryboardPosition,
-  b: StoryboardPosition,
-): [StoryboardPosition, StoryboardPosition] {
-  if (b.x <= a.x) {
-    return [
-      { x: a.x + 60, y: a.y + 180 },
-      { x: Math.max(5, b.x - 30), y: b.y + 180 },
-    ];
-  }
-  const dx = Math.max(40, Math.abs(b.x - a.x) / 2);
-  return [
-    { x: a.x + dx, y: a.y },
-    { x: b.x - dx, y: b.y },
-  ];
+function sameLabelBoxes(a: Map<string, LabelBox>, b: Map<string, LabelBox>): boolean {
+  return (
+    a.size === b.size &&
+    [...a].every(([id, box]) => {
+      const next = b.get(id);
+      return (
+        next &&
+        box.x === next.x &&
+        box.y === next.y &&
+        box.width === next.width &&
+        box.height === next.height
+      );
+    })
+  );
 }
 
-function bezierPath(a: StoryboardPosition, b: StoryboardPosition): string {
-  const [start, end] = curveControls(a, b);
-  return `M${a.x},${a.y} C${start.x},${start.y} ${end.x},${end.y} ${b.x},${b.y}`;
+function overlap(a: LabelBox, b: LabelBox): number {
+  const width = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x);
+  const height = Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
+  return Math.max(0, width) * Math.max(0, height);
 }
 
 export type StoryboardContextTarget = {
@@ -87,7 +110,7 @@ export function StoryboardCanvas({
   campaignName,
   onScenesChange,
   onLinksChange,
-  sections = [],
+  sections = EMPTY_SECTIONS,
   selectedSectionId,
   markedSceneIds,
   onSelectSection,
@@ -128,6 +151,12 @@ export function StoryboardCanvas({
   onChaptersChange: (chapters: StoryboardChapter[]) => void;
 }) {
   const boardRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [labelBoxes, setLabelBoxes] = useState(() => new Map<string, LabelBox>());
+  const previousRouting = useRef<{
+    sides: Map<string, LinkSides>;
+    endpoints: Map<string, LinkEndpoints>;
+  } | null>(null);
   const arrowId = useId();
   const [zoom, setZoom] = useState(1);
   const pendingScroll = useRef<StoryboardPosition | null>(null);
@@ -152,42 +181,100 @@ export function StoryboardCanvas({
     onSelectLink?.(id);
   }
 
-  const { visibleScenes, frames, folded, endpoints, sceneCards } = layoutStoryboard(
-    scenes,
-    sections,
+  const { visibleScenes, frames, folded, endpoints, sceneCards } = useMemo(
+    () => layoutStoryboard(scenes, sections),
+    [scenes, sections],
   );
-  const sectionCards = [...frames, ...folded];
+  const sectionCards = useMemo(() => [...frames, ...folded], [frames, folded]);
+  const cards = useMemo(() => [...visibleScenes, ...sectionCards], [visibleScenes, sectionCards]);
   const sceneLabel = (id: string) => sceneCards.get(id)?.scene.name.trim() || "Untitled scene";
-  const outgoing = new Map<StoryboardCard, number>();
-  const incoming = new Map<StoryboardCard, number>();
-  const projectedLinks = links.flatMap((link) => {
-    const from = endpoints.get(link.fromSceneId);
-    const to = endpoints.get(link.toSceneId);
-    if (!from || !to || (from === to && "section" in from)) return [];
-    outgoing.set(from, (outgoing.get(from) ?? 0) + 1);
-    incoming.set(to, (incoming.get(to) ?? 0) + 1);
-    return [{ link, from, to }];
-  });
-  const usedOutgoing = new Map<StoryboardCard, number>();
-  const usedIncoming = new Map<StoryboardCard, number>();
-  function linkPort(card: StoryboardCard, out: boolean) {
-    if ("scene" in card) return port(card, out);
-    const used = out ? usedOutgoing : usedIncoming;
-    const index = (used.get(card) ?? 0) + 1;
-    used.set(card, index);
-    return port(card, out, 0.16 + (0.68 * index) / ((out ? outgoing : incoming).get(card)! + 1));
-  }
-  const drawnLinks = projectedLinks.map(({ link, from, to }) => {
-    const a = linkPort(from, true);
-    const b = linkPort(to, false);
-    const topCard = Math.min(from.pos.y, to.pos.y);
-    const aboveCards = topCard < 0 ? topCard - 12 : Math.max(12, topCard - 12);
-    const labelY =
-      externalInspector && b.x > a.x ? aboveCards : (a.y + b.y) / 2 + (b.x <= a.x ? 125 : 0) - 8;
+  const { projectedLinks, incoming, outgoing } = useMemo(() => {
+    const outgoing = new Map<StoryboardCard, number>();
+    const incoming = new Map<StoryboardCard, number>();
+    const projectedLinks = links.flatMap((link) => {
+      const from = endpoints.get(link.fromSceneId);
+      const to = endpoints.get(link.toSceneId);
+      if (!from || !to || (from === to && "section" in from)) return [];
+      outgoing.set(from, (outgoing.get(from) ?? 0) + 1);
+      incoming.set(to, (incoming.get(to) ?? 0) + 1);
+      return [{ id: link.id, link, from, to }];
+    });
+    return { projectedLinks, incoming, outgoing };
+  }, [endpoints, links]);
+  const routes = useMemo(() => {
+    const previous = previousRouting.current;
+    if (!drag || !previous) return routeStoryboardLinks(cards, projectedLinks);
+    const moved = new Set<StoryboardCard>();
+    for (const { id, from, to } of projectedLinks) {
+      const old = previous.endpoints.get(id);
+      if (old && !sameCard(from, old.from)) moved.add(from);
+      if (old && !sameCard(to, old.to)) moved.add(to);
+    }
+    return routeMovingStoryboardLinks(cards, projectedLinks, previous.sides, moved);
+  }, [cards, drag, projectedLinks]);
+  useLayoutEffect(() => {
+    previousRouting.current = {
+      sides: new Map([...routes].map(([id, route]) => [id, route.sides])),
+      endpoints: new Map(projectedLinks.map(({ id, from, to }) => [id, { from, to }])),
+    };
+  }, [projectedLinks, routes]);
+
+  const placedBoxes: LabelBox[] = [];
+  const drawnLinks = projectedLinks.map(({ id, link, from, to }) => {
+    const route = routes.get(id)!;
     const endpointNames = `${sceneLabel(link.fromSceneId)} → ${sceneLabel(link.toSceneId)}`;
     const label = link.label.trim() || ("section" in from || "section" in to ? endpointNames : "");
-    return { link, a, b, labelY, label, endpointNames };
+    const box = label ? labelBoxes.get(label) : undefined;
+    let point = route.label;
+    if (box) {
+      const at = (position: StoryboardPosition) => ({
+        ...box,
+        x: box.x + position.x,
+        y: box.y + position.y,
+      });
+      const overlapWithPlaced = (position: StoryboardPosition) =>
+        placedBoxes.reduce((area, other) => area + overlap(at(position), other), 0);
+      if (overlapWithPlaced(point)) {
+        const earlier = storyboardLinkPoint(route, 0.4);
+        const later = storyboardLinkPoint(route, 0.6);
+        point = overlapWithPlaced(earlier) <= overlapWithPlaced(later) ? earlier : later;
+      }
+      placedBoxes.push(at(point));
+    }
+    return { link, route, label, point, box, endpointNames };
   });
+
+  useLayoutEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    function measureLabels() {
+      if (!svg?.isConnected) return;
+      const padding = parseFloat(getComputedStyle(svg).getPropertyValue("--space-1")) || 0;
+      const measured = new Map<string, LabelBox>();
+      for (const text of Array.from(
+        svg.querySelectorAll<SVGTextElement>("[data-storyboard-label]"),
+      )) {
+        const label = text.textContent;
+        if (!label || measured.has(label) || typeof text.getBBox !== "function") continue;
+        const { x, y, width, height } = text.getBBox();
+        measured.set(label, {
+          x: x - padding,
+          y: y - padding,
+          width: width + 2 * padding,
+          height: height + 2 * padding,
+        });
+      }
+      setLabelBoxes((current) => (sameLabelBoxes(current, measured) ? current : measured));
+    }
+    measureLabels();
+    document.fonts?.addEventListener("loadingdone", measureLabels);
+    return () => document.fonts?.removeEventListener("loadingdone", measureLabels);
+  }, [links, sceneCards]);
+
+  const activeConnectFrom = connectionFromSceneId ?? connectFrom;
+  const draftSource = activeConnectFrom ? endpoints.get(activeConnectFrom) : undefined;
+  const draft = draftSource ? routeStoryboardDraft(draftSource, draftPoint ?? undefined) : null;
+  const draftBounds = draft ? storyboardLinkBounds(draft) : null;
 
   let left = Infinity;
   let top = Infinity;
@@ -199,22 +286,27 @@ export function StoryboardCanvas({
     right = Math.max(right, x);
     bottom = Math.max(bottom, y);
   }
-  for (const { pos, width, height } of [...visibleScenes, ...sectionCards]) {
+  for (const { pos, width, height } of cards) {
     include(pos);
     include({ x: pos.x + width + 8, y: pos.y + height });
   }
-  for (const { label, a, b, labelY } of drawnLinks) {
-    curveControls(a, b).forEach(include);
-    if (label) {
-      include({ x: (a.x + b.x) / 2, y: labelY - 12 });
-    }
+  for (const { route } of drawnLinks) {
+    const area = storyboardLinkBounds(route);
+    include({ x: area.left, y: area.top });
+    include({ x: area.right, y: area.bottom });
+  }
+  for (const box of placedBoxes) {
+    include(box);
+    include({ x: box.x + box.width, y: box.y + box.height });
   }
   const origin = drag?.origin ?? { x: Math.min(0, left), y: Math.min(0, top) };
-  const width = Math.max(960, right - origin.x + 2 * VIEW_PADDING, (draftPoint?.x ?? 0) - origin.x);
+  const width = Math.max(
+    960,
+    Math.max(right, draftBounds?.right ?? 0) - origin.x + 2 * VIEW_PADDING,
+  );
   const height = Math.max(
     720,
-    bottom - origin.y + 2 * VIEW_PADDING,
-    (draftPoint?.y ?? 0) - origin.y,
+    Math.max(bottom, draftBounds?.bottom ?? 0) - origin.y + 2 * VIEW_PADDING,
   );
 
   const moveView = useCallback(
@@ -286,7 +378,6 @@ export function StoryboardCanvas({
     });
   }
 
-  const activeConnectFrom = connectionFromSceneId ?? connectFrom;
   useEffect(() => {
     if (connectionFromSceneId) {
       setConnectFrom(null);
@@ -308,8 +399,6 @@ export function StoryboardCanvas({
     window.addEventListener("keydown", cancel);
     return () => window.removeEventListener("keydown", cancel);
   }, [activeConnectFrom, onConnectionEnd]);
-  const draftSource = activeConnectFrom ? endpoints.get(activeConnectFrom) : undefined;
-  const draftStart = draftSource ? port(draftSource, true) : undefined;
 
   function pointFromEvent(event: { clientX: number; clientY: number }): StoryboardPosition {
     const rect = boardRef.current?.getBoundingClientRect();
@@ -663,6 +752,7 @@ export function StoryboardCanvas({
           >
             {frames.map(renderSection)}
             <svg
+              ref={svgRef}
               className="storyboard-lines"
               viewBox={`${origin.x} ${origin.y} ${width} ${height}`}
             >
@@ -679,9 +769,9 @@ export function StoryboardCanvas({
                   <path d="M0,0 L10,5 L0,10 z" className="storyboard-arrowhead" />
                 </marker>
               </defs>
-              {drawnLinks.map(({ link, a, b, labelY, label, endpointNames }) => {
+              {drawnLinks.map(({ link, route, endpointNames }) => {
                 const blocks = link.requiresAbsentFlags.length > 0;
-                const path = bezierPath(a, b);
+                const path = route.path;
                 return (
                   <g key={link.id} data-link-id={link.id}>
                     <title>{endpointNames}</title>
@@ -697,28 +787,29 @@ export function StoryboardCanvas({
                       markerEnd={`url(#${arrowId})`}
                       style={zoom < 0.5 ? { strokeWidth: 1 / zoom } : undefined}
                     />
-                    {label ? (
-                      <text
-                        x={(a.x + b.x) / 2}
-                        y={labelY}
-                        className="storyboard-line-label"
-                        textAnchor="middle"
-                      >
-                        {label}
-                      </text>
-                    ) : null}
                   </g>
                 );
               })}
-              {draftStart ? (
-                <path
-                  d={bezierPath(
-                    draftStart,
-                    draftPoint ?? { x: draftStart.x + 55, y: draftStart.y },
-                  )}
-                  className="storyboard-line storyboard-line--draft"
-                />
-              ) : null}
+              {draft && <path d={draft.path} className="storyboard-line storyboard-line--draft" />}
+              {drawnLinks.map(({ link, label, point, box }) =>
+                label ? (
+                  <g
+                    key={link.id}
+                    data-storyboard-label-link={link.id}
+                    transform={`translate(${point.x} ${point.y})`}
+                  >
+                    {box && <rect {...box} className="storyboard-line-label__background" />}
+                    <text
+                      className="storyboard-line-label"
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      data-storyboard-label
+                    >
+                      {label}
+                    </text>
+                  </g>
+                ) : null,
+              )}
             </svg>
 
             {folded.map(renderSection)}

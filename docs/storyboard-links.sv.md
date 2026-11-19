@@ -24,7 +24,9 @@ Varje kombination får poäng:
 - **plus 120 för varje punkt som ligger i en annan scen eller grupp**, med 8 px marginal. Bågen mäts i 40 punkter, och de allra första och sista räknas inte.
 - Punkter i källans eller målets egen ruta räknas lägre, med vikten 0,6.
 
-Kombinationen med lägst poäng vinner. Vid lika poäng vinner ordningen höger, vänster, ner, upp, så att samma indata alltid ger samma linjer.
+Vid lika poäng vinner ordningen höger, vänster, ner, upp, så att samma indata alltid ger samma linjer.
+
+Om ingen av bågarna mellan sidor som vetter mot varandra går fri från korten provas också de återstående sidparen, upp till 16 totalt. Välj den fria bågen med lägst poäng om det finns en, annars den med lägst poäng totalt. Om två kort har samma mittpunkt provas alla sidpar. Om deras rutor sammanfaller helt används två skilda fästpunkter på ovansidan, som för en självkoppling. Om ett kort omsluter det andra får poängen avgöra när ingen båge går fri.
 
 **Tröskel mot hopp:** när en scen dras behåller en koppling sina sidor så länge den nya bästa kombinationen inte är minst 15 % bättre. Då hoppar linjen inte fram och tillbaka mellan två sidor under dragningen.
 
@@ -39,7 +41,7 @@ Då korsar linjerna inte varandra precis vid kortet. Två kopplingar åt var sit
 
 ### 3. Bågen
 
-Bågen är en kubisk Bézierkurva. Båda kontrollpunkterna ligger rakt ut från sin sida, på avståndet `clamp(36, 0,42 × avståndet mellan ändarna, 140)`. Bågen lämnar alltså kortet vinkelrätt och går aldrig in i det kort den lämnar.
+Bågen är en kubisk Bézierkurva. Båda kontrollpunkterna ligger rakt ut från sin sida, på avståndet `clamp(36, 0,42 × avståndet mellan ändarna, 140)`. Bågen lämnar alltså kortet vinkelrätt. Om en båge mellan motstående sidor annars går in i ett av ändkorten, och det finns ett fritt mellanrum mellan sidorna, begränsas kontrollavståndet till det mellanrummet. Med 10 px mellan sidorna blir kontrollavståndet då 10 px.
 
 En koppling från en scen till sig själv ritas som en ögla ovanför scenen.
 

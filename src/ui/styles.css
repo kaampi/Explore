@@ -2780,6 +2780,12 @@ textarea.setup-field__story {
   fill: var(--accent);
 }
 
+.storyboard-line-label__background {
+  fill: var(--panel-raised);
+  stroke: var(--border);
+  rx: var(--radius-sm);
+}
+
 .storyboard-line-label {
   fill: var(--text-dim);
   font-size: 11px;
