@@ -54,6 +54,7 @@ export function SceneColumn({
   footer,
   collapsed,
   onToggleCollapsed,
+  inPanel = false,
   onJournal,
   onGo,
   onAction,
@@ -71,6 +72,8 @@ export function SceneColumn({
   /** The column is folded to a narrow strip. */
   collapsed: boolean;
   onToggleCollapsed: () => void;
+  /** Shown in a panel of its own (a narrow window): never folded, and no button to fold it. */
+  inPanel?: boolean;
   /** Opens the journal, where everything the player knows is. */
   onJournal?: () => void;
   onGo: (wayId: string) => void;
@@ -97,7 +100,7 @@ export function SceneColumn({
   const things = thingsHere(game);
   const open = things.find((thing) => thing.id === openThing);
   const skills = d.rules.attributes.filter((a) => player?.stats[a.id] !== undefined);
-  if (collapsed)
+  if (collapsed && !inPanel)
     return (
       <aside
         className="sb-game-toolbox gate-scene-toolbox play-scene play-scene--collapsed"
@@ -117,19 +120,23 @@ export function SceneColumn({
     );
   return (
     <aside className="sb-game-toolbox gate-scene-toolbox play-scene" aria-label={t("pvInTheScene")}>
-      <div className="play-scene__head">
-        <h2 className="play-scene__title">{t("pvInTheScene")}</h2>
-        <button
-          type="button"
-          className="play-scene__fold"
-          aria-expanded={true}
-          aria-label={t("pvHideScene")}
-          title={t("pvHideScene")}
-          onClick={onToggleCollapsed}
-        >
-          »
-        </button>
-      </div>
+      {!inPanel && (
+        <div className="play-scene__head">
+          <h2 className="play-scene__title">{t("pvInTheScene")}</h2>
+          {!inPanel && (
+            <button
+              type="button"
+              className="play-scene__fold"
+              aria-expanded={true}
+              aria-label={t("pvHideScene")}
+              title={t("pvHideScene")}
+              onClick={onToggleCollapsed}
+            >
+              »
+            </button>
+          )}
+        </div>
+      )}
       {header}
       {ways.length > 0 && (
         <section className="play-scene__part" aria-label={t("pvFromHere")}>

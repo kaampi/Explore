@@ -65,6 +65,23 @@ beforeEach(() => {
 });
 afterEach(() => vi.restoreAllMocks());
 
+/** A window of this width, for the layouts that depend on it. */
+function widthOf(width: number) {
+  const query = (q: string) => {
+    const max = /max-width:\s*(\d+)px/.exec(q);
+    return {
+      matches: max ? width <= Number(max[1]) : false,
+      media: q,
+      addEventListener() {},
+      removeEventListener() {},
+    };
+  };
+  Object.defineProperty(window, "matchMedia", { value: query, configurable: true });
+}
+afterEach(() => {
+  Object.defineProperty(window, "matchMedia", { value: undefined, configurable: true });
+});
+
 async function mount(options: { onHome?: (s: Session) => void; onAppearance?: () => void } = {}) {
   const repo = new IndexedDBRepository(new IDBFactory(), "play-frame-ui");
   const host = document.createElement("div");
@@ -136,6 +153,54 @@ it("shows the place's name in the top row, and its time only when the adventure 
     expect(INITIAL_GAME_MINUTES).toBe(8 * 60);
   } finally {
     await withTimes.close();
+  }
+});
+
+it("folds the left column to its strip by itself from 1024 to 1439 px, with no button for it", async () => {
+  widthOf(1280);
+  const ui = await mount();
+  try {
+    expect(ui.host.querySelector(".play-view--collapsed")).not.toBeNull();
+    expect(ui.host.querySelector(".play-people--collapsed")).not.toBeNull();
+    expect(ui.host.querySelector(".play-people__toggle")).toBeNull();
+    // The right column is still there.
+    expect(ui.host.querySelector(".play-view__right .play-scene")).not.toBeNull();
+  } finally {
+    await ui.close();
+  }
+});
+
+it("is one column under 1024 px: a banner, the story, and In the scene and the journal as panels", async () => {
+  widthOf(800);
+  HTMLDialogElement.prototype.showModal = function () {
+    this.setAttribute("open", "");
+  };
+  HTMLDialogElement.prototype.close = function () {
+    this.removeAttribute("open");
+  };
+  const ui = await mount();
+  try {
+    expect(ui.host.querySelector(".play-view--narrow")).not.toBeNull();
+    expect(ui.host.querySelector(".play-view__scene--banner")).not.toBeNull();
+    expect(ui.host.querySelector(".play-view__right")).toBeNull();
+    expect(ui.host.querySelector(".play-do")).not.toBeNull();
+
+    const panels = Array.from(
+      ui.host.querySelectorAll<HTMLButtonElement>(".play-view__panels button"),
+    );
+    expect(panels.map((b) => b.textContent)).toEqual(["In the scene", "Journal"]);
+    await act(async () => panels[0]!.click());
+    const panel = document.querySelector('dialog[aria-label="In the scene"]')!;
+    expect(panel.querySelector(".play-scene")).not.toBeNull();
+    // In a panel it is not folded and has no button for folding.
+    expect(panel.querySelector(".play-scene__fold")).toBeNull();
+    await act(async () => panel.querySelector<HTMLButtonElement>(".sb-icon")!.click());
+    expect(document.querySelector('dialog[aria-label="In the scene"]')).toBeNull();
+
+    await act(async () => panels[1]!.click());
+    expect(document.querySelector('dialog[aria-label="Journal"]')).not.toBeNull();
+  } finally {
+    await ui.close();
   }
 });
 

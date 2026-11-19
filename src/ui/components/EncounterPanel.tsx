@@ -27,6 +27,7 @@ import { WhatDoYouDo } from "../play/WhatDoYouDo";
 import { PlayArrival, PlayNoticeStrip, useNotices } from "../play/PlayNotices";
 import { PeopleColumn } from "../play/PeopleColumn";
 import { personCard } from "../play/personCard";
+import { usePlayLayout } from "../play/usePlayLayout";
 import { useStoredFlag } from "../play/useStoredFlag";
 import { storyRows } from "../play/storyRows";
 import { storySegments } from "../../game/AdventureEngine";
@@ -93,6 +94,7 @@ export function EncounterPanel({
   const [mode, setMode] = useState<"say" | "do">("say");
   const [talkingTo, setTalkingTo] = useState("");
   const marks = useNotices(session);
+  const layout = usePlayLayout();
   const [collapsedLeft, setCollapsedLeft] = useStoredFlag("explore-play-left-collapsed");
   const [collapsedRight, setCollapsedRight] = useStoredFlag("explore-play-right-collapsed");
   const abortRef = useRef<AbortController | null>(null);
@@ -388,14 +390,18 @@ export function EncounterPanel({
       statuses={statuses}
       selectedId={addressee}
       onSelect={setTalkingTo}
-      collapsed={collapsedLeft}
+      collapsed={layout === "medium" || (layout === "wide" && collapsedLeft)}
       onToggleCollapsed={() => setCollapsedLeft(!collapsedLeft)}
+      banner={layout === "narrow"}
+      fixed={layout !== "wide"}
     />
   );
   return (
     <PlayFrame
-      collapsed={collapsedLeft}
-      rightCollapsed={collapsedRight}
+      collapsed={layout === "medium" || (layout === "wide" && collapsedLeft)}
+      rightCollapsed={layout === "wide" && collapsedRight}
+      layout={layout}
+      {...(onJournal ? { onJournal } : {})}
       left={leftColumn}
       center={
         <div className={`chat-panel gate-scene-panel${arena ? " gate-scene-panel--combat" : ""}`}>
@@ -659,6 +665,7 @@ export function EncounterPanel({
           }
           {...(onJournal ? { onJournal } : {})}
           collapsed={collapsedRight}
+          inPanel={layout === "narrow"}
           onToggleCollapsed={() => setCollapsedRight(!collapsedRight)}
         />
       }
