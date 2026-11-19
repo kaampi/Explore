@@ -33,6 +33,8 @@ export function PeopleColumn({
   onSelect,
   collapsed,
   onToggleCollapsed,
+  banner = false,
+  fixed = false,
 }: {
   sceneName: string;
   backdrop: ReactNode;
@@ -43,6 +45,10 @@ export function PeopleColumn({
   onSelect: (id: string) => void;
   collapsed: boolean;
   onToggleCollapsed: () => void;
+  /** A low banner with the picture and the tabs, for a narrow window. */
+  banner?: boolean;
+  /** The strip is not a choice here, so there is no button for it. */
+  fixed?: boolean;
 }) {
   const t = useTranslate();
   const selected = cards.find((card) => card.id === selectedId) ?? cards[0];
@@ -75,7 +81,7 @@ export function PeopleColumn({
           id={`play-person-tab-${card.id}`}
           className="play-people__tab"
           aria-selected={card.id === selected?.id}
-          aria-controls={collapsed ? undefined : "play-person-card"}
+          aria-controls={collapsed || banner ? undefined : "play-person-card"}
           tabIndex={card.id === selected?.id ? 0 : -1}
           title={collapsed ? card.name : undefined}
           aria-label={collapsed ? card.name : undefined}
@@ -88,7 +94,7 @@ export function PeopleColumn({
       ))}
     </div>
   );
-  const toggle = (
+  const toggle = fixed ? null : (
     <button
       type="button"
       className="play-people__toggle"
@@ -101,6 +107,20 @@ export function PeopleColumn({
       </span>
     </button>
   );
+  if (banner)
+    return (
+      <div className="play-people play-people--banner">
+        <div
+          className={`play-view__scene play-view__scene--banner${backdrop ? "" : " play-view__scene--empty"}`}
+          role="img"
+          aria-label={`${t("pvScenePicture")}: ${sceneName}`}
+        >
+          {backdrop}
+          <p className="play-view__scene-name">{sceneName}</p>
+        </div>
+        {cards.length > 0 ? tabs : <p className="play-people__empty">{t("pvNobodyHere")}</p>}
+      </div>
+    );
   if (collapsed)
     return (
       <div className="play-people play-people--collapsed">

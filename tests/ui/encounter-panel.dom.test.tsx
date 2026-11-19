@@ -544,6 +544,25 @@ function narratorTurns(session: Session) {
   ) as { content: string; engineText?: string; ai?: unknown }[];
 }
 
+it("has a link that goes past the story to What do you do?, first among the things to tab to", async () => {
+  const ui = mount(messengerSeed("skip-link"));
+  try {
+    await ui.render();
+    const link = ui.host.querySelector<HTMLAnchorElement>("a.play-skip")!;
+    expect(link.textContent).toBe("Skip to What do you do?");
+    const story = ui.host.querySelector(".play-story")!;
+    // The link comes before the story in the page, so the keyboard meets it first.
+    expect(link.compareDocumentPosition(story) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await act(async () => link.click());
+    expect(document.activeElement).toBe(ui.host.querySelector("#play-do"));
+    expect(
+      ui.host.querySelector("#play-do")!.contains(ui.host.querySelector(".play-do__suggestion")),
+    ).toBe(true);
+  } finally {
+    await ui.close();
+  }
+});
+
 it("draws its buttons from the same list the AI is limited to", async () => {
   const seed = messengerSeed("same-list");
   const ui = mount(seed);

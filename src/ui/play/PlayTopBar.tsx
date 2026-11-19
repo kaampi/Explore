@@ -84,7 +84,7 @@ export function PlayTopBar({
         >
           <path d="M19 12H5m6-6-6 6 6 6" />
         </svg>
-        {t("pvToOverview")}
+        <span className="play-top__home-label">{t("pvToOverview")}</span>
       </button>
       <h1 className="play-top__place">{placeName}</h1>
       {time && (

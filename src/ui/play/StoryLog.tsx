@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState, type MouseEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FocusEvent,
+  type KeyboardEvent,
+  type MouseEvent,
+} from "react";
 import { formatGameTime } from "../../state/gameClock";
 import { useTranslate } from "../i18n/LanguageProvider";
 import type { StoryRow } from "./storyRows";
@@ -47,6 +54,40 @@ export function StoryLog({
   const [away, setAway] = useState(false);
   const atBottom = useRef(true);
   const count = rows.length + (draftReply ? 1 : 0);
+  // One tab stop for the whole story: the row that is current. The arrow keys move between rows,
+  // and only the current row's buttons can be tabbed to. Before any move it is the newest row.
+  const [picked, setPicked] = useState<string | null>(null);
+  const current = rows.find((row) => row.key === picked)?.key ?? rows.at(-1)?.key;
+  const nav = (key: string) => ({
+    "data-row-key": key,
+    tabIndex: key === current ? 0 : -1,
+    onFocus: (event: FocusEvent<HTMLElement>) => {
+      // Focus on the row itself, not on one of its buttons.
+      if (event.target === event.currentTarget) setPicked(key);
+    },
+  });
+  const moveRow = (event: KeyboardEvent<HTMLElement>) => {
+    const keys: Record<string, (at: number, last: number) => number> = {
+      ArrowDown: (at, last) => Math.min(at + 1, last),
+      ArrowUp: (at) => Math.max(at - 1, 0),
+      Home: () => 0,
+      End: (_, last) => last,
+    };
+    const go = keys[event.key];
+    if (!go || rows.length === 0 || event.altKey || event.ctrlKey || event.metaKey) return;
+    event.preventDefault();
+    const at = Math.max(
+      0,
+      rows.findIndex((row) => row.key === current),
+    );
+    const next = rows[go(at, rows.length - 1)]!;
+    setPicked(next.key);
+    const element = Array.from(
+      log.current?.querySelectorAll<HTMLElement>("[data-row-key]") ?? [],
+    ).find((el) => el.dataset.rowKey === next.key);
+    element?.focus();
+    element?.scrollIntoView?.({ block: "nearest" });
+  };
   useEffect(() => {
     if (atBottom.current)
       log.current?.scrollTo?.({ top: log.current.scrollHeight, behavior: "smooth" });
@@ -63,6 +104,7 @@ export function StoryLog({
         <button
           type="button"
           className="play-row__action"
+          tabIndex={row.key === current ? 0 : -1}
           aria-label={t("pvSaveIdeaRow")}
           onClick={() => onSaveIdea(row.turn)}
         >
@@ -70,7 +112,12 @@ export function StoryLog({
         </button>
       )}
       {canRemember && row.kind === "person" && row.improvised && onRemember && (
-        <button type="button" className="play-row__action" onClick={() => onRemember(row)}>
+        <button
+          type="button"
+          className="play-row__action"
+          tabIndex={row.key === current ? 0 : -1}
+          onClick={() => onRemember(row)}
+        >
           {t("rememberThis")}
         </button>
       )}
@@ -97,6 +144,7 @@ export function StoryLog({
         role="log"
         aria-live="polite"
         aria-relevant="additions"
+        onKeyDown={moveRow}
         onScroll={(event) => {
           const el = event.currentTarget;
           const near = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
@@ -107,20 +155,20 @@ export function StoryLog({
         {rows.map((row) => {
           if (row.kind === "divider")
             return (
-              <div key={row.key} className="play-row play-row--divider">
+              <div key={row.key} {...nav(row.key)} className="play-row play-row--divider">
                 <span>{row.place}</span>
                 {showTime && <time>{formatGameTime(row.minutes)}</time>}
               </div>
             );
           if (row.kind === "goal")
             return (
-              <div key={row.key} className="play-row play-row--goal">
+              <div key={row.key} {...nav(row.key)} className="play-row play-row--goal">
                 <span aria-hidden="true">✓</span>&nbsp;{t("pvGoalReached", { goal: row.title })}
               </div>
             );
           if (row.kind === "check")
             return (
-              <div key={row.key} className="play-row play-row--check">
+              <div key={row.key} {...nav(row.key)} className="play-row play-row--check">
                 <span aria-hidden="true">◇</span>
                 <span className="visually-hidden">{t("pvRollLabel")}: </span>
                 {row.skill} · {row.roll} / {row.target} · {degree[row.degree]}
@@ -130,14 +178,24 @@ export function StoryLog({
           const menu = (event: MouseEvent) => onRowMenu(event, row);
           if (row.kind === "narrator")
             return (
-              <div key={row.key} className="play-row play-row--narrator" onContextMenu={menu}>
+              <div
+                key={row.key}
+                {...nav(row.key)}
+                className="play-row play-row--narrator"
+                onContextMenu={menu}
+              >
                 <p>{row.text}</p>
                 {actions(row)}
               </div>
             );
           if (row.kind === "say")
             return (
-              <div key={row.key} className="play-row play-row--say" onContextMenu={menu}>
+              <div
+                key={row.key}
+                {...nav(row.key)}
+                className="play-row play-row--say"
+                onContextMenu={menu}
+              >
                 <span className="play-row__label">{t("pvYouSay")}</span>
                 <blockquote>{quoted(row.text)}</blockquote>
                 {actions(row)}
@@ -145,14 +203,24 @@ export function StoryLog({
             );
           if (row.kind === "do")
             return (
-              <div key={row.key} className="play-row play-row--do" onContextMenu={menu}>
+              <div
+                key={row.key}
+                {...nav(row.key)}
+                className="play-row play-row--do"
+                onContextMenu={menu}
+              >
                 <span className="play-row__label">{t("pvYouDo")}</span>
                 <p>{row.label}</p>
                 {actions(row)}
               </div>
             );
           return (
-            <div key={row.key} className="play-row play-row--person" onContextMenu={menu}>
+            <div
+              key={row.key}
+              {...nav(row.key)}
+              className="play-row play-row--person"
+              onContextMenu={menu}
+            >
               <span className="play-row__label play-row__label--person">
                 {row.name}
                 {row.improvised && <small className="play-row__mark">{t("pvImprovised")}</small>}
