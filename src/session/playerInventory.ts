@@ -14,6 +14,9 @@ export type InventoryEntry = {
   readableContent?: string | undefined;
   imageDataUrl?: string | undefined;
   container?: string | undefined;
+  /** The picture chosen for the thing, and its tags, which a picture can be taken from. */
+  icon?: string | undefined;
+  tags?: string[] | undefined;
   facts?: Array<{ label: string; value: string }>;
 };
 const nameOf = (id: string) => id.replace(/[-_]/g, " ").replace(/^./, (c) => c.toUpperCase());
@@ -35,6 +38,8 @@ export function playerInventory(session: Session): InventoryEntry[] {
           description: item?.description,
           readableContent: item?.readableContent,
           imageDataUrl: item?.imageDataUrl,
+          icon: item?.icon,
+          tags: item?.tags,
         };
       }),
       ...player.weapons.map((id) => {
@@ -98,6 +103,7 @@ export function playerInventory(session: Session): InventoryEntry[] {
       quantity: 1,
       description: object.note,
       readableContent: object.readableContent,
+      tags: object.tags,
       ...(object.startingLocation?.kind === "object"
         ? {
             container: objects.find(

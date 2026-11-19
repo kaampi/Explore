@@ -1,9 +1,11 @@
+import { iconFor } from "../../library/itemIcons";
+import { ItemIcon } from "./ItemIcon";
 import { ItemSlot, NamePlate } from "./ornament";
 import { useEffect, useState, type ReactNode } from "react";
 import type { EncounterGame, EncounterAction } from "../../game/EncounterSchema";
+import { actionsForThing, sceneItemCard, thingsHere } from "./itemCard";
+import { ItemCard } from "./ItemCard";
 import type { KnownThing, SceneWay } from "../../game/AdventureEngine";
-import { publicCommands } from "../../game/catalog";
-import { itemRevealed } from "../../game/itemVisibility";
 import { formatTravelTime } from "../../state/gameClock";
 import { useTranslate } from "../i18n/LanguageProvider";
 import { Modal } from "../components/Modal";
@@ -12,34 +14,7 @@ import type { PlayerValue } from "./playerValues";
 /** At most this many discoveries are shown here. The rest are in the journal. */
 export const KNOWN_SHOWN = 5;
 
-/** The things lying in the place the player stands in, that the player may see. */
-export function thingsHere(game: EncounterGame) {
-  const { definition: d, state: s } = game;
-  const player = s.actors[d.playerId];
-  if (!player) return [];
-  return d.items.filter(
-    (item) => s.itemLocations[item.id] === player.position && itemRevealed(d, s, item.id),
-  );
-}
-
-/** The actions that have something to do with a thing: the ones that take it or need it. */
-export function actionsForThing(game: EncounterGame, itemId: string) {
-  const { definition: d } = game;
-  return publicCommands(game).filter((command) => {
-    const action = command.action;
-    if (action.kind !== "interaction") return false;
-    const interaction = d.interactions.find((i) => i.id === action.interactionId);
-    if (!interaction) return false;
-    return (
-      interaction.requiresItems.includes(itemId) ||
-      [...interaction.success.effects, ...interaction.failure.effects].some(
-        (effect) =>
-          (effect.kind === "take-item" || effect.kind === "transfer-item") &&
-          effect.itemId === itemId,
-      )
-    );
-  });
-}
+export { thingsHere, actionsForThing };
 
 /**
  * The right column, "In the scene": the ways out, the things here, your character, what you
@@ -186,29 +161,18 @@ export function SceneColumn({
                   aria-expanded={openThing === thing.id}
                   onClick={() => setOpenThing(openThing === thing.id ? null : thing.id)}
                 >
-                  {thing.name}
+                  <ItemIcon name={iconFor(thing)} size={20} /> {thing.name}
                 </ItemSlot>
               </li>
             ))}
           </ul>
-          {open && (
-            <div className="play-scene__thing-card">
-              {open.description && <p>{open.description}</p>}
-              <div className="play-scene__thing-actions">
-                {actionsForThing(game, open.id).map((command) => (
-                  <button
-                    key={command.ref}
-                    type="button"
-                    className="ui-button ui-button--secondary"
-                    disabled={busy || !!command.blocked}
-                    title={command.blocked}
-                    onClick={() => onAction(command.action)}
-                  >
-                    {command.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+          {open && sceneItemCard(game, open.id) && (
+            <ItemCard
+              card={sceneItemCard(game, open.id)!}
+              busy={busy}
+              onClose={() => setOpenThing(null)}
+              onAction={onAction}
+            />
           )}
         </section>
       )}

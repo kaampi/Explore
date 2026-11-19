@@ -119,7 +119,15 @@ export function ornamentVars(
     "--ornament-font": SET_FONTS[set as "forged"]?.sign ?? "inherit",
     "--ornament-note-font": SET_FONTS[set as "forged"]?.note ?? "inherit",
     // In the hull set amber has the part that brass has in the others: discoveries, ideas, locks.
-    ...(set === "hull" ? { "--highlight": AMBER } : {}),
+    ...(set === "hull"
+      ? {
+          "--highlight": AMBER,
+          // The main button follows the theme's accent in the hull set (plum in the others).
+          "--accent-strong": colors.ornament,
+          "--accent-strong-hover": mixHex(colors.ornament, "#ffffff", 0.18),
+          "--on-accent": inkOn(colors.ornament),
+        }
+      : {}),
     "--heading-font": HEADING_FONT_FAMILY[theme.headingFont ?? "newsreader"],
   } as CSSProperties;
 }

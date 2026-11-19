@@ -154,6 +154,12 @@ describe("the variables of a theme's ornaments", () => {
     expect(vars("hull")["--ornament-note-font"]).toContain("JetBrains Mono");
     expect(vars("hull")["--highlight"]).toMatch(/^#[\da-f]{6}$/i);
     expect(vars("forged")["--highlight"]).toBeUndefined();
+    // The main button takes the theme's accent in the hull set, and stays plum in the others.
+    expect(vars("hull")["--accent-strong"]).toBe(fantasy.accent);
+    expect(
+      contrastRatio(vars("hull")["--on-accent"]!, vars("hull")["--accent-strong"]!),
+    ).toBeGreaterThanOrEqual(4.5);
+    expect(vars("forged")["--accent-strong"]).toBeUndefined();
   });
 
   it("falls back on a colour of its own for a theme read from an old file with none", () => {

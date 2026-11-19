@@ -1,3 +1,4 @@
+import { itemExtras } from "./itemIcons";
 import type {
   CampaignScene,
   CampaignTemplate,
@@ -215,6 +216,7 @@ export function placeItem(
       requiresFlags: [],
       ...(object.readableContent ? { readableContent: object.readableContent } : {}),
       ...(object.imageDataUrl ? { imageDataUrl: object.imageDataUrl } : {}),
+      ...itemExtras(object),
     });
   if ("position" in where) {
     if (!game.definition.places.some((place) => place.id === where.position))

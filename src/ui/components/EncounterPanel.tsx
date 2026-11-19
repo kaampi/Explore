@@ -740,7 +740,18 @@ export function EncounterPanel({
                 {values.meters.map((meter) => (
                   <ValueMeter key={meter.id} value={meter} />
                 ))}
-                <PlayerInventory session={session} busy={busy} onAction={choose} announce={false} />
+                <PlayerInventory
+                  session={session}
+                  busy={busy}
+                  onAction={choose}
+                  announce={false}
+                  {...(session.adventure
+                    ? {
+                        onJournal: (text: string) =>
+                          void rememberPlaceNote(noteFrom(text)).catch(() => {}),
+                      }
+                    : {})}
+                />
               </>
             }
             footer={

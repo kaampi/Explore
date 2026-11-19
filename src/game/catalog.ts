@@ -158,3 +158,47 @@ export function groupedCommands(game: EncounterGame): CommandGroup[] {
   }
   return groups.filter((entry) => entry.commands.length > 0);
 }
+
+/** One thing the engine knows about what a thing does, as words to show: never a flag name. */
+export type ItemUse =
+  | { kind: "opens"; text: string }
+  | { kind: "needs"; text: string }
+  | { kind: "action"; text: string };
+
+/** The first sentence of a text, at most 160 characters. */
+function sentenceOf(text: string): string {
+  const clean = text.replace(/\s+/g, " ").trim();
+  const sentence = /^[\s\S]*?[.!?…](?=\s|$)/.exec(clean)?.[0] ?? clean;
+  return sentence.length <= 160 ? sentence : `${sentence.slice(0, 159).trimEnd()}…`;
+}
+
+/**
+ * What the engine knows a thing does: the doors it opens (a door that has it as its key), what has
+ * to be found out before the thing shows (told as what was learned, and left out when there is no
+ * telling), and the actions it is part of. Said in words, for the info card.
+ */
+export function itemUses(game: EncounterGame, itemId: string): ItemUse[] {
+  const { definition: d, state: s } = game;
+  const uses: ItemUse[] = [];
+  for (const door of Object.values(s.barriers))
+    if (door.keyId === itemId) uses.push({ kind: "opens", text: door.name });
+  const item = d.items.find((entry) => entry.id === itemId);
+  for (const flag of item?.requiresFlags ?? []) {
+    const source = d.interactions
+      .flatMap((action) => [action.success, action.failure])
+      .find((outcome) => outcome.effects.some((e) => e.kind === "flag" && e.flag === flag));
+    const text = source ? source.learned?.trim() || sentenceOf(source.text) : "";
+    if (text) uses.push({ kind: "needs", text });
+  }
+  for (const action of d.interactions) {
+    const involved =
+      action.requiresItems.includes(itemId) ||
+      [...action.success.effects, ...action.failure.effects].some(
+        (effect) =>
+          (effect.kind === "take-item" || effect.kind === "transfer-item") &&
+          effect.itemId === itemId,
+      );
+    if (involved) uses.push({ kind: "action", text: action.label });
+  }
+  return uses;
+}

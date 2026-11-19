@@ -7,6 +7,7 @@ export function Modal({
   children,
   wide = false,
   side = false,
+  hiddenTitle = false,
 }: {
   title: string;
   onClose: () => void;
@@ -14,6 +15,8 @@ export function Modal({
   wide?: boolean;
   /** A panel from the right edge, as tall as the window. */
   side?: boolean;
+  /** The title is only the name of the dialog for a screen reader: the content has its own heading. */
+  hiddenTitle?: boolean;
 }) {
   const t = useTranslate();
   const ref = useRef<HTMLDialogElement>(null);
@@ -59,7 +62,7 @@ export function Modal({
       }}
     >
       <div className="sb-dialog__heading">
-        <h2>{title}</h2>
+        <h2 className={hiddenTitle ? "visually-hidden" : undefined}>{title}</h2>
         <button type="button" className="sb-icon" onClick={onClose} aria-label={t("closeDialog")}>
           ×
         </button>

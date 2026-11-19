@@ -662,6 +662,9 @@
   background: color-mix(in srgb, var(--scrim) 52%, transparent);
   backdrop-filter: blur(4px);
 }
+.sb-dialog__heading .sb-icon {
+  margin-left: auto;
+}
 .sb-dialog__heading {
   display: flex;
   gap: 15px;

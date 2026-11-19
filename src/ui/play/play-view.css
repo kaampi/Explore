@@ -1075,3 +1075,61 @@
   width: 100%;
   height: 8px;
 }
+
+/* The info card of a thing. */
+.item-card {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+.item-card__type {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.item-card__visual {
+  display: grid;
+  place-items: center;
+  min-height: 96px;
+  color: var(--text-dim);
+}
+.item-card__visual img {
+  max-width: 100%;
+  max-height: 180px;
+  border-radius: var(--radius-sm);
+}
+.item-card__description {
+  margin: 0;
+}
+.item-card__part h4 {
+  margin: 0 0 var(--space-1);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.item-card__part ul {
+  margin: 0;
+  padding-left: 1.1em;
+}
+.item-card__part p,
+.item-card__part dl {
+  margin: 0;
+}
+.item-card__part dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.item-card__part dd {
+  margin: 0;
+  font-weight: 600;
+}
+.item-card__actions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+.item-card__actions .ui-button--primary {
+  flex: 1;
+}

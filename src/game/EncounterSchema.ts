@@ -161,6 +161,9 @@ export const EncounterDefinitionSchema = z.object({
         description: z.string().optional(),
         readableContent: z.string().optional(),
         imageDataUrl: z.string().optional(),
+        /** One of the pictures in `ITEM_ICONS`. Missing: one is taken from the tags. */
+        icon: z.string().optional(),
+        tags: z.array(z.string()).optional(),
         requiresFlags: z.array(id).default([]),
       }),
     )

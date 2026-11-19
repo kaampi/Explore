@@ -47,6 +47,8 @@ describe("the interface languages", () => {
       "illustration",
       "fantasy",
       "sci-fi",
+      "data",
+      "ammunition",
     ]);
     const added = keys.slice(keys.indexOf("voiceInstructionPlaceholder") + 1);
 

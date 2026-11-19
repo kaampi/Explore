@@ -137,15 +137,15 @@ it("lists the things at the player's place, and shows one with its actions when 
   const thing = host.querySelector<HTMLButtonElement>(".play-scene__thing")!;
   expect(thing.getAttribute("aria-expanded")).toBe("false");
   await act(async () => thing.click());
-  expect(thing.getAttribute("aria-expanded")).toBe("true");
+  // The thing opens as the info card, the same as from the pack.
+  expect(host.querySelector("dialog .item-card")).not.toBeNull();
+  expect(host.querySelector("dialog .item-card__name")!.textContent).toBe("Brass key");
   const taking = actionsForThing(game, key.id);
   expect(taking.length).toBeGreaterThan(0);
   const take = buttons(host).find((b) => b.textContent === taking[0]!.label)!;
   await act(async () => take.click());
   expect(onAction).toHaveBeenCalledWith(taking[0]!.action);
-
-  await act(async () => thing.click());
-  expect(host.querySelector(".play-scene__thing-card")).toBeNull();
+  expect(host.querySelector("dialog")).toBeNull();
 });
 
 it("shows the map only when asked, in a panel", async () => {
@@ -236,12 +236,12 @@ it("closes an open thing card when the player comes to another scene", async () 
   });
   await draw(here);
   await act(async () => host.querySelector<HTMLButtonElement>(".play-scene__thing")!.click());
-  expect(host.querySelector(".play-scene__thing-card")).not.toBeNull();
+  expect(host.querySelector("dialog .item-card")).not.toBeNull();
 
   await draw(there);
-  expect(host.querySelector(".play-scene__thing-card")).toBeNull();
+  expect(host.querySelector("dialog .item-card")).toBeNull();
   await draw(here);
-  expect(host.querySelector(".play-scene__thing-card")).toBeNull();
+  expect(host.querySelector("dialog .item-card")).toBeNull();
 });
 
 it("tells a locked way from a closed one and a blocked one, in words", async () => {
