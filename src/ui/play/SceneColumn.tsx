@@ -6,6 +6,7 @@ import { itemRevealed } from "../../game/itemVisibility";
 import { formatTravelTime } from "../../state/gameClock";
 import { useTranslate } from "../i18n/LanguageProvider";
 import { Modal } from "../components/Modal";
+import type { PlayerValue } from "./playerValues";
 
 /** At most this many discoveries are shown here. The rest are in the journal. */
 export const KNOWN_SHOWN = 5;
@@ -50,6 +51,7 @@ export function SceneColumn({
   busy,
   header,
   character,
+  foldValues,
   mapView,
   footer,
   collapsed,
@@ -67,6 +69,8 @@ export function SceneColumn({
   header?: ReactNode;
   /** Health and the pack. */
   character: ReactNode;
+  /** The values in the fold under Your character: the skills, and any meters beyond three. */
+  foldValues: PlayerValue[];
   mapView?: ReactNode;
   footer?: ReactNode;
   /** The column is folded to a narrow strip. */
@@ -82,8 +86,7 @@ export function SceneColumn({
   const t = useTranslate();
   const [openThing, setOpenThing] = useState<string | null>(null);
   const [mapOpen, setMapOpen] = useState(false);
-  const { definition: d, state: s } = game;
-  const player = s.actors[d.playerId];
+  const { definition: d } = game;
   // An open card belongs to the place it was opened in.
   useEffect(() => setOpenThing(null), [d.id]);
   const stateName = {
@@ -99,7 +102,6 @@ export function SceneColumn({
   } as const;
   const things = thingsHere(game);
   const open = things.find((thing) => thing.id === openThing);
-  const skills = d.rules.attributes.filter((a) => player?.stats[a.id] !== undefined);
   if (collapsed && !inPanel)
     return (
       <aside
@@ -213,13 +215,13 @@ export function SceneColumn({
       <section className="play-scene__part" aria-label={t("pvYourCharacter")}>
         <h3>{t("pvYourCharacter")}</h3>
         {character}
-        {skills.length > 0 && player && (
+        {foldValues.length > 0 && (
           <details className="play-scene__skills">
             <summary>{t("pvSkills")}</summary>
             <ul>
-              {skills.map((skill) => (
+              {foldValues.map((skill) => (
                 <li key={skill.id}>
-                  <span>{skill.name}</span> <strong>{player.stats[skill.id]}</strong>
+                  <span>{skill.name}</span> <strong>{skill.value}</strong>
                 </li>
               ))}
             </ul>

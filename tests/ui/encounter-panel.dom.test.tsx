@@ -8,6 +8,7 @@ import { createRoot } from "react-dom/client";
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
 import { EncounterPanel } from "../../src/ui/components/EncounterPanel";
 import { loadingBayScenario } from "../../src/ui/home/encounterScenario";
+import { AttributeDefSchema } from "../../src/state/StateSchema";
 import { StateEngine } from "../../src/state/StateEngine";
 import { EventLog } from "../../src/events/EventLog";
 import { ActionSaveError } from "../../src/persistence/ActionSaveError";
@@ -305,6 +306,58 @@ it("shows who has the turn on the left and everyone's turn and health on the rig
     expect(right.querySelector(".play-scene__list")).toBeNull();
   } finally {
     await ui.close();
+  }
+});
+
+it("shows the rule-set's values under Your character, and health only when there is combat", async () => {
+  // A trust rule-set and nobody to fight: three meters and no health.
+  const quiet = messengerSeed("values-quiet");
+  quiet.encounter!.definition.rules.attributes = ["safety", "suspicion", "warmth", "note"].map(
+    (id) => ({ id, name: id[0]!.toUpperCase() + id.slice(1), min: 0, max: 100 }),
+  );
+  quiet.encounter!.state.actors[quiet.encounter!.definition.playerId]!.stats = {
+    safety: 30,
+    suspicion: 60,
+    warmth: 10,
+    note: 5,
+  };
+  quiet.ruleset = {
+    name: "Förtroende",
+    attributes: ["safety", "suspicion", "warmth", "note"].map((id) =>
+      AttributeDefSchema.parse({
+        id,
+        name: id[0]!.toUpperCase() + id.slice(1),
+        kind: "number",
+        min: 0,
+        max: 100,
+        maxShift: id === "note" ? 0 : 10,
+      }),
+    ),
+  };
+  const ui = mount(quiet);
+  try {
+    await ui.render();
+    const right = ui.host.querySelector(".play-view__right")!;
+    const meters = Array.from(right.querySelectorAll(".play-value strong")).map(
+      (n) => n.textContent,
+    );
+    expect(meters).toEqual(["Safety", "Suspicion", "Warmth"]);
+    expect(right.querySelector(".gate-health")).toBeNull();
+    // The one that stays put is a skill, in the fold.
+    expect(right.querySelector(".play-scene__skills")!.textContent).toContain("Note");
+  } finally {
+    await ui.close();
+  }
+
+  // The depot has enemies and weapons: health is there, and its skills are listed as before.
+  const depot = mount(loadingBayScenario("values-depot", "mock"));
+  try {
+    await depot.render();
+    const right = depot.host.querySelector(".play-view__right")!;
+    expect(right.querySelector(".gate-health")).not.toBeNull();
+    expect(right.querySelectorAll(".play-value")).toHaveLength(0);
+  } finally {
+    await depot.close();
   }
 });
 

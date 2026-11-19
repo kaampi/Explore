@@ -195,6 +195,12 @@ export const AttributeDefSchema = z.object({
    * (kiss/hug when asked). Unset = gate on trust alone.
    */
   role: z.enum(["desire"]).optional(),
+  /**
+   * How the play view shows the player's value: "meter" (a bar under Your character), "skill"
+   * (in the list of skills) or "hidden". Missing: a value that can move (maxShift above 0) is a
+   * meter, and one that stays put is a skill. It comes before that rule.
+   */
+  display: z.enum(["meter", "skill", "hidden"]).optional(),
 });
 export type AttributeDef = z.infer<typeof AttributeDefSchema>;
 

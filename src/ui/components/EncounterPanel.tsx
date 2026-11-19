@@ -2,6 +2,8 @@ import { useArrivalResidents } from "./useArrivalResidents";
 import { useTranslate } from "../i18n/LanguageProvider";
 import { PlayerInventory } from "./PlayerInventory";
 import { adventureCompleted, knownThings, sceneWays } from "../../game/AdventureEngine";
+import { hasCombat, playerValues } from "../play/playerValues";
+import { ValueMeter } from "../play/ValueMeter";
 import { CombatColumn, type TurnEntry } from "../play/CombatColumn";
 import { SceneColumn } from "../play/SceneColumn";
 import { CombatStage } from "../combat/CombatStage";
@@ -136,6 +138,8 @@ export function EncounterPanel({
   // The dice come first: while they roll, the line for the roll, its outcome and the marks wait.
   const settledTurn = useRef(lastTurnOf(session));
   if (!playback.active) settledTurn.current = lastTurnOf(session);
+  const combatMatters = hasCombat(game);
+  const values = playerValues(session);
   const marks = useNotices(session, playback.active);
   // A world that invents residents gives an empty place its people once, on arrival.
   const arrivedAt = session.adventure?.currentSceneId;
@@ -392,7 +396,7 @@ export function EncounterPanel({
             ? actor.disposition
             : actor.defending
               ? "Defending"
-              : hostile(d, player, actor)
+              : combatMatters && hostile(d, player, actor)
                 ? "Hostile"
                 : "";
       return word ? [[person.id, word] as const] : [];
@@ -730,7 +734,12 @@ export function EncounterPanel({
             }
             character={
               <>
-                <HealthMeter name={player.name} value={fighters.player.hp} max={player.maxHp} />
+                {combatMatters && (
+                  <HealthMeter name={player.name} value={fighters.player.hp} max={player.maxHp} />
+                )}
+                {values.meters.map((meter) => (
+                  <ValueMeter key={meter.id} value={meter} />
+                ))}
                 <PlayerInventory session={session} busy={busy} onAction={choose} announce={false} />
               </>
             }
@@ -740,6 +749,7 @@ export function EncounterPanel({
               ) : undefined
             }
             {...(onJournal ? { onJournal } : {})}
+            foldValues={values.fold}
             collapsed={collapsedRight}
             inPanel={layout === "narrow"}
             onToggleCollapsed={() => setCollapsedRight(!collapsedRight)}

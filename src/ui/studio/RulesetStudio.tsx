@@ -30,6 +30,8 @@ type AttrDraft = {
   options: string[];
   maxShift: string;
   desire: boolean;
+  /** How the play view shows it: "" (by whether it moves), a meter, a skill, or not at all. */
+  display: "" | "meter" | "skill" | "hidden";
 };
 
 type Draft = {
@@ -56,6 +58,7 @@ function emptyAttr(): AttrDraft {
     options: [],
     maxShift: "0",
     desire: false,
+    display: "",
   };
 }
 
@@ -74,6 +77,7 @@ function attrFromDef(def: AttributeDef): AttrDraft {
     options: [...(def.options ?? [])],
     maxShift: String(def.maxShift ?? 0),
     desire: def.role === "desire",
+    display: def.display ?? "",
   };
 }
 
@@ -120,6 +124,7 @@ function attributesFromDraft(rows: AttrDraft[]): AttributeDef[] {
         midMeaning: "",
         options: row.options,
         maxShift: 0,
+        ...(row.display ? { display: row.display } : {}),
       });
       continue;
     }
@@ -139,6 +144,7 @@ function attributesFromDraft(rows: AttrDraft[]): AttributeDef[] {
       options: [],
       maxShift: Number.isFinite(maxShift) ? Math.max(0, Math.min(100, Math.round(maxShift))) : 0,
       ...(row.desire && !desireTaken ? { role: "desire" as const } : {}),
+      ...(row.display ? { display: row.display } : {}),
     });
     if (row.desire) desireTaken = true;
   }
@@ -528,6 +534,27 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
                             />
                           </label>
                         </div>
+                        <label className="setup-field">
+                          {t("rssShownInPlay")}
+                          <select
+                            value={row.display}
+                            onChange={(e) =>
+                              setDraft({
+                                ...draft,
+                                attributes: draft.attributes.map((item) =>
+                                  item.key === row.key
+                                    ? { ...item, display: e.target.value as AttrDraft["display"] }
+                                    : item,
+                                ),
+                              })
+                            }
+                          >
+                            <option value="">{t("rssShownAuto")}</option>
+                            <option value="meter">{t("rssShownMeter")}</option>
+                            <option value="skill">{t("rssShownSkill")}</option>
+                            <option value="hidden">{t("rssShownHidden")}</option>
+                          </select>
+                        </label>
                         <label
                           className="setup-check"
                           title="Warm beat: if they ask for a kiss or hug, narration does it. At most one field per rule-set. Unchecked on every field = trust alone."
