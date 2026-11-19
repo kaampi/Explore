@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { EncounterGame, EncounterAction } from "../../game/EncounterSchema";
 import type { KnownThing, SceneWay } from "../../game/AdventureEngine";
 import { publicCommands } from "../../game/catalog";
@@ -52,6 +52,8 @@ export function SceneColumn({
   character,
   mapView,
   footer,
+  collapsed,
+  onToggleCollapsed,
   onGo,
   onAction,
 }: {
@@ -65,6 +67,9 @@ export function SceneColumn({
   character: ReactNode;
   mapView?: ReactNode;
   footer?: ReactNode;
+  /** The column is folded to a narrow strip. */
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
   onGo: (wayId: string) => void;
   onAction: (action: EncounterAction) => void;
 }) {
@@ -73,12 +78,44 @@ export function SceneColumn({
   const [mapOpen, setMapOpen] = useState(false);
   const { definition: d, state: s } = game;
   const player = s.actors[d.playerId];
+  // An open card belongs to the place it was opened in.
+  useEffect(() => setOpenThing(null), [d.id]);
   const things = thingsHere(game);
   const open = things.find((thing) => thing.id === openThing);
   const skills = d.rules.attributes.filter((a) => player?.stats[a.id] !== undefined);
+  if (collapsed)
+    return (
+      <aside
+        className="sb-game-toolbox gate-scene-toolbox play-scene play-scene--collapsed"
+        aria-label={t("pvInTheScene")}
+      >
+        <button
+          type="button"
+          className="play-scene__fold"
+          aria-expanded={false}
+          aria-label={t("pvShowScene")}
+          title={t("pvShowScene")}
+          onClick={onToggleCollapsed}
+        >
+          «
+        </button>
+      </aside>
+    );
   return (
     <aside className="sb-game-toolbox gate-scene-toolbox play-scene" aria-label={t("pvInTheScene")}>
-      <h2 className="play-scene__title">{t("pvInTheScene")}</h2>
+      <div className="play-scene__head">
+        <h2 className="play-scene__title">{t("pvInTheScene")}</h2>
+        <button
+          type="button"
+          className="play-scene__fold"
+          aria-expanded={true}
+          aria-label={t("pvHideScene")}
+          title={t("pvHideScene")}
+          onClick={onToggleCollapsed}
+        >
+          »
+        </button>
+      </div>
       {header}
       {ways.length > 0 && (
         <section className="play-scene__part" aria-label={t("pvFromHere")}>
@@ -98,12 +135,16 @@ export function SceneColumn({
                     type="button"
                     className="play-scene__way"
                     disabled={busy || locked}
-                    title={locked && way.blockedBy ? way.blockedBy : undefined}
                     onClick={() => onGo(way.id)}
                   >
                     <span>{way.label}</span>
                     {note && <small>{note}</small>}
                   </button>
+                  {locked && way.blockedBy && (
+                    <small className="play-scene__reason">
+                      {t("pvHeldShutBy", { door: way.blockedBy })}
+                    </small>
+                  )}
                 </li>
               );
             })}

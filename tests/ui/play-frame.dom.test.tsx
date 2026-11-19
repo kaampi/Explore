@@ -14,8 +14,17 @@ import type { Session } from "../../src/state/StateSchema";
 
 let session: Session;
 let phase = "idle";
+let saveFails = false;
+const saveEncounter = vi.fn(() =>
+  saveFails ? Promise.reject(new Error("disk full")) : Promise.resolve(),
+);
 vi.mock("../../src/ui/EngineStore", () => ({
-  useEngine: () => ({ useSession: () => session, phase, setOllamaModel: () => {} }),
+  useEngine: () => ({
+    useSession: () => session,
+    phase,
+    setOllamaModel: () => {},
+    saveEncounter,
+  }),
 }));
 vi.mock("../../src/ui/components/ChatPanel", () => ({
   ChatPanel: () => <div data-chat="true">Conversation</div>,
@@ -42,6 +51,8 @@ beforeEach(() => {
   };
   localStorage.clear();
   phase = "idle";
+  saveFails = false;
+  saveEncounter.mockClear();
   const built = connectedAdventureExample();
   session = startPlayableCampaign(
     built.campaign,
@@ -128,6 +139,19 @@ it("shows the place's name in the top row, and its time only when the adventure 
   }
 });
 
+it("stays in the scene and says so when saving on the way out fails", async () => {
+  const onHome = vi.fn();
+  saveFails = true;
+  const ui = await mount({ onHome });
+  try {
+    await act(async () => ui.host.querySelector<HTMLButtonElement>(".play-top__home")!.click());
+    expect(onHome).not.toHaveBeenCalled();
+    expect(ui.host.textContent).toContain("Saving is unavailable");
+  } finally {
+    await ui.close();
+  }
+});
+
 it("goes back to the overview from the first button, which waits while a reply is being written", async () => {
   const onHome = vi.fn();
   const ui = await mount({ onHome });
@@ -135,6 +159,8 @@ it("goes back to the overview from the first button, which waits while a reply i
     const home = ui.host.querySelector<HTMLButtonElement>(".play-top__home")!;
     expect(home.textContent).toBe("To overview");
     await act(async () => home.click());
+    // The scene is saved first, then the overview opens.
+    expect(saveEncounter).toHaveBeenCalledOnce();
     expect(onHome).toHaveBeenCalledOnce();
   } finally {
     await ui.close();

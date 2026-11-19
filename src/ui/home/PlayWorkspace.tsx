@@ -50,7 +50,7 @@ export function PlayWorkspace({
   onAppearance: () => void;
 }) {
   const t = useTranslate();
-  const { useSession, phase, setOllamaModel } = useEngine();
+  const { useSession, phase, setOllamaModel, saveEncounter } = useEngine();
   const { discovery, refresh, chooseModel } = useConnection();
   const [connectionOpen, setConnectionOpen] = useState(false);
   const session = useSession();
@@ -129,7 +129,13 @@ export function PlayWorkspace({
               ? formatGameTime(run.clockMinutes)
               : undefined
           }
-          onHome={() => onHome(session)}
+          onHome={() => {
+            // The scene is saved on the way out, as the old "Save & return home" did.
+            saveEncounter().then(
+              () => onHome(session),
+              () => setIdeaNote("Saving is unavailable, so you are still here. Try again."),
+            );
+          }}
           homeDisabled={streaming}
           onSaveIdea={saveRecentIdea}
           sound={<GameAudio key={session.id} conversationId={session.id} />}
@@ -282,12 +288,7 @@ export function PlayWorkspace({
           }}
         >
           {session.encounter ? (
-            <EncounterPanel
-              onHome={onHome}
-              mapView={mapView}
-              backdrop={encounterBackdrop}
-              onSaveIdea={saveIdea}
-            />
+            <EncounterPanel mapView={mapView} backdrop={encounterBackdrop} onSaveIdea={saveIdea} />
           ) : session.gateEncounter ? (
             <LegacyGatePanel
               session={session}

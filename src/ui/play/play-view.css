@@ -620,6 +620,13 @@
   align-items: center;
 }
 
+.play-view--right-collapsed {
+  grid-template-columns: minmax(220px, 26%) minmax(0, 1fr) 48px;
+}
+.play-view--collapsed.play-view--right-collapsed {
+  grid-template-columns: 76px minmax(0, 1fr) 48px;
+}
+
 /* The right column: "In the scene". */
 .play-scene {
   gap: 20px;
@@ -700,4 +707,37 @@
   display: flex;
   justify-content: space-between;
   font-size: 13px;
+}
+
+.play-scene__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.play-scene__fold {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-dim);
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+  padding: 6px 9px;
+}
+.play-scene__fold:hover {
+  background: var(--hover-bg, color-mix(in srgb, var(--text) 6%, transparent));
+}
+.play-scene__fold:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}
+.play-scene--collapsed {
+  padding: 28px 6px;
+  align-items: center;
+}
+.play-scene__reason {
+  display: block;
+  margin: 4px 2px 0;
+  font-size: 12px;
 }
