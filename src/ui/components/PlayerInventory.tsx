@@ -55,10 +55,13 @@ export function PlayerInventory({
   session,
   busy = false,
   onAction,
+  announce = true,
 }: {
   session: Session;
   busy?: boolean;
   onAction?: (action: EncounterAction) => void;
+  /** Say "Added to inventory" in words. The play view says it with its own marks instead. */
+  announce?: boolean;
 }) {
   const entries = playerInventory(session),
     signature = JSON.stringify(entries.map((e) => [e.key, e.quantity]));
@@ -82,11 +85,12 @@ export function PlayerInventory({
         (e) => e.quantity > (entries.find((now) => now.key === e.key)?.quantity ?? 0),
       );
     if (!gained.length && !lost.length) return;
-    setMessage(
-      gained.length
-        ? "Added to inventory: " + gained.map((e) => e.name).join(", ")
-        : "Inventory updated: " + lost.map((e) => e.name).join(", "),
-    );
+    if (announce)
+      setMessage(
+        gained.length
+          ? "Added to inventory: " + gained.map((e) => e.name).join(", ")
+          : "Inventory updated: " + lost.map((e) => e.name).join(", "),
+      );
     setRecent(gained.map((e) => e.key));
     const timer = window.setTimeout(() => {
       setMessage("");

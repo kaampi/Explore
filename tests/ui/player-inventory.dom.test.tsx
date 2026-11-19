@@ -21,7 +21,7 @@ beforeEach(() => {
   };
 });
 afterEach(() => vi.useRealTimers());
-function fixture() {
+function fixture(announce = true) {
   const built = innVisitExample(),
     engine = new StateEngine(
       startPlayableCampaign(built.campaign, built.campaign.scenes[1]!, built.places, "pack-ui", [
@@ -42,7 +42,9 @@ function fixture() {
     });
   };
   const render = async (snapshot: Session = engine.getSession()) =>
-    act(async () => root.render(<PlayerInventory session={snapshot} onAction={dispatch} />));
+    act(async () =>
+      root.render(<PlayerInventory session={snapshot} onAction={dispatch} announce={announce} />),
+    );
   const click = async (label: string) => {
     const button = Array.from(host.querySelectorAll("button")).find(
       (b) => b.getAttribute("aria-label") === label || b.textContent === label,
@@ -63,6 +65,21 @@ function fixture() {
     },
   };
 }
+it("does not say 'Added to inventory' in words when the play view says it with its own marks", async () => {
+  const ui = fixture(false);
+  try {
+    await ui.render();
+    ui.dispatch({ kind: "interaction", interactionId: "take-key" });
+    await ui.render();
+    expect(ui.host.querySelector('[role="status"]')!.textContent).toBe("");
+    expect(ui.host.textContent).not.toContain("Added to inventory");
+    // The key is in the pack all the same.
+    expect(ui.host.textContent).toContain("Brass key");
+  } finally {
+    await ui.close();
+  }
+});
+
 it("makes a collected key visible, announces it once, and uses it through the game engine", async () => {
   const ui = fixture();
   try {

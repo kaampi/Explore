@@ -24,7 +24,7 @@ import { ActionSaveError } from "../../persistence/ActionSaveError";
 import { PlayFrame } from "../play/PlayFrame";
 import { StoryLog } from "../play/StoryLog";
 import { WhatDoYouDo } from "../play/WhatDoYouDo";
-import { PlayNotices } from "../play/PlayNotices";
+import { PlayArrival, PlayNoticeStrip, useNotices } from "../play/PlayNotices";
 import { PeopleColumn } from "../play/PeopleColumn";
 import { personCard } from "../play/personCard";
 import { useStoredFlag } from "../play/useStoredFlag";
@@ -92,6 +92,7 @@ export function EncounterPanel({
   const [earlier, setEarlier] = useState(false);
   const [mode, setMode] = useState<"say" | "do">("say");
   const [talkingTo, setTalkingTo] = useState("");
+  const marks = useNotices(session);
   const [collapsedLeft, setCollapsedLeft] = useStoredFlag("explore-play-left-collapsed");
   const [collapsedRight, setCollapsedRight] = useStoredFlag("explore-play-right-collapsed");
   const abortRef = useRef<AbortController | null>(null);
@@ -464,7 +465,7 @@ export function EncounterPanel({
             )}
           </div>
           <div className={`chat-stage${arena ? " chat-stage--combat" : ""}`}>
-            <PlayNotices session={session} />
+            <PlayArrival arrival={marks.arrival} />
             {arena && (
               <CombatStage
                 player={fighters.player}
@@ -520,6 +521,7 @@ export function EncounterPanel({
             />
           </div>
           <div className="gate-scene-composer">
+            <PlayNoticeStrip notices={marks.notices} />
             {populating && (
               <p role="status" className="playable-hint">
                 {t("lookingAround")}
@@ -647,7 +649,7 @@ export function EncounterPanel({
           character={
             <>
               <HealthMeter name={player.name} value={fighters.player.hp} max={player.maxHp} />
-              <PlayerInventory session={session} busy={busy} onAction={choose} />
+              <PlayerInventory session={session} busy={busy} onAction={choose} announce={false} />
             </>
           }
           footer={

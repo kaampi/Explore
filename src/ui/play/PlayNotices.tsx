@@ -11,7 +11,7 @@ export const ARRIVAL_MS = 1200;
 /** No more than this many marks at once. The oldest go first. */
 const MAX_NOTICES = 3;
 
-type Shown = Notice & { id: number };
+export type Shown = Notice & { id: number };
 
 /** What to show now: the marks and the arrival, kept for a few seconds each. */
 export function useNotices(session: Session) {
@@ -54,21 +54,18 @@ export function useNotices(session: Session) {
   return { notices, arrival };
 }
 
-/**
- * The short marks over the story: where you came to, and when you find something out, get
- * something or open the way. They make no sound and keep out of the way of the clicks.
- */
-export function PlayNotices({ session }: { session: Session }) {
+const labelKey = {
+  learned: "pvNoticeLearned",
+  item: "pvNoticeItem",
+  unlocked: "pvNoticeUnlocked",
+  goal: "pvNoticeGoal",
+} as const;
+
+/** Where you came to: a short card over the top of the story. It makes no sound. */
+export function PlayArrival({ arrival }: { arrival: (Arrival & { id: number }) | null }) {
   const t = useTranslate();
-  const { notices, arrival } = useNotices(session);
-  const label: Record<Notice["kind"], string> = {
-    learned: t("pvNoticeLearned"),
-    item: t("pvNoticeItem"),
-    unlocked: t("pvNoticeUnlocked"),
-    goal: t("pvNoticeGoal"),
-  };
   return (
-    <div className="play-notices" role="status" aria-live="polite">
+    <div className="play-arrival-layer" role="status" aria-live="polite">
       {arrival && (
         <div className="play-arrival" key={arrival.id}>
           {arrival.minutes > 0 && (
@@ -77,13 +74,23 @@ export function PlayNotices({ session }: { session: Session }) {
           <strong>{arrival.place}</strong>
         </div>
       )}
-      <div className="play-notices__stack">
-        {notices.map((notice) => (
-          <div key={notice.id} className={`play-notice play-notice--${notice.kind}`}>
-            <span>{label[notice.kind]}</span> {notice.text}
-          </div>
-        ))}
-      </div>
+    </div>
+  );
+}
+
+/**
+ * The short marks for finding something out, getting something or opening the way. They are a
+ * strip of their own above "What do you do?", so they never cover a line of the story.
+ */
+export function PlayNoticeStrip({ notices }: { notices: Shown[] }) {
+  const t = useTranslate();
+  return (
+    <div className="play-notices" role="status" aria-live="polite">
+      {notices.map((notice) => (
+        <div key={notice.id} className={`play-notice play-notice--${notice.kind}`}>
+          <span>{t(labelKey[notice.kind])}</span> {notice.text}
+        </div>
+      ))}
     </div>
   );
 }

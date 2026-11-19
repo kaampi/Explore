@@ -83,6 +83,17 @@ export function SceneColumn({
   const player = s.actors[d.playerId];
   // An open card belongs to the place it was opened in.
   useEffect(() => setOpenThing(null), [d.id]);
+  const stateName = {
+    available: "",
+    locked: t("pvLocked"),
+    closed: t("pvClosed"),
+    blocked: t("pvBlocked"),
+  };
+  const reason = {
+    locked: "pvDoorLocked",
+    closed: "pvDoorClosed",
+    blocked: "pvDoorBlocked",
+  } as const;
   const things = thingsHere(game);
   const open = things.find((thing) => thing.id === openThing);
   const skills = d.rules.attributes.filter((a) => player?.stats[a.id] !== undefined);
@@ -125,10 +136,10 @@ export function SceneColumn({
           <h3>{t("pvFromHere")}</h3>
           <ul className="play-scene__list">
             {ways.map((way) => {
-              const locked = way.status === "locked";
+              const shut = way.status !== "available";
               const note = [
                 way.minutes ? formatTravelTime(way.minutes) : "",
-                locked ? t("pvLocked") : "",
+                shut ? stateName[way.status] : "",
               ]
                 .filter(Boolean)
                 .join(" · ");
@@ -137,15 +148,15 @@ export function SceneColumn({
                   <button
                     type="button"
                     className="play-scene__way"
-                    disabled={busy || locked}
+                    disabled={busy || shut}
                     onClick={() => onGo(way.id)}
                   >
                     <span>{way.label}</span>
                     {note && <small>{note}</small>}
                   </button>
-                  {locked && way.blockedBy && (
+                  {way.status !== "available" && way.blockedBy && (
                     <small className="play-scene__reason">
-                      {t("pvHeldShutBy", { door: way.blockedBy })}
+                      {t(reason[way.status], { door: way.blockedBy })}
                     </small>
                   )}
                 </li>

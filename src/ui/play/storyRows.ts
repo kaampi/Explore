@@ -132,8 +132,20 @@ export function storyRows(session: Session, options: { earlier?: boolean } = {})
       );
     }
   }
+  // The goal is told where it was reached. A game that reached it before that was kept has it last.
   const goal = session.adventure?.goal;
-  if (goal && adventureCompleted(session))
-    rows.push({ kind: "goal", key: "goal", title: goal.title });
+  if (goal && adventureCompleted(session)) {
+    const row: StoryRow = { kind: "goal", key: "goal", title: goal.title };
+    const reachedAt = session.adventure?.goalReachedTurn;
+    if (reachedAt === undefined) rows.push(row);
+    else {
+      let after = -1;
+      rows.forEach((entry, index) => {
+        if ("turn" in entry && entry.turn === reachedAt) after = index;
+      });
+      // Where it was reached is in an earlier place that is not shown now: it is shown with the rest.
+      if (after >= 0) rows.splice(after + 1, 0, row);
+    }
+  }
   return rows;
 }

@@ -189,7 +189,7 @@ describe("sceneWays", () => {
     expect(adventureOptions(session).map((o) => o.id)).toEqual(sceneWays(session).map((w) => w.id));
   });
 
-  it("shows a way held shut by a door as locked, and as open when the door is open", () => {
+  it("tells locked from closed and blocked, and shows the way as available when the door is open", () => {
     const { session } = messenger();
     session.encounter!.state.flags.push(...way(session).requiresFlags);
     way(session).requiresOpenBarriers = ["gate"];
@@ -207,8 +207,14 @@ describe("sceneWays", () => {
     expect(locked[0]).toMatchObject({ status: "locked", blockedBy: "Town gate" });
     expect(adventureOptions(session)).toEqual([]);
 
+    // Unlocked, but not opened: closed, not locked.
     session.encounter!.state.barriers.gate!.locked = false;
-    expect(sceneWays(session)[0]!.status).toBe("locked");
+    expect(sceneWays(session)[0]).toMatchObject({ status: "closed", blockedBy: "Town gate" });
+    expect(adventureOptions(session)).toEqual([]);
+    // Something in the way is neither.
+    session.encounter!.state.barriers.gate!.blocked = true;
+    expect(sceneWays(session)[0]).toMatchObject({ status: "blocked" });
+    session.encounter!.state.barriers.gate!.blocked = false;
     session.encounter!.state.barriers.gate!.open = true;
     expect(sceneWays(session)[0]).toMatchObject({ status: "available" });
     expect(sceneWays(session)[0]).not.toHaveProperty("blockedBy");
