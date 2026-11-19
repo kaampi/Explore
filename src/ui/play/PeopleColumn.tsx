@@ -75,7 +75,7 @@ export function PeopleColumn({
           id={`play-person-tab-${card.id}`}
           className="play-people__tab"
           aria-selected={card.id === selected?.id}
-          aria-controls="play-person-card"
+          aria-controls={collapsed ? undefined : "play-person-card"}
           tabIndex={card.id === selected?.id ? 0 : -1}
           title={collapsed ? card.name : undefined}
           aria-label={collapsed ? card.name : undefined}

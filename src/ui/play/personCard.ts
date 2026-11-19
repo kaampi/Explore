@@ -42,11 +42,12 @@ export function initialsOf(name: string): string {
 export function personCard(session: Session, actorId: string, name: string): PersonCard {
   const persona = session.adventure?.cast[actorId];
   const portrait = portraitSrc(persona?.portraitDataUrl);
+  const here = session.adventure?.moods[session.adventure.currentSceneId]?.[actorId];
   return {
     id: actorId,
     name,
     line: shortLine(persona?.personality ?? "", portrait ? WITH_PICTURE : WITHOUT_PICTURE),
-    mood: persona?.mood.replace(/\s+/g, " ").trim() ?? "",
+    mood: (here?.trim() ? here : (persona?.mood ?? "")).replace(/\s+/g, " ").trim(),
     portrait,
     initials: initialsOf(name),
   };

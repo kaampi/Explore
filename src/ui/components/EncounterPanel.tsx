@@ -1,9 +1,8 @@
-import { formatGameTime, formatTravelTime } from "../../state/gameClock";
 import { useArrivalResidents } from "./useArrivalResidents";
 import { useTranslate } from "../i18n/LanguageProvider";
 import { PlayerInventory } from "./PlayerInventory";
-import { itemRevealed } from "../../game/itemVisibility";
-import { adventureOptions, adventureCompleted } from "../../game/AdventureEngine";
+import { adventureCompleted, knownThings, sceneWays } from "../../game/AdventureEngine";
+import { SceneColumn } from "../play/SceneColumn";
 import { CombatStage } from "../combat/CombatStage";
 import { projectFighters } from "../combat/fighters";
 import { useCombatPlayback } from "../combat/useCombatPlayback";
@@ -16,8 +15,8 @@ import type { Session } from "@state/StateSchema";
 import { useEngine } from "../EngineStore";
 import { Menu } from "./Menu";
 import type { EncounterAction, EncounterRequest } from "../../game/EncounterSchema";
-import { actionBlock, attackTarget, combatOver, hostile } from "../../game/EncounterEngine";
-import { groupedCommands, publicCommands, suggestedCommands } from "../../game/catalog";
+import { actionBlock, attackTarget, hostile } from "../../game/EncounterEngine";
+import { groupedCommands, suggestedCommands } from "../../game/catalog";
 import type { DoPlan, SayPlan } from "../../session/encounterAI";
 import { actionLabel } from "../../game/narration";
 import { greetingTarget, present, spokenInteraction } from "../../game/dialogue";
@@ -116,8 +115,7 @@ export function EncounterPanel({
     playback.actorId === d.playerId
       ? "Your turn"
       : `${s.actors[playback.actorId]?.name ?? playback.actorId}’s turn`;
-  const busy = saving || waiting !== null || playback.active || saveFailed,
-    commands = publicCommands(game).map((command) => command.action);
+  const busy = saving || waiting !== null || playback.active || saveFailed;
   // A world that invents residents gives an empty place its people once, on arrival.
   const arrivedAt = session.adventure?.currentSceneId;
   const [populating, setPopulating] = useState(false);
@@ -306,25 +304,27 @@ export function EncounterPanel({
     }
     void run(action);
   }
-  function button(action: EncounterAction) {
-    const label = actionLabel(d, s, action),
-      reason = actionBlock(d, s, action);
-    return (
-      <button
-        key={JSON.stringify(action)}
-        type="button"
-        disabled={busy || ended || !!reason}
-        title={
-          reason ??
-          (action.kind === "interaction"
-            ? d.interactions.find((i) => i.id === action.interactionId)?.description
-            : undefined)
-        }
-        onClick={() => choose(action)}
-      >
-        {label}
-      </button>
-    );
+  async function go(linkId: string) {
+    if (lock.current || busy) return;
+    lock.current = true;
+    setSaving(true);
+    try {
+      await transitionAdventure({
+        id: crypto.randomUUID(),
+        linkId,
+        expectedStateVersion: session.stateVersion,
+      });
+      setPending(null);
+      setText("");
+      setSay("");
+      setNotice("");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not continue.");
+      if (error instanceof ActionSaveError) setSaveFailed(true);
+    } finally {
+      lock.current = false;
+      setSaving(false);
+    }
   }
   const preview = pending ? actionBlock(d, s, pending.action) : undefined;
   const fighters = projectFighters(session, playback.actors),
@@ -608,155 +608,68 @@ export function EncounterPanel({
         </div>
       }
       right={
-        <aside className="sb-game-toolbox gate-scene-toolbox" aria-label="Encounter game tools">
-          {mapView && <section className="sb-game-toolbox__map">{mapView}</section>}
-          <header>
-            <span className="sb-game-toolbox__eyebrow">{t("epYourNextMove")}</span>
-            <h2>{d.title}</h2>
-            <p>
-              {session.adventure
-                ? session.adventure.goal
-                  ? "Explore the scene through its actions. Discoveries can open new connections, and your progress is saved."
-                  : t("freePlayHint")
-                : "Talk, negotiate, explore or fight. Your choices and their consequences are saved."}
-            </p>
-          </header>
-          <section>
-            <HealthMeter name={player.name} value={fighters.player.hp} max={player.maxHp} />
-          </section>
-          <PlayerInventory session={session} busy={busy} onAction={choose} />
-          {session.adventure && (
-            <section className="adventure-path">
-              <small>{session.adventure.goal ? t("yourAdventureEyebrow") : t("yourWorld")}</small>
-              <h3>{session.adventure.title}</h3>
-              {session.adventure.links.some((link) => link.minutes !== undefined) && (
-                <p aria-label="Game time">{formatGameTime(session.adventure.clockMinutes)}</p>
-              )}
-              <p>
-                {
-                  session.adventure.scenes.find(
-                    (scene) => scene.id === session.adventure!.currentSceneId,
-                  )?.name
-                }
-              </p>
-              {session.adventure.goal && (
-                <div
-                  className={`adventure-goal${adventureCompleted(session) ? " adventure-goal--complete" : ""}`}
-                  role="status"
-                  aria-label="Adventure objective"
-                >
-                  <strong>
-                    {adventureCompleted(session) ? "✓ Adventure completed" : "Your objective"}
-                  </strong>
-                  <p>{session.adventure.goal.title}</p>
-                  {adventureCompleted(session) && <small>{t("epYourProgressIsSaved")}</small>}
-                </div>
-              )}
-              <div className="gate-command-list">
-                {adventureOptions(session).map((option) => (
-                  <button
-                    type="button"
-                    key={option.id}
-                    disabled={busy || s.phase === "combat" || ended}
-                    onClick={async () => {
-                      if (lock.current || busy) return;
-                      lock.current = true;
-                      setSaving(true);
-                      try {
-                        await transitionAdventure({
-                          id: crypto.randomUUID(),
-                          linkId: option.id,
-                          expectedStateVersion: session.stateVersion,
-                        });
-                        setPending(null);
-                        setText("");
-                        setSay("");
-                        setNotice("");
-                      } catch (error) {
-                        setNotice(error instanceof Error ? error.message : "Could not continue.");
-                        if (error instanceof ActionSaveError) setSaveFailed(true);
-                      } finally {
-                        lock.current = false;
-                        setSaving(false);
-                      }
-                    }}
+        <SceneColumn
+          game={game}
+          ways={sceneWays(session)}
+          known={knownThings(session)}
+          busy={busy || s.phase === "combat" || ended}
+          mapView={mapView}
+          onGo={go}
+          onAction={choose}
+          header={
+            session.adventure ? (
+              <div className="play-scene__adventure">
+                <small>{session.adventure.goal ? t("yourAdventureEyebrow") : t("yourWorld")}</small>
+                <h3>{session.adventure.title}</h3>
+                {session.adventure.goal && (
+                  <div
+                    className={`adventure-goal${adventureCompleted(session) ? " adventure-goal--complete" : ""}`}
+                    role="status"
+                    aria-label="Adventure objective"
                   >
-                    {option.label}
-                    {option.minutes ? ` · ${formatTravelTime(option.minutes)}` : ""} →
-                  </button>
-                ))}
+                    <strong>
+                      {adventureCompleted(session) ? "✓ Adventure completed" : "Your objective"}
+                    </strong>
+                    <p>{session.adventure.goal.title}</p>
+                    {adventureCompleted(session) && <small>{t("epYourProgressIsSaved")}</small>}
+                  </div>
+                )}
+                {!sceneWays(session).length && !adventureCompleted(session) && (
+                  <p>{t("epExploreThisSceneTo")}</p>
+                )}
               </div>
-              {!adventureOptions(session).length && !adventureCompleted(session) && (
-                <p>{t("epExploreThisSceneTo")}</p>
+            ) : undefined
+          }
+          character={
+            <>
+              <HealthMeter name={player.name} value={fighters.player.hp} max={player.maxHp} />
+              <PlayerInventory session={session} busy={busy} onAction={choose} />
+            </>
+          }
+          footer={
+            <>
+              {!playback.active && (
+                <CombatLog entries={encounterCombatLog(game)} active={s.phase === "combat"} />
               )}
-            </section>
-          )}
-          {Object.keys(s.itemLocations).some(
-            (id) => s.itemLocations[id] === player.position && itemRevealed(d, s, id),
-          ) && (
-            <section>
-              <h3>{t("epObjectsHere")}</h3>
-              <p>
-                {d.items
-                  .filter(
-                    (item) =>
-                      s.itemLocations[item.id] === player.position && itemRevealed(d, s, item.id),
-                  )
-                  .map((item) => item.name)
-                  .join(", ")}
-              </p>
-            </section>
-          )}
-          <section>
-            <h3>{t("epPeopleOpportunities")}</h3>
-            <div className="gate-command-list">
-              {commands.filter((a) => a.kind === "look" || a.kind === "interaction").map(button)}
-            </div>
-            {d.interactions.some((i) =>
-              i.success.effects.some((e) => e.kind === "transfer-resource"),
-            ) && <p>{t("epAgreementsAndPurchasesAre")}</p>}
-          </section>
-          {commands.some((a) => a.kind === "move" || a.kind === "interact") && (
-            <section>
-              <h3>{t("epMovementPassages")}</h3>
-              <div className="gate-command-list">
-                {commands.filter((a) => a.kind === "move" || a.kind === "interact").map(button)}
-              </div>
-            </section>
-          )}
-          {commands.some((a) => a.kind === "attack" || a.kind === "defend") && (
-            <section>
-              <h3>{s.phase === "combat" ? "Combat" : "Risky approaches"}</h3>
-              <div className="gate-command-list">
-                {commands
-                  .filter(
-                    (a) => a.kind === "attack" || a.kind === "defend" || a.kind === "end-turn",
-                  )
-                  .map(button)}
-              </div>
-              {combatOver(d, s) && <p>{t("epNoOpponentsAreStill")}</p>}
-            </section>
-          )}
-          {!playback.active && (
-            <CombatLog entries={encounterCombatLog(game)} active={s.phase === "combat"} />
-          )}
-          <section className="sb-game-toolbox__session">
-            <button
-              type="button"
-              disabled={saving || saveFailed}
-              onClick={async () => {
-                try {
-                  await saveSession();
-                  onHome(session);
-                } catch {
-                  setSaveFailed(true);
-                }
-              }}
-            >
-              {t("epSaveReturnHome")}
-            </button>
-          </section>
-        </aside>
+              <section className="sb-game-toolbox__session">
+                <button
+                  type="button"
+                  disabled={saving || saveFailed}
+                  onClick={async () => {
+                    try {
+                      await saveSession();
+                      onHome(session);
+                    } catch {
+                      setSaveFailed(true);
+                    }
+                  }}
+                >
+                  {t("epSaveReturnHome")}
+                </button>
+              </section>
+            </>
+          }
+        />
       }
     />
   );

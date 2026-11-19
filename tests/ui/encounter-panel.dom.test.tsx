@@ -58,6 +58,12 @@ function mount(
   provider?: Provider,
 ) {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  HTMLDialogElement.prototype.showModal = function () {
+    this.setAttribute("open", "");
+  };
+  HTMLDialogElement.prototype.close = function () {
+    this.removeAttribute("open");
+  };
   const host = document.createElement("div");
   document.body.append(host);
   const root = createRoot(host),
@@ -126,11 +132,33 @@ function mount(
 async function click(host: HTMLElement, label: string) {
   if (label === "Finish animation" && !host.querySelector("[data-roll]"))
     await act(async () => vi.advanceTimersByTimeAsync(750));
-  const button = Array.from(host.querySelectorAll("button")).find((b) => b.textContent === label);
+  const find = () =>
+    Array.from(host.querySelectorAll("button")).find((b) => b.textContent === label);
+  // The actions of the scene are all under "More choices…" when they are not suggested.
+  if (!find()) {
+    const more = Array.from(host.querySelectorAll("button")).find(
+      (b) => b.textContent === "More choices…",
+    );
+    if (more) await act(async () => more.click());
+  }
+  const button = find();
   expect(button, label).toBeTruthy();
   await act(async () => button!.click());
   if (label === "OK" || label === "Finish animation")
     await act(async () => vi.advanceTimersByTimeAsync(320));
+}
+function hasWay(host: HTMLElement, label: string) {
+  return Array.from(host.querySelectorAll(".play-scene__way")).some(
+    (b) => b.querySelector("span")?.textContent === label,
+  );
+}
+/** Takes a way out of the scene from "From here" in the right column. */
+async function goTo(host: HTMLElement, label: string) {
+  const way = Array.from(host.querySelectorAll<HTMLButtonElement>(".play-scene__way")).find(
+    (b) => b.querySelector("span")?.textContent === label,
+  );
+  expect(way, label).toBeTruthy();
+  await act(async () => way!.click());
 }
 async function finishPlayback(host: HTMLElement) {
   for (let i = 0; i < 24; i++) {
@@ -325,10 +353,10 @@ it("plays a gated scene connection and returns with the same possessions, transc
     ui = mount(seed);
   try {
     await ui.render();
-    expect(ui.host.textContent).not.toContain("Follow the lead to the watchtower →");
+    expect(hasWay(ui.host, "Follow the lead to the watchtower")).toBe(false);
     expect(ui.host.textContent).not.toContain("Tell Edda what the note says");
     await click(ui.host, "Ask Edda about the messenger");
-    await click(ui.host, "Follow the lead to the watchtower →");
+    await goTo(ui.host, "Follow the lead to the watchtower");
     expect(ui.engine.getSession().id).toBe("connected-ui");
     expect(ui.host.textContent).toContain("Brass key");
     // Only the place the player is in, until the earlier events are asked for.
@@ -337,7 +365,7 @@ it("plays a gated scene connection and returns with the same possessions, transc
     await click(ui.host, "Earlier events");
     expect(ui.host.querySelector(".chat-log")!.textContent).toContain("Edda points");
     await click(ui.host, "Read the note");
-    await click(ui.host, "Return to the village →");
+    await goTo(ui.host, "Return to the village");
     expect(
       Array.from(ui.host.querySelectorAll("button")).some(
         (b) => b.textContent === "Ask Edda about the messenger",
@@ -376,12 +404,12 @@ it("plays rolls in each scene without replaying saved rolls when travelling or r
     await click(ui.host, "Ask Edda about the messenger");
     expect(ui.host.querySelector("[data-roll]")?.getAttribute("data-roll")).toBe("35");
     await finishPlayback(ui.host);
-    await click(ui.host, "Follow the lead to the watchtower →");
+    await goTo(ui.host, "Follow the lead to the watchtower");
     expect(ui.host.querySelector("[data-roll]")).toBeNull();
     await click(ui.host, "Read the note");
     expect(ui.host.querySelector("[data-roll]")?.getAttribute("data-roll")).toBe("35");
     await finishPlayback(ui.host);
-    await click(ui.host, "Return to the village →");
+    await goTo(ui.host, "Return to the village");
     expect(ui.host.querySelector("[data-roll]")).toBeNull();
     expect(ui.host.querySelector('[aria-label="Resolved dice roll"]')).toBeNull();
     expect(ui.engine.getSession().encounter!.history).toHaveLength(1);
@@ -402,12 +430,12 @@ it("answers a spoken greeting and a misspelled question as Edda, opening the aut
     expect(ui.host.querySelectorAll(".play-row--person .play-row__label")[0]!.textContent).toBe(
       "Edda",
     );
-    expect(ui.host.textContent).not.toContain("Follow the lead to the watchtower →");
+    expect(hasWay(ui.host, "Follow the lead to the watchtower")).toBe(false);
     await type(ui.host, 0, "Edda what can you tell me about the messanger?");
     await click(ui.host, "Say");
     expect(ui.host.querySelector(".chat-log")!.textContent).toContain("Edda points");
     expect(ui.host.querySelectorAll(".play-row--person")).toHaveLength(1);
-    expect(ui.host.textContent).toContain("Follow the lead to the watchtower →");
+    expect(hasWay(ui.host, "Follow the lead to the watchtower")).toBe(true);
     expect(ui.engine.getSession().encounter!.state.attempts).toHaveLength(1);
     expect(ui.host.textContent).not.toContain("words alone");
     expect(ui.saved).toHaveLength(2);
@@ -428,35 +456,40 @@ it("plays the mapped inn through direct buttons, keeps resolved passages quiet, 
     ui = mount(seed);
   try {
     await ui.render();
-    await click(ui.host, "Enter the inn →");
-    expect(ui.host.textContent).toContain("Objects here");
+    await goTo(ui.host, "Enter the inn");
+    expect(ui.host.textContent).toContain("Things here");
+    await act(async () =>
+      Array.from(ui.host.querySelectorAll("button"))
+        .find((b) => b.textContent === "More choices…")!
+        .click(),
+    );
     expect(
-      Array.from(ui.host.querySelectorAll("button")).find(
-        (b) => b.textContent === "Unlock · Store room door",
-      )!.disabled,
-    ).toBe(true);
+      Array.from(ui.host.querySelectorAll(".play-do__choice"))
+        .find((b) => b.textContent?.startsWith("Unlock · Store room door"))!
+        .getAttribute("aria-disabled"),
+    ).toBe("true");
     expect(ui.host.textContent).not.toContain("Open · Kitchen door");
     await click(ui.host, "Take the brass key");
-    expect(ui.host.textContent).not.toContain("Objects here");
+    expect(ui.host.textContent).not.toContain("Things here");
     await click(ui.host, "Unlock · Store room door");
     await click(ui.host, "Open · Store room door");
-    await click(ui.host, "Go to store room →");
+    await goTo(ui.host, "Go to store room");
     await click(ui.host, "Read the guest ledger");
     await click(ui.host, "Take the guest ledger");
-    expect(ui.host.textContent).not.toContain("Objects here");
+    expect(ui.host.textContent).not.toContain("Things here");
     expect(ui.host.textContent).not.toContain("✓ Adventure completed");
     expect(ui.host.querySelector('[aria-label="Resolved dice roll"]')).toBeNull();
-    await click(ui.host, "Go to common room →");
-    await click(ui.host, "Leave the inn →");
+    await goTo(ui.host, "Go to common room");
+    await goTo(ui.host, "Leave the inn");
     expect(ui.host.textContent).toContain("✓ Adventure completed");
     expect(ui.saved.length).toBeGreaterThan(5);
-    await click(ui.host, "Enter the inn →");
+    await goTo(ui.host, "Enter the inn");
     expect(
       Array.from(ui.host.querySelectorAll("button")).some(
         (b) => b.textContent === "Take the brass key",
       ),
     ).toBe(false);
-    expect(ui.host.textContent).toContain("Go to store room →");
+    expect(hasWay(ui.host, "Go to store room")).toBe(true);
   } finally {
     await ui.close();
   }
@@ -516,8 +549,9 @@ it("draws its buttons from the same list the AI is limited to", async () => {
   const ui = mount(seed);
   try {
     await ui.render();
-    const shown = Array.from(ui.host.querySelectorAll(".gate-command-list button"))
-      .map((b) => b.textContent)
+    await click(ui.host, "More choices…");
+    const shown = Array.from(ui.host.querySelectorAll(".play-do__choice span"))
+      .map((label) => label.firstChild!.textContent)
       .sort();
     const offered = publicCommands(ui.engine.getSession().encounter!)
       .map((command) => command.label)

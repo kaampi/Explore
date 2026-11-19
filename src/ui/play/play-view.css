@@ -619,3 +619,85 @@
   padding: var(--space-3) var(--space-2);
   align-items: center;
 }
+
+/* The right column: "In the scene". */
+.play-scene {
+  gap: 20px;
+}
+.play-scene .play-scene__title {
+  font-size: 11px;
+  font-family: inherit;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin: 0;
+}
+.play-scene__list,
+.play-scene__known,
+.play-scene__skills ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.play-scene__way,
+.play-scene__thing {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  padding: 9px 12px;
+  text-align: left;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.play-scene__way:hover:not(:disabled),
+.play-scene__thing:hover {
+  background: var(--hover-bg, color-mix(in srgb, var(--text) 6%, transparent));
+}
+.play-scene__way:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.play-scene__way small {
+  margin: 0;
+}
+.play-scene__thing-card {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.play-scene__thing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.play-scene__known li {
+  font-size: 13px;
+  line-height: 1.5;
+  padding-left: 10px;
+  border-left: 2px solid var(--border);
+}
+.play-scene__known small {
+  display: block;
+  margin: 2px 0 0;
+}
+.play-scene__skills summary {
+  cursor: pointer;
+  font-size: 13px;
+  margin: 10px 0 6px;
+}
+.play-scene__skills li {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}

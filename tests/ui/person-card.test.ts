@@ -49,6 +49,7 @@ describe("initialsOf", () => {
 describe("personCard", () => {
   it("shows the portrait, a short line and how the person seems now", () => {
     const { session, id } = game(PICTURE, "Calm and watchful. Trusts few.", "Tired but alert");
+    delete session.adventure!.moods[session.adventure!.currentSceneId];
 
     const card = personCard(session, id, "Edda");
 
@@ -60,6 +61,16 @@ describe("personCard", () => {
       portrait: PICTURE,
       initials: "E",
     });
+  });
+
+  it("prefers the mood written for the scene over the card's general mood", () => {
+    const { session, id } = game(undefined, "Calm.", "Cheerful");
+    const run = session.adventure!;
+    expect(run.moods[run.currentSceneId]?.[id]).toBe("concerned");
+    expect(personCard(session, id, "Edda").mood).toBe("concerned");
+
+    delete run.moods[run.currentSceneId];
+    expect(personCard(session, id, "Edda").mood).toBe("Cheerful");
   });
 
   it("has no portrait and a longer line for a person without a picture", () => {

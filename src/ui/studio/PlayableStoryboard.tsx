@@ -49,6 +49,8 @@ import {
   isHostile,
   setDoorEffect,
   setFightBreaksOut,
+  setLearned,
+  learnedFrom,
 } from "../../library/sceneParts";
 import {
   INSPECTOR_MAX,
@@ -1437,6 +1439,16 @@ function SceneActions({
               onChange={(event) =>
                 patch(action.id, { success: { ...action.success, text: event.target.value } })
               }
+            />
+          </label>
+          <label>
+            {t("psWhatPlayerLearns")}
+            <input
+              data-action-field="learned"
+              maxLength={200}
+              value={learnedFrom(scene, action.id)}
+              placeholder={t("psWhatPlayerLearnsHint")}
+              onChange={(event) => onChange(setLearned(scene, action.id, event.target.value))}
             />
           </label>
           {action.success.effects.map(

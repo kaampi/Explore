@@ -100,7 +100,20 @@ it("shows the real inn floor map and switches the encounter backdrop when enteri
     await render();
     go("Enter the inn");
     await render();
-    expect(host.querySelector("aside .play-map-card")).not.toBeNull();
+    // The map is on request: "Show map" opens it in a panel.
+    expect(host.querySelector(".play-map-card")).toBeNull();
+    HTMLDialogElement.prototype.showModal = function () {
+      this.setAttribute("open", "");
+    };
+    HTMLDialogElement.prototype.close = function () {
+      this.removeAttribute("open");
+    };
+    await act(async () =>
+      Array.from(host.querySelectorAll("aside button"))
+        .find((b) => b.textContent === "Show map")!
+        .dispatchEvent(new MouseEvent("click", { bubbles: true })),
+    );
+    expect(host.querySelector("dialog .play-map-card")).not.toBeNull();
     expect(host.querySelector(".play-view__scene .chat-log__backdrop img")).not.toBeNull();
     const warm = host.querySelector(".chat-log__backdrop img")!.getAttribute("src");
     for (const action of [

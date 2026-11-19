@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { innVisitExample } from "../../src/scenarios/innVisit";
-import { doorEffects, setDoorEffect } from "../../src/library/sceneParts";
+import { doorEffects, learnedFrom, setDoorEffect, setLearned } from "../../src/library/sceneParts";
 import { InteractionSchema } from "../../src/game/EncounterSchema";
 import { validateEncounter } from "../../src/game/EncounterEngine";
 import { storyboardWarnings } from "../../src/ui/studio/storyboardReadiness";
@@ -80,5 +80,31 @@ describe("an action that unlocks or opens a door", () => {
 
     expect(doorProblems(keyless)).toEqual([]);
     expect(scene).toBeDefined();
+  });
+});
+
+describe("what the player learns from an outcome", () => {
+  it("writes it, trims it, and removes it again when emptied", () => {
+    const { scene } = setup();
+    expect(learnedFrom(scene, "work")).toBe("");
+
+    const written = setLearned(scene, "work", "  The store room\n door is\tbarred.  ");
+    expect(learnedFrom(written, "work")).toBe("The store room door is barred.");
+    const action = written.encounter!.definition.interactions.find((a) => a.id === "work")!;
+    expect(action.success.text).toBe("It gives.");
+    expect(() => validateEncounter(written.encounter!)).not.toThrow();
+
+    const cleared = setLearned(written, "work", "   ");
+    expect(
+      "learned" in cleared.encounter!.definition.interactions.find((a) => a.id === "work")!.success,
+    ).toBe(false);
+    expect(learnedFrom(scene, "work")).toBe("");
+  });
+
+  it("keeps it to 200 characters, and refuses an action that is not there or a failure that cannot happen", () => {
+    const { scene } = setup();
+    expect(learnedFrom(setLearned(scene, "work", "x".repeat(300)), "work")).toHaveLength(200);
+    expect(() => setLearned(scene, "nowhere", "x")).toThrow(/not in this scene/);
+    expect(() => setLearned(scene, "work", "x", "failure")).toThrow(/Only an action that rolls/);
   });
 });

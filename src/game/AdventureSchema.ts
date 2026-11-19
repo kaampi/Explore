@@ -66,6 +66,11 @@ export const AdventureRunSchema = z.object({
   goal: AdventureGoalSchema.optional(),
   /** Keyed by actor id, for example "npc:<characterId>". Older runs have none. */
   cast: z.record(PersonaSchema).default({}),
+  /**
+   * How a person seems in one scene, by scene id and then actor id, as the author wrote it for
+   * that scene. It comes before the mood on the character card. Older runs have none.
+   */
+  moods: z.record(z.string(), z.record(z.string(), z.string().max(600))).default({}),
   narration: AdventureNarrationSchema.optional(),
   exampleId: z.string().optional(),
   exampleVersion: z.number().int().nonnegative().optional(),

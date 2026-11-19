@@ -148,11 +148,18 @@ it("folds to a narrow strip with a small picture and a tab for each person, and 
   // In the strip a tab is a small face, named for a screen reader and as a tooltip.
   expect(tabs.map((t) => t.getAttribute("aria-label"))).toEqual(["Edda", "Old Tam"]);
   expect(tabs.map((t) => t.title)).toEqual(["Edda", "Old Tam"]);
+  // The card is not there in the strip, so the tabs point at nothing.
+  expect(tabs.every((t) => !t.hasAttribute("aria-controls"))).toBe(true);
   expect(toggle().getAttribute("aria-expanded")).toBe("false");
   expect(toggle().textContent).toContain("Show the picture");
 
   await act(async () => toggle().click());
   expect(host.querySelector(".play-person")).not.toBeNull();
+  expect(
+    Array.from(host.querySelectorAll('[role="tab"]')).every(
+      (t) => t.getAttribute("aria-controls") === "play-person-card",
+    ),
+  ).toBe(true);
 });
 
 it("remembers the fold in this browser, and starts folded when it was left folded", async () => {
