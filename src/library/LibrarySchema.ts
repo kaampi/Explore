@@ -13,6 +13,7 @@ import {
   SceneRoomSchema,
 } from "@state/StateSchema";
 import { z } from "zod";
+import { PlayThemeSchema } from "../ui/themes/theme";
 
 /**
  * Library templates — reusable characters, places, stories, narrator
@@ -157,6 +158,11 @@ export const RealmTemplateSchema = z.object({
   audioDataUrl: z.string().optional(),
   audioGallery: z.array(z.string().min(1)).optional(),
   audioPlay: PicturePlaySchema.optional(),
+  /**
+   * How the play view looks in this world, unless the adventure has a theme of its own. Missing: the
+   * player's own appearance. It is only how things look: never prompts, scripts or engine state.
+   */
+  theme: PlayThemeSchema.optional(),
   /** Free play in this world. Off unless the owner turns it on. */
   openWorld: z.object({ generateResidents: z.boolean().default(false) }).optional(),
   /** Set when the world was made from a shared manuscript, so later imports go into the same world. */
@@ -451,6 +457,8 @@ export type CampaignScene = z.infer<typeof CampaignSceneSchema>;
  * and optional Triggers. Start copies one scene onto a live session.
  */
 export const CampaignTemplateSchema = z.object({
+  /** How the play view looks in this adventure. It comes before the world's theme and the player's own. */
+  theme: PlayThemeSchema.optional(),
   id: z.string().min(1),
   name: z.string().min(1),
   mapWorldId: z.string().min(1).optional(),

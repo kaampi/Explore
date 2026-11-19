@@ -15,7 +15,7 @@ import { loadThemeLibrary, saveThemeLibrary } from "./themeStorage";
 interface Appearance {
   library: ThemeLibrary;
   conversationId: string | null;
-  activateConversation: (id: string | null) => void;
+  activateConversation: (id: string | null, authorTheme?: PlayTheme) => void;
   forgetConversation: (id: string) => void;
   ready: boolean;
   error: string | null;
@@ -34,11 +34,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const queue = useRef(Promise.resolve());
   const scope = useRef<string | null | undefined>(undefined);
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const activateConversation = useCallback((id: string | null) => {
+  const activateConversation = useCallback((id: string | null, authorTheme?: PlayTheme) => {
     if (scope.current === id) return;
     scope.current = id;
     setConversationId(id);
-    setLibrary((library) => activatePlayTheme(library, id));
+    setLibrary((library) => activatePlayTheme(library, id, authorTheme));
   }, []);
   useEffect(() => {
     let cancelled = false;

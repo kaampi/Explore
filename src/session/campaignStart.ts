@@ -1,3 +1,4 @@
+import { authorThemeFor } from "./authorTheme";
 import { startPlayableCampaign } from "./adventureStart";
 import { mapContext } from "@library/worldMap";
 import {
@@ -315,5 +316,8 @@ export function sessionFromCampaignScene(
   }
   const built = setupFromCampaignScene(args);
   if (!built.ok) return built;
-  return { ok: true, session: createSessionFromSetup(built.setup, sessionId) };
+  const session = createSessionFromSetup(built.setup, sessionId);
+  const place = args.places.find((p) => p.id === args.scene.placeId);
+  const authorTheme = authorThemeFor(args.campaign, args.realms, place);
+  return { ok: true, session: authorTheme ? { ...session, authorTheme } : session };
 }

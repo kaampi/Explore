@@ -419,6 +419,11 @@ const labels = {
     pvWhatYouKnow: "What you know",
     pvNothingKnownYet: "You have not found out anything yet.",
     pvShowMap: "Show map",
+    atLook: "Look when it is played",
+    atNone: "The player’s own appearance",
+    atAdventureHint: "Only how it looks. The player can always change it while playing.",
+    atWorldHint:
+      "Used by adventures in this world that have no look of their own. The player can always change it while playing.",
     apSimpleFrames: "Simple frames: no ornaments, whatever the theme",
     apSystemAsksSimple:
       "Your system asks for less motion or more contrast, so the frames are plain.",
@@ -1236,6 +1241,11 @@ const labels = {
     pvWhatYouKnow: "Vad du vet",
     pvNothingKnownYet: "Du har inte fått veta något än.",
     pvShowMap: "Visa karta",
+    atLook: "Utseende när det spelas",
+    atNone: "Spelarens eget utseende",
+    atAdventureHint: "Bara utseendet. Spelaren kan alltid byta under spelet.",
+    atWorldHint:
+      "Används av äventyr i den här världen som inte har något eget utseende. Spelaren kan alltid byta under spelet.",
     apSimpleFrames: "Enkla ramar: inga ornament, vilket tema det än är",
     apSystemAsksSimple:
       "Ditt system ber om mindre rörelse eller högre kontrast, så ramarna är enkla.",
@@ -2053,6 +2063,11 @@ const labels = {
     pvWhatYouKnow: "Hva du vet",
     pvNothingKnownYet: "Du har ikke funnet ut noe ennå.",
     pvShowMap: "Vis kart",
+    atLook: "Utseende når det spilles",
+    atNone: "Spillerens eget utseende",
+    atAdventureHint: "Bare utseendet. Spilleren kan alltid bytte under spillet.",
+    atWorldHint:
+      "Brukes av eventyr i denne verdenen som ikke har et eget utseende. Spilleren kan alltid bytte under spillet.",
     apSimpleFrames: "Enkle rammer: ingen ornamentikk, uansett tema",
     apSystemAsksSimple:
       "Systemet ditt ber om mindre bevegelse eller høyere kontrast, så rammene er enkle.",

@@ -1,3 +1,4 @@
+import { authorThemeFor } from "./authorTheme";
 import { BASIC_RULESET } from "../library/basicRuleset";
 import type { EncounterGame } from "../game/EncounterSchema";
 import { copyPictureFields } from "../state/placePictures";
@@ -272,5 +273,12 @@ export function startPlayableCampaign(
     if (session.player) session.player.locationRef = { placeId: current.placeId, side: "at" };
   }
   applyAdventurePresentation(session);
+  // The look the author gave the game: the adventure's theme, else the world's.
+  const authorTheme = authorThemeFor(
+    asWritten,
+    worlds,
+    places.find((p) => p.id === scene.placeId),
+  );
+  if (authorTheme) session.authorTheme = authorTheme;
   return parseSession(session);
 }

@@ -3138,3 +3138,28 @@ textarea.setup-field__story {
   border-color: var(--accent);
   color: var(--accent);
 }
+
+/* The look an author gives an adventure or a world. */
+.author-theme {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+.author-theme__swatches {
+  display: inline-flex;
+  gap: 4px;
+  padding-bottom: 6px;
+}
+.author-theme__swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+}
+.author-theme__hint {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-dim);
+}

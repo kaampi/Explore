@@ -1,3 +1,6 @@
+import { useTranslate } from "../i18n/LanguageProvider";
+import { AuthorThemePicker } from "../themes/AuthorThemePicker";
+import type { PlayTheme } from "../themes/theme";
 import { InteriorEditor } from "./InteriorEditor";
 import {
   ensureInterior,
@@ -61,6 +64,7 @@ export function WorldMapStudio({
   onDirtyChange?: (dirty: boolean) => void;
   saveRef?: { current: (() => Promise<boolean>) | null };
 }) {
+  const t = useTranslate();
   const [settlementDraft, setSettlementDraft] = useState<{
       x: number;
       y: number;
@@ -146,6 +150,7 @@ export function WorldMapStudio({
   const [places, setPlaces] = useState<PlaceTemplate[]>([]);
   const [worldId, setWorldId] = useState("");
   const [generateResidents, setGenerateResidents] = useState(false);
+  const [worldTheme, setWorldTheme] = useState<PlayTheme | undefined>(undefined);
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.code !== "Space" || playerPreview || !worldId) return;
@@ -287,6 +292,7 @@ export function WorldMapStudio({
           setWorldId(chosen.id);
           setMap(chosen.worldMap ?? empty());
           setGenerateResidents(chosen.openWorld?.generateResidents ?? false);
+          setWorldTheme(chosen.theme);
           setLevel(initialLevel);
         }
       })
@@ -446,6 +452,7 @@ export function WorldMapStudio({
     setWorldId(id);
     setMap(worlds.find((w) => w.id === id)?.worldMap ?? empty());
     setGenerateResidents(worlds.find((w) => w.id === id)?.openWorld?.generateResidents ?? false);
+    setWorldTheme(worlds.find((w) => w.id === id)?.theme);
     setLevel("");
     setSelected("");
     setDirty(false);
@@ -1008,8 +1015,10 @@ export function WorldMapStudio({
           });
       }
       const { openWorld: _openWorld, ...worldWithoutOpenWorld } = world;
+      delete worldWithoutOpenWorld.theme;
       const saved = {
         ...worldWithoutOpenWorld,
+        ...(worldTheme ? { theme: worldTheme } : {}),
         ...(generateResidents ? { openWorld: { generateResidents: true } } : {}),
         worldMap: valid,
         updatedAt: new Date().toISOString(),
@@ -1182,6 +1191,14 @@ export function WorldMapStudio({
                   />{" "}
                   Let the AI invent residents for empty places
                 </label>
+                <AuthorThemePicker
+                  value={worldTheme}
+                  hint={t("atWorldHint")}
+                  onChange={(theme) => {
+                    setWorldTheme(theme);
+                    setDirty(true);
+                  }}
+                />
                 <label>
                   Map type{" "}
                   <select value={mapType} onChange={(e) => setMapType(e.target.value as MapType)}>
