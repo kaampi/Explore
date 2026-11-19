@@ -325,7 +325,7 @@ export function knownThings(session: Session): KnownThing[] {
           (candidate) => candidate?.text === event.text && setsDiscovery(candidate.effects),
         );
         if (!outcome) continue;
-        const text = outcome.learned?.trim() || firstSentence(outcome.text);
+        const text = outcome.learned?.replace(/\s+/g, " ").trim() || firstSentence(outcome.text);
         if (text && !found.some((thing) => thing.text === text))
           found.push({ text, sceneId, place, minutes });
       }

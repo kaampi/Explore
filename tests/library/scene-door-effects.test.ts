@@ -84,11 +84,14 @@ describe("an action that unlocks or opens a door", () => {
 });
 
 describe("what the player learns from an outcome", () => {
-  it("writes it, trims it, and removes it again when emptied", () => {
+  it("keeps what was typed, spaces included, and removes it when only spaces are left", () => {
     const { scene } = setup();
     expect(learnedFrom(scene, "work")).toBe("");
 
-    const written = setLearned(scene, "work", "  The store room\n door is\tbarred.  ");
+    // Typing "The store " must not lose the space, or the field cannot be typed in.
+    const typing = setLearned(scene, "work", "The store ");
+    expect(learnedFrom(typing, "work")).toBe("The store ");
+    const written = setLearned(typing, "work", "The store room door is barred.");
     expect(learnedFrom(written, "work")).toBe("The store room door is barred.");
     const action = written.encounter!.definition.interactions.find((a) => a.id === "work")!;
     expect(action.success.text).toBe("It gives.");

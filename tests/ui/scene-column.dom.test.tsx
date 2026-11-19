@@ -57,6 +57,8 @@ async function render(props: Partial<Parameters<typeof SceneColumn>[0]> = {}) {
           known={[]}
           busy={false}
           character={<p>Health</p>}
+          collapsed={false}
+          onToggleCollapsed={() => {}}
           onGo={onGo}
           onAction={onAction}
           {...props}
@@ -85,7 +87,6 @@ it("lists the ways out with their travel time, and takes the one clicked", async
   expect(list[0]!.textContent).toContain("20 min");
   expect(list[1]!.textContent).toContain("Locked");
   expect(list[1]!.disabled).toBe(true);
-  expect(list[1]!.title).toBe("Town gate");
 
   await act(async () => list[0]!.click());
   expect(onGo).toHaveBeenCalledWith("road");
@@ -166,4 +167,77 @@ it("shows the map only when asked, in a panel", async () => {
 it("shows no map button when there is no map", async () => {
   const { host } = await render();
   expect(buttons(host).some((b) => b.textContent === "Show map")).toBe(false);
+});
+
+it("says in words why a way is locked, not only in a tooltip", async () => {
+  const { host } = await render({
+    ways: [
+      { id: "gate", label: "The gate", toSceneId: "c", status: "locked", blockedBy: "Town gate" },
+    ],
+  });
+  const reason = host.querySelector(".play-scene__reason");
+  expect(reason?.textContent).toBe("Shut by Town gate");
+});
+
+it("folds to a strip with one button, and unfolds again", async () => {
+  const onToggleCollapsed = vi.fn();
+  const open = await render({ onToggleCollapsed });
+  const hide = open.host.querySelector<HTMLButtonElement>(".play-scene__fold")!;
+  expect(hide.getAttribute("aria-expanded")).toBe("true");
+  await act(async () => hide.click());
+  expect(onToggleCollapsed).toHaveBeenCalledOnce();
+
+  const folded = await render({
+    collapsed: true,
+    ways: [{ id: "a", label: "Road", toSceneId: "b", status: "available" }],
+  });
+  expect(folded.host.querySelector(".play-scene--collapsed")).not.toBeNull();
+  expect(folded.host.querySelector(".play-scene__way")).toBeNull();
+  const show = folded.host.querySelector<HTMLButtonElement>(".play-scene__fold")!;
+  expect(show.getAttribute("aria-expanded")).toBe("false");
+  expect(show.getAttribute("aria-label")).toBe("Show the scene panel");
+});
+
+it("closes an open thing card when the player comes to another scene", async () => {
+  const session = inn();
+  const room = session.adventure!.scenes.find(
+    (scene) => scene.game.state.itemLocations["inn-brass-key"] !== undefined,
+  )!;
+  const here = structuredClone(room.game);
+  const there = structuredClone(room.game);
+  there.definition.id = "another-scene";
+
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  const draw = (game: typeof here) =>
+    act(async () =>
+      root.render(
+        <LanguageProvider>
+          <SceneColumn
+            game={game}
+            ways={[]}
+            known={[]}
+            busy={false}
+            character={null}
+            collapsed={false}
+            onToggleCollapsed={() => {}}
+            onGo={() => {}}
+            onAction={() => {}}
+          />
+        </LanguageProvider>,
+      ),
+    );
+  mounted.push(async () => {
+    await act(async () => root.unmount());
+    host.remove();
+  });
+  await draw(here);
+  await act(async () => host.querySelector<HTMLButtonElement>(".play-scene__thing")!.click());
+  expect(host.querySelector(".play-scene__thing-card")).not.toBeNull();
+
+  await draw(there);
+  expect(host.querySelector(".play-scene__thing-card")).toBeNull();
+  await draw(here);
+  expect(host.querySelector(".play-scene__thing-card")).toBeNull();
 });

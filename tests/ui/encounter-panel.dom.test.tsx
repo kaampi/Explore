@@ -115,7 +115,7 @@ function mount(
         return result;
       },
     };
-    return <EncounterPanel onHome={() => {}} />;
+    return <EncounterPanel />;
   }
   return {
     host,

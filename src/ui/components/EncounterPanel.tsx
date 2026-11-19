@@ -11,7 +11,6 @@ import { lineOfSight } from "../../game/geometry";
 import { CombatLog, encounterCombatLog } from "./CombatLog";
 import { HealthMeter } from "./HealthMeter";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import type { Session } from "@state/StateSchema";
 import { useEngine } from "../EngineStore";
 import { Menu } from "./Menu";
 import type { EncounterAction, EncounterRequest } from "../../game/EncounterSchema";
@@ -44,12 +43,10 @@ export function noteFrom(text: string): string {
 }
 
 export function EncounterPanel({
-  onHome,
   mapView,
   backdrop,
   onSaveIdea,
 }: {
-  onHome: (session: Session) => void;
   mapView?: ReactNode;
   backdrop?: ReactNode;
   /** Keeps a line of the story as an idea. Without it the lines have no "Save idea". */
@@ -92,6 +89,7 @@ export function EncounterPanel({
   const [mode, setMode] = useState<"say" | "do">("say");
   const [talkingTo, setTalkingTo] = useState("");
   const [collapsedLeft, setCollapsedLeft] = useStoredFlag("explore-play-left-collapsed");
+  const [collapsedRight, setCollapsedRight] = useStoredFlag("explore-play-right-collapsed");
   const abortRef = useRef<AbortController | null>(null);
   const lock = useRef(false),
     current = useRef(s);
@@ -392,6 +390,7 @@ export function EncounterPanel({
   return (
     <PlayFrame
       collapsed={collapsedLeft}
+      rightCollapsed={collapsedRight}
       left={leftColumn}
       center={
         <div className={`chat-panel gate-scene-panel${arena ? " gate-scene-panel--combat" : ""}`}>
@@ -647,28 +646,12 @@ export function EncounterPanel({
             </>
           }
           footer={
-            <>
-              {!playback.active && (
-                <CombatLog entries={encounterCombatLog(game)} active={s.phase === "combat"} />
-              )}
-              <section className="sb-game-toolbox__session">
-                <button
-                  type="button"
-                  disabled={saving || saveFailed}
-                  onClick={async () => {
-                    try {
-                      await saveSession();
-                      onHome(session);
-                    } catch {
-                      setSaveFailed(true);
-                    }
-                  }}
-                >
-                  {t("epSaveReturnHome")}
-                </button>
-              </section>
-            </>
+            !playback.active ? (
+              <CombatLog entries={encounterCombatLog(game)} active={s.phase === "combat"} />
+            ) : undefined
           }
+          collapsed={collapsedRight}
+          onToggleCollapsed={() => setCollapsedRight(!collapsedRight)}
         />
       }
     />

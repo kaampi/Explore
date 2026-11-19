@@ -983,7 +983,8 @@ export function learnedFrom(
 
 /**
  * Write what the player finds out from an outcome, in a sentence for "What you know". An empty
- * text removes it, and the first sentence of the outcome is shown instead.
+ * text removes it, and the first sentence of the outcome is shown instead. The text is kept as it
+ * was typed.
  */
 export function setLearned(
   scene: CampaignScene,
@@ -997,8 +998,9 @@ export function setLearned(
   if (!action) throw new Error("That action is not in this scene.");
   if (outcome === "failure" && !action.check)
     throw new Error("Only an action that rolls can fail.");
-  const clean = text.replace(/\s+/g, " ").trim().slice(0, 200);
-  if (clean) action[outcome].learned = clean;
+  // Kept as typed, spaces too, so that the field can be typed in. It is tidied where it is shown.
+  const kept = text.slice(0, 200);
+  if (kept.trim()) action[outcome].learned = kept;
   else delete action[outcome].learned;
   return finish(current, game);
 }

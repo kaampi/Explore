@@ -301,6 +301,19 @@ describe("knownThings", () => {
     expect(JSON.stringify(known)).not.toMatch(/done:|failed:/);
   });
 
+  it("tidies the author's spaces where it shows what the player learned", () => {
+    const { session } = messenger();
+    session.encounter!.definition.interactions[0]!.success.learned =
+      "  The messenger   was going\n to the watchtower. ";
+    const { engine, run } = play(session);
+
+    run(0);
+
+    expect(knownThings(engine.getSession()).map((thing) => thing.text)).toEqual([
+      "The messenger was going to the watchtower.",
+    ]);
+  });
+
   it("leaves out an outcome that sets no discovery, and an attempt that did not work", () => {
     const { session } = messenger();
     const plain = InteractionSchema.parse({
