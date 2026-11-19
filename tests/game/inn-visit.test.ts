@@ -187,11 +187,13 @@ it("does not complete the objective from merely leaving, and rejects invalid loo
   run.links[0]!.requiresOpenBarriers = ["invented-door"];
   expect(() => validateAdventure(run)).toThrow("unknown door");
 });
-it("installs an independent saved map, place library and adventure for the test and editor", async () => {
+it("installs a saved map, place library and adventure for the test and editor, once", async () => {
   const repo = new IndexedDBRepository(new IDBFactory(), "inn-example-library"),
     first = await installInnExample(repo),
     second = await installInnExample(repo);
-  expect(first.realm.id).not.toBe(second.realm.id);
+  // Trying it again opens the one in the library; it does not make another world.
+  expect(second.realm.id).toBe(first.realm.id);
+  expect(await repo.listRealms()).toHaveLength(1);
   expect(
     (await repo.loadRealm(first.realm.id)).worldMap!.nodes.filter((n) => n.kind === "Room"),
   ).toHaveLength(4);

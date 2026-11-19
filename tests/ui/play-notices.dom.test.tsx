@@ -62,8 +62,8 @@ function engineGame(minutes?: number) {
 }
 
 /** The play view's two places for marks: the arrival over the story, the strip above the field. */
-function Marks({ session }: { session: Session }) {
-  const marks = useNotices(session);
+function Marks({ session, hold = false }: { session: Session; hold?: boolean }) {
+  const marks = useNotices(session, hold);
   return (
     <>
       <div className="story">
@@ -76,14 +76,14 @@ function Marks({ session }: { session: Session }) {
   );
 }
 
-async function mount(session: Session) {
+async function mount(session: Session, hold = false) {
   const host = document.body.appendChild(document.createElement("div"));
   const root = createRoot(host);
-  const draw = (next: Session) =>
+  const draw = (next: Session, holding = hold) =>
     act(async () =>
       root.render(
         <LanguageProvider>
-          <Marks session={next} />
+          <Marks session={next} hold={holding} />
         </LanguageProvider>,
       ),
     );
@@ -124,6 +124,23 @@ it("keeps the marks out of the story: they are in the strip above the field, not
   const css = readFileSync("src/ui/play/play-view.css", "utf8");
   const strip = css.slice(css.indexOf(".play-notices {"), css.indexOf(".play-notices:empty"));
   expect(strip).not.toContain("position: absolute");
+});
+
+it("shows nothing while the dice roll, and marks what happened as soon as they have landed", async () => {
+  const { first, ask, engine } = engineGame();
+  const { host, draw } = await mount(first);
+  ask();
+  const after = engine.getSession();
+  await draw(after, true);
+  expect(host.querySelector(".play-notice")).toBeNull();
+  await act(async () => vi.advanceTimersByTimeAsync(NOTICE_MS * 2));
+  await draw(after, true);
+  expect(host.querySelector(".play-notice")).toBeNull();
+
+  await draw(after, false);
+  expect(host.querySelector(".play-notice")?.textContent).toBe(
+    "You found out: Edda points to the north path.",
+  );
 });
 
 it("does not show the same mark again when the game is drawn again", async () => {

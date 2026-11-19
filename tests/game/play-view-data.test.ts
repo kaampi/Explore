@@ -308,6 +308,51 @@ describe("knownThings", () => {
     expect(JSON.stringify(known)).not.toMatch(/done:|failed:/);
   });
 
+  it("does not count an outcome that unlocks or opens a door as a discovery, unless the author wrote what is learned", () => {
+    for (const effect of [
+      { kind: "set-barrier", barrierId: "gate", locked: false },
+      { kind: "set-barrier", barrierId: "gate", locked: false, open: true },
+    ] as const) {
+      const make = (learned?: string) => {
+        const { session } = messenger();
+        session.encounter!.state.barriers.gate = {
+          id: "gate",
+          name: "Town gate",
+          open: false,
+          locked: true,
+          blocked: false,
+        };
+        const success = session.encounter!.definition.interactions[0]!.success;
+        success.effects.push({ ...effect });
+        if (learned) success.learned = learned;
+        const { engine, run } = play(session);
+        run(0);
+        return knownThings(engine.getSession()).map((thing) => thing.text);
+      };
+      expect(make()).toEqual([]);
+      expect(make("Edda has the gate key.")).toEqual(["Edda has the gate key."]);
+    }
+  });
+
+  it("still counts an outcome that closes or locks something, and one that only sets a flag", () => {
+    const { session } = messenger();
+    session.encounter!.state.barriers.gate = {
+      id: "gate",
+      name: "Town gate",
+      open: true,
+      locked: false,
+      blocked: false,
+    };
+    session.encounter!.definition.interactions[0]!.success.effects.push({
+      kind: "set-barrier",
+      barrierId: "gate",
+      open: false,
+    });
+    const { engine, run } = play(session);
+    run(0);
+    expect(knownThings(engine.getSession())).toHaveLength(1);
+  });
+
   it("tidies the author's spaces where it shows what the player learned", () => {
     const { session } = messenger();
     session.encounter!.definition.interactions[0]!.success.learned =

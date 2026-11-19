@@ -44,6 +44,8 @@ export type StoryRow =
   | {
       kind: "check";
       key: string;
+      /** The number of the turn the roll belongs to. */
+      turn: number;
       actor: string;
       skill: string;
       roll: number;
@@ -55,9 +57,14 @@ export type StoryRow =
 /**
  * The story as rows. By default only the place the player is in; with `earlier`, every place they
  * have been in, each under a divider with its name and the time they came. Fights are left out:
- * they are told by the combat view.
+ * they are told by the combat view. With `heldAfterTurn` the rolls and the answers of later turns
+ * are left out for now, so that the dice can land before the result is told. What the player did
+ * is not held.
  */
-export function storyRows(session: Session, options: { earlier?: boolean } = {}): StoryRow[] {
+export function storyRows(
+  session: Session,
+  options: { earlier?: boolean; heldAfterTurn?: number } = {},
+): StoryRow[] {
   const turns = session.conversation as Turn[];
   const player = session.encounter?.state.actors[session.encounter.definition.playerId];
   const nameOfActor = (actorId: string | undefined) =>
@@ -80,6 +87,7 @@ export function storyRows(session: Session, options: { earlier?: boolean } = {})
       if (!turn || typeof turn !== "object") continue;
       const entry = index ? adventureHistoryEntry(session, turn, index) : undefined;
       if (isCombatRecord(entry)) continue;
+      const held = options.heldAfterTurn !== undefined && turn.turn > options.heldAfterTurn;
       if (turn.role === "player") {
         const first = entry?.events[0];
         const interaction =
@@ -99,10 +107,13 @@ export function storyRows(session: Session, options: { earlier?: boolean } = {})
         );
         continue;
       }
+      // What the dice decided is told when they have landed.
+      if (held) continue;
       for (const [i, check] of (entry?.checks ?? []).entries())
         rows.push({
           kind: "check",
           key: `t${turn.turn}:c${i}`,
+          turn: turn.turn,
           actor: nameOfActor(check.actorId) ?? check.actorId,
           skill: session.encounter
             ? statName(session.encounter.definition, check.stat)
@@ -134,7 +145,10 @@ export function storyRows(session: Session, options: { earlier?: boolean } = {})
   }
   // The goal is told where it was reached. A game that reached it before that was kept has it last.
   const goal = session.adventure?.goal;
-  if (goal && adventureCompleted(session)) {
+  const goalHeld =
+    options.heldAfterTurn !== undefined &&
+    (session.adventure?.goalReachedTurn ?? 0) > options.heldAfterTurn;
+  if (goal && adventureCompleted(session) && !goalHeld) {
     const row: StoryRow = { kind: "goal", key: "goal", title: goal.title };
     const reachedAt = session.adventure?.goalReachedTurn;
     if (reachedAt === undefined) rows.push(row);

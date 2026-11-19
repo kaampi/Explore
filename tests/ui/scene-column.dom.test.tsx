@@ -57,6 +57,7 @@ async function render(props: Partial<Parameters<typeof SceneColumn>[0]> = {}) {
           known={[]}
           busy={false}
           character={<p>Health</p>}
+          foldValues={[]}
           collapsed={false}
           onToggleCollapsed={() => {}}
           onGo={onGo}
@@ -220,6 +221,7 @@ it("closes an open thing card when the player comes to another scene", async () 
             known={[]}
             busy={false}
             character={null}
+            foldValues={[]}
             collapsed={false}
             onToggleCollapsed={() => {}}
             onGo={() => {}}

@@ -184,6 +184,43 @@ describe("an outcome that gives a thing", () => {
   });
 });
 
+describe("rolls and answers held back until the dice have landed", () => {
+  it("leaves out the roll, and what was told in answer, after the turn it is held at", () => {
+    const first = start();
+    const after = asked(first);
+    const lastTurn = Math.max(...after.conversation.map((t) => (t as { turn: number }).turn));
+    const all = storyRows(after);
+    const held = storyRows(after, { heldAfterTurn: lastTurn - 2 });
+
+    // Everything is there when nothing is held back.
+    expect(all.some((row) => row.kind === "narrator" && row.text.includes("Edda points"))).toBe(
+      true,
+    );
+    // What the player did stays; the answer waits.
+    expect(held.some((row) => row.kind === "do")).toBe(true);
+    expect(held.some((row) => row.kind === "narrator" && row.text.includes("Edda points"))).toBe(
+      false,
+    );
+    expect(storyRows(after, { heldAfterTurn: lastTurn }).length).toBe(all.length);
+  });
+
+  it("holds a roll's row with its turn, and the goal line when it was reached later", () => {
+    const after = asked(start());
+    const lastTurn = Math.max(...after.conversation.map((t) => (t as { turn: number }).turn));
+    const done = structuredClone(after);
+    done.storyFlags = [...done.storyFlags, ...done.adventure!.goal!.requiresFlags];
+    done.adventure!.goalReachedTurn = lastTurn;
+
+    expect(storyRows(done).some((row) => row.kind === "goal")).toBe(true);
+    expect(
+      storyRows(done, { heldAfterTurn: lastTurn - 1 }).some((row) => row.kind === "goal"),
+    ).toBe(false);
+    expect(storyRows(done, { heldAfterTurn: lastTurn }).some((row) => row.kind === "goal")).toBe(
+      true,
+    );
+  });
+});
+
 describe("the goal in the story", () => {
   it("has a line at the end of the story once the goal is reached, and none before", () => {
     const before = start();

@@ -301,9 +301,20 @@ function setsDiscovery(effects: { kind: string; flag?: string }[]): boolean {
   return effects.some((e) => e.kind === "flag" && !e.flag?.startsWith("failed:"));
 }
 
-/** Whether an outcome hands the player something: that is told by the pack, not as a discovery. */
-function givesThing(effects: { kind: string }[]): boolean {
-  return effects.some((e) => e.kind === "take-item" || e.kind === "transfer-item");
+/**
+ * Whether an outcome changes the world in a way the game already shows: it hands the player
+ * something, or unlocks or opens a door. That is told by the pack and the marks, and is not a
+ * discovery unless the author wrote what is learned.
+ */
+function showsItself(
+  effects: { kind: string; locked?: boolean | undefined; open?: boolean | undefined }[],
+): boolean {
+  return effects.some(
+    (e) =>
+      e.kind === "take-item" ||
+      e.kind === "transfer-item" ||
+      (e.kind === "set-barrier" && (e.locked === false || e.open === true)),
+  );
 }
 
 /** The first sentence of a text, at most 200 characters. */
@@ -343,8 +354,9 @@ export function knownThings(session: Session): KnownThing[] {
           (candidate) =>
             candidate?.text === event.text &&
             setsDiscovery(candidate.effects) &&
-            // An outcome that gives a thing is a discovery only when the author wrote what is learned.
-            (!givesThing(candidate.effects) || !!candidate.learned?.trim()),
+            // An outcome that gives a thing or opens a way is a discovery only when the author
+            // wrote what is learned.
+            (!showsItself(candidate.effects) || !!candidate.learned?.trim()),
         );
         if (!outcome) continue;
         const text = outcome.learned?.replace(/\s+/g, " ").trim() || firstSentence(outcome.text);
