@@ -130,3 +130,43 @@ it("speaks Swedish when the interface is Swedish", async () => {
     localStorage.removeItem("sandboxai:interface-language");
   }
 });
+
+it("gives focus back to what opened it when it is closed", async () => {
+  const opener = document.body.appendChild(document.createElement("button"));
+  opener.textContent = "Journal";
+  opener.focus();
+  const host = document.body.appendChild(document.createElement("div"));
+  const root = createRoot(host);
+  const session = start();
+  await act(async () =>
+    root.render(
+      <LanguageProvider>
+        <Journal session={session} onForget={() => {}} onClose={() => {}} />
+      </LanguageProvider>,
+    ),
+  );
+  // A browser moves focus into the panel when it opens.
+  const close = document.querySelector<HTMLButtonElement>("dialog .sb-icon")!;
+  await act(async () => close.focus());
+  expect(document.activeElement).toBe(close);
+
+  await act(async () => root.unmount());
+  expect(document.activeElement).toBe(opener);
+});
+
+it("names its close button in the interface language", async () => {
+  await render(start());
+  expect(document.querySelector("dialog .sb-icon")!.getAttribute("aria-label")).toBe(
+    "Close dialog",
+  );
+  document.body.innerHTML = "";
+  localStorage.setItem("sandboxai:interface-language", "sv");
+  try {
+    await render(start());
+    expect(document.querySelector("dialog .sb-icon")!.getAttribute("aria-label")).toBe(
+      "Stäng dialogrutan",
+    );
+  } finally {
+    localStorage.removeItem("sandboxai:interface-language");
+  }
+});

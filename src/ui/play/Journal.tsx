@@ -140,7 +140,7 @@ export function Journal({
                 <h4>{place.place}</h4>
                 <ul className="play-journal__list">
                   {place.notes.map((note, index) => (
-                    <li key={note} className="play-journal__note">
+                    <li key={`${place.sceneId}:${index}`} className="play-journal__note">
                       <span>{note}</span>
                       <button
                         type="button"
