@@ -99,17 +99,73 @@ describe("trying a bundled example again", () => {
     expect(used.campaign.id).toBe(old.campaign.id);
   });
 
-  it("makes it again whole when a part has been deleted, and leaves no broken copy behind", async () => {
+  it("makes a new whole copy when a part has been deleted, and leaves the old one where it is", async () => {
     const r = repo();
     const first = await installGatehouseExample(r);
     await r.deleteCharacter(first.characters[0]!.id);
 
     const again = await installGatehouseExample(r);
 
-    const now = await counts(r);
-    expect(now.campaigns).toBe(1);
+    // Two adventures now: the old one, with a person missing, and a whole new one.
+    const campaigns = await r.listCampaigns();
+    expect(campaigns).toHaveLength(2);
+    expect(campaigns.some((c) => c.id === first.campaign.id)).toBe(true);
+    expect(again.campaign.id).not.toBe(first.campaign.id);
     expect(again.characters).toHaveLength(2);
     expect((await r.listCharacters()).some((c) => c.id === again.characters[0]!.id)).toBe(true);
+
+    // Trying it a third time uses the whole new copy and makes nothing more.
+    const before = await counts(r);
+    const third = await installGatehouseExample(r);
+    expect(third.campaign.id).toBe(again.campaign.id);
+    expect(await counts(r)).toEqual(before);
+  });
+
+  it("keeps an example the author has changed, even when a place of it has been deleted", async () => {
+    const r = repo();
+    const first = await installInnExample(r);
+    const changed = { ...first.campaign, playerIntro: "My own words about the inn." };
+    await r.saveCampaign(changed);
+    const gone = first.places[0]!;
+    await r.deletePlace(gone.id);
+
+    const again = await installInnExample(r);
+
+    // The changed adventure is still there, word for word, and is not the one that was handed back.
+    const kept = (await r.listCampaigns()).find((c) => c.id === first.campaign.id)!;
+    expect(kept.playerIntro).toBe("My own words about the inn.");
+    expect(kept.placeIds).toEqual(first.campaign.placeIds);
+    expect(again.campaign.id).not.toBe(first.campaign.id);
+    expect(again.campaign.playerIntro).not.toBe("My own words about the inn.");
+    // Every other part of the changed example is there too: only the deleted place is gone.
+    expect((await r.listPlaces()).some((p) => p.id === gone.id)).toBe(false);
+    expect((await r.loadRealm(first.realm.id)).id).toBe(first.realm.id);
+    expect((await r.listCampaigns()).length).toBe(2);
+  });
+
+  it("never removes anything while it installs, whatever state the library is in", async () => {
+    const r = repo();
+    const removed: string[] = [];
+    for (const name of Object.getOwnPropertyNames(IndexedDBRepository.prototype).filter((n) =>
+      n.startsWith("delete"),
+    )) {
+      const original = (r as unknown as Record<string, (...a: unknown[]) => unknown>)[name]!;
+      (r as unknown as Record<string, unknown>)[name] = (...args: unknown[]) => {
+        removed.push(name);
+        return original.apply(r, args);
+      };
+    }
+    const first = await installGatehouseExample(r);
+    await installGatehouseExample(r);
+    // Delete a part by hand, then install again: the install must not delete anything itself.
+    await (IndexedDBRepository.prototype.deleteCharacter as (id: string) => Promise<void>).call(
+      r,
+      first.characters[0]!.id,
+    );
+    removed.length = 0;
+    await installGatehouseExample(r);
+    await installInnExample(r);
+    expect(removed).toEqual([]);
   });
 
   it("does not touch the author's own adventures", async () => {
