@@ -1,4 +1,8 @@
-import { adventureHistoryEntry, storySegments } from "../../game/AdventureEngine";
+import {
+  adventureCompleted,
+  adventureHistoryEntry,
+  storySegments,
+} from "../../game/AdventureEngine";
 import { statName } from "../../game/narration";
 import type { ActionCheck } from "../../game/EncounterSchema";
 import type { Session } from "../../state/StateSchema";
@@ -34,6 +38,8 @@ export type StoryRow =
       improvised: boolean;
       sceneId?: string;
     }
+  /** The goal of the adventure has been reached. The game goes on. */
+  | { kind: "goal"; key: string; title: string }
   /** A roll, in one line: who, which skill, the roll against the chance, and how it went. */
   | {
       kind: "check";
@@ -126,5 +132,8 @@ export function storyRows(session: Session, options: { earlier?: boolean } = {})
       );
     }
   }
+  const goal = session.adventure?.goal;
+  if (goal && adventureCompleted(session))
+    rows.push({ kind: "goal", key: "goal", title: goal.title });
   return rows;
 }

@@ -24,6 +24,7 @@ import { ActionSaveError } from "../../persistence/ActionSaveError";
 import { PlayFrame } from "../play/PlayFrame";
 import { StoryLog } from "../play/StoryLog";
 import { WhatDoYouDo } from "../play/WhatDoYouDo";
+import { PlayNotices } from "../play/PlayNotices";
 import { PeopleColumn } from "../play/PeopleColumn";
 import { personCard } from "../play/personCard";
 import { useStoredFlag } from "../play/useStoredFlag";
@@ -463,6 +464,7 @@ export function EncounterPanel({
             )}
           </div>
           <div className={`chat-stage${arena ? " chat-stage--combat" : ""}`}>
+            <PlayNotices session={session} />
             {arena && (
               <CombatStage
                 player={fighters.player}
