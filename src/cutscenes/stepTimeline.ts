@@ -17,6 +17,7 @@ export function stepTimeline({ image, sound, text, advanceAt, readyAt, transitio
   const advance = advanceAt === undefined ? undefined : Math.max(advanceAt, readyAt);
   const holdUntil = advance ?? readyAt;
   const waits = advance === undefined;
+  const exit = Math.max(image.melt, text.leave);
   const clips: TimelineClip[] = [];
 
   if (image.previous && image.previous !== image.current && image.delay + image.leave > 0) {
@@ -33,8 +34,9 @@ export function stepTimeline({ image, sound, text, advanceAt, readyAt, transitio
       lane: "image",
       source: "current",
       start: image.delay,
-      end: holdUntil,
+      end: holdUntil + (waits ? 0 : image.melt),
       enter: image.enter,
+      leave: waits ? 0 : image.melt,
       waits,
     });
   }
@@ -85,11 +87,11 @@ export function stepTimeline({ image, sound, text, advanceAt, readyAt, transitio
     clips,
     advance,
     readyAt,
-    exit: text.leave,
+    exit,
     transition: transition.duration,
     end: Math.max(
       1000,
-      Math.ceil((holdUntil + (waits ? 0 : text.leave + transition.duration)) / 1000) * 1000,
+      Math.ceil((holdUntil + (waits ? 0 : exit + transition.duration)) / 1000) * 1000,
     ),
   };
 }
