@@ -1,5 +1,5 @@
 import { useTranslate } from "../i18n/LanguageProvider";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 import {
   newRulesetTemplate,
@@ -12,9 +12,17 @@ import { slugifyCharacterId } from "@session/createSession";
 import type { AttributeDef } from "@state/StateSchema";
 import { EditChips, TRAIT_PRESET_EXAMPLE } from "./ChoiceChips";
 import { FormSection } from "./FormSection";
+import { IconButton } from "../components/Button";
+import { portraitDataUrlFromFile } from "./portrait";
 import { StudioList } from "./StudioList";
 import { SheetNameField } from "./SheetNameField";
 import { confirmRemove, sourceCaption } from "./studioShared";
+
+const crossIcon = (
+  <svg viewBox="0 0 16 16" aria-hidden="true">
+    <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+  </svg>
+);
 
 type AttrDraft = {
   key: string;
@@ -39,6 +47,7 @@ type Draft = {
   name: string;
   attributes: AttrDraft[];
   playerHealth: string;
+  imageDataUrl: string;
   source: LibrarySource;
   createdAt?: string;
 };
@@ -82,7 +91,14 @@ function attrFromDef(def: AttributeDef): AttrDraft {
 }
 
 function emptyDraft(): Draft {
-  return { id: null, name: "", attributes: [emptyAttr()], playerHealth: "", source: "player" };
+  return {
+    id: null,
+    name: "",
+    attributes: [emptyAttr()],
+    playerHealth: "",
+    imageDataUrl: "",
+    source: "player",
+  };
 }
 
 function draftFrom(template: RulesetTemplate): Draft {
@@ -92,6 +108,7 @@ function draftFrom(template: RulesetTemplate): Draft {
     attributes:
       template.attributes.length > 0 ? template.attributes.map(attrFromDef) : [emptyAttr()],
     playerHealth: template.playerHealth !== undefined ? String(template.playerHealth) : "",
+    imageDataUrl: template.imageDataUrl ?? "",
     source: template.source,
     createdAt: template.createdAt,
   };
@@ -179,6 +196,7 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
   const [library, setLibrary] = useState<RulesetTemplate[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
+  const picker = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -243,6 +261,7 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
         name,
         attributes,
         ...(playerHealth !== undefined ? { playerHealth } : {}),
+        ...(draft.imageDataUrl ? { imageDataUrl: draft.imageDataUrl } : {}),
         source: draft.source,
       });
       const previous = library.find((item) => item.id === built.id);
@@ -275,13 +294,14 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
   const saved = Boolean(draft?.id && savedIds.has(draft.id));
 
   return (
-    <div className="studio-split studio-split--shelf">
+    <div className="studio-split studio-split--shelf studio-split--rulesets">
       <StudioList
         heading="Rule-sets"
         items={items.map((item) => ({
           id: item.id,
           name: item.name,
           caption: sourceCaption(item.source, savedIds.has(item.id)),
+          ...(item.imageDataUrl ? { thumb: item.imageDataUrl } : {}),
         }))}
         selectedId={selectedId}
         onSelect={open}
@@ -291,8 +311,6 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
           setError(null);
           setNotice(null);
         }}
-        layout="portraits"
-        columns={2}
         newLabel="Create new"
         empty="No rule-sets yet."
       />
@@ -306,13 +324,66 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
         )}
         {draft && (
           <>
-            <p className="setup-kicker">{sourceCaption(draft.source, saved)}</p>
-            <SheetNameField
-              ariaLabel="Rule-set name"
-              value={draft.name}
-              placeholder={t("rssNewRuleSet")}
-              onChange={(name) => setDraft({ ...draft, name })}
-            />
+            <div className="rs-head">
+              <div className="rs-head__picture">
+                <button
+                  type="button"
+                  className="rs-head__pick"
+                  aria-label={draft.imageDataUrl ? t("rssChangePicture") : t("rssAddPicture")}
+                  title={draft.imageDataUrl ? t("rssChangePicture") : t("rssAddPicture")}
+                  onClick={() => picker.current?.click()}
+                >
+                  {draft.imageDataUrl ? (
+                    <img src={draft.imageDataUrl} alt="" />
+                  ) : (
+                    <span aria-hidden="true">+</span>
+                  )}
+                </button>
+                {draft.imageDataUrl ? (
+                  <IconButton
+                    variant="quiet"
+                    size="compact"
+                    className="rs-head__clear"
+                    label={t("osRemovePicture")}
+                    icon={crossIcon}
+                    onClick={() => setDraft({ ...draft, imageDataUrl: "" })}
+                  />
+                ) : null}
+                <input
+                  ref={picker}
+                  type="file"
+                  hidden
+                  accept="image/png,image/jpeg,image/webp"
+                  aria-label={t("rssAddPicture")}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    event.target.value = "";
+                    if (!file) return;
+                    const id = draft.id;
+                    portraitDataUrlFromFile(file)
+                      .then((imageDataUrl) =>
+                        setDraft((current) =>
+                          current && current.id === id ? { ...current, imageDataUrl } : current,
+                        ),
+                      )
+                      .catch((err: unknown) =>
+                        setError(
+                          err instanceof Error ? err.message : "Could not read the picture.",
+                        ),
+                      );
+                  }}
+                />
+              </div>
+              <div className="rs-head__text">
+                <p className="setup-kicker">{sourceCaption(draft.source, saved)}</p>
+                <SheetNameField
+                  ariaLabel="Rule-set name"
+                  value={draft.name}
+                  placeholder={t("rssNewRuleSet")}
+                  onChange={(name) => setDraft({ ...draft, name })}
+                />
+              </div>
+            </div>
             <FormSection
               title={t("rssAttributes")}
               action={
@@ -326,277 +397,190 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
                   + Add
                 </button>
               }
-              lede={
-                "Name the field, then write high and low. Those sentences are what the AI sees — Boldness is not a built-in rule. Mid is optional. Min/max stay on this field (fantasy 1–18, meters 0–100). Move / beat is how far the AI may shift the number each turn (0 = Styrka stays; 15 ≈ a kiss raising Warmth; 3 = a nudge). Closeness signal (at most one) is the field whose live band feeds a kiss/hug when asked. Write for any NPC: {{char}} is their given name, {{they}} / {{them}} / {{their}} / {{themselves}} follow that card's pronoun. Prefer {{char}} as the subject ({{char}} starts…). Do not write She — it will be wrong for a he."
-              }
             >
-              {draft.attributes.map((row, index) => (
-                <div className="setup-character" key={row.key}>
-                  <div className="setup-character__head">
-                    <span className="setup-character__index">field {index + 1}</span>
-                    {draft.attributes.length > 1 && (
-                      <button
-                        type="button"
-                        className="layer-card__toggle"
+              {draft.attributes.map((row, index) => {
+                const set = (change: Partial<AttrDraft>) =>
+                  setDraft({
+                    ...draft,
+                    attributes: draft.attributes.map((item) =>
+                      item.key === row.key ? { ...item, ...change } : item,
+                    ),
+                  });
+                const label = row.name.trim() || `field ${index + 1}`;
+                return (
+                  <div className="rs-attr" key={row.key} aria-label={label} role="group">
+                    {draft.attributes.length > 1 ? (
+                      <IconButton
+                        variant="quiet"
+                        size="compact"
+                        className="rs-attr__remove"
+                        label={`${t("spRemove")}: ${label}`}
+                        icon={crossIcon}
                         onClick={() =>
                           setDraft({
                             ...draft,
                             attributes: draft.attributes.filter((item) => item.key !== row.key),
                           })
                         }
-                      >
-                        {t("spRemove")}
-                      </button>
-                    )}
-                  </div>
-                  <label className="setup-field">
-                    {t("hsName")}
-                    <input
-                      value={row.name}
-                      onChange={(e) =>
-                        setDraft({
-                          ...draft,
-                          attributes: draft.attributes.map((item) =>
-                            item.key === row.key ? { ...item, name: e.target.value } : item,
-                          ),
-                        })
-                      }
-                      placeholder="Styrka"
-                    />
-                  </label>
-                  {row.kind === "text" ? (
-                    <label className="setup-field">
-                      {t("rssMeaning")}
-                      <textarea
-                        value={row.description}
-                        onChange={(e) =>
-                          setDraft({
-                            ...draft,
-                            attributes: draft.attributes.map((item) =>
-                              item.key === row.key
-                                ? { ...item, description: e.target.value }
-                                : item,
-                            ),
-                          })
-                        }
-                        placeholder="Honor the live value only. Loyal: …"
                       />
-                    </label>
-                  ) : (
-                    <>
-                      <label className="setup-field">
-                        {t("rssHighMeaning")}
-                        <textarea
-                          value={row.highMeaning}
-                          onChange={(e) =>
-                            setDraft({
-                              ...draft,
-                              attributes: draft.attributes.map((item) =>
-                                item.key === row.key
-                                  ? { ...item, highMeaning: e.target.value }
-                                  : item,
-                              ),
-                            })
-                          }
-                          placeholder="{{char}} starts and stays in contact this beat…"
+                    ) : null}
+                    <div className="rs-attr__top">
+                      <label className="setup-field rs-attr__name">
+                        {t("hsName")}
+                        <input
+                          value={row.name}
+                          onChange={(e) => set({ name: e.target.value })}
+                          placeholder="Styrka"
                         />
                       </label>
                       <label className="setup-field">
-                        {t("rssLowMeaning")}
-                        <textarea
-                          value={row.lowMeaning}
+                        {t("osKind")}
+                        <select
+                          value={row.kind}
                           onChange={(e) =>
-                            setDraft({
-                              ...draft,
-                              attributes: draft.attributes.map((item) =>
-                                item.key === row.key
-                                  ? { ...item, lowMeaning: e.target.value }
-                                  : item,
-                              ),
-                            })
+                            set({ kind: e.target.value as "number" | "text", desire: false })
                           }
-                          placeholder="{{char}} hangs back, waits for the player to lead…"
-                        />
-                      </label>
-                      <label className="setup-field">
-                        {t("rssMidMeaning")}
-                        <span className="setup-optional">{t("optional")}</span>
-                        <textarea
-                          value={row.midMeaning}
-                          onChange={(e) =>
-                            setDraft({
-                              ...draft,
-                              attributes: draft.attributes.map((item) =>
-                                item.key === row.key
-                                  ? { ...item, midMeaning: e.target.value }
-                                  : item,
-                              ),
-                            })
-                          }
-                          placeholder="{{char}} can answer a kiss, but does not take the next step."
-                        />
-                      </label>
-                      {row.description.trim() &&
-                      !row.highMeaning.trim() &&
-                      !row.lowMeaning.trim() ? (
-                        <label className="setup-field">
-                          {t("rssFallbackMeaning")}
-                          <textarea
-                            value={row.description}
-                            onChange={(e) =>
-                              setDraft({
-                                ...draft,
-                                attributes: draft.attributes.map((item) =>
-                                  item.key === row.key
-                                    ? { ...item, description: e.target.value }
-                                    : item,
-                                ),
-                              })
-                            }
-                          />
-                        </label>
-                      ) : null}
-                    </>
-                  )}
-                  <div className="setup-row">
-                    <label className="setup-field">
-                      {t("osKind")}
-                      <select
-                        value={row.kind}
-                        onChange={(e) =>
-                          setDraft({
-                            ...draft,
-                            attributes: draft.attributes.map((item) =>
-                              item.key === row.key
-                                ? {
-                                    ...item,
-                                    kind: e.target.value as "number" | "text",
-                                    desire: false,
-                                  }
-                                : item,
-                            ),
-                          })
-                        }
-                      >
-                        <option value="number">{t("rssNumber")}</option>
-                        <option value="text">{t("rssText")}</option>
-                      </select>
-                    </label>
-                    {row.kind === "number" ? (
-                      <div>
-                        <div
-                          className="setup-row"
-                          style={{ margin: 0, gridTemplateColumns: "1fr 1fr 1fr" }}
                         >
+                          <option value="number">{t("rssNumber")}</option>
+                          <option value="text">{t("rssText")}</option>
+                        </select>
+                      </label>
+                      {row.kind === "number" ? (
+                        <>
                           <label className="setup-field">
                             {t("rssMin")}
                             <input
                               value={row.min}
-                              onChange={(e) =>
-                                setDraft({
-                                  ...draft,
-                                  attributes: draft.attributes.map((item) =>
-                                    item.key === row.key ? { ...item, min: e.target.value } : item,
-                                  ),
-                                })
-                              }
+                              inputMode="numeric"
+                              onChange={(e) => set({ min: e.target.value })}
                             />
                           </label>
                           <label className="setup-field">
                             {t("rssMax")}
                             <input
                               value={row.max}
-                              onChange={(e) =>
-                                setDraft({
-                                  ...draft,
-                                  attributes: draft.attributes.map((item) =>
-                                    item.key === row.key ? { ...item, max: e.target.value } : item,
-                                  ),
-                                })
-                              }
+                              inputMode="numeric"
+                              onChange={(e) => set({ max: e.target.value })}
                             />
                           </label>
-                          <label className="setup-field">
-                            Move / beat <span className="setup-optional">0 = stays</span>
+                          <label
+                            className="setup-field"
+                            title="How far the AI may move the number each turn. 0 = stays."
+                          >
+                            Move / beat
                             <input
                               value={row.maxShift}
-                              onChange={(e) =>
-                                setDraft({
-                                  ...draft,
-                                  attributes: draft.attributes.map((item) =>
-                                    item.key === row.key
-                                      ? { ...item, maxShift: e.target.value }
-                                      : item,
-                                  ),
-                                })
-                              }
+                              inputMode="numeric"
+                              onChange={(e) => set({ maxShift: e.target.value })}
                               placeholder="0"
                             />
                           </label>
-                        </div>
+                        </>
+                      ) : null}
+                    </div>
+                    {row.kind === "text" ? (
+                      <div className="rs-attr__meanings rs-attr__meanings--text">
                         <label className="setup-field">
-                          {t("rssShownInPlay")}
-                          <select
-                            value={row.display}
-                            onChange={(e) =>
-                              setDraft({
-                                ...draft,
-                                attributes: draft.attributes.map((item) =>
-                                  item.key === row.key
-                                    ? { ...item, display: e.target.value as AttrDraft["display"] }
-                                    : item,
-                                ),
-                              })
-                            }
-                          >
-                            <option value="">{t("rssShownAuto")}</option>
-                            <option value="meter">{t("rssShownMeter")}</option>
-                            <option value="skill">{t("rssShownSkill")}</option>
-                            <option value="hidden">{t("rssShownHidden")}</option>
-                          </select>
-                        </label>
-                        <label
-                          className="setup-check"
-                          title="Warm beat: if they ask for a kiss or hug, narration does it. At most one field per rule-set. Unchecked on every field = trust alone."
-                        >
-                          <input
-                            type="checkbox"
-                            checked={row.desire}
-                            onChange={(e) => {
-                              const on = e.target.checked;
-                              setDraft({
-                                ...draft,
-                                attributes: draft.attributes.map((item) => ({
-                                  ...item,
-                                  desire: on && item.key === row.key && item.kind === "number",
-                                })),
-                              });
-                            }}
+                          {t("rssMeaning")}
+                          <textarea
+                            value={row.description}
+                            onChange={(e) => set({ description: e.target.value })}
+                            placeholder="Honor the live value only. Loyal: …"
                           />
-                          Closeness signal
                         </label>
+                        <div className="setup-field">
+                          {t("rssChoices")}
+                          <span className="setup-optional">{t("rssAdventurePicks")}</span>
+                          <EditChips
+                            items={row.options}
+                            preset={TRAIT_PRESET_EXAMPLE}
+                            onChange={(options) => set({ options })}
+                          />
+                        </div>
                       </div>
                     ) : (
-                      <div className="setup-field">
-                        {t("rssChoices")}
-                        <span className="setup-optional">{t("rssAdventurePicks")}</span>
-                        <EditChips
-                          items={row.options}
-                          preset={TRAIT_PRESET_EXAMPLE}
-                          onChange={(options) =>
-                            setDraft({
-                              ...draft,
-                              attributes: draft.attributes.map((item) =>
-                                item.key === row.key ? { ...item, options } : item,
-                              ),
-                            })
-                          }
-                        />
-                      </div>
+                      <>
+                        <div className="rs-attr__meanings">
+                          <label className="setup-field">
+                            {t("rssLowMeaning")}
+                            <textarea
+                              value={row.lowMeaning}
+                              onChange={(e) => set({ lowMeaning: e.target.value })}
+                              placeholder="{{char}} hangs back, waits for the player to lead…"
+                            />
+                          </label>
+                          <label className="setup-field">
+                            <span>
+                              {t("rssMidMeaning")}{" "}
+                              <span className="setup-optional">{t("optional")}</span>
+                            </span>
+                            <textarea
+                              value={row.midMeaning}
+                              onChange={(e) => set({ midMeaning: e.target.value })}
+                              placeholder="{{char}} manages, with some effort."
+                            />
+                          </label>
+                          <label className="setup-field">
+                            {t("rssHighMeaning")}
+                            <textarea
+                              value={row.highMeaning}
+                              onChange={(e) => set({ highMeaning: e.target.value })}
+                              placeholder="{{char}} starts and stays in contact this beat…"
+                            />
+                          </label>
+                        </div>
+                        {row.description.trim() &&
+                        !row.highMeaning.trim() &&
+                        !row.lowMeaning.trim() ? (
+                          <label className="setup-field">
+                            {t("rssFallbackMeaning")}
+                            <textarea
+                              value={row.description}
+                              onChange={(e) => set({ description: e.target.value })}
+                            />
+                          </label>
+                        ) : null}
+                        <div className="rs-attr__bottom">
+                          <label className="setup-field rs-attr__inline">
+                            {t("rssShownInPlay")}
+                            <select
+                              value={row.display}
+                              onChange={(e) =>
+                                set({ display: e.target.value as AttrDraft["display"] })
+                              }
+                            >
+                              <option value="">{t("rssShownAuto")}</option>
+                              <option value="meter">{t("rssShownMeter")}</option>
+                              <option value="skill">{t("rssShownSkill")}</option>
+                              <option value="hidden">{t("rssShownHidden")}</option>
+                            </select>
+                          </label>
+                          <label
+                            className="setup-check rs-attr__inline"
+                            title="Warm beat: if they ask for a kiss or hug, narration does it. At most one field per rule-set. Unchecked on every field = trust alone."
+                          >
+                            <input
+                              type="checkbox"
+                              checked={row.desire}
+                              onChange={(e) => {
+                                const on = e.target.checked;
+                                setDraft({
+                                  ...draft,
+                                  attributes: draft.attributes.map((item) => ({
+                                    ...item,
+                                    desire: on && item.key === row.key && item.kind === "number",
+                                  })),
+                                });
+                              }}
+                            />
+                            Closeness signal
+                          </label>
+                        </div>
+                      </>
                     )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </FormSection>
             <FormSection
               title={t("rssHealthInAdventures")}
