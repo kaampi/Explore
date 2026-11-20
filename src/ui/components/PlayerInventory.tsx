@@ -5,7 +5,7 @@ import { playerInventory, type InventoryEntry } from "../../session/playerInvent
 import { iconFor } from "../../library/itemIcons";
 import { ItemCard } from "../play/ItemCard";
 import { ItemIcon } from "../play/ItemIcon";
-import { inventoryCard } from "../play/itemCard";
+import { inventoryCard } from "../play/itemCardData";
 import { ItemSlot, useOrnament } from "../play/ornament";
 import { MenuButton, useContextMenu, type MenuItem } from "./Menu";
 import { useTranslate } from "../i18n/LanguageProvider";

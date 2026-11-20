@@ -3,7 +3,7 @@ import { ItemIcon } from "./ItemIcon";
 import { ItemSlot, NamePlate } from "./ornament";
 import { useEffect, useState, type ReactNode } from "react";
 import type { EncounterGame, EncounterAction } from "../../game/EncounterSchema";
-import { actionsForThing, sceneItemCard, thingsHere } from "./itemCard";
+import { actionsForThing, sceneItemCard, thingsHere } from "./itemCardData";
 import { ItemCard } from "./ItemCard";
 import type { KnownThing, SceneWay } from "../../game/AdventureEngine";
 import { formatTravelTime } from "../../state/gameClock";
