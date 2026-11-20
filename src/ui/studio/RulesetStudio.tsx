@@ -394,7 +394,7 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
                     setDraft({ ...draft, attributes: [...draft.attributes, emptyAttr()] })
                   }
                 >
-                  + Add
+                  {t("rssAdd")}
                 </button>
               }
             >
@@ -463,11 +463,8 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
                               onChange={(e) => set({ max: e.target.value })}
                             />
                           </label>
-                          <label
-                            className="setup-field"
-                            title="How far the AI may move the number each turn. 0 = stays."
-                          >
-                            Move / beat
+                          <label className="setup-field" title={t("rssMoveHint")}>
+                            {t("rssMovePerBeat")}
                             <input
                               value={row.maxShift}
                               inputMode="numeric"
@@ -525,7 +522,7 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
                             <textarea
                               value={row.highMeaning}
                               onChange={(e) => set({ highMeaning: e.target.value })}
-                              placeholder="{{char}} starts and stays in contact this beat…"
+                              placeholder="{{char}} does it with ease."
                             />
                           </label>
                         </div>
@@ -557,7 +554,7 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
                           </label>
                           <label
                             className="setup-check rs-attr__inline"
-                            title="Warm beat: if they ask for a kiss or hug, narration does it. At most one field per rule-set. Unchecked on every field = trust alone."
+                            title={t("rssClosenessHint")}
                           >
                             <input
                               type="checkbox"
@@ -573,7 +570,7 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
                                 });
                               }}
                             />
-                            Closeness signal
+                            {t("rssClosenessSignal")}
                           </label>
                         </div>
                       </>
