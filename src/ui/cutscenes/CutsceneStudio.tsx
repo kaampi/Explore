@@ -456,28 +456,23 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
     const image = timing.image.current;
     if (!image) return;
     const show = newBeat();
-    const clear = newBeat();
+    const beats: CutsceneBeat[] = [
+      {
+        ...show,
+        image: { ...image.cell, during: "none", in: show.image.in },
+        advance: { kind: "after", seconds: 1 },
+      },
+    ];
+    if (image.cell.out.effect !== "melt") {
+      const clear = newBeat();
+      beats.push({
+        ...clear,
+        image: { ...clear.image, source: { kind: "clear" } },
+        advance: { kind: "after", seconds: Math.max(1, image.cell.out.seconds) },
+      });
+    }
     setPanelOpen(false);
-    setPlaying({
-      ...draft,
-      skippable: true,
-      beats: [
-        {
-          ...show,
-          image: {
-            ...image.cell,
-            during: "none",
-            in: show.image.in,
-          },
-          advance: { kind: "after", seconds: 1 },
-        },
-        {
-          ...clear,
-          image: { ...clear.image, source: { kind: "clear" } },
-          advance: { kind: "after", seconds: Math.max(1, image.cell.out.seconds) },
-        },
-      ],
-    });
+    setPlaying({ ...draft, skippable: true, beats });
   }
 
   const inspector = editingTransition ? (
