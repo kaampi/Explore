@@ -18,6 +18,7 @@ export function PlayFrame({
   rightCollapsed = false,
   layout = "wide",
   cutsceneId,
+  fullscreen,
   onJournal,
 }: {
   /** The right column is folded to a narrow strip. */
@@ -27,6 +28,7 @@ export function PlayFrame({
   /** "narrow": one column, with the right column and the journal behind buttons. */
   layout?: PlayLayout;
   cutsceneId?: string | undefined;
+  fullscreen?: ReactNode;
   /** Opens the journal. The narrow layout has a button for it among the others. */
   onJournal?: () => void;
   left: ReactNode;
@@ -40,6 +42,7 @@ export function PlayFrame({
   useEffect(() => {
     if (!narrow || !sceneOpen) setPanel(null);
   }, [narrow, sceneOpen]);
+  if (fullscreen) return <div className="play-view play-view--cutscene-full">{fullscreen}</div>;
   return (
     <div
       className={`play-view${collapsed ? " play-view--collapsed" : ""}${rightCollapsed ? " play-view--right-collapsed" : ""}${narrow ? " play-view--narrow" : ""}`}

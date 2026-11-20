@@ -16,6 +16,7 @@ import type {
 } from "../library/LibrarySchema";
 import { adventureMapPlaces, bindSceneMapPlace, mapPlaceForScene } from "../library/adventureMap";
 import { AdventureRunSchema, type AdventureNarration, type Persona } from "../game/AdventureSchema";
+import { referencedFilms } from "../cutscenes/schema";
 import { dueCutscenes, queueCutscenes } from "../game/cutscenes";
 import { unifyAdventureEquipment } from "../game/AdventureEngine";
 import { bodyPlanSummary, factionSummary } from "../context/bodyPlan";
@@ -195,6 +196,7 @@ export function startPlayableCampaign(
         scenes,
         links: campaign.sceneLinks,
         cutscenes: campaign.cutscenes,
+        cutsceneFilms: referencedFilms(campaign.cutscenes, campaign.cutsceneFilms ?? []),
         goal: campaign.goal,
         cast: castFor(campaign, sources.characters ?? [], sources),
         moods: moodsFor(campaign),

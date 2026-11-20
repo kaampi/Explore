@@ -48,7 +48,9 @@ export function Journal({
   const seen =
     run?.cutscenesSeen.flatMap((id) => {
       const cutscene = run.cutscenes.find((cut) => cut.id === id);
-      return cutscene ? [cutscene.title] : [];
+      const film =
+        cutscene?.showInStory && run.cutsceneFilms.find(({ id }) => id === cutscene.filmId);
+      return film ? [film.title] : [];
     }) ?? [];
   return (
     <Modal title={t("pvJournal")} onClose={onClose} side>

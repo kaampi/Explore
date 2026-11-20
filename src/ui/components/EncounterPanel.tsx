@@ -97,7 +97,8 @@ export function EncounterPanel({
     session = useSession(),
     game = session.encounter!;
   const cutscene = pendingCutscene(session);
-  const showingCutscene = !!cutscene;
+  const film = session.adventure?.cutsceneFilms.find(({ id }) => id === cutscene?.filmId);
+  const showingCutscene = !!cutscene && !!film;
   const wasShowingCutscene = useRef(false);
   useEffect(() => {
     if (wasShowingCutscene.current && !showingCutscene) {
@@ -520,24 +521,27 @@ export function EncounterPanel({
       fixed={layout !== "wide"}
     />
   );
+  const playingFilm = cutscene && film && (
+    <CutsceneView
+      key={cutscene.id}
+      film={film}
+      sessionId={session.id}
+      busy={saving || waiting !== null || saveFailed}
+      onFinish={() => void completeCutscene(cutscene.id)}
+      status={saveFeedback}
+    />
+  );
   return (
     <PlayFrame
       collapsed={layout === "medium" || (layout === "wide" && collapsedLeft)}
       rightCollapsed={layout === "wide" && collapsedRight}
       layout={layout}
       cutsceneId={cutscene?.id}
+      fullscreen={film?.display === "fullscreen" && playingFilm ? playingFilm : undefined}
       {...(onJournal ? { onJournal } : {})}
       left={leftColumn}
       center={
-        cutscene ? (
-          <CutsceneView
-            key={cutscene.id}
-            cutscene={cutscene}
-            busy={saving || waiting !== null || saveFailed}
-            onFinish={() => void completeCutscene(cutscene.id)}
-            status={saveFeedback}
-          />
-        ) : (
+        playingFilm || (
           <div className={`chat-panel gate-scene-panel${arena ? " gate-scene-panel--combat" : ""}`}>
             {menu && (
               <Menu

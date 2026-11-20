@@ -1,7 +1,7 @@
 import type { Session } from "../state/StateSchema";
 import { SessionNotIdleError } from "../session/SessionStateMachine";
 import { currentFlags } from "./AdventureEngine";
-import type { Cutscene } from "./CutsceneSchema";
+import type { CutscenePlacement } from "./CutsceneSchema";
 
 /** Find new triggers in order, using the campaign order within each trigger kind. */
 export function dueCutscenes(before: Session, after: Session): string[] {
@@ -15,8 +15,10 @@ export function dueCutscenes(before: Session, after: Session): string[] {
   const afterFlags = currentFlags(after);
   const seen = new Set(run.cutscenesSeen);
   const pending = new Set(run.cutscenesPending);
+  const films = new Set(run.cutsceneFilms.map(({ id }) => id));
   const due = { link: [] as string[], facts: [] as string[], scene: [] as string[] };
-  for (const { id, trigger } of run.cutscenes) {
+  for (const { id, filmId, trigger } of run.cutscenes) {
+    if (!films.has(filmId)) continue;
     if (pending.has(id) || (seen.has(id) && !(trigger.kind === "scene" && trigger.every))) continue;
     switch (trigger.kind) {
       case "link":
@@ -50,7 +52,7 @@ export function queueCutscenes(session: Session, ids: string[]): Session {
   };
 }
 
-export function pendingCutscene(session: Session): Cutscene | undefined {
+export function pendingCutscene(session: Session): CutscenePlacement | undefined {
   const run = session.adventure;
   return run?.cutscenes.find(({ id }) => id === run.cutscenesPending[0]);
 }
@@ -77,6 +79,8 @@ export function finishCutscene(session: Session, id: string): Session {
   const run = session.adventure;
   const cutscene = pendingCutscene(session);
   if (!run || !cutscene || cutscene.id !== id) return session;
+  const film = run.cutsceneFilms.find((item) => item.id === cutscene.filmId);
+  const content = film?.beats.flatMap(({ text }) => (text ? [text.text] : [])).join("\n\n") ?? "";
 
   const turn =
     Math.max(
@@ -108,16 +112,19 @@ export function finishCutscene(session: Session, id: string): Session {
       cutscenesSeen: [...run.cutscenesSeen, id],
       clockMinutes: run.clockMinutes + (cutscene.minutes ?? 0),
     },
-    conversation: [
-      ...session.conversation,
-      {
-        turn,
-        role: "character",
-        toldBy: "narrator",
-        content: cutscene.paragraphs.join("\n\n"),
-        cutsceneId: id,
-      },
-    ],
+    conversation:
+      cutscene.showInStory && film
+        ? [
+            ...session.conversation,
+            {
+              turn,
+              role: "character",
+              toldBy: "narrator",
+              content,
+              cutsceneId: id,
+            },
+          ]
+        : session.conversation,
   };
   const queued = queueCutscenes(next, dueCutscenes(session, next));
   const arrived = queued.adventure;

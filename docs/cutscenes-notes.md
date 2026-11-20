@@ -6,3 +6,10 @@
 - En migrerad film får ett stabilt id härlett från placeringens gamla id. Placeringens id behålls så att redan sparad kö och historik fortfarande refererar till rätt placering. När äldre data saknar datum får filmen ett deterministiskt datum. En äldre bild som saknar miniatyr används också som miniatyr.
 - Bildbyten överlappar in- och uteffekten från bildkanalens fördröjning. Textens uteffekt sker när spelaren lämnar steget. Automatiska steg väntar tills både kanalerna och timern nått sina slut. Ljudkanalens tid mäts i dess fördröjning och toning, eftersom ett refererat spår kan saknas och musik loopar.
 - Spelaren får ett avslutat uppspelningstillstånd från den rena tidslogiken. Själva `onEnd` ligger utanför modellen, i spelarkomponenten.
+
+## 20 november 2026 · Delmål 2
+
+- Helskärm täcker spelvyns spelområde. Förhandsvisning kan visa exakt samma spelare i sin egen ram.
+- Motorn kopierar bara filmer som används av placeringar. Äldre inbäddade filmer bevaras vid inläsning; saknade filmreferenser blockerar inte spel. Spelaren startar om från första steget efter omladdning.
+- Spelaren läser sparad ljudvolym, och volym noll betyder avstängt. Textningen visas när spåret saknas eller webbläsaren nekar uppspelning. Det finns ingen ny global ljudinställning.
+- Text över bild använder palettens ljusa fototext och ett mörkt underlag från spelvyns palett. Spelaren skickar full text till skärmläsaren en gång per textbyte, samtidigt som framskrivningen fortsätter visuellt.

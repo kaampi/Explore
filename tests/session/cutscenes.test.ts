@@ -2,7 +2,12 @@ import "fake-indexeddb/auto";
 import { IDBFactory } from "fake-indexeddb";
 import { describe, expect, it } from "vitest";
 import { dueCutscenes, finishCutscene, queueCutscenes } from "../../src/game/cutscenes";
-import { CutsceneSchema } from "../../src/game/CutsceneSchema";
+import {
+  planPlayback,
+  playbackFrame,
+  startPlayback,
+  advancePlayback,
+} from "../../src/cutscenes/playback";
 import { CampaignTemplateSchema } from "../../src/library/LibrarySchema";
 import { StateEngine } from "../../src/state/StateEngine";
 import { parseSession } from "../../src/state/StateSchema";
@@ -35,9 +40,9 @@ function play() {
 }
 
 describe("cut-scenes", () => {
-  it("defaults old adventures and runs and enforces the authored text limits", () => {
+  it("defaults old adventures and runs without cut-scenes", () => {
     const { campaign, start } = cutsceneAdventure();
-    const { cutscenes: cuts, ...oldCampaign } = campaign;
+    const { cutscenes: _cuts, cutsceneFilms: _films, ...oldCampaign } = campaign;
     expect(CampaignTemplateSchema.parse(oldCampaign).cutscenes).toEqual([]);
     const session = start();
     expect(
@@ -46,28 +51,52 @@ describe("cut-scenes", () => {
         adventure: {
           ...session.adventure,
           cutscenes: undefined,
+          cutsceneFilms: undefined,
           cutscenesSeen: undefined,
           cutscenesPending: undefined,
         },
       }).adventure,
     ).toMatchObject({ cutscenes: [], cutscenesSeen: [], cutscenesPending: [] });
-    expect(CutsceneSchema.safeParse({ ...cuts[0], title: " " }).success).toBe(false);
-    expect(CutsceneSchema.safeParse({ ...cuts[0], paragraphs: ["a".repeat(1201)] }).success).toBe(
-      false,
+  });
+
+  it("loads a version 1 save into a film and a placement and plays the original paragraphs in order", () => {
+    const { legacy, start } = cutsceneAdventure();
+    const session = start();
+    const run = session.adventure!;
+    const migrated = parseSession(
+      JSON.parse(
+        JSON.stringify({
+          ...session,
+          adventure: { ...run, cutsceneFilms: undefined, cutscenes: legacy },
+        }),
+      ),
     );
-    expect(CutsceneSchema.safeParse({ ...cuts[0], paragraphs: Array(21).fill("a") }).success).toBe(
-      false,
-    );
+    const placement = migrated.adventure!.cutscenes.find(({ id }) => id === "intro")!;
+    const film = migrated.adventure!.cutsceneFilms.find(({ id }) => id === placement.filmId)!;
+    expect(migrated.adventure!.cutscenesPending[0]).toBe(placement.id);
+    const plan = planPlayback(film);
+    const initial = startPlayback();
+    expect(playbackFrame(plan, initial).text?.cell.text).toBe("The roofs are still wet.");
+    const next = advancePlayback(plan, initial, { type: "continue" });
+    if (next.phase === "ended") throw new Error("The first paragraph ended the film");
+    expect(playbackFrame(plan, next).text?.cell.text).toBe("A light comes on by the well.");
+    expect(advancePlayback(plan, next, { type: "continue" })).toEqual({
+      phase: "ended",
+      result: "finished",
+    });
+    expect(finishCutscene(migrated, placement.id).conversation.at(-1)).toMatchObject({
+      content: "The roofs are still wet.\n\nA light comes on by the well.",
+    });
   });
 
   it("copies the campaign, queues the introduction at start and only triggers on new facts", () => {
     const { campaign, start, lead } = cutsceneAdventure();
     const session = start();
     expect(session.adventure!.cutscenesPending).toEqual(["intro"]);
-    campaign.cutscenes[0]!.paragraphs[0] = "Changed in the editor";
-    expect(session.adventure!.cutscenes[0]!.paragraphs).toEqual([
+    campaign.cutsceneFilms![0]!.beats[0]!.text!.text = "Changed in the editor";
+    expect(session.adventure!.cutsceneFilms[0]!.beats[0]!.text!.text).toBe(
       "The tower rises above the field.",
-    ]);
+    );
     const one = { ...session, storyFlags: [lead] };
     const both = { ...one, storyFlags: [lead, "road-travelled"] };
     expect(dueCutscenes(session, one)).toEqual([]);
@@ -163,6 +192,16 @@ describe("cut-scenes", () => {
       content: "The roofs are still wet.\n\nA light comes on by the well.",
     });
     expect(finishCutscene(read, "intro")).toBe(read);
+  });
+
+  it("applies the placement effects while leaving its film out of the story when requested", () => {
+    const session = cutsceneAdventure().start();
+    session.adventure!.cutscenes.find(({ id }) => id === "intro")!.showInStory = false;
+    const result = finishCutscene(session, "intro");
+    expect(result.adventure?.cutscenesSeen).toEqual(["intro"]);
+    expect(result.adventure?.clockMinutes).toBe(INITIAL_GAME_MINUTES + 10);
+    expect(result.storyFlags).toContain("woke");
+    expect(result.conversation).toEqual(session.conversation);
   });
 
   it("rejects proposals, speech and ways with the existing busy error before changing anything", async () => {

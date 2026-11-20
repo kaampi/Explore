@@ -82,6 +82,7 @@ export function storyRows(
   const cutscenes = new Map(
     session.adventure?.cutscenes.map((cutscene) => [cutscene.id, cutscene]),
   );
+  const films = new Map(session.adventure?.cutsceneFilms.map((film) => [film.id, film]));
   const segments = storySegments(session);
   const shown = options.earlier ? segments : segments.slice(-1);
   const rows: StoryRow[] = [];
@@ -134,12 +135,13 @@ export function storyRows(
       }
       // What the dice decided is told when they have landed.
       if (held) continue;
-      if (cutscene) {
+      const film = cutscene && films.get(cutscene.filmId);
+      if (film) {
         rows.push({
           kind: "cutscene",
           key: `t${turn.turn}`,
           turn: turn.turn,
-          title: cutscene.title,
+          title: film.title,
           text: turn.content,
         });
         continue;

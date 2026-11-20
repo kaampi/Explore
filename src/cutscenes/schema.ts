@@ -168,3 +168,41 @@ export function fromVersion1(
     }),
   };
 }
+
+/** Read old campaigns and saves before parsing their film references. */
+export function migrateCutsceneDocument(value: unknown): unknown {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    !("cutscenes" in value) ||
+    !Array.isArray(value.cutscenes)
+  )
+    return value;
+  const dates = {
+    createdAt:
+      "createdAt" in value && typeof value.createdAt === "string" ? value.createdAt : unknownDate,
+    updatedAt:
+      "updatedAt" in value && typeof value.updatedAt === "string" ? value.updatedAt : unknownDate,
+  };
+  const films =
+    "cutsceneFilms" in value && Array.isArray(value.cutsceneFilms) ? [...value.cutsceneFilms] : [];
+  const filmIds = new Set(films.map((film: CutsceneFilm) => film?.id));
+  let changed = false;
+  const cutscenes = value.cutscenes.map((item: unknown) => {
+    const migrated = fromVersion1(item, dates);
+    if (!migrated) return item;
+    changed = true;
+    if (!filmIds.has(migrated.film.id)) {
+      films.push(migrated.film);
+      filmIds.add(migrated.film.id);
+    }
+    return migrated.placement;
+  });
+  return changed ? { ...value, cutscenes, cutsceneFilms: films } : value;
+}
+
+/** Only the films referenced by the placements form a running game's snapshot. */
+export function referencedFilms(placements: CutscenePlacement[], films: readonly CutsceneFilm[]) {
+  const ids = new Set(placements.map((entry) => entry.filmId));
+  return films.filter(({ id }) => ids.has(id));
+}

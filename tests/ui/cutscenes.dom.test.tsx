@@ -7,6 +7,7 @@ import { captureIdea } from "../../src/ideas/IdeaSchema";
 import { StateEngine } from "../../src/state/StateEngine";
 import { EncounterPanel } from "../../src/ui/components/EncounterPanel";
 import { Journal } from "../../src/ui/play/Journal";
+import { ThemeProvider } from "../../src/ui/themes/ThemeProvider";
 import type { EngineContextValue } from "../../src/ui/EngineStore";
 import { cutsceneAdventure } from "../fixtures/cutscenes";
 
@@ -24,8 +25,10 @@ function mount() {
     this.removeAttribute("open");
   };
   const fixture = cutsceneAdventure();
-  const intro = fixture.campaign.cutscenes.find(({ id }) => id === "intro")!;
-  intro.imageDataUrl = image;
+  const placement = fixture.campaign.cutscenes.find(({ id }) => id === "intro")!;
+  const intro = fixture.campaign.cutsceneFilms!.find(({ id }) => id === placement.filmId)!;
+  intro.images = [{ id: "window", dataUrl: image, thumbDataUrl: image, alt: "" }];
+  intro.beats[0]!.image.source = { kind: "set", imageId: "window" };
   fixture.campaign.storyFlags.push(fixture.lead);
   const engine = new StateEngine(fixture.start(), new EventLog());
   const host = document.createElement("div");
@@ -49,7 +52,7 @@ function mount() {
       },
     };
     return (
-      <>
+      <ThemeProvider>
         <EncounterPanel
           backdrop={<img src={image} alt="" data-scene-image />}
           onJournal={() => setJournal(true)}
@@ -58,7 +61,7 @@ function mount() {
         {journal && (
           <Journal session={session} onForget={() => {}} onClose={() => setJournal(false)} />
         )}
-      </>
+      </ThemeProvider>
     );
   }
   const button = (text: string, parent: HTMLElement = host) => {
@@ -78,7 +81,7 @@ function mount() {
         ),
       ),
     click: (target: HTMLButtonElement) => act(async () => target.click()),
-    cutscene: () => host.querySelector<HTMLElement>(".play-view__center .play-cutscene")!,
+    cutscene: () => host.querySelector<HTMLElement>(".play-view__center .cutscene-reel")!,
     render: () => act(async () => root.render(<Harness />)),
     close: async () => {
       await act(async () => root.unmount());
@@ -99,7 +102,7 @@ it("replaces the composer, reads paragraphs with the keyboard and keeps the whol
     expect(cutscene.querySelector("img")?.getAttribute("src")).toBe(image);
     expect(ui.host.querySelector("#play-do")).toBeNull();
     expect(ui.host.querySelector<HTMLButtonElement>(".play-scene__way")?.disabled).toBe(true);
-    const paragraph = cutscene.querySelector("[aria-live=polite]");
+    const paragraph = cutscene.querySelectorAll("[aria-live=polite]")[1];
     expect(paragraph?.textContent).toBe("The roofs are still wet.");
     const start = ui.engine.getSession();
     await ui.key("Escape");

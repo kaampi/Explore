@@ -1,4 +1,4 @@
-import { CutsceneSchema } from "../../src/game/CutsceneSchema";
+import { fromVersion1 } from "../../src/cutscenes/schema";
 import { connectedAdventureExample } from "../../src/library/playableCampaign";
 import { startPlayableCampaign } from "../../src/session/adventureStart";
 
@@ -10,7 +10,7 @@ export function cutsceneAdventure() {
   const lead = out!.requiresFlags[0]!;
   out!.setsFlags = ["road-travelled"];
   out!.minutes = 20;
-  campaign.cutscenes = [
+  const legacy = [
     {
       id: "arrival",
       title: "The watchtower",
@@ -52,10 +52,22 @@ export function cutsceneAdventure() {
       paragraphs: ["A figure appears in the road."],
       trigger: { kind: "facts", flags: campaign.goal!.requiresFlags },
     },
-  ].map((value) => CutsceneSchema.parse(value));
+  ];
+  const converted = legacy.map((value) => fromVersion1(value)!);
+  campaign.cutscenes = converted.map(({ placement }) => placement);
+  campaign.cutsceneFilms = converted.map(({ film }) => film);
   const start = () =>
     startPlayableCampaign(campaign, village!, built.places, "cutscene-game", [built.realm], {
       characters: built.characters,
     });
-  return { ...built, start, village: village!, tower: tower!, out: out!, back: back!, lead };
+  return {
+    ...built,
+    start,
+    village: village!,
+    tower: tower!,
+    out: out!,
+    back: back!,
+    lead,
+    legacy,
+  };
 }
