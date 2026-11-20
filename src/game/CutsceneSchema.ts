@@ -1,25 +1,14 @@
-import { z } from "zod";
-import { StoryboardPositionSchema } from "../library/storyboardPosition";
+import type { z } from "zod";
+import { LegacyCutsceneSchema } from "../cutscenes/schema";
 
-export const CutsceneTriggerSchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("link"), linkId: z.string().min(1) }),
-  z.object({
-    kind: z.literal("scene"),
-    sceneId: z.string().min(1),
-    every: z.boolean().default(false),
-  }),
-  z.object({ kind: z.literal("facts"), flags: z.array(z.string().min(1)).min(1) }),
-]);
+export {
+  CutsceneTriggerSchema,
+  CutsceneFilmSchema,
+  CutscenePlacementSchema,
+  type CutsceneFilm,
+  type CutscenePlacement,
+} from "../cutscenes/schema";
 
-export const CutsceneSchema = z.object({
-  id: z.string().min(1),
-  title: z.string().trim().min(1).max(120),
-  paragraphs: z.array(z.string().trim().min(1).max(1200)).min(1).max(20),
-  imageDataUrl: z.string().optional(),
-  trigger: CutsceneTriggerSchema,
-  setsFlags: z.array(z.string().min(1)).default([]),
-  minutes: z.number().int().nonnegative().optional(),
-  position: StoryboardPositionSchema.optional(),
-  storyboardSectionId: z.string().min(1).optional(),
-});
-export type Cutscene = z.infer<typeof CutsceneSchema>;
+// The existing game integration still reads version 1 until the player is connected.
+export { LegacyCutsceneSchema as CutsceneSchema };
+export type Cutscene = z.infer<typeof LegacyCutsceneSchema>;
