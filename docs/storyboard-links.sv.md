@@ -47,7 +47,7 @@ En koppling från en scen till sig själv ritas som en ögla ovanför scenen.
 
 ### 4. Etiketter
 
-Etiketten sitter mitt på bågen (t = 0,5), i en liten ruta med `--panel-raised` som bakgrund och `--border` som kant, så att den går att läsa ovanpå andra linjer. Överlappar två etiketter flyttas den ena till t = 0,4 eller 0,6. Dagens beräkning av `labelY`, med specialfallet för `externalInspector`, tas bort.
+Etiketten sitter mitt på bågen (t = 0,5), i en liten ruta med `--panel-raised` som bakgrund och `--border` som kant, så att den går att läsa ovanpå andra linjer. Om etiketterna överlappar provas t = 0,3 till 0,7 i steg om 0,1. Välj läget med minst överlapp, med mitten först vid lika resultat. Om etiketterna fortfarande överlappar visas bara etiketten för kopplingen under pekaren eller, när pekaren inte är på en koppling, den valda kopplingen. Övriga kopplingar visas som linjer. Dagens beräkning av `labelY`, med specialfallet för `externalInspector`, tas bort.
 
 ### 5. Linjen medan man drar
 

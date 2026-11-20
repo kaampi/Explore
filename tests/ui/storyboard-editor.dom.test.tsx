@@ -132,7 +132,12 @@ it("groups selected scenes inside an act and preserves their separate entrances 
     );
     await act(async () =>
       board().dispatchEvent(
-        new MouseEvent("pointermove", { bubbles: true, clientX: x + 50, clientY: y + 30 }),
+        new MouseEvent("pointermove", {
+          bubbles: true,
+          altKey: true,
+          clientX: x + 50,
+          clientY: y + 30,
+        }),
       ),
     );
     await act(async () => board().dispatchEvent(new MouseEvent("pointerup", { bubbles: true })));

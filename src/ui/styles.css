@@ -2700,8 +2700,6 @@ textarea.setup-field__story {
   border: 1px solid var(--border);
   border-radius: 8px;
   background-color: var(--bg);
-  background-image: radial-gradient(circle, var(--border-soft) 1.5px, transparent 1.5px);
-  background-size: 24px 24px;
 }
 
 .storyboard-zoom {
@@ -2725,6 +2723,16 @@ textarea.setup-field__story {
   font-variant-numeric: tabular-nums;
 }
 
+.storyboard-arrange-notice {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+  color: var(--text);
+  font-size: 13px;
+}
+
 .storyboard-surface {
   position: relative;
   overflow: clip;
@@ -2735,6 +2743,7 @@ textarea.setup-field__story {
   top: 0;
   left: 0;
   transform-origin: top left;
+  background-image: radial-gradient(circle, var(--border-soft) 1.5px, transparent 1.5px);
 }
 
 .storyboard-lines {
@@ -2748,14 +2757,13 @@ textarea.setup-field__story {
 
 .storyboard-line {
   fill: none;
-  stroke: var(--accent);
+  stroke: var(--text-faint);
   stroke-width: 2;
-  opacity: 0.7;
 }
 
-.storyboard-line.is-selected {
-  opacity: 1;
-  stroke-width: 3;
+.storyboard-line--locked {
+  stroke: var(--accent-locked);
+  stroke-dasharray: 5 5;
 }
 
 .storyboard-line--blocks {
@@ -2763,8 +2771,16 @@ textarea.setup-field__story {
   stroke-dasharray: 5 5;
 }
 
+.storyboard-line.is-focused {
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+
+.storyboard-lines .is-dimmed {
+  opacity: 0.45;
+}
+
 .storyboard-line--draft {
-  stroke: var(--text-dim);
   stroke-dasharray: 3 5;
 }
 
@@ -2777,6 +2793,18 @@ textarea.setup-field__story {
 }
 
 .storyboard-arrowhead {
+  fill: var(--text-faint);
+}
+
+.storyboard-arrowhead--locked {
+  fill: var(--accent-locked);
+}
+
+.storyboard-arrowhead--blocks {
+  fill: var(--accent-danger);
+}
+
+.storyboard-arrowhead--focused {
   fill: var(--accent);
 }
 
@@ -2808,6 +2836,11 @@ textarea.setup-field__story {
 
 .storyboard-card:active {
   cursor: grabbing;
+}
+
+.storyboard-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .storyboard-card.is-drop-target {
@@ -2885,13 +2918,6 @@ textarea.setup-field__story {
   border-radius: 999px;
   padding: 3px 6px 3px 10px;
   background: var(--panel-raised);
-}
-
-.storyboard-chapter-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex: none;
 }
 
 .storyboard-chapter-chip input {

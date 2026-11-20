@@ -35,6 +35,14 @@
   --on-danger: #ffffff;
   --shadow-menu: 0 10px 30px rgb(36 38 43 / 0.16);
 
+  /* Chapter stripes on Storyboard cards, shared by both modes. */
+  --chapter-1: #4fb0a5;
+  --chapter-2: #6fa8dc;
+  --chapter-3: #b08bc9;
+  --chapter-4: #c98a3b;
+  --chapter-5: #d9707a;
+  --chapter-6: #8bc98a;
+
   /* Sizes, the same in both modes. */
   --radius-sm: 6px; /* buttons, fields, chips */
   --radius: 10px; /* menus, cards, panels */
