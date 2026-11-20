@@ -1,3 +1,9 @@
+import {
+  CutsceneFilmSchema,
+  migrateCutsceneDocument,
+  referencedFilms,
+  type CutsceneFilm,
+} from "../cutscenes/schema";
 import { FactionSchema, type Faction } from "../library/factions";
 import {
   PlaceBlueprintSchema,
@@ -84,7 +90,8 @@ const ACTIVE_CONVERSATION_ID = "active-conversation";
 const CONVERSATION_INDEX_ID = "conversation-index-v1";
 const IDEAS_STORE = "ideas";
 const LOREBOOKS_STORE = "lorebooks";
-const DB_VERSION = 14;
+const CUTSCENES_STORE = "cutscenes";
+const DB_VERSION = 15;
 const ANATOMY_STORE = "anatomy-templates";
 
 export type StudioResume = {
@@ -96,7 +103,15 @@ export type StudioResume = {
 };
 
 type LibraryKind =
-  "character" | "place" | "story" | "voice" | "ruleset" | "object" | "campaign" | "realm";
+  | "character"
+  | "place"
+  | "story"
+  | "voice"
+  | "ruleset"
+  | "object"
+  | "campaign"
+  | "realm"
+  | "cutscene";
 
 export class SessionNotFoundError extends Error {
   constructor(id: string) {
@@ -127,6 +142,8 @@ export class TemplateValidationError extends Error {
 }
 
 function ensureStores(db: IDBDatabase): void {
+  if (!db.objectStoreNames.contains(CUTSCENES_STORE))
+    db.createObjectStore(CUTSCENES_STORE, { keyPath: "id" });
   if (!db.objectStoreNames.contains(FACTIONS_STORE))
     db.createObjectStore(FACTIONS_STORE, { keyPath: "id" });
   if (!db.objectStoreNames.contains(ANATOMY_STORE))
@@ -167,6 +184,38 @@ function ensureStores(db: IDBDatabase): void {
   if (!db.objectStoreNames.contains(PREFS_STORE)) {
     db.createObjectStore(PREFS_STORE, { keyPath: "id" });
   }
+}
+
+function saveMigratedFilms(store: IDBObjectStore, films: readonly CutsceneFilm[]) {
+  for (const film of films) {
+    const existing = store.get(film.id);
+    existing.onsuccess = () => {
+      if (existing.result === undefined) store.put(film);
+    };
+  }
+}
+
+function migrateCampaignFilms(transaction: IDBTransaction) {
+  const campaigns = transaction.objectStore(CAMPAIGNS_STORE);
+  const films = transaction.objectStore(CUTSCENES_STORE);
+  const opened = campaigns.openCursor();
+  opened.onsuccess = () => {
+    const cursor = opened.result;
+    if (!cursor) return;
+    const original: unknown = cursor.value;
+    const migrated = migrateCutsceneDocument(original);
+    if (migrated !== original) {
+      // Only the new cut-scene fields are normalised. Other campaign data stays as stored.
+      const document = migrated as Record<string, unknown>;
+      const { cutsceneFilms, ...placementDocument } = document;
+      const parsed = CutsceneFilmSchema.array().safeParse(cutsceneFilms);
+      if (parsed.success) {
+        saveMigratedFilms(films, parsed.data);
+        cursor.update(placementDocument);
+      }
+    }
+    cursor.continue();
+  };
 }
 
 export class IndexedDBRepository {
@@ -212,9 +261,9 @@ export class IndexedDBRepository {
       const request = this.idbFactory.open(this.dbName, this.dbVersion);
 
       request.onupgradeneeded = () => {
-        // Object-store creation only. Per-record session schema migration
-        // happens in loadSession() via MigrationEngine.
+        const upgradeFilms = !request.result.objectStoreNames.contains(CUTSCENES_STORE);
         ensureStores(request.result);
+        if (upgradeFilms && request.transaction) migrateCampaignFilms(request.transaction);
       };
 
       request.onsuccess = () => {
@@ -804,15 +853,65 @@ export class IndexedDBRepository {
     return parseLibraryList("object", rows, parseObjectTemplate);
   }
 
+  /** Library films are independent of the adventures that reference them. */
+  async listCutsceneFilms(): Promise<CutsceneFilm[]> {
+    const rows = await this.getAllRecords(CUTSCENES_STORE);
+    return rows
+      .flatMap((value) => {
+        const parsed = CutsceneFilmSchema.safeParse(value);
+        return parsed.success ? [parsed.data] : [];
+      })
+      .sort((left, right) => left.title.localeCompare(right.title));
+  }
+
+  async loadCutsceneFilm(id: string): Promise<CutsceneFilm> {
+    const raw = await this.getRecord(CUTSCENES_STORE, id);
+    if (raw === undefined) throw new LibraryItemNotFoundError("cutscene", id);
+    return parseLibraryTemplate("cutscene", raw, (value) => CutsceneFilmSchema.parse(value));
+  }
+
+  async saveCutsceneFilm(film: CutsceneFilm): Promise<void> {
+    const parsed = parseLibraryTemplate("cutscene", film, (value) =>
+      CutsceneFilmSchema.parse(value),
+    );
+    await this.putRecord(CUTSCENES_STORE, parsed);
+  }
+
+  async deleteCutsceneFilm(id: string): Promise<void> {
+    await this.deleteRecord(CUTSCENES_STORE, id);
+  }
+
   async saveCampaign(template: CampaignTemplate): Promise<void> {
-    const parsed = parseLibraryTemplate("campaign", template, parseCampaignTemplate);
-    await this.putRecord(CAMPAIGNS_STORE, parsed);
+    const { cutsceneFilms, ...parsed } = parseLibraryTemplate(
+      "campaign",
+      template,
+      parseCampaignTemplate,
+    );
+    const migrated = cutsceneFilms?.filter(({ id }) => id.startsWith("cutscene-v1:")) ?? [];
+    if (!migrated.length) {
+      await this.putRecord(CAMPAIGNS_STORE, parsed);
+      return;
+    }
+    const db = await this.open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction([CAMPAIGNS_STORE, CUTSCENES_STORE], "readwrite");
+      saveMigratedFilms(tx.objectStore(CUTSCENES_STORE), migrated);
+      tx.objectStore(CAMPAIGNS_STORE).put(parsed);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error ?? new Error("Could not save this adventure."));
+      tx.onabort = () => reject(tx.error ?? new Error("Adventure save was cancelled."));
+    });
   }
 
   async loadCampaign(id: string): Promise<CampaignTemplate> {
     const raw = await this.getRecord(CAMPAIGNS_STORE, id);
     if (raw === undefined) throw new LibraryItemNotFoundError("campaign", id);
-    return parseLibraryTemplate("campaign", raw, parseCampaignTemplate);
+    const campaign = parseLibraryTemplate("campaign", raw, parseCampaignTemplate);
+    if (!campaign.cutscenes.length) return campaign;
+    return {
+      ...campaign,
+      cutsceneFilms: referencedFilms(campaign.cutscenes, await this.listCutsceneFilms()),
+    };
   }
 
   async deleteCampaign(id: string): Promise<void> {
@@ -821,7 +920,14 @@ export class IndexedDBRepository {
 
   async listCampaigns(): Promise<CampaignTemplate[]> {
     const rows = await this.getAllRecords(CAMPAIGNS_STORE);
-    return parseLibraryList("campaign", rows, parseCampaignTemplate);
+    const campaigns = parseLibraryList("campaign", rows, parseCampaignTemplate);
+    if (!campaigns.some(({ cutscenes }) => cutscenes.length)) return campaigns;
+    const films = await this.listCutsceneFilms();
+    return campaigns.map((campaign) =>
+      campaign.cutscenes.length
+        ? { ...campaign, cutsceneFilms: referencedFilms(campaign.cutscenes, films) }
+        : campaign,
+    );
   }
 
   /** Character morph profiles are UI-only assets kept in the existing IndexedDB prefs store. */

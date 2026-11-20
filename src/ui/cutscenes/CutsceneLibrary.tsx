@@ -1,0 +1,286 @@
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import type { CutsceneFilm } from "../../cutscenes/schema";
+import type { IndexedDBRepository } from "../../persistence/IndexedDBRepository";
+import { Button } from "../components/Button";
+import { Modal } from "../components/Modal";
+import { useTranslate } from "../i18n/LanguageProvider";
+import { StudioList } from "../studio/StudioList";
+import { useAppearance } from "../themes/ThemeProvider";
+import { CutsceneDirtyHost, CutsceneStudio } from "./CutsceneStudio";
+
+const Repository = createContext<IndexedDBRepository | undefined>(undefined);
+export function CutsceneLibraryProvider({
+  repo,
+  children,
+}: {
+  repo: IndexedDBRepository;
+  children: ReactNode;
+}) {
+  return <Repository.Provider value={repo}>{children}</Repository.Provider>;
+}
+export function useCutsceneLibrary() {
+  return useContext(Repository);
+}
+
+type Editor = { key: string; film?: CutsceneFilm };
+type LibraryAction =
+  | { kind: "delete"; film: CutsceneFilm; uses: string[] }
+  | { kind: "rename"; film: CutsceneFilm }
+  | { kind: "discard"; action: () => void };
+
+export function CutsceneLibrary({
+  repo,
+  onDirtyChange,
+}: {
+  repo: IndexedDBRepository;
+  onDirtyChange: (dirty: boolean) => void;
+}) {
+  const t = useTranslate();
+  const { library } = useAppearance();
+  const [films, setFilms] = useState<CutsceneFilm[]>([]);
+  const [editor, setEditor] = useState<Editor | null>(null);
+  const [menu, setMenu] = useState<LibraryAction>();
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [dirty, setDirty] = useState(false);
+  const changeDirty = useCallback(
+    (next: boolean) => {
+      setDirty(next);
+      onDirtyChange(next);
+    },
+    [onDirtyChange],
+  );
+  const translate = useCallback(
+    (message: "csCouldNotLoad" | "csCouldNotSave") => {
+      setError(t(message));
+    },
+    [t],
+  );
+
+  useEffect(() => {
+    let active = true;
+    void repo
+      .listCutsceneFilms()
+      .then((items) => {
+        if (active) setFilms(items);
+      })
+      .catch(() => {
+        if (active) setError(t("csCouldNotLoad"));
+      });
+    return () => {
+      active = false;
+    };
+  }, [repo]);
+  const ordered = [...films].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+
+  function leave(action: () => void) {
+    if (dirty) setMenu({ kind: "discard", action });
+    else action();
+  }
+
+  async function save(film: CutsceneFilm, open: boolean) {
+    if (busy) return false;
+    setBusy(true);
+    setError("");
+    try {
+      await repo.saveCutsceneFilm(film);
+      setFilms((existing) => [...existing.filter(({ id }) => id !== film.id), film]);
+      if (open)
+        setEditor((current) => (current ? { key: current.key, film } : { key: film.id, film }));
+      else if (editor?.film?.id === film.id)
+        setEditor((current) => (current ? { ...current, film } : null));
+      return true;
+    } catch {
+      translate("csCouldNotSave");
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove(film: CutsceneFilm) {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await repo.deleteCutsceneFilm(film.id);
+      setFilms((existing) => existing.filter(({ id }) => id !== film.id));
+      if (editor?.film?.id === film.id) setEditor(null);
+      setMenu(undefined);
+    } catch {
+      translate("csCouldNotSave");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function confirmDelete(film: CutsceneFilm) {
+    void repo
+      .listCampaigns()
+      .then((campaigns) =>
+        setMenu({
+          kind: "delete",
+          film,
+          uses: campaigns
+            .filter(({ cutscenes }) => cutscenes.some(({ filmId }) => filmId === film.id))
+            .map(({ name }) => name),
+        }),
+      )
+      .catch(() => translate("csCouldNotLoad"));
+  }
+
+  return (
+    <div className="cutscene-library">
+      <StudioList
+        heading={t("cutsceneShelf")}
+        items={ordered.map((film) => ({
+          id: film.id,
+          name: film.title,
+          caption: t("csSteps", { count: film.beats.length }),
+          ...(film.images[0]?.thumbDataUrl ? { thumb: film.images[0].thumbDataUrl } : {}),
+        }))}
+        selectedId={editor?.film?.id ?? null}
+        onSelect={(id) => {
+          const film = ordered.find((item) => item.id === id);
+          if (film && editor?.film?.id !== id) leave(() => setEditor({ key: id, film }));
+        }}
+        onNew={() => leave(() => setEditor({ key: crypto.randomUUID() }))}
+        newLabel={t("csNew")}
+        empty={t("csEmpty")}
+        itemMenu={({ id }) => {
+          const film = ordered.find((item) => item.id === id)!;
+          return [
+            {
+              label: t("csDuplicate"),
+              onSelect: () =>
+                leave(() => {
+                  const date = new Date().toISOString();
+                  void save(
+                    {
+                      ...structuredClone(film),
+                      id: crypto.randomUUID(),
+                      title: t("csCopyName", { name: film.title }).slice(0, 120),
+                      createdAt: date,
+                      updatedAt: date,
+                    },
+                    false,
+                  );
+                }),
+            },
+            {
+              label: t("csRename"),
+              onSelect: () => {
+                setName(film.title);
+                const rename = () => setMenu({ kind: "rename", film });
+                if (editor?.film?.id === film.id) leave(rename);
+                else rename();
+              },
+            },
+            { kind: "separator" },
+            {
+              label: t("csDelete"),
+              danger: true,
+              onSelect: () => {
+                if (editor?.film?.id === film.id) leave(() => confirmDelete(film));
+                else confirmDelete(film);
+              },
+            },
+          ];
+        }}
+      />
+      <div className="cutscene-library__detail">
+        {error && (
+          <p role="alert" className="cutscene-studio__feedback">
+            {error}
+          </p>
+        )}
+        {editor ? (
+          <CutsceneDirtyHost onDirty={changeDirty}>
+            <CutsceneStudio
+              key={editor.key}
+              film={editor.film ?? null}
+              previewTheme={library.active}
+              onSave={(film) => void save(film, true)}
+              onClose={() => setEditor(null)}
+            />
+          </CutsceneDirtyHost>
+        ) : (
+          <div className="cutscene-library__empty">
+            <h2>{t("cutsceneStudio")}</h2>
+            <p>{t("csPick")}</p>
+          </div>
+        )}
+      </div>
+      {menu?.kind === "delete" && (
+        <Modal
+          title={t("csDeleteQuestion", { name: menu.film.title })}
+          onClose={() => setMenu(undefined)}
+        >
+          {menu.uses.length > 0 && <p>{t("csUsedIn", { names: menu.uses.join(", ") })}</p>}
+          <div className="cutscene-studio__actions">
+            <Button onClick={() => setMenu(undefined)}>{t("csCancel")}</Button>
+            <Button variant="danger" filled disabled={busy} onClick={() => void remove(menu.film)}>
+              {t("csDelete")}
+            </Button>
+          </div>
+        </Modal>
+      )}
+      {menu?.kind === "rename" && (
+        <Modal title={t("csRename")} onClose={() => setMenu(undefined)}>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!name.trim()) return;
+              const film = {
+                ...menu.film,
+                title: name.trim(),
+                updatedAt: new Date().toISOString(),
+              };
+              void save(film, false).then((stored) => {
+                if (stored) {
+                  setEditor((current) =>
+                    current?.film?.id === film.id ? { key: crypto.randomUUID(), film } : current,
+                  );
+                  setMenu(undefined);
+                }
+              });
+            }}
+          >
+            <label className="cutscene-field">
+              <span>{t("csTitle")}</span>
+              <input
+                value={name}
+                maxLength={120}
+                onChange={(event) => setName(event.target.value)}
+              />
+            </label>
+            <div className="cutscene-studio__actions">
+              <Button onClick={() => setMenu(undefined)}>{t("csCancel")}</Button>
+              <Button type="submit" variant="primary" disabled={!name.trim() || busy}>
+                {t("csSave")}
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+      {menu?.kind === "discard" && (
+        <Modal title={t("csChanged")} onClose={() => setMenu(undefined)}>
+          <p>{t("csDiscardQuestion")}</p>
+          <div className="cutscene-studio__actions">
+            <Button onClick={() => setMenu(undefined)}>{t("csCancel")}</Button>
+            <Button
+              variant="danger"
+              filled
+              onClick={() => {
+                setMenu(undefined);
+                menu.action();
+              }}
+            >
+              {t("csDiscard")}
+            </Button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}

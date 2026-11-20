@@ -1,0 +1,255 @@
+.cutscene-library {
+  display: grid;
+  grid-template-columns: minmax(12rem, 15rem) minmax(0, 1fr);
+  align-items: start;
+  color: var(--text);
+}
+.cutscene-library__detail {
+  min-width: 0;
+}
+.cutscene-library__empty {
+  display: grid;
+  place-content: center;
+  min-height: 25rem;
+  padding: var(--space-8, 2rem);
+  text-align: center;
+}
+.cutscene-library__empty h2,
+.cutscene-library__empty p {
+  margin: 0 0 var(--space-3);
+}
+.cutscene-studio {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--bg);
+  color: var(--text);
+}
+.cutscene-studio__bar,
+.cutscene-studio__actions,
+.cutscene-studio__settings,
+.cutscene-studio__playbar,
+.cutscene-studio__step-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.cutscene-studio__bar {
+  justify-content: space-between;
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+.cutscene-studio__title {
+  flex: 1 1 10rem;
+}
+.cutscene-studio__settings {
+  flex-basis: 100%;
+}
+.cutscene-studio__title input {
+  font-size: 1.35rem;
+  font-weight: 650;
+}
+.cutscene-field {
+  display: grid;
+  gap: var(--space-1);
+  font-size: 0.875rem;
+}
+.cutscene-field > span,
+.cutscene-field-group > legend {
+  color: var(--text-dim);
+  font-weight: 600;
+}
+.cutscene-field :is(input:not([type="checkbox"]), select, textarea) {
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+}
+.cutscene-field--check {
+  align-self: end;
+  min-height: var(--control-compact);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.cutscene-field-group {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.cutscene-studio__preview {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel-raised);
+}
+.cutscene-studio__screen {
+  position: relative;
+  display: grid;
+  place-items: stretch;
+  aspect-ratio: 16 / 9;
+  width: min(100%, 46rem, calc(45vh * 16 / 9));
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--scrim);
+  color: var(--photo-text);
+}
+.cutscene-studio__screen > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.cutscene-studio__preview-actions {
+  z-index: 1;
+  display: flex;
+  align-items: end;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+.cutscene-studio__playbar {
+  justify-content: space-between;
+  width: min(100%, 46rem, calc(45vh * 16 / 9));
+  color: var(--text-dim);
+  font-size: 0.825rem;
+}
+.cutscene-studio__workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(15rem, 22rem);
+  align-items: start;
+  gap: var(--space-4);
+}
+.cutscene-studio__timeline {
+  min-width: 0;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+.cutscene-studio__timeline > .ui-button {
+  margin: var(--space-2);
+}
+.cutscene-studio__timeline table {
+  width: max-content;
+  min-width: 100%;
+  border-spacing: 0;
+  text-align: start;
+}
+.cutscene-studio__timeline th {
+  padding: var(--space-2);
+  font-weight: 650;
+  color: var(--text-dim);
+}
+.cutscene-studio__timeline th[scope="row"] {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 7rem;
+  background: var(--panel);
+  text-align: left;
+}
+.cutscene-studio__timeline td {
+  min-width: 8.5rem;
+  max-width: 13rem;
+  border-top: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+  padding: var(--space-1);
+}
+.cutscene-studio__step-head {
+  justify-content: space-between;
+}
+.cutscene-studio__cell.ui-button {
+  display: flex;
+  width: 100%;
+  min-height: 2.625rem;
+  justify-content: start;
+  padding-inline: var(--space-2);
+  text-align: start;
+}
+.cutscene-studio__cell > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cutscene-studio__cell[aria-pressed="true"] {
+  background: var(--panel-raised);
+  box-shadow: inset 0 0 0 2px var(--accent);
+  color: var(--text);
+}
+.cutscene-studio__cell-thumb {
+  width: 3rem;
+  height: 1.85rem;
+  object-fit: cover;
+}
+.cutscene-studio__thumb {
+  width: 100%;
+  max-height: 8rem;
+  object-fit: contain;
+}
+.cutscene-studio__inspector {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+.cutscene-studio__inspector h3 {
+  margin: 0;
+}
+.cutscene-studio__feedback {
+  color: var(--text);
+  padding: var(--space-3);
+  background: var(--panel-raised);
+  border: 1px solid var(--border);
+}
+.cutscene-studio__step-list {
+  margin: 0;
+  list-style: none;
+  padding: var(--space-3);
+}
+.cutscene-studio__step-list > li + li {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+.cutscene-studio__step-cells {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+@media (max-width: 1023px) {
+  .cutscene-studio__workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 680px) {
+  .cutscene-library {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cutscene-library > .studio-list {
+    max-height: 18rem;
+    overflow: auto;
+  }
+  .cutscene-studio__screen {
+    aspect-ratio: auto;
+    min-height: 17rem;
+  }
+}

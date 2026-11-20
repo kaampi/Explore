@@ -1,3 +1,4 @@
+import { CutsceneFilmSchema, type CutsceneFilm } from "../cutscenes/schema";
 import { FactionSchema, type Faction } from "./factions";
 import { LorebookSchema, type Lorebook } from "../lore/LorebookSchema";
 import {
@@ -34,12 +35,15 @@ export type LibraryBackup = {
   rulesets: RulesetTemplate[];
   objects: ObjectTemplate[];
   campaigns: CampaignTemplate[];
+  cutscenes?: CutsceneFilm[];
   factions?: Faction[];
   lorebooks?: Lorebook[];
   characterMorphs?: Record<string, unknown>;
 };
 
 export type LibraryBackupStore = {
+  listCutsceneFilms?(): Promise<CutsceneFilm[]>;
+  saveCutsceneFilm?(film: CutsceneFilm): Promise<void>;
   listFactions?(): Promise<Faction[]>;
   saveFaction?(faction: Faction): Promise<void>;
   listLorebooks?(): Promise<{ entries: Lorebook[]; unreadable: number }>;
@@ -109,6 +113,7 @@ export async function collectLibraryBackup(store: LibraryBackupStore): Promise<L
     campaigns,
     lorebooks,
     factions,
+    cutscenes,
   ] = await Promise.all([
     store.listCharacters(),
     store.listPlaces(),
@@ -120,6 +125,7 @@ export async function collectLibraryBackup(store: LibraryBackupStore): Promise<L
     store.listCampaigns(),
     store.listLorebooks?.() ?? Promise.resolve({ entries: [], unreadable: 0 }),
     store.listFactions?.() ?? Promise.resolve([]),
+    store.listCutsceneFilms?.() ?? Promise.resolve([]),
   ]);
   if (lorebooks.unreadable)
     throw new LibraryBackupError(
@@ -146,7 +152,8 @@ export async function collectLibraryBackup(store: LibraryBackupStore): Promise<L
     voices,
     rulesets,
     objects,
-    campaigns,
+    campaigns: campaigns.map(({ cutsceneFilms: _films, ...campaign }) => campaign),
+    ...(cutscenes.length ? { cutscenes } : {}),
   };
 }
 
@@ -205,6 +212,8 @@ export function parseLibraryBackup(input: unknown): { backup: LibraryBackup; ski
   backup.rulesets = take(row.rulesets, (item) => parseRulesetTemplate(item));
   backup.objects = take(row.objects, (item) => parseObjectTemplate(item));
   backup.campaigns = take(row.campaigns, (item) => parseCampaignTemplate(item));
+  if (Array.isArray(row.cutscenes))
+    backup.cutscenes = take(row.cutscenes, (item) => CutsceneFilmSchema.parse(item));
   return { backup, skipped };
 }
 
@@ -243,6 +252,12 @@ export async function restoreLibraryBackup(
   for (const item of backup.voices) await write(() => store.saveVoice(item));
   for (const item of backup.rulesets) await write(() => store.saveRuleset(item));
   for (const item of backup.objects) await write(() => store.saveObject(item));
+  for (const film of backup.cutscenes ?? [])
+    await write(async () => {
+      if (!store.saveCutsceneFilm)
+        throw new LibraryBackupError("Cut-scene storage is not available.");
+      await store.saveCutsceneFilm(film);
+    });
   for (const item of backup.campaigns) await write(() => store.saveCampaign(item));
   for (const item of backup.lorebooks ?? [])
     await write(async () => {
