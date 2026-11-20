@@ -215,3 +215,22 @@
     animation: none;
   }
 }
+
+.cutscene-reel__visual[data-transition="through-black"] {
+  background: var(--scrim);
+}
+.cutscene-reel__layer {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  align-items: center;
+  isolation: isolate;
+  background: var(--play-background, var(--bg));
+}
+.cutscene-reel__layer > * {
+  grid-area: 1 / 1;
+}
+.cutscene-reel__layer--incoming {
+  pointer-events: none;
+}

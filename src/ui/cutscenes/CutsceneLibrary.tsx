@@ -8,6 +8,7 @@ import { Modal } from "../components/Modal";
 import { useTranslate } from "../i18n/LanguageProvider";
 import { StudioList } from "../studio/StudioList";
 import { useAppearance } from "../themes/ThemeProvider";
+import { CutsceneFileMenu, CutsceneLibraryMenu } from "./CutsceneFileMenu";
 import { CutsceneDirtyHost, CutsceneStudio } from "./CutsceneStudio";
 
 const Repository = createContext<IndexedDBRepository | undefined>(undefined);
@@ -40,6 +41,7 @@ export function CutsceneLibrary({
   const t = useTranslate();
   const { library } = useAppearance();
   const [films, setFilms] = useState<CutsceneFilm[]>([]);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [editor, setEditor] = useState<Editor | null>(null);
   const [menu, setMenu] = useState<LibraryAction>();
   const [name, setName] = useState("");
@@ -147,73 +149,17 @@ export function CutsceneLibrary({
     }
   }
 
+  const newFilm = () => {
+    setPickerOpen(false);
+    leave(() => setEditor({ key: crypto.randomUUID() }));
+  };
+  const libraryMenu = [
+    { label: t("csNew"), onSelect: newFilm },
+    { label: t("csOpenFilm"), onSelect: () => setPickerOpen(true) },
+  ];
+
   return (
     <div className="cutscene-library">
-      <StudioList
-        heading={t("cutsceneShelf")}
-        items={ordered.map((film) => ({
-          id: film.id,
-          name: film.title,
-          caption: t("csSteps", { count: film.beats.length }),
-          ...(film.images[0]?.thumbDataUrl ? { thumb: film.images[0].thumbDataUrl } : {}),
-        }))}
-        selectedId={editor?.film?.id ?? null}
-        onSelect={(id) => {
-          const film = ordered.find((item) => item.id === id);
-          if (film && editor?.film?.id !== id) leave(() => setEditor({ key: id, film }));
-        }}
-        onNew={() => leave(() => setEditor({ key: crypto.randomUUID() }))}
-        newLabel={t("csNew")}
-        empty={t("csEmpty")}
-        actions={
-          <div className="cutscene-library__sample">
-            <Button variant="quiet" size="compact" disabled={busy} onClick={() => void install()}>
-              {t("csInstallExample")}
-            </Button>
-            {exampleInstalled && <p role="status">{t("csExampleInstalled")}</p>}
-          </div>
-        }
-        itemMenu={({ id }) => {
-          const film = ordered.find((item) => item.id === id)!;
-          return [
-            {
-              label: t("csDuplicate"),
-              onSelect: () =>
-                leave(() => {
-                  const date = new Date().toISOString();
-                  void save(
-                    {
-                      ...structuredClone(film),
-                      id: crypto.randomUUID(),
-                      title: t("csCopyName", { name: film.title }).slice(0, 120),
-                      createdAt: date,
-                      updatedAt: date,
-                    },
-                    false,
-                  );
-                }),
-            },
-            {
-              label: t("csRename"),
-              onSelect: () => {
-                setName(film.title);
-                const rename = () => setMenu({ kind: "rename", film });
-                if (editor?.film?.id === film.id) leave(rename);
-                else rename();
-              },
-            },
-            { kind: "separator" },
-            {
-              label: t("csDelete"),
-              danger: true,
-              onSelect: () => {
-                if (editor?.film?.id === film.id) leave(() => confirmDelete(film));
-                else confirmDelete(film);
-              },
-            },
-          ];
-        }}
-      />
       <div className="cutscene-library__detail">
         {error && (
           <p role="alert" className="cutscene-studio__feedback">
@@ -221,22 +167,110 @@ export function CutsceneLibrary({
           </p>
         )}
         {editor ? (
-          <CutsceneDirtyHost onDirty={changeDirty}>
-            <CutsceneStudio
-              key={editor.key}
-              film={editor.film ?? null}
-              previewTheme={library.active}
-              onSave={(film) => void save(film, true)}
-              onClose={() => setEditor(null)}
-            />
-          </CutsceneDirtyHost>
+          <CutsceneLibraryMenu.Provider value={libraryMenu}>
+            <CutsceneDirtyHost onDirty={changeDirty}>
+              <CutsceneStudio
+                key={editor.key}
+                film={editor.film ?? null}
+                previewTheme={library.active}
+                onSave={(film) => void save(film, true)}
+                onClose={() => setEditor(null)}
+              />
+            </CutsceneDirtyHost>
+          </CutsceneLibraryMenu.Provider>
         ) : (
-          <div className="cutscene-library__empty">
-            <h2>{t("cutsceneStudio")}</h2>
-            <p>{t("csPick")}</p>
-          </div>
+          <section className="cutscene-studio" aria-label={t("cutsceneStudio")}>
+            <header className="cutscene-studio__bar">
+              <div className="cutscene-studio__film-menu">
+                <CutsceneFileMenu items={libraryMenu} />
+              </div>
+            </header>
+            <div className="cutscene-library__empty">
+              <h2>{t("cutsceneStudio")}</h2>
+              <p>{t("csPick")}</p>
+              <Button onClick={() => setPickerOpen(true)}>{t("csOpenFilm")}</Button>
+            </div>
+          </section>
         )}
       </div>
+      {pickerOpen && (
+        <Modal title={t("csOpenFilm")} onClose={() => setPickerOpen(false)}>
+          <div className="cutscene-library__picker">
+            <StudioList
+              heading={t("cutsceneShelf")}
+              items={ordered.map((film) => ({
+                id: film.id,
+                name: film.title,
+                caption: t("csSteps", { count: film.beats.length }),
+                ...(film.images[0]?.thumbDataUrl ? { thumb: film.images[0].thumbDataUrl } : {}),
+              }))}
+              selectedId={editor?.film?.id ?? null}
+              onSelect={(id) => {
+                const film = ordered.find((item) => item.id === id);
+                if (!film) return;
+                setPickerOpen(false);
+                if (editor?.film?.id !== id) leave(() => setEditor({ key: id, film }));
+              }}
+              onNew={newFilm}
+              newLabel={t("csNew")}
+              empty={t("csEmpty")}
+              actions={
+                <div className="cutscene-library__sample">
+                  <Button
+                    variant="quiet"
+                    size="compact"
+                    disabled={busy}
+                    onClick={() => void install()}
+                  >
+                    {t("csInstallExample")}
+                  </Button>
+                  {exampleInstalled && <p role="status">{t("csExampleInstalled")}</p>}
+                </div>
+              }
+              itemMenu={({ id }) => {
+                const film = ordered.find((item) => item.id === id)!;
+                return [
+                  {
+                    label: t("csDuplicate"),
+                    onSelect: () =>
+                      leave(() => {
+                        const date = new Date().toISOString();
+                        void save(
+                          {
+                            ...structuredClone(film),
+                            id: crypto.randomUUID(),
+                            title: t("csCopyName", { name: film.title }).slice(0, 120),
+                            createdAt: date,
+                            updatedAt: date,
+                          },
+                          false,
+                        );
+                      }),
+                  },
+                  {
+                    label: t("csRename"),
+                    onSelect: () => {
+                      setName(film.title);
+                      const rename = () => setMenu({ kind: "rename", film });
+                      if (editor?.film?.id === film.id) leave(rename);
+                      else rename();
+                    },
+                  },
+                  { kind: "separator" },
+                  {
+                    label: t("csDelete"),
+                    danger: true,
+                    onSelect: () => {
+                      if (editor?.film?.id === film.id) leave(() => confirmDelete(film));
+                      else confirmDelete(film);
+                    },
+                  },
+                ];
+              }}
+            />
+          </div>
+        </Modal>
+      )}
       {menu?.kind === "delete" && (
         <Modal
           title={t("csDeleteQuestion", { name: menu.film.title })}

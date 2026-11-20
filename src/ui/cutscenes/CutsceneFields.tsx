@@ -52,7 +52,7 @@ export function Pick<T extends string>({
   );
 }
 
-function Num({
+export function Num({
   label,
   value,
   min = 0,

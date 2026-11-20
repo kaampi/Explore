@@ -66,6 +66,12 @@ export const BeatSchema = z.object({
   }),
   sound: SoundCellSchema.default({ action: "none" }),
   text: TextCellSchema.optional(),
+  transition: z
+    .object({
+      effect: z.enum(["cut", "crossfade", "through-black"]),
+      seconds: Seconds.default(1),
+    })
+    .default({ effect: "cut" }),
   advance: z
     .discriminatedUnion("kind", [
       z.object({ kind: z.literal("click") }),

@@ -67,6 +67,95 @@ function exitText(effect: TextCell["out"]["effect"], progress: number): CSSPrope
   };
 }
 
+function SceneVisual({
+  images,
+  frame,
+  reduced,
+  paused,
+  silent = false,
+}: {
+  images: CutsceneFilm["images"];
+  frame: ReturnType<typeof playbackFrame> | undefined;
+  reduced: boolean;
+  paused: boolean;
+  silent?: boolean;
+}) {
+  const picture = images.find(({ id }) => id === frame?.image?.imageId);
+  const oldPicture = images.find(({ id }) => id === frame?.previousImage?.imageId);
+  const text = frame?.text?.cell;
+  const typewriter = text?.in.effect === "typewriter";
+  const textProgress = frame?.textIn ?? 1;
+  const letters = Array.from(text?.text ?? "");
+  const words = typewriter
+    ? letters.slice(0, Math.floor(letters.length * textProgress)).join("")
+    : text?.text;
+  const textStyle = {
+    ...(text ? enterText(text.in.effect, textProgress) : {}),
+    ...(text ? exitText(text.out.effect, frame?.textOut ?? 0) : {}),
+  };
+  const out = frame?.previousImage?.cell.out.effect;
+  return (
+    <>
+      {oldPicture && (
+        <div
+          className={`cutscene-reel__exit-color cutscene-reel__exit--${out}`}
+          aria-hidden="true"
+        />
+      )}
+      {[
+        ...(oldPicture && frame?.previousImage
+          ? [
+              {
+                layer: frame.previousImage,
+                asset: oldPicture,
+                outgoing: true,
+              },
+            ]
+          : []),
+        ...(picture && frame?.image
+          ? [{ layer: frame.image, asset: picture, outgoing: false }]
+          : []),
+      ].map(({ layer, asset, outgoing }) => (
+        <div
+          key={layer.step}
+          className="cutscene-reel__image"
+          aria-hidden={outgoing || silent || undefined}
+          style={
+            outgoing
+              ? { opacity: 1 - (frame?.imageOut ?? 0), zIndex: 1 }
+              : enterImage(layer.cell.in.effect, frame?.imageIn ?? 1)
+          }
+        >
+          <img
+            alt={outgoing || silent ? "" : asset.alt}
+            src={asset.dataUrl}
+            className={`cutscene-reel__picture cutscene-reel__filter--${layer.cell.filter}`}
+            data-motion={reduced ? "none" : layer.cell.during}
+            data-paused={paused}
+          />
+        </div>
+      ))}
+      {text && (
+        <div className={`cutscene-reel__text cutscene-reel__text--${text.position}`}>
+          <div
+            className={`cutscene-reel__copy cutscene-reel__copy--${text.style} cutscene-reel__copy--size-${text.size} cutscene-reel__copy--font-${text.font}${picture || oldPicture ? " cutscene-reel__copy--over-image" : ""}`}
+            style={{ ...textStyle, textAlign: text.align }}
+            aria-hidden="true"
+          >
+            {text.style === "title" ? (
+              <NamePlate as="p">{words}</NamePlate>
+            ) : text.style === "letter" ? (
+              <NoteCard>{words}</NoteCard>
+            ) : (
+              <p>{words}</p>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 function Reel({ film, theme, simple, sound, onEnd }: CutscenePlayerProps) {
   const t = useTranslate();
   const reduced = useSimpleFrames(simple);
@@ -78,7 +167,7 @@ function Reel({ film, theme, simple, sound, onEnd }: CutscenePlayerProps) {
   const frame = ended ? undefined : playbackFrame(plan, state);
   const paused = !ended && state.paused;
   const timed = !ended && plan.steps[state.step]?.advanceAt !== undefined;
-  const ticking = !ended && !paused && (state.phase === "exit" || timed || !frame?.ready);
+  const ticking = !ended && !paused && (state.phase !== "step" || timed || !frame?.ready);
   const caption = useCutsceneSound(sound, frame?.cue, frame?.music, paused, ended);
   const emitted = useRef(false);
 
@@ -105,19 +194,11 @@ function Reel({ film, theme, simple, sound, onEnd }: CutscenePlayerProps) {
   }, [onEnd, state]);
 
   const picture = film.images.find(({ id }) => id === frame?.image?.imageId);
-  const oldPicture = film.images.find(({ id }) => id === frame?.previousImage?.imageId);
-  const text = frame?.text?.cell;
-  const typewriter = text?.in.effect === "typewriter";
-  const textProgress = frame?.textIn ?? 1;
-  const letters = Array.from(text?.text ?? "");
-  const words = typewriter
-    ? letters.slice(0, Math.floor(letters.length * textProgress)).join("")
-    : text?.text;
-  const textStyle = {
-    ...(text ? enterText(text.in.effect, textProgress) : {}),
-    ...(text ? exitText(text.out.effect, frame?.textOut ?? 0) : {}),
-  };
-  const out = frame?.previousImage?.cell.out.effect;
+  const transition = state.phase === "transition" ? plan.steps[state.step]?.transition : undefined;
+  const progress =
+    transition?.duration && state.phase === "transition" ? state.elapsed / transition.duration : 0;
+  const incoming =
+    state.phase === "transition" ? playbackFrame(plan, startPlayback(state.step + 1)) : undefined;
   const continueBeat = () =>
     setState((current) => advancePlayback(plan, current, { type: "continue" }));
 
@@ -142,74 +223,38 @@ function Reel({ film, theme, simple, sound, onEnd }: CutscenePlayerProps) {
           if (!event.repeat) continueBeat();
         }}
       >
-        <div className="cutscene-reel__visual">
-          {oldPicture && (
+        <div className="cutscene-reel__visual" data-transition={transition?.effect}>
+          <div
+            className="cutscene-reel__layer"
+            style={{
+              opacity: transition?.effect === "through-black" ? Math.max(0, 1 - progress * 2) : 1,
+            }}
+          >
+            <SceneVisual images={film.images} frame={frame} reduced={reduced} paused={paused} />
+            {caption && (
+              <p className="cutscene-reel__caption" role="status">
+                {caption}
+              </p>
+            )}
+          </div>
+          {incoming && (
             <div
-              className={`cutscene-reel__exit-color cutscene-reel__exit--${out}`}
+              className="cutscene-reel__layer cutscene-reel__layer--incoming"
               aria-hidden="true"
-            />
-          )}
-          {[
-            ...(oldPicture && frame?.previousImage
-              ? [
-                  {
-                    layer: frame.previousImage,
-                    asset: oldPicture,
-                    outgoing: true,
-                  },
-                ]
-              : []),
-            ...(picture && frame?.image
-              ? [{ layer: frame.image, asset: picture, outgoing: false }]
-              : []),
-          ].map(({ layer, asset, outgoing }) => (
-            <div
-              key={layer.step}
-              className="cutscene-reel__image"
-              aria-hidden={outgoing || undefined}
-              style={
-                outgoing
-                  ? { opacity: 1 - (frame?.imageOut ?? 0), zIndex: 1 }
-                  : enterImage(layer.cell.in.effect, frame?.imageIn ?? 1)
-              }
+              style={{
+                opacity:
+                  transition?.effect === "through-black" ? Math.max(0, progress * 2 - 1) : progress,
+              }}
             >
-              <img
-                alt={outgoing ? "" : asset.alt}
-                src={asset.dataUrl}
-                className={`cutscene-reel__picture cutscene-reel__filter--${layer.cell.filter}`}
-                data-motion={reduced ? "none" : layer.cell.during}
-                data-paused={paused}
-              />
+              <SceneVisual images={film.images} frame={incoming} reduced={reduced} paused silent />
             </div>
-          ))}
+          )}
           <span className="visually-hidden" aria-live="polite">
             {picture?.alt}
           </span>
           <span className="visually-hidden" aria-live="polite">
-            {text?.text}
+            {frame?.text?.cell.text}
           </span>
-          {text && (
-            <div className={`cutscene-reel__text cutscene-reel__text--${text.position}`}>
-              <div
-                className={`cutscene-reel__copy cutscene-reel__copy--${text.style} cutscene-reel__copy--size-${text.size} cutscene-reel__copy--font-${text.font}${picture || oldPicture ? " cutscene-reel__copy--over-image" : ""}`}
-                style={{ ...textStyle, textAlign: text.align }}
-                aria-hidden="true"
-              >
-                {text.style === "title" ? (
-                  <NamePlate as="p">{words}</NamePlate>
-                ) : text.style === "letter" ? (
-                  <NoteCard>{words}</NoteCard>
-                ) : (
-                  <p>{words}</p>
-                )}
-              </div>
-            </div>
-          )}
-          {caption && (
-            <p className="cutscene-reel__caption" role="status">
-              {caption}
-            </p>
-          )}
         </div>
         <header className="cutscene-reel__bar">
           <NamePlate id={titleId}>{film.title}</NamePlate>
@@ -236,7 +281,7 @@ function Reel({ film, theme, simple, sound, onEnd }: CutscenePlayerProps) {
             )}
             <Button
               variant="primary"
-              disabled={ended || (timed && !!frame?.ready && state.phase !== "exit")}
+              disabled={ended || (timed && !!frame?.ready && state.phase === "step")}
               onClick={continueBeat}
             >
               {t(

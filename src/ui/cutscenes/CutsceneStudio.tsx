@@ -16,11 +16,12 @@ import {
   type AudioTrack,
 } from "../audio/audioStorage";
 import { Button, IconButton } from "../components/Button";
-import { Menu, MenuButton, useContextMenu, type MenuItem } from "../components/Menu";
+import { MenuButton, useContextMenu, type MenuItem } from "../components/Menu";
 import { Modal } from "../components/Modal";
 import { useTranslate } from "../i18n/LanguageProvider";
 import { sceneImagesFromFile } from "../studio/portrait";
 import { PRESET_THEMES, type PlayTheme } from "../themes/theme";
+import { CutsceneFileMenu, CutsceneLibraryMenu } from "./CutsceneFileMenu";
 import { CutscenePlayer } from "./CutscenePlayer";
 import {
   channels,
@@ -28,9 +29,12 @@ import {
   CutsceneFields,
   labelFor,
   newBeat,
+  Num,
   Pick,
   type Channel,
 } from "./CutsceneFields";
+import { StepTimeline, WorkspaceZoom } from "./StepTimeline";
+import { useWorkspaceView } from "./useWorkspaceView";
 import "./cutscene-studio.css";
 
 export type CutsceneStudioProps = {
@@ -85,12 +89,14 @@ function StepHeading({
   items,
   onDragStart,
   onDrop,
+  transition,
 }: {
   label: string;
   selected: boolean;
   items: MenuItem[];
   onDragStart: () => void;
   onDrop: () => void;
+  transition: ReactNode;
 }) {
   const context = useContextMenu(label, items);
   return (
@@ -114,17 +120,76 @@ function StepHeading({
         {label}
         <MenuButton label={label} items={items} size="compact" />
       </div>
+      {transition}
       {context.menu}
     </th>
+  );
+}
+
+const transitionEffects = ["cut", "crossfade", "through-black"] as const;
+
+function StepTransition({
+  label,
+  effect,
+  selected,
+  onSelect,
+  onChange,
+}: {
+  label: string;
+  effect: CutsceneBeat["transition"]["effect"];
+  selected: boolean;
+  onSelect: () => void;
+  onChange: (effect: CutsceneBeat["transition"]["effect"]) => void;
+}) {
+  const t = useTranslate();
+  const items = transitionEffects.map((choice) => ({
+    label: t(labelFor(choice)),
+    onSelect: () => {
+      onSelect();
+      onChange(choice);
+    },
+  }));
+  const context = useContextMenu(label, items);
+  return (
+    <div
+      className="cutscene-studio__boundary"
+      {...context.bind}
+      onContextMenu={(event) => {
+        event.stopPropagation();
+        context.bind.onContextMenu(event);
+      }}
+      onKeyDown={(event) => {
+        context.bind.onKeyDown(event);
+        if (event.defaultPrevented) event.stopPropagation();
+      }}
+      onPointerDown={(event) => {
+        event.stopPropagation();
+        context.bind.onPointerDown(event);
+      }}
+    >
+      <Button
+        size="compact"
+        variant="quiet"
+        aria-label={label}
+        aria-pressed={selected}
+        onClick={onSelect}
+      >
+        <span aria-hidden="true">→</span> {t(labelFor(effect))}
+      </Button>
+      {context.menu}
+    </div>
   );
 }
 
 type History = { previous: CutsceneFilm[]; value: CutsceneFilm; next: CutsceneFilm[] };
 type Selection = { beatId: string; channel: Channel };
 
-function oneStep(film: CutsceneFilm, index: number): CutsceneFilm {
+function oneStep(
+  film: CutsceneFilm,
+  index: number,
+  context: ReturnType<typeof planPlayback>["steps"][number],
+): CutsceneFilm {
   const beat = film.beats[index]!;
-  const context = planPlayback(film).steps[index]!;
   const image = context.image.current;
   return {
     ...film,
@@ -166,13 +231,13 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
     beatId: draft.beats[0]!.id,
     channel: "image",
   }));
+  const [transitionId, setTransitionId] = useState<string>();
   const [tracks, setTracks] = useState<AudioTrack[]>([]);
   const [themeId, setThemeId] = useState("current");
   const [playing, setPlaying] = useState<CutsceneFilm>();
   const [confirmClose, setConfirmClose] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [fileMenu, setFileMenu] = useState<{ x: number; y: number }>();
-  const fileOpener = useRef<HTMLButtonElement>();
+  const libraryMenu = useContext(CutsceneLibraryMenu);
   const [panelOpen, setPanelOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [, updateBaseline] = useState(0);
@@ -186,10 +251,19 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
     draft.beats.findIndex(({ id }) => id === selection.beatId),
   );
   const beat = draft.beats[beatIndex]!;
+  const editingTransition = transitionId === beat.id && beatIndex < draft.beats.length - 1;
+  const transitionLabel = (index: number) =>
+    t("csStepTransition", {
+      from: t("csStep", { number: index + 1 }),
+      to: t("csStep", { number: index + 2 }),
+    });
   const theme =
     (themeId === "current" ? undefined : PRESET_THEMES.find(({ id }) => id === themeId)) ??
     previewTheme;
-  const preview = useMemo(() => oneStep(draft, beatIndex), [draft, beatIndex]);
+  const plan = useMemo(() => planPlayback(draft), [draft]);
+  const timing = plan.steps[beatIndex]!;
+  const preview = useMemo(() => oneStep(draft, beatIndex, timing), [draft, beatIndex, timing]);
+  const previewWorkspace = useWorkspaceView();
   const previewSource = preview.beats[0]?.image.source;
   const poster =
     previewSource?.kind === "set"
@@ -409,6 +483,7 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
           aria-pressed={selected}
           tabIndex={narrow || selected ? 0 : -1}
           onClick={() => {
+            setTransitionId(undefined);
             setSelection({ beatId: step.id, channel });
             setPanelOpen(true);
           }}
@@ -426,6 +501,7 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
             const column =
               draft.beats[Math.min(draft.beats.length - 1, Math.max(0, index + move[0]))]!;
             const next = channels[Math.min(channels.length - 1, Math.max(0, row + move[1]))]!;
+            setTransitionId(undefined);
             setSelection({ beatId: column.id, channel: next });
             cells.current.get(`${column.id}:${next}`)?.querySelector("button")?.focus();
           }}
@@ -436,7 +512,46 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
     );
   }
 
-  const inspector = (
+  function updateTransition(id: string, change: Partial<CutsceneBeat["transition"]>) {
+    updateBeat(id, (item) => ({ ...item, transition: { ...item.transition, ...change } }));
+  }
+
+  function boundaryFor(item: CutsceneBeat, index: number) {
+    return index < draft.beats.length - 1 ? (
+      <StepTransition
+        label={transitionLabel(index)}
+        effect={item.transition.effect}
+        selected={editingTransition && beat.id === item.id}
+        onSelect={() => {
+          setSelection({ beatId: item.id, channel: "advance" });
+          setTransitionId(item.id);
+          setPanelOpen(true);
+        }}
+        onChange={(effect) => updateTransition(item.id, { effect })}
+      />
+    ) : null;
+  }
+
+  const inspector = editingTransition ? (
+    <section className="cutscene-studio__inspector" aria-label={transitionLabel(beatIndex)}>
+      <h3>{transitionLabel(beatIndex)}</h3>
+      <Pick
+        label={t("csTransition")}
+        value={beat.transition.effect}
+        options={transitionEffects}
+        onChange={(effect) => updateTransition(beat.id, { effect })}
+      />
+      {beat.transition.effect !== "cut" && (
+        <Num
+          label={t("csLength")}
+          value={beat.transition.seconds}
+          max={30}
+          onChange={(seconds) => updateTransition(beat.id, { seconds })}
+        />
+      )}
+      <Button onClick={() => setPlaying(draft)}>{t("csStart")}</Button>
+    </section>
+  ) : (
     <section
       className="cutscene-studio__inspector"
       aria-label={t(channelLabels[selection.channel])}
@@ -485,58 +600,24 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
     >
       <header className="cutscene-studio__bar">
         <div className="cutscene-studio__film-menu">
-          <Button
-            variant="quiet"
-            size="compact"
-            aria-haspopup="menu"
-            aria-expanded={!!fileMenu}
-            onClick={(event) => {
-              fileOpener.current = event.currentTarget;
-              const rect = event.currentTarget.getBoundingClientRect();
-              setFileMenu({ x: rect.left, y: rect.bottom });
-            }}
-          >
-            {t("csFile")}
-          </Button>
-          {fileMenu && (
-            <Menu
-              label={t("csFile")}
-              at={fileMenu}
-              opener={fileOpener.current ?? null}
-              onClose={() => {
-                setFileMenu(undefined);
-                fileOpener.current?.focus();
-              }}
-              items={[
-                { label: t("csSave"), onSelect: save },
-                { label: t("csClose"), onSelect: requestClose },
-              ]}
-            />
-          )}
+          <CutsceneFileMenu
+            items={[
+              ...libraryMenu,
+              { label: t("csSave"), onSelect: save },
+              { label: t("csClose"), onSelect: requestClose },
+            ]}
+          />
           <Button variant="quiet" size="compact" onClick={() => setSettingsOpen(true)}>
             {t("csSettings")}
           </Button>
         </div>
-        <label className="cutscene-field cutscene-studio__title">
-          <span>{t("csTitle")}</span>
-          <input
-            value={draft.title}
-            maxLength={120}
-            onChange={(event) => edit((value) => ({ ...value, title: event.target.value }))}
-          />
-        </label>
+        <h2 className="cutscene-studio__title">{draft.title || t("csUntitled")}</h2>
         <div className="cutscene-studio__actions">
           <Button variant="quiet" size="compact" disabled={!history.previous.length} onClick={undo}>
             {t("csUndo")}
           </Button>
           <Button variant="quiet" size="compact" disabled={!history.next.length} onClick={redo}>
             {t("csRedo")}
-          </Button>
-          <Button variant="quiet" onClick={requestClose}>
-            {t("csClose")}
-          </Button>
-          <Button variant="primary" onClick={save}>
-            {t("csSave")}
           </Button>
         </div>
       </header>
@@ -553,27 +634,44 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
                 onEnd={() => setPlaying(undefined)}
               />
             ) : (
-              <>
-                {poster && (
-                  <img
-                    className={`cutscene-reel__picture cutscene-reel__filter--${preview.beats[0]?.image.filter ?? "none"}`}
-                    src={poster.dataUrl}
-                    alt={poster.alt}
-                  />
-                )}
-                {preview.beats[0]?.text && (
-                  <div
-                    className={`cutscene-studio__poster-copy cutscene-studio__poster-copy--${preview.beats[0].text.position}`}
-                    style={{ textAlign: preview.beats[0].text.align }}
-                  >
-                    {preview.beats[0].text.text}
-                  </div>
-                )}
-              </>
+              <div
+                className="cutscene-studio__poster"
+                {...previewWorkspace.bind}
+                tabIndex={0}
+                aria-label={t("csPreview")}
+                data-gesture={previewWorkspace.mode}
+              >
+                <div
+                  className="cutscene-studio__poster-stage"
+                  style={{
+                    transform: `translate(${previewWorkspace.view.x}px, ${previewWorkspace.view.y}px) scale(${previewWorkspace.view.zoom})`,
+                  }}
+                >
+                  {poster && (
+                    <img
+                      className={`cutscene-reel__picture cutscene-reel__filter--${preview.beats[0]?.image.filter ?? "none"}`}
+                      src={poster.dataUrl}
+                      alt={poster.alt}
+                    />
+                  )}
+                  {preview.beats[0]?.text && (
+                    <div
+                      className={`cutscene-studio__poster-copy cutscene-studio__poster-copy--${preview.beats[0].text.position}`}
+                      style={{ textAlign: preview.beats[0].text.align }}
+                    >
+                      {preview.beats[0].text.text}
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
           </div>
           <div className="cutscene-studio__playbar">
-            <span>{t("csPreview")}</span>
+            {playing ? (
+              <span>{t("csPreview")}</span>
+            ) : (
+              <WorkspaceZoom workspace={previewWorkspace} />
+            )}
             <div className="cutscene-studio__actions">
               {playing ? (
                 <Button variant="quiet" size="compact" onClick={() => setPlaying(undefined)}>
@@ -613,6 +711,7 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
                     </div>
                   ))}
                 </div>
+                {boundaryFor(item, index)}
               </li>
             ))}
           </ol>
@@ -627,6 +726,7 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
                     label={t("csStep", { number: index + 1 })}
                     items={itemsFor(index)}
                     selected={item.id === beat.id}
+                    transition={boundaryFor(item, index)}
                     onDragStart={() => {
                       dragStep.current = item.id;
                     }}
@@ -662,8 +762,24 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
           onClick={() => addStep(beatIndex)}
         />
       </div>
+      <StepTimeline
+        step={timing}
+        number={beatIndex + 1}
+        selected={selection.channel}
+        onSelect={(channel) => {
+          setTransitionId(undefined);
+          setSelection({ beatId: beat.id, channel });
+          setPanelOpen(true);
+        }}
+      />
       {narrow && panelOpen && (
-        <Modal title={t(channelLabels[selection.channel])} side onClose={() => setPanelOpen(false)}>
+        <Modal
+          title={
+            editingTransition ? transitionLabel(beatIndex) : t(channelLabels[selection.channel])
+          }
+          side
+          onClose={() => setPanelOpen(false)}
+        >
           {inspector}
           <Button variant="quiet" onClick={() => setPanelOpen(false)}>
             {t("csBackSteps")}
@@ -673,6 +789,14 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
       {settingsOpen && (
         <Modal title={t("csSettings")} onClose={() => setSettingsOpen(false)}>
           <div className="cutscene-studio__settings">
+            <label className="cutscene-field">
+              <span>{t("csTitle")}</span>
+              <input
+                value={draft.title}
+                maxLength={120}
+                onChange={(event) => edit((value) => ({ ...value, title: event.target.value }))}
+              />
+            </label>
             <Pick
               label={t("csDisplay")}
               value={draft.display}

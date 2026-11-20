@@ -1,4 +1,4 @@
-import type { CutsceneFilm, ImageCell, SoundCell, TextCell } from "./schema";
+import type { CutsceneBeat, CutsceneFilm, ImageCell, SoundCell, TextCell } from "./schema";
 
 type ImageLayer = { step: number; imageId: string; cell: ImageCell };
 type TextLayer = { step: number; cell: TextCell };
@@ -20,6 +20,10 @@ export type PlaybackStep = {
     leave: number;
   };
   sound: { previousMusic?: SoundCue | undefined; cue?: SoundCue | undefined; delay: number };
+  transition: {
+    effect: CutsceneBeat["transition"]["effect"];
+    duration: number;
+  };
   readyAt: number;
   advanceAt: number | undefined;
 };
@@ -77,7 +81,10 @@ export function planPlayback(film: CutsceneFilm, simple = false): PlaybackPlan {
     if (cue?.cell.action === "music") music = cue;
     else if (cue?.cell.action === "stop-music") music = undefined;
 
+    const effect = step < film.beats.length - 1 ? (beat.transition?.effect ?? "cut") : "cut";
+    const duration = effect === "cut" ? 0 : length("fade", beat.transition.seconds, simple);
     return {
+      transition: { effect, duration },
       image,
       text,
       sound,
@@ -98,7 +105,7 @@ export function planPlayback(film: CutsceneFilm, simple = false): PlaybackPlan {
 
 type Playing = {
   step: number;
-  phase: "step" | "exit";
+  phase: "step" | "exit" | "transition";
   elapsed: number;
   channelsDone: boolean;
   paused: boolean;
@@ -116,10 +123,16 @@ function nextStep(plan: PlaybackPlan, state: Playing): PlaybackState {
   return { ...startPlayback(state.step + 1), paused: state.paused };
 }
 
+function transitionOrNext(plan: PlaybackPlan, state: Playing, step: PlaybackStep): PlaybackState {
+  return step.transition.duration
+    ? { ...state, phase: "transition", elapsed: 0, channelsDone: true }
+    : nextStep(plan, state);
+}
+
 function leaveStep(plan: PlaybackPlan, state: Playing, step: PlaybackStep): PlaybackState {
   return step.text.leave
     ? { ...state, phase: "exit", elapsed: 0, channelsDone: true }
-    : nextStep(plan, state);
+    : transitionOrNext(plan, state, step);
 }
 
 /** A terminal state absorbs every input. Consumers emit its result once, and only while mounted. */
@@ -134,7 +147,8 @@ export function advancePlayback(
 
   const step = plan.steps[state.step]!;
   if (event.type === "continue") {
-    if (state.phase === "exit") return nextStep(plan, state);
+    if (state.phase === "transition") return nextStep(plan, state);
+    if (state.phase === "exit") return transitionOrNext(plan, state, step);
     if (!state.channelsDone && state.elapsed < step.readyAt)
       return { ...state, channelsDone: true };
     return step.advanceAt === undefined ? leaveStep(plan, state, step) : state;
@@ -142,7 +156,10 @@ export function advancePlayback(
   if (state.paused || event.elapsed <= 0) return state;
   const elapsed = state.elapsed + event.elapsed;
   if (state.phase === "exit") {
-    return elapsed >= step.text.leave ? nextStep(plan, state) : { ...state, elapsed };
+    return elapsed >= step.text.leave ? transitionOrNext(plan, state, step) : { ...state, elapsed };
+  }
+  if (state.phase === "transition") {
+    return elapsed >= step.transition.duration ? nextStep(plan, state) : { ...state, elapsed };
   }
   if (step.advanceAt !== undefined) {
     const deadline = state.channelsDone ? step.advanceAt : Math.max(step.advanceAt, step.readyAt);
@@ -181,7 +198,12 @@ export function playbackFrame(plan: PlaybackPlan, state: Playing) {
     imageOut: fraction(imageTime, image.leave),
     text: textTime < 0 ? text.previous : text.current,
     textIn: textTime < 0 ? 1 : fraction(textTime, text.enter),
-    textOut: state.phase === "exit" ? fraction(state.elapsed, text.leave) : 0,
+    textOut:
+      state.phase === "exit"
+        ? fraction(state.elapsed, text.leave)
+        : state.phase === "transition" && text.leave > 0
+          ? 1
+          : 0,
     cue,
     music,
     ready: state.channelsDone || state.elapsed >= step.readyAt,

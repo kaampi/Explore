@@ -66,7 +66,9 @@ it("creates placements from the scene and connection menus and saves a new libra
     });
     await click("Create a film");
     const dialog = host.querySelector("dialog")!;
-    const title = dialog.querySelector("input")!;
+    await click("Settings", dialog);
+    const settings = dialog.querySelector('dialog[aria-label="Settings"]')!;
+    const title = settings.querySelector("input")!;
     await act(async () => {
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
         title,
@@ -74,6 +76,10 @@ it("creates placements from the scene and connection menus and saves a new libra
       );
       title.dispatchEvent(new Event("input", { bubbles: true }));
     });
+    await act(async () =>
+      settings.querySelector<HTMLButtonElement>('[aria-label="Close dialog"]')!.click(),
+    );
+    await click("File", dialog);
     await click("Save", dialog);
     for (let i = 0; i < 50 && host.querySelector("dialog"); i++)
       await act(async () => new Promise((resolve) => setTimeout(resolve, 4)));

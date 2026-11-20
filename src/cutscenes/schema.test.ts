@@ -23,6 +23,7 @@ describe("cut-scene format", () => {
             filter: "none",
           },
           sound: { action: "none", fadeSeconds: 0, delay: 0, volume: 0.8, caption: "" },
+          transition: { effect: "cut", seconds: 1 },
           advance: { kind: "click" },
         },
       ],

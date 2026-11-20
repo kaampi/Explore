@@ -198,3 +198,33 @@ describe("cut-scene playback clock", () => {
     ).toBe(start);
   });
 });
+
+it("transitions after text exits, keeping the incoming channel clock stopped until the boundary completes", () => {
+  const source = film([
+    {
+      id: "first",
+      text: { text: "First", in: { effect: "none" }, out: { effect: "fade", seconds: 0.5 } },
+      sound: { action: "music", trackId: "music" },
+      transition: { effect: "crossfade", seconds: 1 },
+    },
+    { id: "second", sound: { action: "effect", trackId: "knock" } },
+  ]);
+  const plan = planPlayback(source);
+  const exit = advancePlayback(plan, startPlayback(), { type: "continue" });
+  const boundary = advancePlayback(plan, exit, { type: "tick", elapsed: 500 });
+  expect(boundary).toMatchObject({ phase: "transition", step: 0, elapsed: 0 });
+  const half = advancePlayback(plan, boundary, { type: "tick", elapsed: 500 });
+  expect(half).toMatchObject({ phase: "transition", step: 0, elapsed: 500 });
+  if (half.phase === "ended") throw new Error("The transition has not finished");
+  expect(playbackFrame(plan, half)).toMatchObject({
+    textOut: 1,
+    music: { cell: { trackId: "music" } },
+    cue: { cell: { trackId: "music" } },
+  });
+  const next = advancePlayback(plan, half, { type: "tick", elapsed: 500 });
+  expect(next).toEqual(startPlayback(1));
+  expect(playbackFrame(plan, startPlayback(1)).cue?.cell.trackId).toBe("knock");
+  expect(advancePlayback(plan, half, { type: "continue" })).toEqual(next);
+  expect(planPlayback(source, true).steps[0]?.transition.duration).toBe(150);
+  expect(source.beats[1]?.transition.effect).toBe("cut");
+});

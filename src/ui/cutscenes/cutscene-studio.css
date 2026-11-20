@@ -1,11 +1,9 @@
-.cutscene-library {
-  display: grid;
-  grid-template-columns: minmax(12rem, 15rem) minmax(0, 1fr);
-  align-items: start;
-  color: var(--text);
-}
 .cutscene-library__detail {
   min-width: 0;
+}
+.cutscene-library__picker .studio-list {
+  max-height: min(65vh, 34rem);
+  overflow: auto;
 }
 .cutscene-library__empty {
   display: grid;
@@ -39,22 +37,19 @@
 }
 .cutscene-studio__bar {
   justify-content: space-between;
-  padding-bottom: var(--space-4);
+  padding-bottom: var(--space-2);
   border-bottom: 1px solid var(--border);
 }
 .cutscene-studio__title {
-  flex: 1 1 10rem;
+  flex: 1 1 8rem;
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 1rem;
 }
 .cutscene-studio__settings {
   display: grid;
-  justify-items: start;
-}
-.cutscene-studio__film-menu {
-  flex-basis: 100%;
-}
-.cutscene-studio__title input {
-  font-size: 1.35rem;
-  font-weight: 650;
+  justify-items: stretch;
 }
 .cutscene-field {
   display: grid;
@@ -106,18 +101,12 @@
   display: grid;
   place-items: stretch;
   aspect-ratio: 16 / 9;
-  width: min(100%, 46rem, calc(45vh * 16 / 9));
+  width: 100%;
+  max-height: 62vh;
   overflow: hidden;
   border-radius: var(--radius-sm);
   background: var(--scrim);
   color: var(--photo-text);
-}
-.cutscene-studio__screen > img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
 }
 .cutscene-studio__poster-copy {
   z-index: 1;
@@ -143,7 +132,7 @@
 }
 .cutscene-studio__playbar {
   justify-content: space-between;
-  width: min(100%, 46rem, calc(45vh * 16 / 9));
+  width: 100%;
   color: var(--text-dim);
   font-size: 0.825rem;
 }
@@ -266,13 +255,6 @@
   }
 }
 @media (max-width: 680px) {
-  .cutscene-library {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .cutscene-library > .studio-list {
-    max-height: 18rem;
-    overflow: auto;
-  }
   .cutscene-studio__screen {
     aspect-ratio: auto;
     min-height: 17rem;
@@ -351,4 +333,186 @@
 .cutscene-library__sample p {
   padding-inline: var(--space-2);
   color: var(--text-dim);
+}
+
+.cutscene-studio__poster,
+.cutscene-studio__poster-stage {
+  display: grid;
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.cutscene-studio__poster-stage {
+  transform-origin: top left;
+  pointer-events: none;
+}
+.cutscene-studio__poster-stage > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.cutscene-studio__zoom {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-variant-numeric: tabular-nums;
+}
+.cutscene-studio [data-gesture="zoom"] {
+  cursor: zoom-in;
+  user-select: none;
+}
+.cutscene-studio [data-gesture="pan"] {
+  cursor: grabbing;
+  user-select: none;
+}
+.cutscene-time {
+  --lane-height: 2rem;
+  --ruler-height: 1.65rem;
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+.cutscene-time__header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+  margin-block-end: var(--space-3);
+}
+.cutscene-time__header h3 {
+  margin: 0;
+  font-size: 0.9rem;
+}
+.cutscene-time__body {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-2);
+}
+.cutscene-time__labels {
+  display: grid;
+  grid-auto-rows: var(--lane-height);
+  padding-block-start: var(--ruler-height);
+}
+.cutscene-time__labels .ui-button {
+  justify-content: flex-start;
+}
+.cutscene-time__labels button[aria-pressed="true"] {
+  background: var(--panel-raised);
+  color: var(--accent);
+}
+.cutscene-time__viewport {
+  position: relative;
+  overflow: hidden;
+  min-height: calc(var(--ruler-height) + 4 * var(--lane-height));
+}
+.cutscene-time__scale {
+  position: absolute;
+  top: 0;
+  box-sizing: border-box;
+  padding-inline: var(--space-3);
+  pointer-events: none;
+}
+.cutscene-time__ruler,
+.cutscene-time__lane {
+  position: relative;
+  border-block-end: 1px solid var(--border);
+  box-sizing: border-box;
+}
+.cutscene-time__ruler {
+  height: var(--ruler-height);
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+.cutscene-time__ruler span {
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.cutscene-time__ruler span:first-child {
+  transform: none;
+}
+.cutscene-time__ruler span:last-child:not(:first-child) {
+  transform: translateX(-100%);
+}
+.cutscene-time__lane {
+  height: var(--lane-height);
+  --lane-color: var(--text-dim);
+}
+.cutscene-time__lane[data-selected="true"] {
+  --lane-color: var(--accent);
+  background: var(--panel-raised);
+}
+.cutscene-time__tick,
+.cutscene-time__span,
+.cutscene-time__open,
+.cutscene-time__cue,
+.cutscene-time__end {
+  position: absolute;
+  pointer-events: none;
+}
+.cutscene-time__tick {
+  inset-block: 0;
+  border-inline-start: 1px solid var(--border);
+}
+.cutscene-time__span {
+  top: 50%;
+  height: 0.7rem;
+  transform: translateY(-50%);
+  background: var(--lane-color);
+  pointer-events: auto;
+}
+.cutscene-time__span[data-shape="in"] {
+  clip-path: polygon(0 44%, 100% 0, 100% 100%, 0 56%);
+}
+.cutscene-time__span[data-shape="out"] {
+  clip-path: polygon(0 0, 100% 44%, 100% 56%, 0 100%);
+}
+.cutscene-time__open {
+  right: 0;
+  top: 50%;
+  border-block-start: 2px dashed var(--lane-color);
+}
+.cutscene-time__cue {
+  top: 50%;
+  width: 0.65rem;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%) rotate(45deg);
+  border: 1px solid var(--panel);
+  background: var(--lane-color);
+  pointer-events: auto;
+}
+.cutscene-time__end {
+  inset-block: 0.3rem;
+  border-inline-start: 2px solid var(--lane-color);
+}
+.cutscene-time__timing {
+  margin: var(--space-2) 0 0;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+
+.cutscene-studio__boundary {
+  display: flex;
+  justify-content: flex-end;
+}
+.cutscene-studio__boundary .ui-button {
+  max-width: 100%;
+  min-height: 1.65rem;
+  color: var(--text-dim);
+  font-size: 0.75rem;
+}
+.cutscene-studio__boundary [aria-pressed="true"] {
+  color: var(--accent);
+  background: var(--panel);
+}
+.cutscene-time__span--transition {
+  border-radius: var(--radius-sm);
+  background: var(--accent);
 }

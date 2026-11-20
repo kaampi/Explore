@@ -62,6 +62,10 @@ function setup() {
     expect(menuitem, item).toBeDefined();
     await act(async () => menuitem?.click());
   }
+  async function file(item: string) {
+    await click("File");
+    await action(item);
+  }
   async function close() {
     await act(async () => root.unmount());
     host.remove();
@@ -71,7 +75,7 @@ function setup() {
       await act(async () => new Promise((resolve) => setTimeout(resolve, 4)));
     expect(done()).toBe(true);
   }
-  return { host, root, click, field, input, action, close, waitFor, findButton };
+  return { host, root, click, field, input, action, file, close, waitFor, findButton };
 }
 
 it("edits every channel, previews, reorders steps, and saves through the film API", async () => {
@@ -101,8 +105,8 @@ it("edits every channel, previews, reorders steps, and saves through the film AP
   }
   try {
     await act(async () => ui.root.render(<Host />));
-    await ui.input("Title", "At dawn");
     await ui.click("Settings");
+    await ui.input("Title", "At dawn");
     await ui.input("Display", "fullscreen");
     await ui.click("Close dialog", ui.host.querySelector("dialog")!);
     await ui.input("Image", "clear");
@@ -140,11 +144,11 @@ it("edits every channel, previews, reorders steps, and saves through the film AP
     expect(ui.host.querySelector(".cutscene-reel")).toBeTruthy();
     await ui.click("Stop preview");
     expect(saved).not.toHaveBeenCalled();
-    await ui.click("Close");
+    await ui.file("Close");
     expect(ui.host.querySelector("dialog")?.textContent).toContain("unsaved changes");
     await ui.click("Cancel", ui.host.querySelector("dialog")!);
     expect(closed).not.toHaveBeenCalled();
-    await ui.click("Save");
+    await ui.file("Save");
     expect(saved).toHaveBeenCalledTimes(1);
     expect(saved.mock.lastCall?.[0]).toMatchObject({
       title: "At dawn",
@@ -159,7 +163,7 @@ it("edits every channel, previews, reorders steps, and saves through the film AP
         },
       ],
     });
-    await ui.click("Close");
+    await ui.file("Close");
     expect(closed).toHaveBeenCalledOnce();
   } finally {
     await ui.close();
@@ -177,9 +181,12 @@ it("creates, duplicates, renames and deletes library films with a usage warning"
         </ThemeProvider>,
       ),
     );
-    await ui.click("+ New film");
+    await ui.file("+ New film");
+    await ui.click("Settings");
     await ui.input("Title", "At the house");
-    await ui.click("Save");
+    await ui.click("Close dialog", ui.host.querySelector("dialog")!);
+    await ui.file("Save");
+    await ui.file("Open film");
     await ui.waitFor(() => ui.host.querySelector(".ui-row__name")?.textContent === "At the house");
     const [film] = await repo.listCutsceneFilms();
     await repo.saveCampaign(
@@ -203,7 +210,7 @@ it("creates, duplicates, renames and deletes library films with a usage warning"
     )!;
     await act(async () => original.querySelector<HTMLElement>(".ui-row__menu")?.click());
     await ui.action("Rename");
-    const dialog = ui.host.querySelector("dialog")!;
+    const dialog = ui.host.querySelector('dialog[aria-label="Rename"]')!;
     const name = dialog.querySelector("input")!;
     await act(async () => {
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
@@ -221,15 +228,85 @@ it("creates, duplicates, renames and deletes library films with a usage warning"
     await act(async () => original.querySelector<HTMLElement>(".ui-row__menu")?.click());
     await ui.action("Delete");
     await ui.waitFor(() =>
-      /A short adventure/.test(ui.host.querySelector("dialog")?.textContent ?? ""),
+      /A short adventure/.test(
+        ui.host.querySelector('dialog[aria-label^="Delete"]')?.textContent ?? "",
+      ),
     );
-    await ui.click("Delete", ui.host.querySelector("dialog")!);
-    await ui.waitFor(() => !ui.host.querySelector("dialog"));
+    await ui.click("Delete", ui.host.querySelector('dialog[aria-label^="Delete"]')!);
+    await ui.waitFor(() => !ui.host.querySelector('dialog[aria-label^="Delete"]'));
     expect((await repo.listCutsceneFilms()).map(({ title }) => title)).toEqual([
       "Copy of At the house",
     ]);
   } finally {
     await ui.close();
     await repo.close();
+  }
+});
+
+it("projects the selected step's actual playback times and edits its outgoing transition independently", async () => {
+  const ui = setup();
+  const saved = vi.fn();
+  const film = CutsceneFilmSchema.parse({
+    id: "knock",
+    title: "A knock",
+    beats: [
+      {
+        id: "one",
+        image: {
+          source: { kind: "set", imageId: "door" },
+          in: { effect: "fade", delay: 0.5, seconds: 1 },
+          out: { effect: "none" },
+        },
+        sound: { action: "effect" },
+        text: {
+          text: "Someone is there.",
+          in: { effect: "none", delay: 2 },
+          out: { effect: "stay" },
+        },
+        advance: { kind: "after", seconds: 1 },
+      },
+      { id: "two" },
+    ],
+    images: [{ id: "door", dataUrl: "example", thumbDataUrl: "example" }],
+    createdAt: "",
+    updatedAt: "",
+  });
+  try {
+    await act(async () =>
+      ui.root.render(
+        <CutsceneStudio
+          film={film}
+          previewTheme={PRESET_THEMES[0]!}
+          onClose={() => {}}
+          onSave={saved}
+        />,
+      ),
+    );
+    const timeline = ui.host.querySelector('[aria-label="Step timeline · Step 1"]')!;
+    expect(timeline.querySelector('[aria-label="Sound cue at 0 sec"]')).toBeTruthy();
+    expect(timeline.querySelector('[aria-label="Entrance · 0.5 sec to 1.5 sec"]')).toBeTruthy();
+    expect(timeline.textContent).toContain("Advances at 2 sec");
+    await ui.click("Text", timeline);
+    await ui.input("Delay (s)", "2.5");
+    expect(timeline.textContent).toContain("Advances at 2.5 sec");
+    await ui.click("Transition · Step 1 → Step 2");
+    await ui.input("Transition", "crossfade");
+    await ui.input("Duration (s)", "0.8");
+    expect(timeline.textContent).toContain("Transition takes 0.8 sec");
+    await ui.click("Zoom in", timeline);
+    expect(timeline.textContent).toContain("150%");
+    await ui.file("Save");
+    expect(saved).toHaveBeenCalledWith(
+      expect.objectContaining({
+        beats: expect.arrayContaining([
+          expect.objectContaining({
+            transition: { effect: "crossfade", seconds: 0.8 },
+            advance: { kind: "after", seconds: 1 },
+          }),
+        ]),
+      }),
+    );
+  } finally {
+    await ui.close();
   }
 });
