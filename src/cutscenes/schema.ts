@@ -2,6 +2,8 @@ import { z } from "zod";
 import { StoryboardPositionSchema } from "../library/storyboardPosition";
 
 const Seconds = z.number().min(0).max(30);
+export const IMAGE_EFFECT_DEFAULTS = { strength: 70, density: 50, seconds: 6 } as const;
+const Percentage = z.number().min(0).max(100);
 const Delay = z.number().min(0).max(10).default(0);
 
 export const CutsceneImageSchema = z.object({
@@ -23,10 +25,21 @@ export const ImageCellSchema = z.object({
     delay: Delay,
   }),
   out: z.object({
-    effect: z.enum(["none", "fade", "fade-black", "fade-white"]),
+    effect: z.enum(["none", "fade", "fade-black", "fade-white", "melt", "signal-glitch"]),
     seconds: Seconds.default(1),
+    strength: Percentage.optional(),
+    density: Percentage.optional(),
   }),
-  during: z.enum(["none", "slow-zoom", "pan-left", "pan-right", "shake", "unblur"]).default("none"),
+  during: z
+    .enum(["none", "slow-zoom", "pan-left", "pan-right", "shake", "unblur", "signal-glitch"])
+    .default("none"),
+  signal: z
+    .object({
+      seconds: Seconds.default(IMAGE_EFFECT_DEFAULTS.seconds),
+      strength: Percentage.default(IMAGE_EFFECT_DEFAULTS.strength),
+      density: Percentage.default(IMAGE_EFFECT_DEFAULTS.density),
+    })
+    .optional(),
   filter: z.enum(["none", "dark", "grayscale", "sepia", "cold", "warm"]).default("none"),
 });
 

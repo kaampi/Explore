@@ -6,7 +6,12 @@ import {
   startPlayback,
   type PlaybackState,
 } from "../../cutscenes/playback";
-import type { CutsceneFilm, ImageCell, TextCell } from "../../cutscenes/schema";
+import {
+  IMAGE_EFFECT_DEFAULTS,
+  type CutsceneFilm,
+  type ImageCell,
+  type TextCell,
+} from "../../cutscenes/schema";
 import { Button } from "../components/Button";
 import { useTranslate } from "../i18n/LanguageProvider";
 import {
@@ -19,6 +24,7 @@ import {
 } from "../play/ornament";
 import { playThemeStyle } from "../themes/ThemeProvider";
 import type { PlayTheme } from "../themes/theme";
+import { MeltImage, SignalInterference } from "./ImageEffects";
 import { useCutsceneSound, type CutsceneSound } from "./useCutsceneSound";
 import "./cutscenes.css";
 
@@ -115,26 +121,65 @@ function SceneVisual({
         ...(picture && frame?.image
           ? [{ layer: frame.image, asset: picture, outgoing: false }]
           : []),
-      ].map(({ layer, asset, outgoing }) => (
-        <div
-          key={layer.step}
-          className="cutscene-reel__image"
-          aria-hidden={outgoing || silent || undefined}
-          style={
-            outgoing
-              ? { opacity: 1 - (frame?.imageOut ?? 0), zIndex: 1 }
-              : enterImage(layer.cell.in.effect, frame?.imageIn ?? 1)
-          }
-        >
-          <img
-            alt={outgoing || silent ? "" : asset.alt}
-            src={asset.dataUrl}
-            className={`cutscene-reel__picture cutscene-reel__filter--${layer.cell.filter}`}
-            data-motion={reduced ? "none" : layer.cell.during}
-            data-paused={paused}
-          />
-        </div>
-      ))}
+      ].map(({ layer, asset, outgoing }) => {
+        const { cell } = layer;
+        const progress = frame?.imageOut ?? 0;
+        const strength = (cell.out.strength ?? IMAGE_EFFECT_DEFAULTS.strength) / 100;
+        const melt = outgoing && !reduced && cell.out.effect === "melt" && strength > 0;
+        const signalExit = outgoing && !reduced && cell.out.effect === "signal-glitch";
+        const signalDuring = !outgoing && !reduced && cell.during === "signal-glitch";
+        const signal = cell.signal ?? IMAGE_EFFECT_DEFAULTS;
+        return (
+          <div
+            key={layer.step}
+            className="cutscene-reel__image"
+            aria-hidden={outgoing || silent || undefined}
+            style={
+              outgoing
+                ? { opacity: melt ? 1 : 1 - progress, zIndex: 1 }
+                : enterImage(cell.in.effect, frame?.imageIn ?? 1)
+            }
+          >
+            <img
+              alt={outgoing || silent ? "" : asset.alt}
+              src={asset.dataUrl}
+              className={`cutscene-reel__picture cutscene-reel__filter--${cell.filter}`}
+              data-motion={reduced ? "none" : cell.during}
+              data-paused={paused}
+              style={melt ? { visibility: "hidden" } : undefined}
+            />
+            {melt && (
+              <MeltImage
+                picture={asset}
+                filter={cell.filter}
+                progress={progress}
+                strength={strength}
+              />
+            )}
+            {signalDuring && (
+              <SignalInterference
+                picture={asset}
+                filter={cell.filter}
+                seconds={signal.seconds}
+                strength={signal.strength / 100}
+                density={signal.density / 100}
+                paused={paused}
+              />
+            )}
+            {signalExit && (
+              <SignalInterference
+                picture={asset}
+                filter={cell.filter}
+                seconds={cell.out.seconds}
+                strength={strength}
+                density={(cell.out.density ?? IMAGE_EFFECT_DEFAULTS.density) / 100}
+                paused={paused}
+                exitProgress={progress}
+              />
+            )}
+          </div>
+        );
+      })}
       {text && (
         <div className={`cutscene-reel__text cutscene-reel__text--${text.position}`}>
           <div

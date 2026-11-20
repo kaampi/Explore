@@ -447,6 +447,34 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
     ) : null;
   }
 
+  function previewImageExit() {
+    const image = timing.image.current;
+    if (!image) return;
+    const show = newBeat();
+    const clear = newBeat();
+    setPanelOpen(false);
+    setPlaying({
+      ...draft,
+      skippable: true,
+      beats: [
+        {
+          ...show,
+          image: {
+            ...image.cell,
+            during: "none",
+            in: show.image.in,
+          },
+          advance: { kind: "after", seconds: 1 },
+        },
+        {
+          ...clear,
+          image: { ...clear.image, source: { kind: "clear" } },
+          advance: { kind: "after", seconds: Math.max(1, image.cell.out.seconds) },
+        },
+      ],
+    });
+  }
+
   const inspector = editingTransition ? (
     <section className="cutscene-studio__inspector" aria-label={transitionLabel(beatIndex)}>
       <h3>{transitionLabel(beatIndex)}</h3>
@@ -493,6 +521,13 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
         onTrack={(file) => void uploadAudio(file)}
       />
       <Button onClick={() => setPlaying(preview)}>{t("csPlayStep")}</Button>
+      {selection.channel === "image" &&
+        beat.image.source.kind === "set" &&
+        poster &&
+        beat.image.out.effect !== "none" &&
+        beat.image.out.seconds > 0 && (
+          <Button onClick={previewImageExit}>{t("csPreviewImageExit")}</Button>
+        )}
     </section>
   );
 

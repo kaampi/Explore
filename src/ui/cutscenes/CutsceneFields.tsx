@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import {
   BeatSchema,
+  IMAGE_EFFECT_DEFAULTS,
   TextCellSchema,
   type CutsceneBeat,
   type CutsceneFilm,
@@ -119,6 +120,13 @@ export function CutsceneFields({
 
   if (channel === "image") {
     const { image } = beat;
+    const signal = image.signal ?? IMAGE_EFFECT_DEFAULTS;
+    function updateExit(patch: Partial<typeof image.out>) {
+      onChange((step) => ({
+        ...step,
+        image: { ...step.image, out: { ...step.image.out, ...patch } },
+      }));
+    }
     const active = image.source.kind === "set" ? image.source.imageId : undefined;
     const picture = film.images.find(({ id }) => id === active);
     return (
@@ -175,9 +183,41 @@ export function CutsceneFields({
         <Pick
           label={t("csDuring")}
           value={image.during}
-          options={["none", "slow-zoom", "pan-left", "pan-right", "shake", "unblur"]}
+          options={[
+            "none",
+            "slow-zoom",
+            "pan-left",
+            "pan-right",
+            "shake",
+            "unblur",
+            "signal-glitch",
+          ]}
           onChange={(during) => field("image", { during })}
         />
+        {image.during === "signal-glitch" && (
+          <Group label={t("csValue_signal_glitch")}>
+            <Num
+              label={t("csLength")}
+              value={signal.seconds}
+              max={30}
+              onChange={(seconds) => field("image", { signal: { ...signal, seconds } })}
+            />
+            <Num
+              label={t("csEffectStrength")}
+              value={signal.strength}
+              max={100}
+              step={1}
+              onChange={(strength) => field("image", { signal: { ...signal, strength } })}
+            />
+            <Num
+              label={t("csSignalDensity")}
+              value={signal.density}
+              max={100}
+              step={1}
+              onChange={(density) => field("image", { signal: { ...signal, density } })}
+            />
+          </Group>
+        )}
         <Pick
           label={t("csFilter")}
           value={image.filter}
@@ -223,25 +263,33 @@ export function CutsceneFields({
           <Pick
             label={t("csImage")}
             value={image.out.effect}
-            options={["none", "fade", "fade-black", "fade-white"]}
-            onChange={(effect) =>
-              onChange((step) => ({
-                ...step,
-                image: { ...step.image, out: { ...step.image.out, effect } },
-              }))
-            }
+            options={["none", "fade", "fade-black", "fade-white", "melt", "signal-glitch"]}
+            onChange={(effect) => updateExit({ effect })}
           />
           <Num
             label={t("csLength")}
             value={image.out.seconds}
             max={30}
-            onChange={(seconds) =>
-              onChange((step) => ({
-                ...step,
-                image: { ...step.image, out: { ...step.image.out, seconds } },
-              }))
-            }
+            onChange={(seconds) => updateExit({ seconds })}
           />
+          {(image.out.effect === "melt" || image.out.effect === "signal-glitch") && (
+            <Num
+              label={t("csEffectStrength")}
+              value={image.out.strength ?? IMAGE_EFFECT_DEFAULTS.strength}
+              max={100}
+              step={1}
+              onChange={(strength) => updateExit({ strength })}
+            />
+          )}
+          {image.out.effect === "signal-glitch" && (
+            <Num
+              label={t("csSignalDensity")}
+              value={image.out.density ?? IMAGE_EFFECT_DEFAULTS.density}
+              max={100}
+              step={1}
+              onChange={(density) => updateExit({ density })}
+            />
+          )}
         </Group>
       </>
     );

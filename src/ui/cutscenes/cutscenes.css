@@ -234,3 +234,42 @@
 .cutscene-reel__layer--incoming {
   pointer-events: none;
 }
+
+.cutscene-reel__melt,
+.cutscene-reel__signal,
+.cutscene-reel__signal-band {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.cutscene-reel__signal-band .cutscene-reel__picture {
+  transform: translateX(var(--cutscene-signal-offset)) scaleX(var(--cutscene-signal-scale));
+  filter: var(--cutscene-filter) hue-rotate(var(--cutscene-signal-tint));
+}
+
+.cutscene-reel__signal[data-ambient="true"] {
+  animation: cutscene-signal-burst var(--cutscene-signal-period) step-end
+    var(--cutscene-signal-cycles);
+  opacity: 0;
+}
+
+.cutscene-reel__signal[data-paused="true"] {
+  animation-play-state: paused;
+}
+
+@keyframes cutscene-signal-burst {
+  0% {
+    opacity: 1;
+  }
+  21%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cutscene-reel__signal {
+    display: none;
+  }
+}
