@@ -13,6 +13,8 @@ type Turn = {
   role: string;
   content: string;
   actionId?: string;
+  cutsceneId?: string;
+  adventureSceneId?: string;
   actionSceneId?: string;
   speakerId?: string;
   speakerName?: string;
@@ -24,6 +26,7 @@ export type StoryRow =
   | { kind: "divider"; key: string; place: string; minutes: number; current: boolean }
   /** Running prose: no bubble, no label. */
   | { kind: "narrator"; key: string; turn: number; text: string }
+  | { kind: "cutscene"; key: string; turn: number; title: string; text: string }
   /** What the player said: "YOU · SAY", a quote. */
   | { kind: "say"; key: string; turn: number; text: string }
   /** What the player did: "YOU · DO", the name of the action. */
@@ -54,6 +57,11 @@ export type StoryRow =
       damage?: number;
     };
 
+export type StoryTextRow = Extract<
+  StoryRow,
+  { kind: "narrator" | "say" | "do" | "person" | "cutscene" }
+>;
+
 /**
  * The story as rows. By default only the place the player is in; with `earlier`, every place they
  * have been in, each under a divider with its name and the time they came. Fights are left out:
@@ -71,20 +79,38 @@ export function storyRows(
     actorId
       ? (session.encounter?.state.actors[actorId]?.name ?? session.adventure?.actors[actorId]?.name)
       : undefined;
+  const cutscenes = new Map(
+    session.adventure?.cutscenes.map((cutscene) => [cutscene.id, cutscene]),
+  );
+  const films = new Map(session.adventure?.cutsceneFilms.map((film) => [film.id, film]));
   const segments = storySegments(session);
   const shown = options.earlier ? segments : segments.slice(-1);
   const rows: StoryRow[] = [];
   for (const [position, segment] of shown.entries()) {
-    rows.push({
+    let divider: StoryRow | undefined = {
       kind: "divider",
       key: `place:${segment.from}`,
       place: segment.place,
       minutes: segment.minutes,
       current: segment === segments.at(-1) && position === shown.length - 1,
-    });
-    for (let index = segment.from; index < segment.to; index++) {
+    };
+    const indexes = turns.slice(segment.from, segment.to).map((_, index) => segment.from + index);
+    if (turns[segment.from]?.adventureSceneId) {
+      // The cut-scenes queued by entering a place play before its arrival prose.
+      let cutscenes = 0;
+      while (cutscenes + 1 < indexes.length && turns[segment.from + cutscenes + 1]?.cutsceneId)
+        cutscenes++;
+      if (cutscenes) indexes.splice(cutscenes, 0, indexes.shift()!);
+    }
+    for (const index of indexes) {
       const turn = turns[index];
       if (!turn || typeof turn !== "object") continue;
+      const cutscene = turn.cutsceneId ? cutscenes.get(turn.cutsceneId) : undefined;
+      // Ways are played before entering the place, even in the view showing only this visit.
+      if (divider && cutscene?.trigger.kind !== "link") {
+        rows.push(divider);
+        divider = undefined;
+      }
       const entry = index ? adventureHistoryEntry(session, turn, index) : undefined;
       if (isCombatRecord(entry)) continue;
       const held = options.heldAfterTurn !== undefined && turn.turn > options.heldAfterTurn;
@@ -109,6 +135,17 @@ export function storyRows(
       }
       // What the dice decided is told when they have landed.
       if (held) continue;
+      const film = cutscene && films.get(cutscene.filmId);
+      if (film) {
+        rows.push({
+          kind: "cutscene",
+          key: `t${turn.turn}`,
+          turn: turn.turn,
+          title: film.title,
+          text: turn.content,
+        });
+        continue;
+      }
       for (const [i, check] of (entry?.checks ?? []).entries())
         rows.push({
           kind: "check",
@@ -142,6 +179,7 @@ export function storyRows(
           : { kind: "narrator", key: `t${turn.turn}`, turn: turn.turn, text: turn.content },
       );
     }
+    if (divider) rows.push(divider);
   }
   // The goal is told where it was reached. A game that reached it before that was kept has it last.
   const goal = session.adventure?.goal;

@@ -1,6 +1,7 @@
 import type { Session } from "../../state/StateSchema";
 import {
   adventureCompleted,
+  adventureHasClock,
   knownThings,
   peopleMet,
   placesVisited,
@@ -33,7 +34,7 @@ export function Journal({
   const pack = playerInventory(session);
   const people = peopleMet(session);
   const places = placesVisited(session);
-  const timed = !!run?.links.some((link) => link.minutes !== undefined);
+  const timed = !!run && adventureHasClock(run);
   const kept = run
     ? Object.entries(run.notes)
         .filter(([, notes]) => notes.length > 0)
@@ -44,6 +45,13 @@ export function Journal({
         }))
     : [];
   const done = adventureCompleted(session);
+  const seen =
+    run?.cutscenesSeen.flatMap((id) => {
+      const cutscene = run.cutscenes.find((cut) => cut.id === id);
+      const film =
+        cutscene?.showInStory && run.cutsceneFilms.find(({ id }) => id === cutscene.filmId);
+      return film ? [film.title] : [];
+    }) ?? [];
   return (
     <Modal title={t("pvJournal")} onClose={onClose} side>
       <div className="play-journal">
@@ -130,6 +138,20 @@ export function Journal({
             </ol>
           )}
         </section>
+        {!!run?.cutscenes.length && (
+          <section aria-label={t("pvCutscenesSeen")}>
+            <h3>{t("pvCutscenesSeen")}</h3>
+            {seen.length === 0 ? (
+              <p className="play-journal__empty">{t("pvNothingYet")}</p>
+            ) : (
+              <ol className="play-journal__list">
+                {seen.map((title, index) => (
+                  <li key={index}>{title}</li>
+                ))}
+              </ol>
+            )}
+          </section>
+        )}
         <section aria-label={t("pvRemembered")}>
           <h3>{t("pvRemembered")}</h3>
           {kept.length === 0 ? (

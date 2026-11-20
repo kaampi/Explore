@@ -1,0 +1,518 @@
+.cutscene-library__detail {
+  min-width: 0;
+}
+.cutscene-library__picker .studio-list {
+  max-height: min(65vh, 34rem);
+  overflow: auto;
+}
+.cutscene-library__empty {
+  display: grid;
+  place-content: center;
+  min-height: 25rem;
+  padding: var(--space-8, 2rem);
+  text-align: center;
+}
+.cutscene-library__empty h2,
+.cutscene-library__empty p {
+  margin: 0 0 var(--space-3);
+}
+.cutscene-studio {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--bg);
+  color: var(--text);
+}
+.cutscene-studio__bar,
+.cutscene-studio__actions,
+.cutscene-studio__settings,
+.cutscene-studio__film-menu,
+.cutscene-studio__playbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.cutscene-studio__bar {
+  justify-content: space-between;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+.cutscene-studio__title {
+  flex: 1 1 8rem;
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 1rem;
+}
+.cutscene-studio__settings {
+  display: grid;
+  justify-items: stretch;
+}
+.cutscene-field {
+  display: grid;
+  gap: var(--space-1);
+  font-size: 0.875rem;
+}
+.cutscene-field > span,
+.cutscene-field-group > legend {
+  color: var(--text-dim);
+  font-weight: 600;
+}
+.cutscene-field :is(input:not([type="checkbox"]), select, textarea) {
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+}
+.cutscene-field--check {
+  align-self: end;
+  min-height: var(--control-compact);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.cutscene-field-group {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.cutscene-studio__preview {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel-raised);
+}
+.cutscene-studio__screen {
+  position: relative;
+  display: grid;
+  place-items: stretch;
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  max-height: 62vh;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--scrim);
+  color: var(--photo-text);
+}
+.cutscene-studio__poster-copy {
+  z-index: 1;
+  align-self: center;
+  justify-self: center;
+  width: fit-content;
+  max-width: calc(100% - 2 * var(--space-5));
+  max-height: calc(100% - 2 * var(--space-5));
+  overflow: auto;
+  margin: var(--space-5);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--scrim) 78%, transparent);
+  color: var(--photo-text);
+  font-family: var(--font-ui);
+  overflow-wrap: anywhere;
+}
+.cutscene-studio__poster-copy--top {
+  align-self: start;
+}
+.cutscene-studio__poster-copy--bottom {
+  align-self: end;
+}
+.cutscene-studio__playbar {
+  justify-content: space-between;
+  width: 100%;
+  color: var(--text-dim);
+  font-size: 0.825rem;
+}
+.cutscene-studio__workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(14rem, 27%, 21rem);
+  align-items: start;
+  gap: var(--space-4);
+}
+.cutscene-studio__thumb {
+  width: 100%;
+  max-height: 8rem;
+  object-fit: contain;
+}
+.cutscene-studio__inspector {
+  max-height: max(26rem, 50vh);
+  overflow-y: auto;
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+.cutscene-studio__inspector h3 {
+  margin: 0;
+}
+.cutscene-studio__feedback {
+  color: var(--text);
+  padding: var(--space-3);
+  background: var(--panel-raised);
+  border: 1px solid var(--border);
+}
+@media (max-width: 1023px) {
+  .cutscene-studio__workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 680px) {
+  .cutscene-studio__screen {
+    aspect-ratio: auto;
+    min-height: 17rem;
+  }
+}
+
+.cutscene-placement-panel {
+  display: grid;
+  gap: var(--space-4);
+}
+.playable-storyboard .storyboard-cutscene.ui-button {
+  position: absolute;
+  display: grid;
+  justify-content: stretch;
+  text-decoration: none;
+  grid-template-columns: 1fr;
+  align-content: center;
+  justify-items: start;
+  gap: var(--space-1);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-2);
+  text-align: left;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: var(--shadow-menu);
+  touch-action: none;
+}
+.playable-storyboard .storyboard-cutscene.ui-button[aria-pressed="true"] {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+}
+.playable-storyboard .storyboard-cutscene.ui-button:hover {
+  background: var(--panel-raised);
+  text-decoration: none;
+}
+.storyboard-cutscene__label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  max-width: 100%;
+}
+.storyboard-cutscene__label strong,
+.storyboard-cutscene small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.storyboard-cutscene img {
+  width: 3rem;
+  height: 2rem;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+}
+.storyboard-cutscene small {
+  color: var(--text-dim);
+}
+.storyboard-cutscene__line {
+  stroke: var(--text-dim);
+  stroke-width: 1.5;
+  stroke-dasharray: 2 5;
+  pointer-events: none;
+}
+.storyboard-cutscene__icon {
+  flex: 0 0 1rem;
+  height: 0.875rem;
+  border: 1px solid var(--text-dim);
+  border-inline: 3px dotted var(--text-dim);
+  border-radius: var(--radius-sm);
+}
+.cutscene-library__sample {
+  padding: var(--space-2);
+}
+.cutscene-library__sample p {
+  padding-inline: var(--space-2);
+  color: var(--text-dim);
+}
+
+.cutscene-studio__poster,
+.cutscene-studio__poster-stage {
+  display: grid;
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.cutscene-studio__poster-stage {
+  transform-origin: top left;
+  pointer-events: none;
+}
+.cutscene-studio__poster-stage > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.cutscene-studio__zoom {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-variant-numeric: tabular-nums;
+}
+.cutscene-studio [data-gesture="zoom"] {
+  cursor: zoom-in;
+  user-select: none;
+}
+.cutscene-studio [data-gesture="pan"] {
+  cursor: grabbing;
+  user-select: none;
+}
+.cutscene-time {
+  --lane-height: 2.6rem;
+  --ruler-height: 1.65rem;
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+.cutscene-time__header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--space-2);
+  margin-block-end: var(--space-3);
+}
+.cutscene-time__navigation,
+.cutscene-time__tools,
+.cutscene-time__footer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.cutscene-time__navigation {
+  grid-column: 2;
+  justify-content: center;
+}
+.cutscene-time__navigation select {
+  color: var(--text);
+  background: var(--panel-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+  font: inherit;
+  font-weight: 700;
+}
+.cutscene-time__tools {
+  justify-self: end;
+}
+.cutscene-time__body {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: var(--space-2);
+}
+.cutscene-time__labels {
+  display: grid;
+  grid-auto-rows: var(--lane-height);
+  padding-block-start: var(--ruler-height);
+}
+.cutscene-time__labels .ui-button {
+  justify-content: flex-start;
+}
+.cutscene-time__labels button[aria-pressed="true"],
+.cutscene-time__footer button[aria-pressed="true"] {
+  background: var(--panel-raised);
+  color: var(--accent);
+}
+.cutscene-time__viewport {
+  position: relative;
+  overflow: hidden;
+}
+.cutscene-time__scale {
+  position: absolute;
+  top: 0;
+  box-sizing: border-box;
+  padding-inline: var(--space-3);
+  pointer-events: none;
+}
+.cutscene-time__ruler,
+.cutscene-time__lane {
+  position: relative;
+  border-block-end: 1px solid var(--border);
+  box-sizing: border-box;
+}
+.cutscene-time__ruler {
+  height: var(--ruler-height);
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+.cutscene-time__ruler span {
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.cutscene-time__ruler span:first-child {
+  transform: none;
+}
+.cutscene-time__ruler span:last-child:not(:first-child) {
+  transform: translateX(-100%);
+}
+.cutscene-time__lane {
+  height: var(--lane-height);
+  --lane-color: var(--accent-player);
+}
+.cutscene-time__lane[data-lane="sound"] {
+  --lane-color: var(--accent-ai);
+}
+.cutscene-time__lane[data-lane="text"] {
+  --lane-color: var(--accent);
+}
+.cutscene-time__lane[data-selected="true"] {
+  background: var(--panel-raised);
+}
+.cutscene-time__tick {
+  position: absolute;
+  inset-block: 0;
+  border-inline-start: 1px solid var(--border);
+}
+.cutscene-time__clip.ui-button {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  min-width: 1rem;
+  height: calc(var(--lane-height) - 0.7rem);
+  min-height: 0;
+  overflow: hidden;
+  justify-content: flex-start;
+  gap: var(--space-1);
+  padding-inline: var(--space-1);
+  transform: translateY(-50%);
+  background: color-mix(in srgb, var(--lane-color) 20%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--lane-color) 65%, var(--panel));
+  color: var(--text);
+  font-size: 0.78rem;
+  isolation: isolate;
+  pointer-events: auto;
+}
+.cutscene-time__clip.ui-button:focus-visible {
+  outline-offset: -2px;
+}
+.cutscene-time__clip.ui-button[aria-pressed="true"] {
+  border-color: var(--lane-color);
+  box-shadow: inset 0 0 0 1px var(--lane-color);
+}
+.cutscene-time__clip img {
+  flex: 0 0 auto;
+  width: 1.8rem;
+  height: 1.15rem;
+  object-fit: cover;
+}
+.cutscene-time__clip-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cutscene-time__clip i {
+  position: absolute;
+  z-index: -1;
+  inset-block: 0;
+  background: color-mix(in srgb, var(--lane-color) 24%, transparent);
+}
+.cutscene-time__clip i[data-shape="in"] {
+  left: 0;
+  clip-path: polygon(0 45%, 100% 0, 100% 100%, 0 55%);
+}
+.cutscene-time__clip i[data-shape="out"] {
+  right: 0;
+  clip-path: polygon(0 0, 100% 45%, 100% 55%, 0 100%);
+}
+.cutscene-time__clip.ui-button[data-instant="true"] {
+  width: max-content;
+  max-width: 8.5rem;
+  border-style: dashed;
+}
+.cutscene-time__clip[data-instant="true"]::before {
+  content: "";
+  flex: 0 0 0.4rem;
+  aspect-ratio: 1;
+  margin-inline: 0.12rem;
+  transform: rotate(45deg);
+  background: var(--lane-color);
+}
+.cutscene-time__open {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  border-block-start: 2px dashed var(--lane-color);
+}
+.cutscene-time__markers {
+  position: absolute;
+  inset: var(--ruler-height) var(--space-3) 0;
+}
+.cutscene-time__end {
+  position: absolute;
+  z-index: 2;
+  inset-block: 0;
+  border-inline-start: 1px solid var(--accent-strong);
+}
+.cutscene-time__end[data-waits="true"] {
+  border-inline-start-style: dashed;
+}
+.cutscene-time__transition {
+  position: absolute;
+  inset-block-end: 0;
+  height: 0.2rem;
+  background: var(--accent);
+}
+.cutscene-time__footer {
+  margin-block-start: var(--space-2);
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+.cutscene-time__footer .cutscene-studio__boundary {
+  margin-inline-start: auto;
+}
+@media (max-width: 680px) {
+  .cutscene-time__header {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cutscene-time__navigation {
+    grid-column: 1;
+  }
+}
+
+.cutscene-studio__boundary {
+  display: flex;
+  justify-content: flex-end;
+}
+.cutscene-studio__boundary .ui-button {
+  max-width: 100%;
+  min-height: 1.65rem;
+  color: var(--text-dim);
+  font-size: 0.75rem;
+}
+.cutscene-studio__boundary [aria-pressed="true"] {
+  color: var(--accent);
+  background: var(--panel);
+}

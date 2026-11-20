@@ -18,7 +18,12 @@ import { maskUnheardGivenNames, pass1NameOptions, narrationCallName } from "@sta
 import { LLMAdapter } from "@llm/LLMAdapter";
 import type { ChatMessage } from "@llm/types";
 import { EventLog } from "@events/EventLog";
-import { transition, canTransition, type SessionState } from "./SessionStateMachine";
+import {
+  transition,
+  canTransition,
+  SessionNotIdleError,
+  type SessionState,
+} from "./SessionStateMachine";
 import {
   runRollingMemoryUntilQuiet,
   standingNotesForSummarizer,
@@ -137,12 +142,7 @@ export interface TurnResult {
   openedWhatNow?: boolean;
 }
 
-export class SessionNotIdleError extends Error {
-  constructor(current: SessionState) {
-    super(`Cannot start a new turn: session is currently "${current}", not "idle".`);
-    this.name = "SessionNotIdleError";
-  }
-}
+export { SessionNotIdleError } from "./SessionStateMachine";
 
 export class TurnFailedError extends Error {
   constructor(

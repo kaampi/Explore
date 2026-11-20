@@ -14,6 +14,12 @@ import {
   locationLabel,
   type SpatialPlace,
 } from "./spatialLocation";
+import {
+  dueCutscenes,
+  finishCutscene,
+  queueCutscenes,
+  requireNoPendingCutscene,
+} from "../game/cutscenes";
 import { resolveEncounterAction } from "../game/EncounterEngine";
 import type { EncounterRequest } from "../game/EncounterSchema";
 import { CombatFigureImageSchema } from "./combatArtwork";
@@ -122,6 +128,8 @@ export class StateEngine {
     this.session.stateVersion++;
   }
   executeEncounterAction(request: EncounterRequest, rng: () => number = Math.random): void {
+    requireNoPendingCutscene(this.session);
+    const before = { ...this.session };
     if (this.session.adventure && request.expectedSceneId !== this.session.adventure.currentSceneId)
       throw new Error("The scene changed. Review your action again.");
     if (!this.session.encounter) throw new Error("This session has no authored encounter.");
@@ -159,6 +167,7 @@ export class StateEngine {
     );
     this.session.storyFlags = [...new Set([...this.session.storyFlags, ...next.state.flags])];
     this.noteGoalReached();
+    this.queueDueCutscenes(before);
     if (this.session.player)
       this.session.player.position = {
         ...this.session.player.position,
@@ -174,6 +183,19 @@ export class StateEngine {
     });
     this.session.events.push(event);
   }
+  private queueDueCutscenes(before: Session): void {
+    const next = queueCutscenes(this.session, dueCutscenes(before, this.session));
+    if (next !== this.session) this.session.adventure = next.adventure;
+  }
+
+  finishCutscene(id: string): boolean {
+    const next = finishCutscene(this.session, id);
+    if (next === this.session) return false;
+    Object.assign(this.session, next);
+    this.noteGoalReached();
+    return true;
+  }
+
   /** When the goal has just been reached, remember where in the story that was. Only once. */
   private noteGoalReached(): void {
     const run = this.session.adventure;
@@ -333,6 +355,8 @@ export class StateEngine {
     else delete run.notes[sceneId];
   }
   transitionAdventure(request: AdventureTransition): void {
+    requireNoPendingCutscene(this.session);
+    const before = { ...this.session };
     const next = advanceAdventure(this.session, request),
       turn =
         Math.max(
@@ -370,6 +394,7 @@ export class StateEngine {
       adventureSceneId: next.target.id,
     });
     this.noteGoalReached();
+    this.queueDueCutscenes(before);
     const event = this.eventLog.append({
       turn: this.session.stateVersion,
       timestamp: new Date().toISOString(),

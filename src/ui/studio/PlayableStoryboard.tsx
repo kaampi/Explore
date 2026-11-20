@@ -1,3 +1,16 @@
+import {
+  CutscenePlacementSchema,
+  type CutsceneFilm,
+  type CutscenePlacement,
+} from "../../cutscenes/schema";
+import { placementWarnings } from "../../cutscenes/placementWarnings";
+import { Button } from "../components/Button";
+import { Modal } from "../components/Modal";
+import { CutsceneDirtyHost, CutsceneStudio } from "../cutscenes/CutsceneStudio";
+import { useCutsceneLibrary } from "../cutscenes/CutsceneLibrary";
+import { PlacementPanel } from "../cutscenes/PlacementPanel";
+import { loadAudioLibrary } from "../audio/audioStorage";
+import { PRESET_THEMES } from "../themes/theme";
 import { CHECK_LEVELS } from "../../game/rules";
 import { useEffect, useRef, useState } from "react";
 import type {
@@ -34,6 +47,7 @@ import type { Interaction } from "../../game/EncounterSchema";
 import {
   storyboardIssues,
   storyboardWarnings,
+  reachableFromStart,
   type ActionField,
   type SceneField,
   type StoryboardIssue,
@@ -108,6 +122,37 @@ export function PlayableStoryboard({
   ) => Promise<{ place: PlaceTemplate; campaign: CampaignTemplate } | undefined>;
 }) {
   const t = useTranslate();
+  const filmRepo = useCutsceneLibrary();
+  const [libraryFilms, setLibraryFilms] = useState<CutsceneFilm[]>();
+  const [trackIds, setTrackIds] = useState<ReadonlySet<string>>();
+  const [cutsceneId, setCutsceneId] = useState("");
+  const [editingFilm, setEditingFilm] = useState<{ film: CutsceneFilm | null }>();
+  const [filmDirty, setFilmDirty] = useState(false);
+  const [filmError, setFilmError] = useState(false);
+  const [savingFilm, setSavingFilm] = useState(false);
+  const latestCampaign = useRef(campaign);
+  latestCampaign.current = campaign;
+  const placement = campaign.cutscenes.find(({ id }) => id === cutsceneId);
+  const films = libraryFilms ?? campaign.cutsceneFilms ?? [];
+  useEffect(() => {
+    let active = true;
+    void filmRepo
+      ?.listCutsceneFilms()
+      .then((value) => {
+        if (active) setLibraryFilms(value);
+      })
+      .catch(() => {
+        if (active) setFilmError(true);
+      });
+    void loadAudioLibrary("cutscene-studio")
+      .then(({ tracks }) => {
+        if (active) setTrackIds(new Set(tracks.map(({ id }) => id)));
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [filmRepo]);
   const [sceneId, setSceneId] = useState(campaign.scenes[0]?.id ?? ""),
     [linkId, setLinkId] = useState("");
   const [newActionId, setNewActionId] = useState("");
@@ -133,6 +178,29 @@ export function PlayableStoryboard({
   const scene = campaign.scenes.find((s) => s.id === sceneId),
     link = campaign.sceneLinks.find((l) => l.id === linkId),
     facts = adventureFacts(campaign);
+  const placementFacts = [
+    ...new Map(
+      [
+        ...facts,
+        ...campaign.cutscenes
+          .flatMap((item) =>
+            item.setsFlags.map((id) => ({
+              id,
+              label: films.find((film) => film.id === item.filmId)?.title ?? t("csUnknownFact"),
+            })),
+          )
+          .filter(({ id }) => !facts.some((fact) => fact.id === id)),
+      ].map((fact) => [fact.id, fact]),
+    ).values(),
+  ];
+  const cutsceneWarnings = campaign.cutscenes.length
+    ? placementWarnings(
+        campaign,
+        reachableFromStart({ ...campaign, cutsceneFilms: films }).flags,
+        films,
+        trackIds,
+      )
+    : [];
   const sceneMapPlace = scene && mapPlaces ? mapPlaceForScene(scene, mapPlaces) : undefined;
   const goalFacts = [
     ...facts,
@@ -239,7 +307,72 @@ export function PlayableStoryboard({
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", stop);
   }
+  function selectPlacement(id: string) {
+    setCutsceneId(id);
+    setSceneId("");
+    setLinkId("");
+    setSectionId("");
+    setMarkedScenes(new Set());
+    setConnectionFromId(null);
+    setStep("scenes");
+  }
+  function addPlacement(target?: StoryboardContextTarget) {
+    const trigger = target?.linkId
+      ? { kind: "link", linkId: target.linkId }
+      : target?.sceneId || scene || campaign.scenes[0]
+        ? { kind: "scene", sceneId: target?.sceneId ?? scene?.id ?? campaign.scenes[0]!.id }
+        : undefined;
+    if (!trigger) return;
+    const next = CutscenePlacementSchema.parse({
+      id: crypto.randomUUID(),
+      filmId: films[0]?.id ?? crypto.randomUUID(),
+      trigger,
+    });
+    onChange({ ...campaign, cutscenes: [...campaign.cutscenes, next], cutsceneFilms: films });
+    selectPlacement(next.id);
+  }
+  function changePlacement(next: CutscenePlacement) {
+    onChange({
+      ...campaign,
+      cutscenes: campaign.cutscenes.map((row) => (row.id === next.id ? next : row)),
+      cutsceneFilms: films,
+    });
+  }
+  function showFilmEditor(film: CutsceneFilm | null) {
+    setFilmDirty(false);
+    setFilmError(false);
+    setEditingFilm({ film });
+  }
+  function closeFilmEditor() {
+    if (!filmDirty || window.confirm(t("csDiscardQuestion"))) setEditingFilm(undefined);
+  }
+  async function saveFilm(film: CutsceneFilm) {
+    if (!filmRepo || !placement || savingFilm) return;
+    setSavingFilm(true);
+    setFilmError(false);
+    try {
+      await filmRepo.saveCutsceneFilm(film);
+      const saved = [...films.filter(({ id }) => id !== film.id), film];
+      setLibraryFilms(saved);
+      const current = latestCampaign.current;
+      onChange({
+        ...current,
+        cutscenes: current.cutscenes.map((item) =>
+          item.id === placement.id ? { ...item, filmId: film.id } : item,
+        ),
+        cutsceneFilms: saved,
+      });
+      setFilmDirty(false);
+      setEditingFilm(undefined);
+    } catch {
+      setFilmError(true);
+    } finally {
+      setSavingFilm(false);
+    }
+  }
+
   function selectScene(id: string, additive = false) {
+    setCutsceneId("");
     setConnectionFromId(null);
     if (additive) {
       const marked = new Set(markedScenes.size ? markedScenes : sceneId ? [sceneId] : []);
@@ -259,6 +392,7 @@ export function PlayableStoryboard({
   }
 
   function selectSection(id: string) {
+    setCutsceneId("");
     setConnectionFromId(null);
     setSectionId(id);
     setSceneId("");
@@ -270,6 +404,7 @@ export function PlayableStoryboard({
   function selectLink(id: string | null) {
     setLinkId(id ?? "");
     if (id) {
+      setCutsceneId("");
       setConnectionFromId(null);
       setStep("connections");
       setSceneId("");
@@ -476,7 +611,8 @@ export function PlayableStoryboard({
 
   function onCanvasContext(target: StoryboardContextTarget) {
     if (busy) return;
-    if (target.sceneId) {
+    if (target.cutsceneId) selectPlacement(target.cutsceneId);
+    else if (target.sceneId) {
       setConnectionFromId(null);
       if (markedScenes.has(target.sceneId)) setSceneId(target.sceneId);
       else selectScene(target.sceneId);
@@ -535,78 +671,96 @@ export function PlayableStoryboard({
       </fieldset>
     </details>
   );
-  const menuItems: MenuItem[] = context?.linkId
+  const menuItems: MenuItem[] = context?.cutsceneId
     ? [
-        { label: t("psEditConnection"), onSelect: () => selectLink(context.linkId!) },
-        { kind: "separator" as const },
+        { label: t("csEditPlacement"), onSelect: () => selectPlacement(context.cutsceneId!) },
+        { kind: "separator" },
         {
-          label: t("psRemoveConnection"),
+          label: t("csRemovePlacement"),
           danger: true,
           onSelect: () => {
             onChange({
               ...campaign,
-              sceneLinks: campaign.sceneLinks.filter((item) => item.id !== context.linkId),
+              cutscenes: campaign.cutscenes.filter(({ id }) => id !== context.cutsceneId),
             });
-            selectLink(null);
+            setCutsceneId("");
           },
         },
       ]
-    : context?.sceneId
+    : context?.linkId
       ? [
-          { label: "Edit scene", onSelect: () => selectScene(context.sceneId!) },
-          ...(scene?.encounter ? [{ label: "Add action", onSelect: addAction }] : []),
+          { label: t("psEditConnection"), onSelect: () => selectLink(context.linkId!) },
+          { label: t("csMenuPlacement"), onSelect: () => addPlacement(context) },
+          { kind: "separator" as const },
           {
-            label: markedScenes.size > 1 ? t("psGroupSelectedScenes") : t("psGroupThisScene"),
-            onSelect: () =>
-              addSection(
-                "group",
-                undefined,
-                markedScenes.size > 1 ? markedScenes : new Set([context.sceneId!]),
-              ),
+            label: t("psRemoveConnection"),
+            danger: true,
+            onSelect: () => {
+              onChange({
+                ...campaign,
+                sceneLinks: campaign.sceneLinks.filter((item) => item.id !== context.linkId),
+              });
+              selectLink(null);
+            },
           },
-          ...(campaign.scenes.length > 1
-            ? [{ label: t("psConnectToAnotherScene"), onSelect: addLink }]
-            : []),
-          ...(scene && issues.length === 0
-            ? [{ label: t("psTestThisScene2"), onSelect: () => onPlay(scene) }]
-            : []),
-          ...(campaign.scenes.length > 1
-            ? [
-                { kind: "separator" as const },
-                {
-                  label: t("psRemoveScene"),
-                  danger: true,
-                  onSelect: () => removeScene(context.sceneId!),
-                },
-              ]
-            : []),
         ]
-      : context?.sectionId && section
+      : context?.sceneId
         ? [
+            { label: "Edit scene", onSelect: () => selectScene(context.sceneId!) },
+            { label: t("csMenuPlacement"), onSelect: () => addPlacement(context) },
+            ...(scene?.encounter ? [{ label: "Add action", onSelect: addAction }] : []),
             {
-              label: section.collapsed ? "Expand" : "Collapse",
-              onSelect: () => toggleSection(section.id),
+              label: markedScenes.size > 1 ? t("psGroupSelectedScenes") : t("psGroupThisScene"),
+              onSelect: () =>
+                addSection(
+                  "group",
+                  undefined,
+                  markedScenes.size > 1 ? markedScenes : new Set([context.sceneId!]),
+                ),
             },
-            { label: t("psAddSceneToThis"), onSelect: () => addScene(undefined, section.id) },
-            ...(section.kind === "act"
-              ? [{ label: t("psAddSceneGroup"), onSelect: () => addSection("group") }]
+            ...(campaign.scenes.length > 1
+              ? [{ label: t("psConnectToAnotherScene"), onSelect: addLink }]
               : []),
-            { kind: "separator" as const },
-            {
-              label: t("psRemoveThisPart"),
-              danger: true,
-              onSelect: () => removeSection(section.id),
-            },
+            ...(scene && issues.length === 0
+              ? [{ label: t("psTestThisScene2"), onSelect: () => onPlay(scene) }]
+              : []),
+            ...(campaign.scenes.length > 1
+              ? [
+                  { kind: "separator" as const },
+                  {
+                    label: t("psRemoveScene"),
+                    danger: true,
+                    onSelect: () => removeScene(context.sceneId!),
+                  },
+                ]
+              : []),
           ]
-        : [
-            { label: t("psAddSceneHere"), onSelect: () => addScene(context?.position) },
-            { label: t("psAddActHere"), onSelect: () => addSection("act", context?.position) },
-            {
-              label: t("psAddSceneGroupHere"),
-              onSelect: () => addSection("group", context?.position),
-            },
-            ...(onSave ? [{ label: t("psSaveAdventure"), onSelect: onSave }] : []),
-          ];
+        : context?.sectionId && section
+          ? [
+              {
+                label: section.collapsed ? "Expand" : "Collapse",
+                onSelect: () => toggleSection(section.id),
+              },
+              { label: t("psAddSceneToThis"), onSelect: () => addScene(undefined, section.id) },
+              ...(section.kind === "act"
+                ? [{ label: t("psAddSceneGroup"), onSelect: () => addSection("group") }]
+                : []),
+              { kind: "separator" as const },
+              {
+                label: t("psRemoveThisPart"),
+                danger: true,
+                onSelect: () => removeSection(section.id),
+              },
+            ]
+          : [
+              { label: t("psAddSceneHere"), onSelect: () => addScene(context?.position) },
+              { label: t("psAddActHere"), onSelect: () => addSection("act", context?.position) },
+              {
+                label: t("psAddSceneGroupHere"),
+                onSelect: () => addSection("group", context?.position),
+              },
+              ...(onSave ? [{ label: t("psSaveAdventure"), onSelect: onSave }] : []),
+            ];
 
   const sectionInspector = section && (
     <>
@@ -1075,13 +1229,21 @@ export function PlayableStoryboard({
       ) : (
         <p>{t("psAddASceneTo")}</p>
       )}
-      {warnings.length > 0 && (
+      {(warnings.length > 0 || cutsceneWarnings.length > 0) && (
         <div className="storyboard-review storyboard-review--warnings">
           <strong>
-            {warnings.length} {warnings.length === 1 ? "thing" : "things"} worth checking
+            {warnings.length + cutsceneWarnings.length}{" "}
+            {warnings.length + cutsceneWarnings.length === 1 ? "thing" : "things"} worth checking
           </strong>
           <p className="playable-hint">{t("psTheseDoNotStop")}</p>
           <ul>
+            {cutsceneWarnings.map(({ id, title, reason }) => (
+              <li key={`${id}:${reason}`}>
+                <Button variant="quiet" onClick={() => selectPlacement(id)}>
+                  {t(`csPlacementWarn${reason}`, { title: title ?? t("csPlacement") })}
+                </Button>
+              </li>
+            ))}
             {warnings.map((issue, index) => (
               <li key={index}>
                 <button type="button" onClick={() => openIssue(issue)}>
@@ -1121,12 +1283,14 @@ export function PlayableStoryboard({
   );
 
   function showScenes() {
+    setCutsceneId("");
     setConnectionFromId(null);
     if (!scene && !section && testScene) selectScene(testScene.id);
     setStep("scenes");
   }
 
   function showTest() {
+    setCutsceneId("");
     setConnectionFromId(null);
     setStep("test");
   }
@@ -1136,6 +1300,20 @@ export function PlayableStoryboard({
       className={`playable-storyboard${expanded ? " playable-storyboard--expanded" : ""}`}
       aria-label="Playable adventure editor"
     >
+      {filmError && !editingFilm && <p role="alert">{t("csCouldNotLoad")}</p>}
+      {editingFilm && (
+        <Modal title={t("cutsceneStudio")} wide onClose={closeFilmEditor}>
+          {filmError && <p role="alert">{t("csCouldNotSave")}</p>}
+          <CutsceneDirtyHost onDirty={setFilmDirty}>
+            <CutsceneStudio
+              film={editingFilm.film}
+              previewTheme={campaign.theme ?? PRESET_THEMES[0]!}
+              onSave={(film) => void saveFilm(film)}
+              onClose={() => setEditingFilm(undefined)}
+            />
+          </CutsceneDirtyHost>
+        </Modal>
+      )}
       {context && !busy && (
         <Menu
           at={{ x: context.x, y: context.y }}
@@ -1249,6 +1427,9 @@ export function PlayableStoryboard({
           <button type="button" onClick={() => addScene()}>
             + Scene
           </button>
+          <Button disabled={busy || !campaign.scenes.length} onClick={() => addPlacement()}>
+            {t("csAddPlacement")}
+          </Button>
         </aside>
         <div className="playable-storyboard__canvas">
           <StoryboardCanvas
@@ -1258,10 +1439,11 @@ export function PlayableStoryboard({
             chapters={campaign.chapters}
             campaignName={campaign.name}
             onScenesChange={(scenes) => onChange({ ...campaign, scenes })}
-            onLayoutChange={(scenes, storyboardSections) =>
+            onLayoutChange={(scenes, storyboardSections, cutscenes) =>
               onChange({
                 ...campaign,
                 scenes,
+                cutscenes,
                 ...(campaign.storyboardSections || storyboardSections.length
                   ? { storyboardSections }
                   : {}),
@@ -1269,6 +1451,16 @@ export function PlayableStoryboard({
             }
             onLinksChange={(sceneLinks) => onChange({ ...campaign, sceneLinks })}
             onChaptersChange={(chapters) => onChange({ ...campaign, chapters })}
+            placements={campaign.cutscenes}
+            films={films}
+            goalFlags={campaign.goal?.requiresFlags}
+            factLabels={new Map(placementFacts.map(({ id, label }) => [id, label]))}
+            selectedCutsceneId={cutsceneId}
+            onSelectCutscene={selectPlacement}
+            onMoveCutscene={(id, position) => {
+              const item = campaign.cutscenes.find((cutscene) => cutscene.id === id);
+              if (item) changePlacement({ ...item, position });
+            }}
             externalInspector
             connectionFromSceneId={connectionFromId}
             onConnectionEnd={() => setConnectionFromId(null)}
@@ -1316,6 +1508,16 @@ export function PlayableStoryboard({
         >
           {step === "test" ? (
             testPanel
+          ) : placement ? (
+            <PlacementPanel
+              campaign={campaign}
+              placement={placement}
+              films={films}
+              facts={placementFacts}
+              change={changePlacement}
+              create={() => showFilmEditor(null)}
+              edit={showFilmEditor}
+            />
           ) : step === "connections" ? (
             connectionsPanel
           ) : section ? (

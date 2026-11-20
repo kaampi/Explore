@@ -135,6 +135,24 @@ The engine can already do most of this with facts (flags): a connection can requ
 - [ ] **Check before play.** The adventure check warns about consequences that can never happen, connections that can never open, and choices that lock the player out of reaching the goal.
 - [ ] Later: more effects on a connection than facts, the same as on outcomes (give or take an item, start a fight, pass time).
 
+### Start page and cut-scenes
+
+An adventure should be able to open with its own start page, and to tell parts of the story that the player watches rather than plays: an introduction, a journey, something that happens.
+
+Today an adventure has "Intro for the player" in Adventure Builder (`playerIntro`). It is shown on the adventure's card on the home page and in the "Choose where to enter" box, but not when the adventure starts in the play view. The arrival on a new place (step 8 of the play view) is the only moment of its kind in play.
+
+- [ ] **Start page.** Title, cover picture, the intro text (`playerIntro`, also shown when the adventure starts), the author, how long it takes, "Playable without AI" or "Best with your own AI", content notes, and "Begin". Shown when the adventure starts and when it is opened from a shared file. It is also the page an itch.io export opens on.
+- [ ] **Cut-scenes** (design decision: [cutscenes.sv.md](cutscenes.sv.md)). A scene the player watches: text (and optionally a picture, music and a short delay per paragraph), then "Continue". Written by the author, so it works without AI; with AI the narrator may only read it out in the adventure's voice, never change what happens. No choices in it, and the engine state does not change while it runs, except for what the author puts on its end (facts, travel time).
+- [ ] **What starts a cut-scene.** Three triggers, the same in every adventure:
+  - **A connection is taken**: a journey on the way ("Three days on the road …"), shown before arrival, with the connection's travel time.
+  - **A scene is entered**: the first time only (the default), or every time. The opening of the adventure is this trigger on the first scene, after the start page.
+  - **Something becomes true**: an event when a fact is set ("When the gate is open, the bells start ringing …"), also when it happens in another scene than the one the player is in. An ending is this trigger on the goal (an epilogue, one per ending).
+  - Each cut-scene is shown once unless the author says otherwise. When two are due at the same moment, they come in the order: connection, then fact, then scene.
+- [ ] **In Storyboard** a cut-scene is its own kind of card, with a different look from playable scenes, so the author sees the rhythm of play and watching.
+- [ ] **In the play view** it takes over the middle column in the theme's frame, with "Continue" and "Skip" (and a setting to always skip seen ones on a replay). It is kept in the story log and the journal, so the player can read it again.
+
+Ties in with "A text for the journey" under *Connections: clearer, simpler, deeper*, the When / If rules under *Ideas from RPG in a Box*, and the itch.io export, which opens on the start page.
+
 ### Character values that colour the story
 
 Example: a Horror rule-set with Sanity. Low Sanity makes descriptions hallucinatory, people react to the player's state, and some choices change. The same mechanism works for exhaustion, drunkenness, injuries, reputation or an attribute such as Charisma, so build it generally, not as a horror feature.

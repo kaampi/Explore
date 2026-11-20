@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { ActorSchema, BarrierSchema, EncounterGameSchema } from "./EncounterSchema";
+import { CutsceneFilmSchema, CutscenePlacementSchema } from "./CutsceneSchema";
+import { migrateCutsceneDocument } from "../cutscenes/schema";
 import { WorldMapSchema } from "../library/worldMap";
 import { INITIAL_GAME_MINUTES } from "../state/gameClock";
 /** Shared with Storyboard; kept independent of library/session schemas. */
@@ -47,74 +49,83 @@ export const AdventureNarrationSchema = z.object({
   freeReplies: z.boolean().default(true),
 });
 export type AdventureNarration = z.infer<typeof AdventureNarrationSchema>;
-export const AdventureRunSchema = z.object({
-  version: z.literal(1),
-  campaignId: z.string().min(1),
-  title: z.string().min(1),
-  currentSceneId: z.string().min(1),
-  /** Game time in minutes. It moves forward with the travel time of the ways taken, and nothing else. */
-  clockMinutes: z.number().int().nonnegative().default(INITIAL_GAME_MINUTES),
-  /**
-   * Things the player chose to keep from a free reply, by scene id. They are words the player
-   * approved, not facts the engine knows, and they change nothing in the game.
-   */
-  notes: z.record(z.string(), z.array(z.string().min(1).max(300)).max(8)).default({}),
-  /** Set from the world when the run starts: whether empty places may get invented residents. */
-  openWorld: z.object({ generateResidents: z.boolean() }).optional(),
-  /** Places whose residents have been settled once, however it went. They are never populated again. */
-  settled: z.array(z.string().min(1)).default([]),
-  goal: AdventureGoalSchema.optional(),
-  /**
-   * The number of the last turn of the story at the moment the goal was reached, so that the
-   * story can tell of it there. Missing: not reached yet, or reached before this was kept.
-   */
-  goalReachedTurn: z.number().int().nonnegative().optional(),
-  /** Keyed by actor id, for example "npc:<characterId>". Older runs have none. */
-  cast: z.record(PersonaSchema).default({}),
-  /**
-   * How a person seems in one scene, by scene id and then actor id, as the author wrote it for
-   * that scene. It comes before the mood on the character card. Older runs have none.
-   */
-  moods: z.record(z.string(), z.record(z.string(), z.string().max(600))).default({}),
-  narration: AdventureNarrationSchema.optional(),
-  exampleId: z.string().optional(),
-  exampleVersion: z.number().int().nonnegative().optional(),
-  geography: z
-    .object({
-      worldId: z.string().min(1),
-      name: z.string().min(1),
-      updatedAt: z.string(),
-      map: WorldMapSchema,
-    })
-    .optional(),
-  scenes: z
-    .array(
-      z.object({
-        id: z.string().min(1),
-        name: z.string(),
-        placeId: z.string().min(1),
-        mapNodeId: z.string().min(1).optional(),
-        location: z.string().min(1),
-        game: EncounterGameSchema,
-      }),
-    )
-    .min(1),
-  links: z.array(AdventureLinkSchema),
-  barriers: z.record(BarrierSchema).optional(),
-  savedScenes: z.record(EncounterGameSchema).default({}),
-  actors: z.record(ActorSchema).default({}),
-  transitions: z
-    .array(
-      z.object({
-        id: z.string().min(1),
-        linkId: z.string(),
-        from: z.string(),
-        to: z.string(),
-        stateVersion: z.number().int().nonnegative(),
-      }),
-    )
-    .default([]),
-});
+export const AdventureRunSchema = z.preprocess(
+  migrateCutsceneDocument,
+  z.object({
+    version: z.literal(1),
+    campaignId: z.string().min(1),
+    title: z.string().min(1),
+    currentSceneId: z.string().min(1),
+    /** Game time in minutes. Ways and completed cut-scenes can advance it. */
+    clockMinutes: z.number().int().nonnegative().default(INITIAL_GAME_MINUTES),
+    /**
+     * Things the player chose to keep from a free reply, by scene id. They are words the player
+     * approved, not facts the engine knows, and they change nothing in the game.
+     */
+    notes: z.record(z.string(), z.array(z.string().min(1).max(300)).max(8)).default({}),
+    /** Set from the world when the run starts: whether empty places may get invented residents. */
+    openWorld: z.object({ generateResidents: z.boolean() }).optional(),
+    /** Places whose residents have been settled once, however it went. They are never populated again. */
+    settled: z.array(z.string().min(1)).default([]),
+    goal: AdventureGoalSchema.optional(),
+    /**
+     * The number of the last turn of the story at the moment the goal was reached, so that the
+     * story can tell of it there. Missing: not reached yet, or reached before this was kept.
+     */
+    goalReachedTurn: z.number().int().nonnegative().optional(),
+    /** Keyed by actor id, for example "npc:<characterId>". Older runs have none. */
+    cast: z.record(PersonaSchema).default({}),
+    /**
+     * How a person seems in one scene, by scene id and then actor id, as the author wrote it for
+     * that scene. It comes before the mood on the character card. Older runs have none.
+     */
+    moods: z.record(z.string(), z.record(z.string(), z.string().max(600))).default({}),
+    narration: AdventureNarrationSchema.optional(),
+    exampleId: z.string().optional(),
+    exampleVersion: z.number().int().nonnegative().optional(),
+    geography: z
+      .object({
+        worldId: z.string().min(1),
+        name: z.string().min(1),
+        updatedAt: z.string(),
+        map: WorldMapSchema,
+      })
+      .optional(),
+    scenes: z
+      .array(
+        z.object({
+          id: z.string().min(1),
+          name: z.string(),
+          placeId: z.string().min(1),
+          mapNodeId: z.string().min(1).optional(),
+          location: z.string().min(1),
+          game: EncounterGameSchema,
+        }),
+      )
+      .min(1),
+    links: z.array(AdventureLinkSchema),
+    cutscenes: z.array(CutscenePlacementSchema).default([]),
+    cutsceneFilms: z.array(CutsceneFilmSchema).default([]),
+    cutscenesSeen: z.array(z.string()).default([]),
+    cutscenesPending: z.array(z.string()).default([]),
+    barriers: z.record(BarrierSchema).optional(),
+    savedScenes: z.record(EncounterGameSchema).default({}),
+    actors: z.record(ActorSchema).default({}),
+    transitions: z
+      .array(
+        z.object({
+          id: z.string().min(1),
+          linkId: z.string(),
+          from: z.string(),
+          to: z.string(),
+          stateVersion: z.number().int().nonnegative(),
+          // Older transitions only stored the way, so their time can be reconstructed from it.
+          clockMinutes: z.number().int().nonnegative().optional(),
+        }),
+      )
+      .default([]),
+  }),
+);
 export type AdventureRun = z.infer<typeof AdventureRunSchema>;
 export const AdventureTransitionSchema = z
   .object({

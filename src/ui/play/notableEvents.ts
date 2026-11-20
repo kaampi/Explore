@@ -1,4 +1,5 @@
 import { adventureBarriers, adventureCompleted, knownThings } from "../../game/AdventureEngine";
+import { pendingCutsceneArrival } from "../../game/cutscenes";
 import { playerInventory } from "../../session/playerInventory";
 import type { Session } from "../../state/StateSchema";
 
@@ -42,10 +43,16 @@ export function notableEvents(before: Session, after: Session): Notice[] {
 export function arrivalBetween(before: Session, after: Session): Arrival | null {
   const was = before.adventure;
   const now = after.adventure;
-  if (before.id !== after.id || !was || !now || was.currentSceneId === now.currentSceneId)
-    return null;
+  if (before.id !== after.id || !was || !now) return null;
+  let leftAt = was.clockMinutes;
+  if (was.currentSceneId === now.currentSceneId) {
+    const delayed = pendingCutsceneArrival(before);
+    if (!delayed || now.cutscenesPending.length) return null;
+    const travel = was.links.find(({ id }) => id === delayed.linkId)?.minutes ?? 0;
+    leftAt = (delayed.clockMinutes ?? was.clockMinutes) - travel;
+  }
   return {
     place: now.scenes.find((scene) => scene.id === now.currentSceneId)?.name ?? "",
-    minutes: Math.max(0, now.clockMinutes - was.clockMinutes),
+    minutes: Math.max(0, now.clockMinutes - leftAt),
   };
 }

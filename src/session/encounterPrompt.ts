@@ -3,7 +3,7 @@ import type { Session } from "../state/StateSchema";
 import type { EncounterGame } from "../game/EncounterSchema";
 import type { Persona } from "../game/AdventureSchema";
 import type { PublicCommand } from "../game/catalog";
-import { adventureHistoryEntry } from "../game/AdventureEngine";
+import { adventureHasClock, adventureHistoryEntry } from "../game/AdventureEngine";
 import { encounterDescription } from "../game/sceneDescription";
 import { wrapUntrustedContent } from "../context/InstructionHierarchy";
 import { estimateTokens } from "../context/tokenEstimate";
@@ -168,7 +168,12 @@ function turnSpeaker(session: Session, game: EncounterGame, turn: Turn & TurnExt
   return named ?? turn.speakerName ?? "Narrator";
 }
 
-type TurnExtras = { actionId?: string; speakerId?: string; speakerName?: string };
+type TurnExtras = {
+  actionId?: string;
+  speakerId?: string;
+  speakerName?: string;
+  cutsceneId?: string;
+};
 
 /**
  * The last few turns of this scene, oldest first. The turns for the line being answered are
@@ -184,7 +189,7 @@ function recentTurnLines(
   const sceneId = game.definition.id;
   const inScene = conversationTurns(session)
     .map((turn) => turn as Turn & TurnExtras)
-    .filter((turn) => !turn.actionSceneId || turn.actionSceneId === sceneId)
+    .filter((turn) => !turn.cutsceneId && (!turn.actionSceneId || turn.actionSceneId === sceneId))
     .filter((turn) => !excludeActionId || turn.actionId !== excludeActionId);
   return inScene.slice(-count).map((turn) => {
     return `${turnSpeaker(session, game, turn)}: ${String(turn.content ?? "")}`;
@@ -218,7 +223,7 @@ function noteLines(session: Session, limit: number): string[] {
 /** The time of day, when the adventure keeps time: the ways between places take minutes. */
 function timeLines(session: Session): string[] {
   const run = session.adventure;
-  if (!run || !run.links.some((link) => link.minutes !== undefined)) return [];
+  if (!run || !adventureHasClock(run)) return [];
   return [`Time: ${formatGameTime(run.clockMinutes)}, ${gameTimeOfDay(run.clockMinutes)}.`];
 }
 

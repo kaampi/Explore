@@ -1,3 +1,6 @@
+import type { CutsceneFilm, CutscenePlacement } from "../../cutscenes/schema";
+import { placementCards } from "../cutscenes/placementLayout";
+import "../cutscenes/cutscene-studio.css";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type {
   CampaignScene,
@@ -65,6 +68,8 @@ const LABEL_POSITIONS = [0.5, 0.4, 0.6, 0.3, 0.7];
 const ARROW_TONES = ["default", "locked", "blocks", "focused"] as const;
 
 const EMPTY_SECTIONS: StoryboardSection[] = [];
+const EMPTY_PLACEMENTS: CutscenePlacement[] = [];
+const EMPTY_FILMS: CutsceneFilm[] = [];
 
 type LinkEndpoints = { from: StoryboardCard; to: StoryboardCard };
 type LabelBox = { x: number; y: number; width: number; height: number };
@@ -127,6 +132,7 @@ export type StoryboardContextTarget = {
   sceneId?: string;
   linkId?: string;
   sectionId?: string;
+  cutsceneId?: string;
 };
 
 export function StoryboardCanvas({
@@ -144,6 +150,13 @@ export function StoryboardCanvas({
   onMoveSection,
   onResizeSection,
   onLayoutChange,
+  placements = EMPTY_PLACEMENTS,
+  films = EMPTY_FILMS,
+  factLabels,
+  goalFlags,
+  selectedCutsceneId,
+  onSelectCutscene,
+  onMoveCutscene,
   onChaptersChange,
   externalInspector = false,
   onSelectScene,
@@ -170,7 +183,18 @@ export function StoryboardCanvas({
   onToggleSection?: (id: string) => void;
   onMoveSection?: (id: string, delta: StoryboardPosition) => void;
   onResizeSection?: (id: string, size: StoryboardSectionSize) => void;
-  onLayoutChange?: (scenes: CampaignScene[], sections: StoryboardSection[]) => void;
+  onLayoutChange?: (
+    scenes: CampaignScene[],
+    sections: StoryboardSection[],
+    cutscenes: CutscenePlacement[],
+  ) => void;
+  placements?: CutscenePlacement[];
+  films?: CutsceneFilm[];
+  factLabels?: ReadonlyMap<string, string>;
+  goalFlags?: string[] | undefined;
+  selectedCutsceneId?: string;
+  onSelectCutscene?: (id: string) => void;
+  onMoveCutscene?: (id: string, position: StoryboardPosition) => void;
   links: StoryboardLink[];
   chapters: StoryboardChapter[];
   campaignName: string;
@@ -191,6 +215,7 @@ export function StoryboardCanvas({
   const [undoLayout, setUndoLayout] = useState<{
     scenes: CampaignScene[];
     sections: StoryboardSection[];
+    placements: CutscenePlacement[];
   } | null>(null);
   const fitPending = useRef(false);
   const pendingScroll = useRef<StoryboardPosition | null>(null);
@@ -204,6 +229,7 @@ export function StoryboardCanvas({
   const [drag, setDrag] = useState<{
     id: string;
     section: boolean;
+    cutscene?: true;
     origin: StoryboardPosition;
   } | null>(null);
   const [connectFrom, setConnectFrom] = useState<string | null>(null);
@@ -256,6 +282,15 @@ export function StoryboardCanvas({
     };
   }, [projectedLinks, routes]);
 
+  const wayAnchors = useMemo(
+    () => new Map([...routes].map(([id, route]) => [id, route.label])),
+    [routes],
+  );
+  const cutCards = useMemo(
+    () => placementCards(placements, cards, endpoints, wayAnchors),
+    [placements, cards, endpoints, wayAnchors],
+  );
+  const filmById = useMemo(() => new Map(films.map((film) => [film.id, film])), [films]);
   const selectedId = activeLinkId ?? selectedLinkId;
   const selectedConnection = selectedId && routes.has(selectedId) ? selectedId : null;
   const pointedLink = hoverLink && routes.has(hoverLink) ? hoverLink : null;
@@ -273,8 +308,9 @@ export function StoryboardCanvas({
       ...[...visibleScenes, ...folded].map(({ pos, width, height }) => ({ ...pos, width, height })),
       // Unfolded frames are mostly open space; only their headers cover the board.
       ...frames.map(({ pos, width }) => ({ ...pos, width, height: STORYBOARD_FRAME_HEADER })),
+      ...cutCards.map(({ pos, width, height }) => ({ ...pos, width, height })),
     ],
-    [visibleScenes, folded, frames],
+    [visibleScenes, folded, frames, cutCards],
   );
   const placedBoxes: { id: string; bounds: LabelBox }[] = [];
   const crowdedLabels = new Set<string>();
@@ -357,7 +393,7 @@ export function StoryboardCanvas({
     right = Math.max(right, x);
     bottom = Math.max(bottom, y);
   }
-  for (const { pos, width, height } of cards) {
+  for (const { pos, width, height } of [...cards, ...cutCards]) {
     include(pos);
     include({ x: pos.x + width + 8, y: pos.y + height });
   }
@@ -436,7 +472,7 @@ export function StoryboardCanvas({
     return () => board.removeEventListener("wheel", onWheel);
   }, [zoom, zoomAround]);
 
-  const hasCards = cards.length > 0;
+  const hasCards = cards.length > 0 || cutCards.length > 0;
   const fitAll = useCallback(() => {
     const board = boardRef.current;
     if (!board || !hasCards) return;
@@ -454,16 +490,40 @@ export function StoryboardCanvas({
     if (!fitPending.current) return;
     fitPending.current = false;
     fitAll();
-  }, [fitAll, scenes, sections]);
+  }, [fitAll, scenes, sections, placements]);
 
   function arrange() {
     if (!onLayoutChange || !hasCards) return;
     const layout = arrangeStoryboard(scenes, sections, links);
-    setUndoLayout({ scenes, sections });
+    const arrangedScenes = scenes.map((scene) => ({
+      ...scene,
+      position: layout.scenes.get(scene.id),
+    }));
+    const arrangedSections = sections.map((section) => ({
+      ...section,
+      position: layout.sections.get(section.id),
+    }));
+    const board = layoutStoryboard(arrangedScenes, arrangedSections);
+    const arrangedCards = [...board.visibleScenes, ...board.frames, ...board.folded];
+    const arrangedLinks = links.flatMap((link) => {
+      const from = board.endpoints.get(link.fromSceneId);
+      const to = board.endpoints.get(link.toSceneId);
+      return from && to && (from !== to || !("section" in from)) ? [{ id: link.id, from, to }] : [];
+    });
+    const anchors = new Map(
+      [...routeStoryboardLinks(arrangedCards, arrangedLinks)].map(([id, route]) => [
+        id,
+        route.label,
+      ]),
+    );
+    setUndoLayout({ scenes, sections, placements });
     fitPending.current = true;
     onLayoutChange(
-      scenes.map((scene) => ({ ...scene, position: layout.scenes.get(scene.id) })),
-      sections.map((section) => ({ ...section, position: layout.sections.get(section.id) })),
+      arrangedScenes,
+      arrangedSections,
+      placementCards(placements, arrangedCards, board.endpoints, anchors, true).map(
+        ({ placement, pos }) => ({ ...placement, position: pos }),
+      ),
     );
   }
 
@@ -474,8 +534,9 @@ export function StoryboardCanvas({
     onLayoutChange(
       restorePositions(scenes, undoLayout.scenes),
       restorePositions(sections, undoLayout.sections),
+      restorePositions(placements, undoLayout.placements),
     );
-  }, [undoLayout, onLayoutChange, scenes, sections]);
+  }, [undoLayout, onLayoutChange, scenes, sections, placements]);
 
   useEffect(() => {
     if (!undoLayout) return;
@@ -559,6 +620,17 @@ export function StoryboardCanvas({
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
   }
 
+  function startCutsceneDrag(event: React.PointerEvent, id: string, pos: StoryboardPosition) {
+    if (event.button !== 0 || !onMoveCutscene) return;
+    event.stopPropagation();
+    onSelectCutscene?.(id);
+    setSelectedLinkId(null);
+    const point = pointFromEvent(event);
+    dragOffset.current = { x: point.x - pos.x, y: point.y - pos.y };
+    setDrag({ id, section: false, cutscene: true, origin });
+    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+  }
+
   function startConnect(event: React.PointerEvent, sceneId: string) {
     if (event.button !== 0) return;
     event.stopPropagation();
@@ -598,7 +670,8 @@ export function StoryboardCanvas({
         x: coordinate(p.x - dragOffset.current.x, section?.pos.x),
         y: coordinate(p.y - dragOffset.current.y, section?.pos.y),
       };
-      if (section)
+      if (drag.cutscene) onMoveCutscene?.(drag.id, next);
+      else if (section)
         onMoveSection?.(drag.id, { x: next.x - section.pos.x, y: next.y - section.pos.y });
       else if (!drag.section) onScenesChange(setScenePosition(scenes, drag.id, next));
       return;
@@ -834,11 +907,7 @@ export function StoryboardCanvas({
         >
           +
         </button>
-        <button
-          type="button"
-          disabled={scenes.length === 0 && sections.length === 0}
-          onClick={fitAll}
-        >
+        <button type="button" disabled={!hasCards} onClick={fitAll}>
           Fit all
         </button>
         {onLayoutChange && (
@@ -868,6 +937,7 @@ export function StoryboardCanvas({
           const sceneId = element.closest<HTMLElement>("[data-scene-id]")?.dataset.sceneId;
           const linkId = element.closest<SVGElement>("[data-link-id]")?.dataset.linkId;
           const sectionId = element.closest<HTMLElement>("[data-section-id]")?.dataset.sectionId;
+          const cutsceneId = element.closest<HTMLElement>("[data-cutscene-id]")?.dataset.cutsceneId;
           onCanvasContext({
             x: event.clientX,
             y: event.clientY,
@@ -875,6 +945,7 @@ export function StoryboardCanvas({
             ...(sceneId ? { sceneId } : {}),
             ...(linkId ? { linkId } : {}),
             ...(sectionId ? { sectionId } : {}),
+            ...(cutsceneId ? { cutsceneId } : {}),
           });
         }}
         onPointerMove={onBoardPointerMove}
@@ -963,6 +1034,20 @@ export function StoryboardCanvas({
                   </g>
                 );
               })}
+              {cutCards.map(
+                ({ placement, pos, width, height, anchor }) =>
+                  anchor && (
+                    <line
+                      key={placement.id}
+                      className="storyboard-cutscene__line"
+                      aria-hidden="true"
+                      x1={anchor.x}
+                      y1={anchor.y}
+                      x2={pos.x + width / 2}
+                      y2={pos.y + height / 2}
+                    />
+                  ),
+              )}
               {draft && <path d={draft.path} className="storyboard-line storyboard-line--draft" />}
             </svg>
 
@@ -1028,6 +1113,47 @@ export function StoryboardCanvas({
                     aria-label={`Connect ${scene.name.trim() || "this scene"} to another scene`}
                   />
                 </div>
+              );
+            })}
+
+            {cutCards.map(({ placement, pos, width, height }) => {
+              const film = filmById.get(placement.filmId);
+              const title = film?.title ?? t("csMissingFilm");
+              const thumb = film?.images[0]?.thumbDataUrl;
+              const trigger = placement.trigger;
+              const atGoal =
+                trigger.kind === "facts" &&
+                goalFlags?.length === trigger.flags.length &&
+                trigger.flags.every((flag) => goalFlags.includes(flag));
+              const detail =
+                trigger.kind === "facts"
+                  ? atGoal
+                    ? t("csAtGoal")
+                    : t("csWhenFacts", {
+                        facts: trigger.flags
+                          .map((id) => factLabels?.get(id) ?? t("csUnknownFact"))
+                          .join(", "),
+                      })
+                  : t(trigger.kind === "link" ? "csValue_link" : "csValue_scene");
+              return (
+                <Button
+                  key={placement.id}
+                  variant="quiet"
+                  data-cutscene-id={placement.id}
+                  className="storyboard-cutscene"
+                  aria-pressed={selectedCutsceneId === placement.id}
+                  style={{ left: pos.x - origin.x, top: pos.y - origin.y, width, height }}
+                  onPointerDown={(event) => startCutsceneDrag(event, placement.id, pos)}
+                  onClick={() => onSelectCutscene?.(placement.id)}
+                  title={title}
+                >
+                  <span className="storyboard-cutscene__label">
+                    <span className="storyboard-cutscene__icon" aria-hidden="true" />
+                    <strong>{title}</strong>
+                  </span>
+                  {thumb && <img src={thumb} alt="" />}
+                  <small>{detail}</small>
+                </Button>
               );
             })}
 

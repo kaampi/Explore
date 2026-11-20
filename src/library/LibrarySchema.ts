@@ -1,5 +1,8 @@
 import { AdventureLinkSchema, AdventureGoalSchema } from "../game/AdventureSchema";
 import { upgradeMissingMessengerCampaign } from "../scenarios/missingMessenger";
+import { CutsceneFilmSchema, CutscenePlacementSchema } from "../game/CutsceneSchema";
+import { migrateCutsceneDocument } from "../cutscenes/schema";
+import { StoryboardPositionSchema } from "./storyboardPosition";
 import { EncounterGameSchema } from "../game/EncounterSchema";
 import { ObjectLocationSchema } from "./objectLocation";
 import { CoreEntitySnapshotSchema, CoreOriginSchema, SceneDraftSchema } from "./coreOrigin";
@@ -281,12 +284,8 @@ export type CampaignTrigger = z.infer<typeof CampaignTriggerSchema>;
 export const StoryboardLinkSchema = AdventureLinkSchema;
 export type StoryboardLink = z.infer<typeof StoryboardLinkSchema>;
 
-/** Canvas placement for a scene card on the Storyboard. Missing = not yet placed. */
-export const StoryboardPositionSchema = z.object({
-  x: z.number(),
-  y: z.number(),
-});
-export type StoryboardPosition = z.infer<typeof StoryboardPositionSchema>;
+export { CutsceneSchema, CutsceneTriggerSchema, type Cutscene } from "../game/CutsceneSchema";
+export { StoryboardPositionSchema, type StoryboardPosition } from "./storyboardPosition";
 
 const storyboardSectionFields = {
   id: z.string().min(1),
@@ -494,6 +493,9 @@ export const CampaignTemplateSchema = z.object({
   scenes: z.array(CampaignSceneSchema).default([]),
   /** The Storyboard: how this campaign's scenes connect. */
   sceneLinks: z.array(StoryboardLinkSchema).default(() => []),
+  cutscenes: z.array(CutscenePlacementSchema).default([]),
+  /** Films supplied at read time for the synchronous adventure start, or by legacy migration. */
+  cutsceneFilms: z.array(CutsceneFilmSchema).optional(),
   /** Storyboard chapter groups, for chapter-shell export to the writing tool. */
   chapters: z.array(StoryboardChapterSchema).default(() => []),
   storyboardSections: z.array(StoryboardSectionSchema).optional(),
@@ -628,7 +630,7 @@ export function parseObjectTemplate(input: unknown): ObjectTemplate {
 
 export function parseCampaignTemplate(input: unknown): CampaignTemplate {
   return CampaignTemplateSchema.parse(
-    upgradeMissingMessengerCampaign(CampaignTemplateSchema.parse(input)),
+    upgradeMissingMessengerCampaign(CampaignTemplateSchema.parse(migrateCutsceneDocument(input))),
   );
 }
 
@@ -754,12 +756,14 @@ export function newCampaignTemplate(
   },
 ): CampaignTemplate {
   const stamp = nowIso();
-  return CampaignTemplateSchema.parse({
-    ...fields,
-    id: fields.id ?? crypto.randomUUID(),
-    createdAt: stamp,
-    updatedAt: stamp,
-  });
+  return CampaignTemplateSchema.parse(
+    migrateCutsceneDocument({
+      ...fields,
+      id: fields.id ?? crypto.randomUUID(),
+      createdAt: stamp,
+      updatedAt: stamp,
+    }),
+  );
 }
 
 /** Landmarks in play: the whole realm, or leftover `placeIds` if no realm is set. */

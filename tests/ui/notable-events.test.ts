@@ -1,3 +1,4 @@
+import { cutsceneAdventure } from "../fixtures/cutscenes";
 import { describe, expect, it } from "vitest";
 import { connectedAdventureExample } from "../../src/library/playableCampaign";
 import { startPlayableCampaign } from "../../src/session/adventureStart";
@@ -8,7 +9,7 @@ import { arrivalBetween, notableEvents } from "../../src/ui/play/notableEvents";
 import { storyRows } from "../../src/ui/play/storyRows";
 import { innVisitExample } from "../../src/scenarios/innVisit";
 import type { EncounterAction } from "../../src/game/EncounterSchema";
-import type { Session } from "../../src/state/StateSchema";
+import { parseSession, type Session } from "../../src/state/StateSchema";
 
 function start(): Session {
   const built = connectedAdventureExample();
@@ -234,5 +235,28 @@ describe("the goal in the story", () => {
       key: "goal",
       title: before.adventure!.goal!.title,
     });
+  });
+});
+
+it("reconstructs a held arrival when a travel cut-scene is resumed from a saved game", () => {
+  const { campaign, start, out, lead } = cutsceneAdventure();
+  campaign.storyFlags.push(lead);
+  const engine = new StateEngine(start(), new EventLog());
+  engine.finishCutscene("intro");
+  engine.transitionAdventure({
+    id: "travel",
+    linkId: out.id,
+    expectedStateVersion: engine.getSession().stateVersion,
+  });
+  engine.finishCutscene("road");
+  const before = parseSession(JSON.parse(JSON.stringify(engine.getSession())));
+  const resumed = new StateEngine(structuredClone(before), new EventLog());
+  resumed.finishCutscene("bells");
+  resumed.finishCutscene("arrival");
+  expect(arrivalBetween(before, resumed.getSession())).toBeNull();
+  resumed.finishCutscene("wind");
+  expect(arrivalBetween(before, resumed.getSession())).toEqual({
+    place: "A note at the watchtower",
+    minutes: 35,
   });
 });

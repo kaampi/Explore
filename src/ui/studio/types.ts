@@ -11,4 +11,5 @@ export type StudioView =
   | "objects"
   | "voices"
   | "stories"
+  | "cutscenes"
   | "rulesets";
