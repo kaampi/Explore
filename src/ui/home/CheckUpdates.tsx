@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { isTauri } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { UPDATE_DOWNLOADS, UpdateProvider, useUpdates } from "./UpdateProvider";
+import { UPDATE_DOWNLOADS, UpdateProvider, latestBuildUrl, useUpdates } from "./UpdateProvider";
 
 export function CheckUpdates() {
   const updates = useUpdates();
@@ -16,13 +16,17 @@ export function CheckUpdates() {
 function UpdateButton() {
   const updates = useUpdates()!,
     [openError, setOpenError] = useState(""),
-    [copyStatus, setCopyStatus] = useState("");
+    [copyStatus, setCopyStatus] = useState(""),
+    [downloadUrl, setDownloadUrl] = useState(UPDATE_DOWNLOADS);
   async function openDownload() {
     setOpenError("");
     setCopyStatus("");
     try {
-      if (isTauri()) await openUrl(UPDATE_DOWNLOADS);
-      else window.open(UPDATE_DOWNLOADS, "_blank", "noopener,noreferrer");
+      // The page of the newest build, with the installer on it, not the list of all builds.
+      const url = await latestBuildUrl();
+      setDownloadUrl(url);
+      if (isTauri()) await openUrl(url);
+      else window.open(url, "_blank", "noopener,noreferrer");
     } catch {
       setOpenError(
         "Could not open your browser. Copy the download address below and open it in your browser.",
@@ -31,7 +35,7 @@ function UpdateButton() {
   }
   async function copyDownload() {
     try {
-      await navigator.clipboard.writeText(UPDATE_DOWNLOADS);
+      await navigator.clipboard.writeText(downloadUrl);
       setCopyStatus("Download link copied.");
     } catch {
       setCopyStatus("Select the address above and copy it manually.");
@@ -61,11 +65,7 @@ function UpdateButton() {
         <div className="sb-update-check__fallback">
           <label>
             Download address
-            <input
-              readOnly
-              value={UPDATE_DOWNLOADS}
-              onFocus={(event) => event.currentTarget.select()}
-            />
+            <input readOnly value={downloadUrl} onFocus={(event) => event.currentTarget.select()} />
           </label>
           <button type="button" className="sb-button" onClick={() => void copyDownload()}>
             Copy download link

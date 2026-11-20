@@ -11,6 +11,31 @@ import {
 export const UPDATE_INTERVAL = 30 * 60 * 1000;
 export const UPDATE_DOWNLOADS =
   "https://github.com/kaampi/Explore/actions/workflows/desktop-build.yml";
+const LATEST_BUILD_API =
+  "https://api.github.com/repos/kaampi/Explore/actions/workflows/desktop-build.yml/runs?status=success&branch=main&per_page=1";
+const RUN_PAGE = "https://github.com/kaampi/Explore/actions/runs/";
+/**
+ * The page of the newest finished build, where the installer is listed under Artifacts. When GitHub
+ * cannot be asked, or answers with something unexpected, the list of builds is the next best page.
+ */
+export async function latestBuildUrl(): Promise<string> {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), 6_000);
+  try {
+    const response = await fetch(LATEST_BUILD_API, {
+      headers: { Accept: "application/vnd.github+json" },
+      signal: controller.signal,
+    });
+    if (!response.ok) return UPDATE_DOWNLOADS;
+    const body = (await response.json()) as { workflow_runs?: { html_url?: unknown }[] };
+    const url = body.workflow_runs?.[0]?.html_url;
+    return typeof url === "string" && url.startsWith(RUN_PAGE) ? url : UPDATE_DOWNLOADS;
+  } catch {
+    return UPDATE_DOWNLOADS;
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
 const revision = import.meta.env.VITE_EXPLORE_REVISION as string | undefined;
 export const UPDATE_CACHE_KEY = `explore-update-check:${revision ?? "unknown"}`;
 type Snapshot = { available: boolean; checking: boolean; message: string; lastChecked: number };
