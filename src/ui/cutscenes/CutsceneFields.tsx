@@ -305,6 +305,9 @@ export function CutsceneFields({
             max={30}
             onChange={(seconds) => updateExit({ seconds })}
           />
+          {image.out.effect === "melt" && (
+            <small className="cutscene-field__hint">{t("csImageMeltHint")}</small>
+          )}
           {(image.out.effect === "melt" || image.out.effect === "signal-glitch") && (
             <Num
               label={t("csEffectStrength")}
