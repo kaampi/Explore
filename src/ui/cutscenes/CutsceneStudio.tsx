@@ -9,14 +9,15 @@ import {
 } from "react";
 import { CutsceneFilmSchema, type CutsceneBeat, type CutsceneFilm } from "../../cutscenes/schema";
 import { planPlayback } from "../../cutscenes/playback";
+import type { TimelineClip } from "../../cutscenes/stepTimeline";
 import {
   addAudioTrack,
   loadAudioBlob,
   loadAudioLibrary,
   type AudioTrack,
 } from "../audio/audioStorage";
-import { Button, IconButton } from "../components/Button";
-import { MenuButton, useContextMenu, type MenuItem } from "../components/Menu";
+import { Button } from "../components/Button";
+import { useContextMenu, type MenuItem } from "../components/Menu";
 import { Modal } from "../components/Modal";
 import { useTranslate } from "../i18n/LanguageProvider";
 import { sceneImagesFromFile } from "../studio/portrait";
@@ -24,7 +25,6 @@ import { PRESET_THEMES, type PlayTheme } from "../themes/theme";
 import { CutsceneFileMenu, CutsceneLibraryMenu } from "./CutsceneFileMenu";
 import { CutscenePlayer } from "./CutscenePlayer";
 import {
-  channels,
   channelLabels,
   CutsceneFields,
   labelFor,
@@ -81,49 +81,6 @@ function useNarrowStudio() {
     return () => media.removeEventListener("change", update);
   }, []);
   return narrow;
-}
-
-function StepHeading({
-  label,
-  selected,
-  items,
-  onDragStart,
-  onDrop,
-  transition,
-}: {
-  label: string;
-  selected: boolean;
-  items: MenuItem[];
-  onDragStart: () => void;
-  onDrop: () => void;
-  transition: ReactNode;
-}) {
-  const context = useContextMenu(label, items);
-  return (
-    <th
-      scope="col"
-      data-selected={selected}
-      {...context.bind}
-      draggable
-      onDragStart={(event) => {
-        event.dataTransfer.setData("text/plain", label);
-        event.dataTransfer.effectAllowed = "move";
-        onDragStart();
-      }}
-      onDragOver={(event) => event.preventDefault()}
-      onDrop={(event) => {
-        event.preventDefault();
-        onDrop();
-      }}
-    >
-      <div className="cutscene-studio__step-head">
-        {label}
-        <MenuButton label={label} items={items} size="compact" />
-      </div>
-      {transition}
-      {context.menu}
-    </th>
-  );
 }
 
 const transitionEffects = ["cut", "crossfade", "through-black"] as const;
@@ -241,8 +198,6 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
   const [panelOpen, setPanelOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [, updateBaseline] = useState(0);
-  const dragStep = useRef<string>();
-  const cells = useRef(new Map<string, HTMLElement>());
   const narrow = useNarrowStudio();
   const dirtyHost = useContext(DirtyContext);
   const dirty = draft !== saved.current;
@@ -446,70 +401,30 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
     onSave(parsed.data);
   }
 
-  function cellFor(step: CutsceneBeat, index: number, channel: Channel) {
-    const key = `${step.id}:${channel}`;
-    const picture =
-      step.image.source.kind === "set"
-        ? draft.images.find(
-            ({ id }) => step.image.source.kind === "set" && id === step.image.source.imageId,
-          )
-        : undefined;
-    const selected = beat.id === step.id && selection.channel === channel;
-    const summary = {
-      image: picture ? (
-        <img className="cutscene-studio__cell-thumb" src={picture.thumbDataUrl} alt="" />
-      ) : step.image.source.kind === "set" ? (
-        t("csMissingImage")
-      ) : (
-        t(labelFor(step.image.source.kind))
-      ),
-      sound:
-        (step.sound.trackId && trackNames.get(step.sound.trackId)) ||
-        t(labelFor(step.sound.action)),
-      text: step.text?.text || t("csValue_none"),
-      advance: step.advance.kind === "after" ? `${step.advance.seconds} s` : t("csValue_click"),
-    }[channel];
-    return (
-      <div
-        ref={(node) => {
-          if (node) cells.current.set(key, node);
-          else cells.current.delete(key);
-        }}
-      >
-        <Button
-          variant="quiet"
-          className="cutscene-studio__cell"
-          aria-label={`${t("csStep", { number: index + 1 })}, ${t(channelLabels[channel])}`}
-          aria-pressed={selected}
-          tabIndex={narrow || selected ? 0 : -1}
-          onClick={() => {
-            setTransitionId(undefined);
-            setSelection({ beatId: step.id, channel });
-            setPanelOpen(true);
-          }}
-          onKeyDown={(event) => {
-            const row = channels.indexOf(channel);
-            const moves: Record<string, [number, number]> = {
-              ArrowLeft: [-1, 0],
-              ArrowRight: [1, 0],
-              ArrowUp: [0, -1],
-              ArrowDown: [0, 1],
-            };
-            const move = moves[event.key];
-            if (!move) return;
-            event.preventDefault();
-            const column =
-              draft.beats[Math.min(draft.beats.length - 1, Math.max(0, index + move[0]))]!;
-            const next = channels[Math.min(channels.length - 1, Math.max(0, row + move[1]))]!;
-            setTransitionId(undefined);
-            setSelection({ beatId: column.id, channel: next });
-            cells.current.get(`${column.id}:${next}`)?.querySelector("button")?.focus();
-          }}
-        >
-          <span>{summary}</span>
-        </Button>
-      </div>
-    );
+  function timelineContent({ lane, source }: TimelineClip) {
+    if (lane === "image") {
+      const layer = timing.image[source];
+      const picture = draft.images.find(({ id }) => id === layer?.imageId);
+      return picture
+        ? { label: picture.alt || t("csImage"), thumb: picture.thumbDataUrl }
+        : { label: t("csMissingImage") };
+    }
+    if (lane === "text") return { label: timing.text[source]?.cell.text ?? t("csText") };
+    const sound = (source === "previous" ? timing.sound.previousMusic : timing.sound.cue)?.cell;
+    return {
+      label:
+        (sound?.trackId && trackNames.get(sound.trackId)) ||
+        sound?.caption ||
+        t(labelFor(sound?.action ?? "none")),
+    };
+  }
+
+  function selectStep(number: number) {
+    const next = draft.beats[number - 1];
+    if (!next || next.id === beat.id) return;
+    setTransitionId(undefined);
+    setSelection({ ...selection, beatId: next.id });
+    setPlaying(undefined);
   }
 
   function updateTransition(id: string, change: Partial<CutsceneBeat["transition"]>) {
@@ -694,82 +609,20 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
 
         {!narrow && inspector}
       </div>
-      <div className="cutscene-studio__timeline">
-        {narrow ? (
-          <ol className="cutscene-studio__step-list">
-            {draft.beats.map((item, index) => (
-              <li key={item.id}>
-                <div className="cutscene-studio__step-head">
-                  {t("csStep", { number: index + 1 })}
-                  <MenuButton label={t("csStep", { number: index + 1 })} items={itemsFor(index)} />
-                </div>
-                <div className="cutscene-studio__step-cells">
-                  {channels.map((channel) => (
-                    <div key={channel}>
-                      <small>{t(channelLabels[channel])}</small>
-                      {cellFor(item, index, channel)}
-                    </div>
-                  ))}
-                </div>
-                {boundaryFor(item, index)}
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">{t("csChannel")}</th>
-                {draft.beats.map((item, index) => (
-                  <StepHeading
-                    key={item.id}
-                    label={t("csStep", { number: index + 1 })}
-                    items={itemsFor(index)}
-                    selected={item.id === beat.id}
-                    transition={boundaryFor(item, index)}
-                    onDragStart={() => {
-                      dragStep.current = item.id;
-                    }}
-                    onDrop={() => {
-                      moveStep(
-                        draft.beats.findIndex(({ id }) => id === dragStep.current),
-                        index,
-                      );
-                      dragStep.current = undefined;
-                    }}
-                  />
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {channels.map((channel) => (
-                <tr key={channel}>
-                  <th scope="row" data-selected={channel === selection.channel}>
-                    {t(channelLabels[channel])}
-                  </th>
-                  {draft.beats.map((item, index) => (
-                    <td key={item.id}>{cellFor(item, index, channel)}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-        <IconButton
-          label={t("csAddStep")}
-          icon={<span aria-hidden="true">+</span>}
-          disabled={draft.beats.length >= 60}
-          onClick={() => addStep(beatIndex)}
-        />
-      </div>
       <StepTimeline
         step={timing}
         number={beatIndex + 1}
-        selected={selection.channel}
-        onSelect={(channel) => {
+        count={draft.beats.length}
+        items={itemsFor(beatIndex)}
+        transitionControl={boundaryFor(beat, beatIndex)}
+        onStep={selectStep}
+        onAdd={() => addStep(beatIndex)}
+        selected={editingTransition ? undefined : selection.channel}
+        contentFor={timelineContent}
+        onSelect={(channel, openInspector = true) => {
           setTransitionId(undefined);
           setSelection({ beatId: beat.id, channel });
-          setPanelOpen(true);
+          if (openInspector) setPanelOpen(true);
         }}
       />
       {narrow && panelOpen && (
