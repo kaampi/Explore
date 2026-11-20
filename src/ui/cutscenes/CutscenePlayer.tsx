@@ -17,7 +17,6 @@ import { useTranslate } from "../i18n/LanguageProvider";
 import {
   Frame,
   NamePlate,
-  NoteCard,
   OrnamentProvider,
   ornamentVars,
   useSimpleFrames,
@@ -25,7 +24,7 @@ import {
 import { playThemeStyle } from "../themes/ThemeProvider";
 import type { PlayTheme } from "../themes/theme";
 import { MeltImage, SignalInterference } from "./ImageEffects";
-import { CutsceneTextContent } from "./TextEffects";
+import { CutsceneTextContent, CutsceneTextLayout } from "./TextEffects";
 import { useCutsceneSound, type CutsceneSound } from "./useCutsceneSound";
 import "./cutscenes.css";
 
@@ -186,21 +185,14 @@ function SceneVisual({
         );
       })}
       {text && (
-        <div className={`cutscene-reel__text cutscene-reel__text--${text.position}`}>
-          <div
-            className={`cutscene-reel__copy cutscene-reel__copy--${text.style} cutscene-reel__copy--size-${text.size} cutscene-reel__copy--font-${text.font}${picture || oldPicture ? " cutscene-reel__copy--over-image" : ""}`}
-            style={{ ...textStyle, textAlign: text.align }}
-            aria-hidden="true"
-          >
-            {text.style === "title" ? (
-              <NamePlate as="p">{words}</NamePlate>
-            ) : text.style === "letter" ? (
-              <NoteCard>{words}</NoteCard>
-            ) : (
-              <p>{words}</p>
-            )}
-          </div>
-        </div>
+        <CutsceneTextLayout
+          text={text}
+          overImage={Boolean(picture || oldPicture)}
+          style={textStyle}
+          hidden
+        >
+          {words}
+        </CutsceneTextLayout>
       )}
     </>
   );
