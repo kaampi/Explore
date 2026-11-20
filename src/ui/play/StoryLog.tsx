@@ -198,7 +198,7 @@ export function StoryLog({
                 className="play-row play-row--cutscene"
                 onContextMenu={menu}
               >
-                <Divider>
+                <Divider className="play-row play-row--divider">
                   <h3>{row.title}</h3>
                 </Divider>
                 {row.text.split("\n\n").map((paragraph, index) => (

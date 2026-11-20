@@ -113,7 +113,10 @@ it("replaces the composer, reads paragraphs with the keyboard and keeps the whol
     expect(document.activeElement?.id).toBe("play-do");
     expect(ui.host.querySelector("[data-scene-image]")).toBe(leftImage);
     const row = ui.host.querySelector<HTMLElement>(".play-row--cutscene")!;
-    expect(row.querySelector(".orn-divider")?.textContent).toContain("A morning in the village");
+    expect(row.firstElementChild?.matches(".orn-divider.play-row.play-row--divider")).toBe(true);
+    expect(row.firstElementChild?.querySelector("h3")?.textContent).toBe(
+      "A morning in the village",
+    );
     expect(Array.from(row.querySelectorAll("p")).map((p) => p.textContent)).toEqual([
       "The roofs are still wet.",
       "A light comes on by the well.",
@@ -161,11 +164,23 @@ it("keeps the journal openable and delays arrival until the entire cut-scene que
     );
     expect(ui.host.querySelector(".play-arrival")?.textContent).toContain("35 min");
     const log = ui.host.querySelector('[role="log"]')!;
-    expect(log.querySelector("time")?.textContent).toBe("Day 1 · 08:45");
-    expect(log.textContent!.indexOf("Mist gathers")).toBeLessThan(
-      log.textContent!.indexOf("Grass bends"),
-    );
+    const travel = log.querySelector(".play-row--cutscene")!;
+    const arrival = log.querySelector(":scope > .play-row--divider")!;
+    expect(travel.querySelector("h3")?.textContent).toBe("The road");
+    expect(travel.nextElementSibling).toBe(arrival);
+    expect(arrival.querySelector("time")?.textContent).toBe("Day 1 · 08:45");
+    expect(arrival.nextElementSibling?.querySelector("h3")?.textContent).toBe("The bells");
     expect(document.activeElement?.id).toBe("play-do");
+    await ui.click(ui.button("Earlier events"));
+    const earlierRows = Array.from(log.children);
+    const earlierTravel = earlierRows.findIndex(
+      (row) => row.querySelector("h3")?.textContent === "The road",
+    );
+    expect(earlierTravel).toBeGreaterThan(0);
+    expect(earlierRows[earlierTravel + 1]?.textContent).toContain("A note at the watchtower");
+    expect(
+      earlierRows.filter((row) => row.querySelector("h3")?.textContent === "The road"),
+    ).toHaveLength(1);
     await ui.click(ui.button("See everything in the journal"));
     expect(seen()).toEqual([
       "A morning in the village",

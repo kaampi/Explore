@@ -126,8 +126,8 @@
 .orn-divider[data-orn-set="forged"].play-row .orn-divider__mark {
   display: none;
 }
-.orn-divider[data-orn-set="forged"].play-row > span::before,
-.orn-divider[data-orn-set="forged"].play-row > span::after {
+.orn-divider[data-orn-set="forged"].play-row > :is(span, h3)::before,
+.orn-divider[data-orn-set="forged"].play-row > :is(span, h3)::after {
   content: "◆" / "";
   margin-inline: 0.6em;
   font-size: 0.65em;

@@ -1178,8 +1178,7 @@
   margin-inline: auto;
 }
 .play-cutscene__content h2,
-.play-cutscene__text,
-.play-row--cutscene h3 {
+.play-cutscene__text {
   margin: 0;
 }
 .play-cutscene__image {
@@ -1197,6 +1196,10 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+}
+.play-row--cutscene h3 {
+  margin: 0;
+  font: inherit;
 }
 .play-row--cutscene > p {
   margin-top: var(--space-3);
