@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type {
   CampaignScene,
   StoryboardChapter,
@@ -23,8 +23,29 @@ import {
   setSceneChapter,
   unassignChapter,
 } from "@library/storyboardChapters";
+import { Button } from "../components/Button";
+import { useTranslate } from "../i18n/LanguageProvider";
+import { arrangeStoryboard } from "./storyboardArrange";
 import { downloadJson } from "./studioShared";
-import { layoutStoryboard, type SectionCard, type StoryboardCard } from "./storyboardLayout";
+import {
+  ceilStoryboardCoordinate,
+  snapStoryboardCoordinate,
+  STORYBOARD_GRID_SIZE,
+} from "./storyboardGrid";
+import {
+  layoutStoryboard,
+  STORYBOARD_FRAME_HEADER,
+  type SectionCard,
+  type StoryboardCard,
+} from "./storyboardLayout";
+import {
+  routeMovingStoryboardLinks,
+  routeStoryboardDraft,
+  routeStoryboardLinks,
+  storyboardLinkBounds,
+  storyboardLinkPoint,
+  type LinkSides,
+} from "./storyboardRouting";
 
 /**
  * Storyboard — a free-canvas map of how this campaign's scenes connect,
@@ -39,36 +60,64 @@ const MIN_ZOOM = 0.05;
 const MAX_ZOOM = 3;
 const ZOOM_STEP = 1.25;
 const VIEW_PADDING = 24;
-const CHAPTER_COLORS = ["#4fb0a5", "#6fa8dc", "#b08bc9", "#c98a3b", "#d9707a", "#8bc98a"];
+const ARRANGE_UNDO_MS = 10_000;
+const LABEL_POSITIONS = [0.5, 0.4, 0.6, 0.3, 0.7];
+const ARROW_TONES = ["default", "locked", "blocks", "focused"] as const;
 
-function chapterColor(index: number): string {
-  return CHAPTER_COLORS[index % CHAPTER_COLORS.length]!;
+const EMPTY_SECTIONS: StoryboardSection[] = [];
+
+type LinkEndpoints = { from: StoryboardCard; to: StoryboardCard };
+type LabelBox = { x: number; y: number; width: number; height: number };
+
+function sameCard(a: StoryboardCard, b: StoryboardCard): boolean {
+  const sameId =
+    "scene" in a
+      ? "scene" in b && a.scene.id === b.scene.id
+      : "section" in b && a.section.id === b.section.id;
+  return (
+    sameId &&
+    a.pos.x === b.pos.x &&
+    a.pos.y === b.pos.y &&
+    a.width === b.width &&
+    a.height === b.height
+  );
 }
 
-function port(card: StoryboardCard, outgoing: boolean, fraction = 0.5): StoryboardPosition {
-  return { x: card.pos.x + (outgoing ? card.width : 0), y: card.pos.y + card.height * fraction };
+function sameLabelBoxes(a: Map<string, LabelBox>, b: Map<string, LabelBox>): boolean {
+  return (
+    a.size === b.size &&
+    [...a].every(([id, box]) => {
+      const next = b.get(id);
+      return (
+        next &&
+        box.x === next.x &&
+        box.y === next.y &&
+        box.width === next.width &&
+        box.height === next.height
+      );
+    })
+  );
 }
 
-function curveControls(
-  a: StoryboardPosition,
-  b: StoryboardPosition,
-): [StoryboardPosition, StoryboardPosition] {
-  if (b.x <= a.x) {
-    return [
-      { x: a.x + 60, y: a.y + 180 },
-      { x: Math.max(5, b.x - 30), y: b.y + 180 },
-    ];
-  }
-  const dx = Math.max(40, Math.abs(b.x - a.x) / 2);
-  return [
-    { x: a.x + dx, y: a.y },
-    { x: b.x - dx, y: b.y },
-  ];
+function overlap(a: LabelBox, b: LabelBox): number {
+  const width = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x);
+  const height = Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
+  return Math.max(0, width) * Math.max(0, height);
 }
 
-function bezierPath(a: StoryboardPosition, b: StoryboardPosition): string {
-  const [start, end] = curveControls(a, b);
-  return `M${a.x},${a.y} C${start.x},${start.y} ${end.x},${end.y} ${b.x},${b.y}`;
+function restorePositions<T extends { id: string; position?: StoryboardPosition | undefined }>(
+  items: T[],
+  previous: T[],
+): T[] {
+  const byId = new Map(previous.map((item) => [item.id, item]));
+  return items.map((item) => {
+    const old = byId.get(item.id);
+    if (!old) return item;
+    if ("position" in old) return { ...item, position: old.position };
+    const restored = { ...item };
+    delete restored.position;
+    return restored;
+  });
 }
 
 export type StoryboardContextTarget = {
@@ -87,13 +136,14 @@ export function StoryboardCanvas({
   campaignName,
   onScenesChange,
   onLinksChange,
-  sections = [],
+  sections = EMPTY_SECTIONS,
   selectedSectionId,
   markedSceneIds,
   onSelectSection,
   onToggleSection,
   onMoveSection,
   onResizeSection,
+  onLayoutChange,
   onChaptersChange,
   externalInspector = false,
   onSelectScene,
@@ -120,6 +170,7 @@ export function StoryboardCanvas({
   onToggleSection?: (id: string) => void;
   onMoveSection?: (id: string, delta: StoryboardPosition) => void;
   onResizeSection?: (id: string, size: StoryboardSectionSize) => void;
+  onLayoutChange?: (scenes: CampaignScene[], sections: StoryboardSection[]) => void;
   links: StoryboardLink[];
   chapters: StoryboardChapter[];
   campaignName: string;
@@ -127,9 +178,21 @@ export function StoryboardCanvas({
   onLinksChange: (links: StoryboardLink[]) => void;
   onChaptersChange: (chapters: StoryboardChapter[]) => void;
 }) {
+  const t = useTranslate();
   const boardRef = useRef<HTMLDivElement>(null);
+  const labelsRef = useRef<SVGSVGElement>(null);
+  const [labelBoxes, setLabelBoxes] = useState(() => new Map<string, LabelBox>());
+  const previousRouting = useRef<{
+    sides: Map<string, LinkSides>;
+    endpoints: Map<string, LinkEndpoints>;
+  } | null>(null);
   const arrowId = useId();
   const [zoom, setZoom] = useState(1);
+  const [undoLayout, setUndoLayout] = useState<{
+    scenes: CampaignScene[];
+    sections: StoryboardSection[];
+  } | null>(null);
+  const fitPending = useRef(false);
   const pendingScroll = useRef<StoryboardPosition | null>(null);
   const dragOffset = useRef({ x: 0, y: 0 });
   const resizing = useRef<{
@@ -146,48 +209,143 @@ export function StoryboardCanvas({
   const [connectFrom, setConnectFrom] = useState<string | null>(null);
   const [draftPoint, setDraftPoint] = useState<StoryboardPosition | null>(null);
   const [hoverTarget, setHoverTarget] = useState<string | null>(null);
+  const [hoverScene, setHoverScene] = useState<string | null>(null);
+  const [keyboardScene, setKeyboardScene] = useState<string | null>(null);
+  const [hoverLink, setHoverLink] = useState<string | null>(null);
   const [selectedLinkId, setSelectedLinkState] = useState<string | null>(null);
   function setSelectedLinkId(id: string | null) {
     setSelectedLinkState(id);
     onSelectLink?.(id);
   }
 
-  const { visibleScenes, frames, folded, endpoints, sceneCards } = layoutStoryboard(
-    scenes,
-    sections,
+  const { visibleScenes, frames, folded, endpoints, sceneCards } = useMemo(
+    () => layoutStoryboard(scenes, sections),
+    [scenes, sections],
   );
-  const sectionCards = [...frames, ...folded];
+  const sectionCards = useMemo(() => [...frames, ...folded], [frames, folded]);
+  const cards = useMemo(() => [...visibleScenes, ...sectionCards], [visibleScenes, sectionCards]);
   const sceneLabel = (id: string) => sceneCards.get(id)?.scene.name.trim() || "Untitled scene";
-  const outgoing = new Map<StoryboardCard, number>();
-  const incoming = new Map<StoryboardCard, number>();
-  const projectedLinks = links.flatMap((link) => {
-    const from = endpoints.get(link.fromSceneId);
-    const to = endpoints.get(link.toSceneId);
-    if (!from || !to || (from === to && "section" in from)) return [];
-    outgoing.set(from, (outgoing.get(from) ?? 0) + 1);
-    incoming.set(to, (incoming.get(to) ?? 0) + 1);
-    return [{ link, from, to }];
+  const { projectedLinks, incoming, outgoing } = useMemo(() => {
+    const outgoing = new Map<StoryboardCard, number>();
+    const incoming = new Map<StoryboardCard, number>();
+    const projectedLinks = links.flatMap((link) => {
+      const from = endpoints.get(link.fromSceneId);
+      const to = endpoints.get(link.toSceneId);
+      if (!from || !to || (from === to && "section" in from)) return [];
+      outgoing.set(from, (outgoing.get(from) ?? 0) + 1);
+      incoming.set(to, (incoming.get(to) ?? 0) + 1);
+      return [{ id: link.id, link, from, to }];
+    });
+    return { projectedLinks, incoming, outgoing };
+  }, [endpoints, links]);
+  const routes = useMemo(() => {
+    const previous = previousRouting.current;
+    if (!drag || !previous) return routeStoryboardLinks(cards, projectedLinks);
+    const moved = new Set<StoryboardCard>();
+    for (const { id, from, to } of projectedLinks) {
+      const old = previous.endpoints.get(id);
+      if (old && !sameCard(from, old.from)) moved.add(from);
+      if (old && !sameCard(to, old.to)) moved.add(to);
+    }
+    return routeMovingStoryboardLinks(cards, projectedLinks, previous.sides, moved);
+  }, [cards, drag, projectedLinks]);
+  useLayoutEffect(() => {
+    previousRouting.current = {
+      sides: new Map([...routes].map(([id, route]) => [id, route.sides])),
+      endpoints: new Map(projectedLinks.map(({ id, from, to }) => [id, { from, to }])),
+    };
+  }, [projectedLinks, routes]);
+
+  const selectedId = activeLinkId ?? selectedLinkId;
+  const selectedConnection = selectedId && routes.has(selectedId) ? selectedId : null;
+  const pointedLink = hoverLink && routes.has(hoverLink) ? hoverLink : null;
+  const sceneFocus = [hoverScene, keyboardScene].find((id) => {
+    const card = id ? endpoints.get(id) : undefined;
+    return card && "scene" in card;
   });
-  const usedOutgoing = new Map<StoryboardCard, number>();
-  const usedIncoming = new Map<StoryboardCard, number>();
-  function linkPort(card: StoryboardCard, out: boolean) {
-    if ("scene" in card) return port(card, out);
-    const used = out ? usedOutgoing : usedIncoming;
-    const index = (used.get(card) ?? 0) + 1;
-    used.set(card, index);
-    return port(card, out, 0.16 + (0.68 * index) / ((out ? outgoing : incoming).get(card)! + 1));
-  }
-  const drawnLinks = projectedLinks.map(({ link, from, to }) => {
-    const a = linkPort(from, true);
-    const b = linkPort(to, false);
-    const topCard = Math.min(from.pos.y, to.pos.y);
-    const aboveCards = topCard < 0 ? topCard - 12 : Math.max(12, topCard - 12);
-    const labelY =
-      externalInspector && b.x > a.x ? aboveCards : (a.y + b.y) / 2 + (b.x <= a.x ? 125 : 0) - 8;
+  const focusedLink = pointedLink ?? (sceneFocus ? null : selectedConnection);
+  const selectedScene = selectedSceneId && endpoints.has(selectedSceneId) ? selectedSceneId : null;
+  const focusedScene = focusedLink ? null : (sceneFocus ?? selectedScene);
+  const revealedLabel = pointedLink ?? selectedConnection;
+  const hasFocus = Boolean(focusedLink || focusedScene);
+  const labelObstacles = useMemo(
+    () => [
+      ...[...visibleScenes, ...folded].map(({ pos, width, height }) => ({ ...pos, width, height })),
+      // Unfolded frames are mostly open space; only their headers cover the board.
+      ...frames.map(({ pos, width }) => ({ ...pos, width, height: STORYBOARD_FRAME_HEADER })),
+    ],
+    [visibleScenes, folded, frames],
+  );
+  const placedBoxes: { id: string; bounds: LabelBox }[] = [];
+  const crowdedLabels = new Set<string>();
+  const drawnLinks = projectedLinks.map(({ id, link, from, to }) => {
+    const route = routes.get(id)!;
     const endpointNames = `${sceneLabel(link.fromSceneId)} → ${sceneLabel(link.toSceneId)}`;
-    const label = link.label.trim() || ("section" in from || "section" in to ? endpointNames : "");
-    return { link, a, b, labelY, label, endpointNames };
+    const locked = link.requiresFlags.length > 0 || Boolean(link.requiresOpenBarriers?.length);
+    const fallbackLabel = "section" in from || "section" in to ? endpointNames : "";
+    const label = link.label.trim() || (locked ? t("spLocked") : fallbackLabel);
+    const box = label ? labelBoxes.get(label) : undefined;
+    const focused = focusedLink
+      ? id === focusedLink
+      : focusedScene === link.fromSceneId || focusedScene === link.toSceneId;
+    const dimmed = hasFocus && !focused;
+    let point = route.label;
+    if (box) {
+      const candidates = LABEL_POSITIONS.map((parameter) => {
+        const pos = parameter === 0.5 ? route.label : storyboardLinkPoint(route, parameter);
+        const bounds = { ...box, x: box.x + pos.x, y: box.y + pos.y };
+        const cardOverlap = labelObstacles.reduce((sum, card) => sum + overlap(bounds, card), 0);
+        const area = placedBoxes.reduce(
+          (sum, other) => sum + overlap(bounds, other.bounds),
+          cardOverlap,
+        );
+        return { pos, bounds, area };
+      });
+      // Ties keep the position nearest the center, including t = 0.5 if clear.
+      const best = candidates.reduce((a, b) => (b.area < a.area ? b : a));
+      point = best.pos;
+      if (best.area) {
+        crowdedLabels.add(id);
+        for (const other of placedBoxes) {
+          if (overlap(best.bounds, other.bounds)) crowdedLabels.add(other.id);
+        }
+      }
+      placedBoxes.push({ id, bounds: best.bounds });
+    }
+    return { link, route, label, point, box, endpointNames, locked, focused, dimmed };
   });
+
+  useLayoutEffect(() => {
+    const svg = labelsRef.current;
+    if (!svg) return;
+    function measureLabels() {
+      if (!svg?.isConnected) return;
+      const padding = parseFloat(getComputedStyle(svg).getPropertyValue("--space-1")) || 0;
+      const measured = new Map<string, LabelBox>();
+      for (const text of Array.from(
+        svg.querySelectorAll<SVGTextElement>("[data-storyboard-label]"),
+      )) {
+        const label = text.textContent;
+        if (!label || measured.has(label) || typeof text.getBBox !== "function") continue;
+        const { x, y, width, height } = text.getBBox();
+        measured.set(label, {
+          x: x - padding,
+          y: y - padding,
+          width: width + 2 * padding,
+          height: height + 2 * padding,
+        });
+      }
+      setLabelBoxes((current) => (sameLabelBoxes(current, measured) ? current : measured));
+    }
+    measureLabels();
+    document.fonts?.addEventListener("loadingdone", measureLabels);
+    return () => document.fonts?.removeEventListener("loadingdone", measureLabels);
+  }, [links, sceneCards, t]);
+
+  const activeConnectFrom = connectionFromSceneId ?? connectFrom;
+  const draftSource = activeConnectFrom ? endpoints.get(activeConnectFrom) : undefined;
+  const draft = draftSource ? routeStoryboardDraft(draftSource, draftPoint ?? undefined) : null;
+  const draftBounds = draft ? storyboardLinkBounds(draft) : null;
 
   let left = Infinity;
   let top = Infinity;
@@ -199,22 +357,27 @@ export function StoryboardCanvas({
     right = Math.max(right, x);
     bottom = Math.max(bottom, y);
   }
-  for (const { pos, width, height } of [...visibleScenes, ...sectionCards]) {
+  for (const { pos, width, height } of cards) {
     include(pos);
     include({ x: pos.x + width + 8, y: pos.y + height });
   }
-  for (const { label, a, b, labelY } of drawnLinks) {
-    curveControls(a, b).forEach(include);
-    if (label) {
-      include({ x: (a.x + b.x) / 2, y: labelY - 12 });
-    }
+  for (const { route } of drawnLinks) {
+    const area = storyboardLinkBounds(route);
+    include({ x: area.left, y: area.top });
+    include({ x: area.right, y: area.bottom });
+  }
+  for (const { bounds: box } of placedBoxes) {
+    include(box);
+    include({ x: box.x + box.width, y: box.y + box.height });
   }
   const origin = drag?.origin ?? { x: Math.min(0, left), y: Math.min(0, top) };
-  const width = Math.max(960, right - origin.x + 2 * VIEW_PADDING, (draftPoint?.x ?? 0) - origin.x);
+  const width = Math.max(
+    960,
+    Math.max(right, draftBounds?.right ?? 0) - origin.x + 2 * VIEW_PADDING,
+  );
   const height = Math.max(
     720,
-    bottom - origin.y + 2 * VIEW_PADDING,
-    (draftPoint?.y ?? 0) - origin.y,
+    Math.max(bottom, draftBounds?.bottom ?? 0) - origin.y + 2 * VIEW_PADDING,
   );
 
   const moveView = useCallback(
@@ -273,9 +436,10 @@ export function StoryboardCanvas({
     return () => board.removeEventListener("wheel", onWheel);
   }, [zoom, zoomAround]);
 
-  function fitAll() {
+  const hasCards = cards.length > 0;
+  const fitAll = useCallback(() => {
     const board = boardRef.current;
-    if (!board || (!visibleScenes.length && !sectionCards.length)) return;
+    if (!board || !hasCards) return;
     const availableWidth = board.clientWidth - 2 * VIEW_PADDING;
     const availableHeight = board.clientHeight - 2 * VIEW_PADDING;
     if (availableWidth <= 0 || availableHeight <= 0) return;
@@ -284,9 +448,66 @@ export function StoryboardCanvas({
       x: ((left + right) / 2 - origin.x) * nextZoom - board.clientWidth / 2,
       y: ((top + bottom) / 2 - origin.y) * nextZoom - board.clientHeight / 2,
     });
+  }, [hasCards, left, right, top, bottom, origin.x, origin.y, moveView]);
+
+  useLayoutEffect(() => {
+    if (!fitPending.current) return;
+    fitPending.current = false;
+    fitAll();
+  }, [fitAll, scenes, sections]);
+
+  function arrange() {
+    if (!onLayoutChange || !hasCards) return;
+    const layout = arrangeStoryboard(scenes, sections, links);
+    setUndoLayout({ scenes, sections });
+    fitPending.current = true;
+    onLayoutChange(
+      scenes.map((scene) => ({ ...scene, position: layout.scenes.get(scene.id) })),
+      sections.map((section) => ({ ...section, position: layout.sections.get(section.id) })),
+    );
   }
 
-  const activeConnectFrom = connectionFromSceneId ?? connectFrom;
+  const undoArrange = useCallback(() => {
+    if (!undoLayout || !onLayoutChange) return;
+    setUndoLayout(null);
+    fitPending.current = true;
+    onLayoutChange(
+      restorePositions(scenes, undoLayout.scenes),
+      restorePositions(sections, undoLayout.sections),
+    );
+  }, [undoLayout, onLayoutChange, scenes, sections]);
+
+  useEffect(() => {
+    if (!undoLayout) return;
+    const timeout = window.setTimeout(() => setUndoLayout(null), ARRANGE_UNDO_MS);
+    return () => window.clearTimeout(timeout);
+  }, [undoLayout]);
+
+  useEffect(() => {
+    if (!undoLayout) return;
+    function keydown(event: KeyboardEvent) {
+      if (
+        event.defaultPrevented ||
+        !event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey ||
+        event.metaKey ||
+        event.key.toLowerCase() !== "z"
+      )
+        return;
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        (target.isContentEditable || target.matches("input, textarea"))
+      )
+        return;
+      event.preventDefault();
+      undoArrange();
+    }
+    window.addEventListener("keydown", keydown);
+    return () => window.removeEventListener("keydown", keydown);
+  }, [undoLayout, undoArrange]);
+
   useEffect(() => {
     if (connectionFromSceneId) {
       setConnectFrom(null);
@@ -308,8 +529,6 @@ export function StoryboardCanvas({
     window.addEventListener("keydown", cancel);
     return () => window.removeEventListener("keydown", cancel);
   }, [activeConnectFrom, onConnectionEnd]);
-  const draftSource = activeConnectFrom ? endpoints.get(activeConnectFrom) : undefined;
-  const draftStart = draftSource ? port(draftSource, true) : undefined;
 
   function pointFromEvent(event: { clientX: number; clientY: number }): StoryboardPosition {
     const rect = boardRef.current?.getBoundingClientRect();
@@ -369,9 +588,15 @@ export function StoryboardCanvas({
       const section = drag.section
         ? sectionCards.find((card) => card.section.id === drag.id)
         : undefined;
+      function coordinate(value: number, sectionStart = 0) {
+        const min = Math.min(0, sectionStart);
+        if (event.altKey) return Math.max(min, value);
+        const gridMin = ceilStoryboardCoordinate(min);
+        return Math.max(gridMin, snapStoryboardCoordinate(value));
+      }
       const next = {
-        x: Math.max(Math.min(0, section?.pos.x ?? 0), p.x - dragOffset.current.x),
-        y: Math.max(Math.min(0, section?.pos.y ?? 0), p.y - dragOffset.current.y),
+        x: coordinate(p.x - dragOffset.current.x, section?.pos.x),
+        y: coordinate(p.y - dragOffset.current.y, section?.pos.y),
       };
       if (section)
         onMoveSection?.(drag.id, { x: next.x - section.pos.x, y: next.y - section.pos.y });
@@ -541,7 +766,6 @@ export function StoryboardCanvas({
         <span className="storyboard-chapters__label">Chapters</span>
         {chapters.map((chapter, index) => (
           <div key={chapter.id} className="storyboard-chapter-chip">
-            <span className="storyboard-chapter-dot" style={{ background: chapterColor(index) }} />
             <input
               type="text"
               value={chapter.title}
@@ -617,7 +841,21 @@ export function StoryboardCanvas({
         >
           Fit all
         </button>
+        {onLayoutChange && (
+          <Button size="compact" disabled={!hasCards} onClick={arrange}>
+            {t("psArrangeStoryboard")}
+          </Button>
+        )}
       </div>
+      {undoLayout && (
+        <div className="storyboard-arrange-notice">
+          <span role="status">{t("psScenesArranged")}</span>
+          <span aria-hidden="true"> · </span>
+          <Button variant="quiet" size="compact" onClick={undoArrange}>
+            {t("psUndoArrange")}
+          </Button>
+        </div>
+      )}
 
       <div
         ref={boardRef}
@@ -659,7 +897,13 @@ export function StoryboardCanvas({
         <div className="storyboard-surface" style={{ width: width * zoom, height: height * zoom }}>
           <div
             className="storyboard-content"
-            style={{ width, height, transform: `scale(${zoom})` }}
+            style={{
+              width,
+              height,
+              transform: `scale(${zoom})`,
+              backgroundSize: `${STORYBOARD_GRID_SIZE}px ${STORYBOARD_GRID_SIZE}px`,
+              backgroundPosition: `${-origin.x - STORYBOARD_GRID_SIZE / 2}px ${-origin.y - STORYBOARD_GRID_SIZE / 2}px`,
+            }}
           >
             {frames.map(renderSection)}
             <svg
@@ -667,23 +911,42 @@ export function StoryboardCanvas({
               viewBox={`${origin.x} ${origin.y} ${width} ${height}`}
             >
               <defs>
-                <marker
-                  id={arrowId}
-                  viewBox="0 0 10 10"
-                  refX="8"
-                  refY="5"
-                  markerWidth="7"
-                  markerHeight="7"
-                  orient="auto-start-reverse"
-                >
-                  <path d="M0,0 L10,5 L0,10 z" className="storyboard-arrowhead" />
-                </marker>
+                {ARROW_TONES.map((tone) => (
+                  <marker
+                    key={tone}
+                    id={`${arrowId}-${tone}`}
+                    viewBox="0 0 10 10"
+                    refX="8"
+                    refY="5"
+                    markerUnits="userSpaceOnUse"
+                    markerWidth="14"
+                    markerHeight="14"
+                    orient="auto-start-reverse"
+                  >
+                    <path
+                      d="M0,0 L10,5 L0,10 z"
+                      className={`storyboard-arrowhead storyboard-arrowhead--${tone}`}
+                    />
+                  </marker>
+                ))}
               </defs>
-              {drawnLinks.map(({ link, a, b, labelY, label, endpointNames }) => {
+              {drawnLinks.map(({ link, route, endpointNames, locked, focused, dimmed }) => {
                 const blocks = link.requiresAbsentFlags.length > 0;
-                const path = bezierPath(a, b);
+                const path = route.path;
+                const tone = focused
+                  ? "focused"
+                  : blocks
+                    ? "blocks"
+                    : locked
+                      ? "locked"
+                      : "default";
                 return (
-                  <g key={link.id} data-link-id={link.id}>
+                  <g
+                    key={link.id}
+                    data-link-id={link.id}
+                    onPointerEnter={() => setHoverLink(link.id)}
+                    onPointerLeave={() => setHoverLink((id) => (id === link.id ? null : id))}
+                  >
                     <title>{endpointNames}</title>
                     <path
                       d={path}
@@ -693,32 +956,14 @@ export function StoryboardCanvas({
                     />
                     <path
                       d={path}
-                      className={`storyboard-line${blocks ? " storyboard-line--blocks" : ""}${(activeLinkId ?? selectedLinkId) === link.id ? " is-selected" : ""}`}
-                      markerEnd={`url(#${arrowId})`}
-                      style={zoom < 0.5 ? { strokeWidth: 1 / zoom } : undefined}
+                      className={`storyboard-line${blocks ? " storyboard-line--blocks" : ""}${locked ? " storyboard-line--locked" : ""}${focused ? " is-focused" : ""}${dimmed ? " is-dimmed" : ""}`}
+                      markerEnd={`url(#${arrowId}-${tone})`}
+                      style={zoom < 0.5 ? { strokeWidth: (focused ? 1.5 : 1) / zoom } : undefined}
                     />
-                    {label ? (
-                      <text
-                        x={(a.x + b.x) / 2}
-                        y={labelY}
-                        className="storyboard-line-label"
-                        textAnchor="middle"
-                      >
-                        {label}
-                      </text>
-                    ) : null}
                   </g>
                 );
               })}
-              {draftStart ? (
-                <path
-                  d={bezierPath(
-                    draftStart,
-                    draftPoint ?? { x: draftStart.x + 55, y: draftStart.y },
-                  )}
-                  className="storyboard-line storyboard-line--draft"
-                />
-              ) : null}
+              {draft && <path d={draft.path} className="storyboard-line storyboard-line--draft" />}
             </svg>
 
             {folded.map(renderSection)}
@@ -727,11 +972,13 @@ export function StoryboardCanvas({
               const chapterIndex = scene.chapterId
                 ? chapters.findIndex((c) => c.id === scene.chapterId)
                 : -1;
-              const color = chapterIndex >= 0 ? chapterColor(chapterIndex) : undefined;
+              const color =
+                chapterIndex >= 0 ? `var(--chapter-${1 + (chapterIndex % 6)})` : undefined;
               return (
                 <div
                   key={scene.id}
                   data-scene-id={scene.id}
+                  tabIndex={0}
                   className={`storyboard-card${selectedSceneId === scene.id || markedSceneIds?.has(scene.id) ? " is-selected" : ""}${activeConnectFrom && activeConnectFrom !== scene.id && hoverTarget === scene.id ? " is-drop-target" : ""}`}
                   style={{
                     boxSizing: "border-box",
@@ -742,6 +989,15 @@ export function StoryboardCanvas({
                     ...(color ? { borderLeft: `4px solid ${color}` } : {}),
                   }}
                   onPointerDown={(event) => startDrag(event, card)}
+                  onPointerEnter={() => setHoverScene(scene.id)}
+                  onPointerLeave={() => setHoverScene((id) => (id === scene.id ? null : id))}
+                  onFocus={(event) => {
+                    if (event.target.matches(":focus-visible")) setKeyboardScene(scene.id);
+                  }}
+                  onBlur={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget))
+                      setKeyboardScene((id) => (id === scene.id ? null : id));
+                  }}
                 >
                   <div className="storyboard-card__name">
                     {scene.name.trim() || "Untitled scene"}
@@ -774,6 +1030,37 @@ export function StoryboardCanvas({
                 </div>
               );
             })}
+
+            <svg
+              ref={labelsRef}
+              className="storyboard-labels"
+              viewBox={`${origin.x} ${origin.y} ${width} ${height}`}
+            >
+              {drawnLinks.map(({ link, label, point, box, dimmed }) => {
+                if (!label) return null;
+                const hidden = crowdedLabels.has(link.id) && revealedLabel !== link.id;
+                return (
+                  <g
+                    key={link.id}
+                    data-storyboard-label-link={link.id}
+                    className={dimmed ? "is-dimmed" : undefined}
+                    visibility={hidden ? "hidden" : undefined}
+                    aria-hidden={hidden || undefined}
+                    transform={`translate(${point.x} ${point.y})`}
+                  >
+                    {box && <rect {...box} className="storyboard-line-label__background" />}
+                    <text
+                      className="storyboard-line-label"
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      data-storyboard-label
+                    >
+                      {label}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
 
             {scenes.length === 0 && sections.length === 0 ? (
               <p className="inspector-empty">Add a scene on the Scenes tab first.</p>

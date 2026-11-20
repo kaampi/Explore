@@ -8,7 +8,7 @@ import { defaultStoryboardPosition, storyboardHierarchy } from "../../library/st
 const CARD_WIDTH = 200;
 const CARD_HEIGHT = 124;
 const FRAME_GUTTER = 18;
-const FRAME_HEADER = 44;
+export const STORYBOARD_FRAME_HEADER = 44;
 
 type CardGeometry = { pos: StoryboardPosition; width: number; height: number };
 export type SceneCard = CardGeometry & { scene: CampaignScene };
@@ -46,7 +46,7 @@ export function layoutStoryboard(scenes: CampaignScene[], sections: StoryboardSe
     const pos = members.length
       ? {
           x: Math.min(...members.map((card) => card.pos.x)) - FRAME_GUTTER,
-          y: Math.min(...members.map((card) => card.pos.y)) - FRAME_HEADER,
+          y: Math.min(...members.map((card) => card.pos.y)) - STORYBOARD_FRAME_HEADER,
         }
       : fallbackPositions.get(section.id)!;
     const size = section.kind === "group" ? section.size : undefined;

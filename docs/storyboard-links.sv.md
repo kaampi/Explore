@@ -24,7 +24,9 @@ Varje kombination får poäng:
 - **plus 120 för varje punkt som ligger i en annan scen eller grupp**, med 8 px marginal. Bågen mäts i 40 punkter, och de allra första och sista räknas inte.
 - Punkter i källans eller målets egen ruta räknas lägre, med vikten 0,6.
 
-Kombinationen med lägst poäng vinner. Vid lika poäng vinner ordningen höger, vänster, ner, upp, så att samma indata alltid ger samma linjer.
+Vid lika poäng vinner ordningen höger, vänster, ner, upp, så att samma indata alltid ger samma linjer.
+
+Om ingen av bågarna mellan sidor som vetter mot varandra går fri från korten provas också de återstående sidparen, upp till 16 totalt. Välj den fria bågen med lägst poäng om det finns en, annars den med lägst poäng totalt. Om två kort har samma mittpunkt provas alla sidpar. Om deras rutor sammanfaller helt används två skilda fästpunkter på ovansidan, som för en självkoppling. Om ett kort omsluter det andra får poängen avgöra när ingen båge går fri.
 
 **Tröskel mot hopp:** när en scen dras behåller en koppling sina sidor så länge den nya bästa kombinationen inte är minst 15 % bättre. Då hoppar linjen inte fram och tillbaka mellan två sidor under dragningen.
 
@@ -39,13 +41,13 @@ Då korsar linjerna inte varandra precis vid kortet. Två kopplingar åt var sit
 
 ### 3. Bågen
 
-Bågen är en kubisk Bézierkurva. Båda kontrollpunkterna ligger rakt ut från sin sida, på avståndet `clamp(36, 0,42 × avståndet mellan ändarna, 140)`. Bågen lämnar alltså kortet vinkelrätt och går aldrig in i det kort den lämnar.
+Bågen är en kubisk Bézierkurva. Båda kontrollpunkterna ligger rakt ut från sin sida, på avståndet `clamp(36, 0,42 × avståndet mellan ändarna, 140)`. Bågen lämnar alltså kortet vinkelrätt. Om en båge mellan motstående sidor annars går in i ett av ändkorten, och det finns ett fritt mellanrum mellan sidorna, begränsas kontrollavståndet till det mellanrummet. Med 10 px mellan sidorna blir kontrollavståndet då 10 px.
 
 En koppling från en scen till sig själv ritas som en ögla ovanför scenen.
 
 ### 4. Etiketter
 
-Etiketten sitter mitt på bågen (t = 0,5), i en liten ruta med `--panel-raised` som bakgrund och `--border` som kant, så att den går att läsa ovanpå andra linjer. Överlappar två etiketter flyttas den ena till t = 0,4 eller 0,6. Dagens beräkning av `labelY`, med specialfallet för `externalInspector`, tas bort.
+Etiketten sitter mitt på bågen (t = 0,5), i en liten ruta med `--panel-raised` som bakgrund och `--border` som kant, så att den går att läsa ovanpå andra linjer. Om en etikett överlappar en annan etikett eller ett kort provas t = 0,3 till 0,7 i steg om 0,1. Välj läget med minst överlapp, med mitten först vid lika resultat. Om etiketten fortfarande överlappar visas den bara för kopplingen under pekaren eller, när pekaren inte är på en koppling, den valda kopplingen. En sådan etikett visas ovanpå kortet. Övriga kopplingar visas som linjer. Dagens beräkning av `labelY`, med specialfallet för `externalInspector`, tas bort.
 
 ### 5. Linjen medan man drar
 
@@ -58,7 +60,7 @@ När pekaren är på en scen, eller en scen eller koppling är vald:
 - dess kopplingar ritas i `--accent`, något tjockare
 - övriga kopplingar och etiketter tonas ner till täckning 0,45.
 
-Samma sak gäller när scenen har tangentbordsfokus.
+Samma sak gäller när scenen har tangentbordsfokus. Pilspetsarna har samma storlek oavsett linjens tjocklek.
 
 ### 7. Färger
 
@@ -79,7 +81,7 @@ En knapp **Ordna** i Storyboards verktygsrad, bredvid Fit all, lägger ut allt a
 3. **Ordning i kolumnen:** scenerna sorteras efter medelhöjden för de scener som leder dit. Det upprepas några varv, vilket minskar antalet korsningar.
 4. **Grupper flyttas hela.** En grupp, ihopfälld eller inte, räknas som ett kort, och scenerna i den behåller sina lägen i förhållande till varandra.
 5. **Scener som inte går att nå** från startscenen läggs i en egen rad under resten.
-6. Kolumnerna ligger 280 px isär och raderna 140 px, fästa mot rutnätet. Efteråt anpassas vyn som med Fit all.
+6. Varje kolumn är lika bred som sitt bredaste kort eller sin bredaste grupp. Nästa kolumn börjar 120 px efter, så att kopplingar och etiketter får plats. I varje kolumn staplas korten efter sin höjd med 40 px mellan. Lägena fästs mot rutnätet genom att avrunda uppåt så att mellanrummen inte krymper. Efteråt anpassas vyn som med Fit all.
 
 Ordna kan ångras. En kort ruta "Scenerna ordnades · Ångra" visas i 10 sekunder, och Ctrl+Z ångrar så länge den syns. Storyboard har ingen ångra-funktion i övrigt; det här är bara för Ordna.
 

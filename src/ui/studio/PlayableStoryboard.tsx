@@ -1258,6 +1258,15 @@ export function PlayableStoryboard({
             chapters={campaign.chapters}
             campaignName={campaign.name}
             onScenesChange={(scenes) => onChange({ ...campaign, scenes })}
+            onLayoutChange={(scenes, storyboardSections) =>
+              onChange({
+                ...campaign,
+                scenes,
+                ...(campaign.storyboardSections || storyboardSections.length
+                  ? { storyboardSections }
+                  : {}),
+              })
+            }
             onLinksChange={(sceneLinks) => onChange({ ...campaign, sceneLinks })}
             onChaptersChange={(chapters) => onChange({ ...campaign, chapters })}
             externalInspector

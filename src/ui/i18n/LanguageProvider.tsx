@@ -251,6 +251,9 @@ const labels = {
     psSaveAdventure: "Save adventure",
     psStoryOutline: "Story outline",
     psShiftClickToSelect: "Shift-click to select several scenes.",
+    psArrangeStoryboard: "Arrange",
+    psScenesArranged: "Scenes arranged",
+    psUndoArrange: "Undo",
     psDragOrUseThe:
       "Drag, or use the arrow keys, to make the details panel wider or narrower. Double-click to reset.",
     psStep1: "STEP 1",
@@ -1070,6 +1073,9 @@ const labels = {
     psSaveAdventure: "Spara äventyr",
     psStoryOutline: "Berättelseöversikt",
     psShiftClickToSelect: "Skift-klicka för att markera flera scener.",
+    psArrangeStoryboard: "Ordna",
+    psScenesArranged: "Scenerna ordnades",
+    psUndoArrange: "Ångra",
     psDragOrUseThe:
       "Dra, eller använd piltangenterna, för att göra detaljpanelen bredare eller smalare. Dubbelklicka för att återställa.",
     psStep1: "STEG 1",
@@ -1893,6 +1899,9 @@ const labels = {
     psSaveAdventure: "Lagre eventyr",
     psStoryOutline: "Fortellingsoversikt",
     psShiftClickToSelect: "Skift-klikk for å markere flere scener.",
+    psArrangeStoryboard: "Ordne",
+    psScenesArranged: "Scenene ble ordnet",
+    psUndoArrange: "Angre",
     psDragOrUseThe:
       "Dra, eller bruk piltastene, for å gjøre detaljpanelen bredere eller smalere. Dobbeltklikk for å tilbakestille.",
     psStep1: "STEG 1",
