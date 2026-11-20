@@ -308,6 +308,31 @@ it("projects the selected step's actual playback times and edits its outgoing tr
     expect(timeline.textContent).toContain("Transition takes 0.8 sec");
     await ui.click("Zoom in", timeline);
     expect(timeline.textContent).toContain("150%");
+    await ui.click("Reset zoom", timeline);
+    const viewport = timeline.querySelector<HTMLDivElement>(".cutscene-time__viewport")!;
+    const scale = viewport.querySelector<HTMLDivElement>(".cutscene-time__scale")!;
+    Object.defineProperty(viewport, "clientWidth", { value: 400 });
+    async function wheel(deltaY: number, ctrlKey: boolean) {
+      const event = new WheelEvent("wheel", {
+        clientX: 100,
+        deltaY,
+        ctrlKey,
+        cancelable: true,
+        bubbles: true,
+      });
+      await act(async () => scale.dispatchEvent(event));
+      return event;
+    }
+    const regularWheel = await wheel(-240, false);
+    expect(regularWheel.defaultPrevented).toBe(false);
+    expect(scale.style.width).toBe("100%");
+    const zoomWheel = await wheel(-240, true);
+    expect(zoomWheel.defaultPrevented).toBe(true);
+    expect(scale.style.width).toBe("200%");
+    expect(scale.style.left).toBe("-100px");
+    await wheel(240, true);
+    expect(scale.style.width).toBe("100%");
+    expect(scale.style.left).toBe("0px");
     await ui.file("Save");
     expect(saved).toHaveBeenCalledWith(
       expect.objectContaining({

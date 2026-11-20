@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -32,6 +33,20 @@ export function useWorkspaceView(horizontal = false) {
   }>();
   const [mode, setMode] = useState<"zoom" | "pan">();
 
+  const zoomAt = useCallback(
+    (zoom: number, before: typeof origin, x: number, y: number) => {
+      const factor = zoom / before.zoom;
+      const surface = viewport.current;
+      if (!surface) return before;
+      return constrain(
+        { zoom, x: x - (x - before.x) * factor, y: y - (y - before.y) * factor },
+        surface.clientWidth,
+        horizontal ? 0 : surface.clientHeight,
+      );
+    },
+    [horizontal],
+  );
+
   useEffect(() => {
     const down = (event: KeyboardEvent) => {
       if (event.code !== "Space" || event.repeat || event.defaultPrevented) return;
@@ -54,6 +69,19 @@ export function useWorkspaceView(horizontal = false) {
     window.addEventListener("keyup", up);
     window.addEventListener("blur", blur);
     const surface = viewport.current;
+    const wheel = (event: WheelEvent) => {
+      if (!event.ctrlKey || !surface) return;
+      const units = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 120 : 1;
+      if (!event.deltaY) return;
+      event.preventDefault();
+      if (gesture.current) return;
+      const x = event.clientX - surface.getBoundingClientRect().left - surface.clientLeft;
+      const factor = 2 ** ((-event.deltaY * units) / 240);
+      setView((before) =>
+        zoomAt(Math.min(maxZoom, Math.max(1, before.zoom * factor)), before, x, 0),
+      );
+    };
+    if (horizontal) surface?.addEventListener("wheel", wheel, { passive: false });
     const observer =
       typeof ResizeObserver === "undefined"
         ? undefined
@@ -64,23 +92,14 @@ export function useWorkspaceView(horizontal = false) {
           });
     if (surface) observer?.observe(surface);
     return () => {
+      surface?.removeEventListener("wheel", wheel);
       observer?.disconnect();
       window.removeEventListener("keydown", down);
       window.removeEventListener("keyup", up);
       window.removeEventListener("blur", blur);
     };
-  }, [horizontal]);
+  }, [horizontal, zoomAt]);
 
-  const zoomAt = (zoom: number, before: typeof origin, x: number, y: number) => {
-    const factor = zoom / before.zoom;
-    const surface = viewport.current;
-    if (!surface) return before;
-    return constrain(
-      { zoom, x: x - (x - before.x) * factor, y: y - (y - before.y) * factor },
-      surface.clientWidth,
-      horizontal ? 0 : surface.clientHeight,
-    );
-  };
   const end = (event: PointerEvent<HTMLDivElement>) => {
     if (gesture.current?.pointer !== event.pointerId) return;
     gesture.current = undefined;
