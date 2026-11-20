@@ -80,6 +80,18 @@ function pointer(node: Element, type: "pointerover" | "pointerout") {
   );
 }
 
+function mockLabelBox(width: number, height: number) {
+  const previous = Object.getOwnPropertyDescriptor(SVGElement.prototype, "getBBox");
+  Object.defineProperty(SVGElement.prototype, "getBBox", {
+    configurable: true,
+    value: () => ({ x: -width / 2, y: -height / 2, width, height }),
+  });
+  return () => {
+    if (previous) Object.defineProperty(SVGElement.prototype, "getBBox", previous);
+    else Reflect.deleteProperty(SVGElement.prototype, "getBBox");
+  };
+}
+
 it("focuses a scene's connections on hover and keyboard focus, and dims the rest", async () => {
   const ui = await board([
     { ...link("ab", "a", "b"), requiresOpenBarriers: ["door"] },
@@ -89,8 +101,20 @@ it("focuses a scene's connections on hover and keyboard focus, and dims the rest
     const a = ui.host.querySelector<HTMLElement>('[data-scene-id="a"]')!;
     expect(ui.line("ab").classList.contains("storyboard-line--locked")).toBe(true);
     expect(ui.label("ab").textContent).toBe("Locked");
+    const markerOf = (line: SVGPathElement) =>
+      document.getElementById(line.getAttribute("marker-end")!.slice(5, -1))!;
+    const markerSize = (marker: HTMLElement) =>
+      ["markerWidth", "markerHeight"].map((attribute) => marker.getAttribute(attribute));
+    const normal = markerOf(ui.line("ab"));
 
     await pointer(a, "pointerover");
+    const emphasized = markerOf(ui.line("ab"));
+    expect(emphasized).not.toBe(normal);
+    expect([normal, emphasized].map((marker) => marker.getAttribute("markerUnits"))).toEqual([
+      "userSpaceOnUse",
+      "userSpaceOnUse",
+    ]);
+    expect(markerSize(emphasized)).toEqual(markerSize(normal));
     expect(ui.line("ab").classList.contains("is-focused")).toBe(true);
     expect(ui.line("bc").classList.contains("is-dimmed")).toBe(true);
     expect(ui.label("bc").classList.contains("is-dimmed")).toBe(true);
@@ -106,12 +130,8 @@ it("focuses a scene's connections on hover and keyboard focus, and dims the rest
 });
 
 it("uses the least overlapping positions and only reveals crowded labels on hover or selection", async () => {
-  const bbox = Object.getOwnPropertyDescriptor(SVGElement.prototype, "getBBox");
-  Object.defineProperty(SVGElement.prototype, "getBBox", {
-    configurable: true,
-    // Wide labels across two parallel connections cannot avoid one another.
-    value: () => ({ x: -85, y: -55, width: 170, height: 110 }),
-  });
+  // Wide labels across two parallel connections cannot avoid one another.
+  const restoreBox = mockLabelBox(170, 110);
   const ui = await board([
     link("first", "a", "b", "Go to kitchen"),
     link("second", "b", "a", "Go to guest room"),
@@ -149,8 +169,45 @@ it("uses the least overlapping positions and only reveals crowded labels on hove
     expect([shown("first"), shown("second")]).toEqual([false, true]);
   } finally {
     await ui.close();
-    if (bbox) Object.defineProperty(SVGElement.prototype, "getBBox", bbox);
-    else Reflect.deleteProperty(SVGElement.prototype, "getBBox");
+    restoreBox();
+  }
+});
+
+it("moves an otherwise clear label off a card even when there are no other labels", async () => {
+  const restoreBox = mockLabelBox(52, 44);
+  const nearLine = { ...scenes[2]!, position: { x: 320, y: 77 } };
+  const ui = await board(
+    [link("first", "a", "b", "Go to kitchen")],
+    [scenes[0]!, scenes[1]!, nearLine],
+  );
+  try {
+    const label = ui.label("first");
+    expect(label.getAttribute("visibility")).toBeNull();
+    const labelX = Number(label.getAttribute("transform")?.match(/translate\(([^ ]+)/)?.[1]);
+    expect(labelX).toBeGreaterThan(200);
+    expect(labelX + 26).toBeLessThanOrEqual(nearLine.position.x);
+  } finally {
+    await ui.close();
+    restoreBox();
+  }
+});
+
+it("only reveals an unavoidable card collision for the active link, above the card", async () => {
+  const restoreBox = mockLabelBox(80, 20);
+  const closeBy = { ...scenes[1]!, position: { x: 240, y: 0 } };
+  const ui = await board([link("first", "a", "b", "Go to kitchen")], [scenes[0]!, closeBy]);
+  try {
+    const label = ui.label("first");
+    const endCard = ui.host.querySelector('[data-scene-id="b"]')!;
+    expect(label.getAttribute("visibility")).toBe("hidden");
+    await pointer(ui.hit("first"), "pointerover");
+    expect(label.getAttribute("visibility")).toBeNull();
+    expect(endCard.compareDocumentPosition(label) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+    await pointer(ui.hit("first"), "pointerout");
+    expect(label.getAttribute("visibility")).toBe("hidden");
+  } finally {
+    await ui.close();
+    restoreBox();
   }
 });
 

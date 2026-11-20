@@ -47,7 +47,7 @@ En koppling från en scen till sig själv ritas som en ögla ovanför scenen.
 
 ### 4. Etiketter
 
-Etiketten sitter mitt på bågen (t = 0,5), i en liten ruta med `--panel-raised` som bakgrund och `--border` som kant, så att den går att läsa ovanpå andra linjer. Om etiketterna överlappar provas t = 0,3 till 0,7 i steg om 0,1. Välj läget med minst överlapp, med mitten först vid lika resultat. Om etiketterna fortfarande överlappar visas bara etiketten för kopplingen under pekaren eller, när pekaren inte är på en koppling, den valda kopplingen. Övriga kopplingar visas som linjer. Dagens beräkning av `labelY`, med specialfallet för `externalInspector`, tas bort.
+Etiketten sitter mitt på bågen (t = 0,5), i en liten ruta med `--panel-raised` som bakgrund och `--border` som kant, så att den går att läsa ovanpå andra linjer. Om en etikett överlappar en annan etikett eller ett kort provas t = 0,3 till 0,7 i steg om 0,1. Välj läget med minst överlapp, med mitten först vid lika resultat. Om etiketten fortfarande överlappar visas den bara för kopplingen under pekaren eller, när pekaren inte är på en koppling, den valda kopplingen. En sådan etikett visas ovanpå kortet. Övriga kopplingar visas som linjer. Dagens beräkning av `labelY`, med specialfallet för `externalInspector`, tas bort.
 
 ### 5. Linjen medan man drar
 
@@ -60,7 +60,7 @@ När pekaren är på en scen, eller en scen eller koppling är vald:
 - dess kopplingar ritas i `--accent`, något tjockare
 - övriga kopplingar och etiketter tonas ner till täckning 0,45.
 
-Samma sak gäller när scenen har tangentbordsfokus.
+Samma sak gäller när scenen har tangentbordsfokus. Pilspetsarna har samma storlek oavsett linjens tjocklek.
 
 ### 7. Färger
 
@@ -81,7 +81,7 @@ En knapp **Ordna** i Storyboards verktygsrad, bredvid Fit all, lägger ut allt a
 3. **Ordning i kolumnen:** scenerna sorteras efter medelhöjden för de scener som leder dit. Det upprepas några varv, vilket minskar antalet korsningar.
 4. **Grupper flyttas hela.** En grupp, ihopfälld eller inte, räknas som ett kort, och scenerna i den behåller sina lägen i förhållande till varandra.
 5. **Scener som inte går att nå** från startscenen läggs i en egen rad under resten.
-6. Kolumnerna ligger 280 px isär och raderna 140 px, fästa mot rutnätet. Efteråt anpassas vyn som med Fit all.
+6. Varje kolumn är lika bred som sitt bredaste kort eller sin bredaste grupp. Nästa kolumn börjar 120 px efter, så att kopplingar och etiketter får plats. I varje kolumn staplas korten efter sin höjd med 40 px mellan. Lägena fästs mot rutnätet genom att avrunda uppåt så att mellanrummen inte krymper. Efteråt anpassas vyn som med Fit all.
 
 Ordna kan ångras. En kort ruta "Scenerna ordnades · Ångra" visas i 10 sekunder, och Ctrl+Z ångrar så länge den syns. Storyboard har ingen ångra-funktion i övrigt; det här är bara för Ordna.
 

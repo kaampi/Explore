@@ -2746,7 +2746,8 @@ textarea.setup-field__story {
   background-image: radial-gradient(circle, var(--border-soft) 1.5px, transparent 1.5px);
 }
 
-.storyboard-lines {
+.storyboard-lines,
+.storyboard-labels {
   position: absolute;
   left: 0;
   top: 0;
@@ -2776,7 +2777,8 @@ textarea.setup-field__story {
   stroke-width: 3;
 }
 
-.storyboard-lines .is-dimmed {
+.storyboard-lines .is-dimmed,
+.storyboard-labels .is-dimmed {
   opacity: 0.45;
 }
 

@@ -27,8 +27,17 @@ import { Button } from "../components/Button";
 import { useTranslate } from "../i18n/LanguageProvider";
 import { arrangeStoryboard } from "./storyboardArrange";
 import { downloadJson } from "./studioShared";
-import { snapStoryboardCoordinate, STORYBOARD_GRID_SIZE } from "./storyboardGrid";
-import { layoutStoryboard, type SectionCard, type StoryboardCard } from "./storyboardLayout";
+import {
+  ceilStoryboardCoordinate,
+  snapStoryboardCoordinate,
+  STORYBOARD_GRID_SIZE,
+} from "./storyboardGrid";
+import {
+  layoutStoryboard,
+  STORYBOARD_FRAME_HEADER,
+  type SectionCard,
+  type StoryboardCard,
+} from "./storyboardLayout";
 import {
   routeMovingStoryboardLinks,
   routeStoryboardDraft,
@@ -171,7 +180,7 @@ export function StoryboardCanvas({
 }) {
   const t = useTranslate();
   const boardRef = useRef<HTMLDivElement>(null);
-  const svgRef = useRef<SVGSVGElement>(null);
+  const labelsRef = useRef<SVGSVGElement>(null);
   const [labelBoxes, setLabelBoxes] = useState(() => new Map<string, LabelBox>());
   const previousRouting = useRef<{
     sides: Map<string, LinkSides>;
@@ -259,6 +268,14 @@ export function StoryboardCanvas({
   const focusedScene = focusedLink ? null : (sceneFocus ?? selectedScene);
   const revealedLabel = pointedLink ?? selectedConnection;
   const hasFocus = Boolean(focusedLink || focusedScene);
+  const labelObstacles = useMemo(
+    () => [
+      ...[...visibleScenes, ...folded].map(({ pos, width, height }) => ({ ...pos, width, height })),
+      // Unfolded frames are mostly open space; only their headers cover the board.
+      ...frames.map(({ pos, width }) => ({ ...pos, width, height: STORYBOARD_FRAME_HEADER })),
+    ],
+    [visibleScenes, folded, frames],
+  );
   const placedBoxes: { id: string; bounds: LabelBox }[] = [];
   const crowdedLabels = new Set<string>();
   const drawnLinks = projectedLinks.map(({ id, link, from, to }) => {
@@ -277,7 +294,11 @@ export function StoryboardCanvas({
       const candidates = LABEL_POSITIONS.map((parameter) => {
         const pos = parameter === 0.5 ? route.label : storyboardLinkPoint(route, parameter);
         const bounds = { ...box, x: box.x + pos.x, y: box.y + pos.y };
-        const area = placedBoxes.reduce((sum, other) => sum + overlap(bounds, other.bounds), 0);
+        const cardOverlap = labelObstacles.reduce((sum, card) => sum + overlap(bounds, card), 0);
+        const area = placedBoxes.reduce(
+          (sum, other) => sum + overlap(bounds, other.bounds),
+          cardOverlap,
+        );
         return { pos, bounds, area };
       });
       // Ties keep the position nearest the center, including t = 0.5 if clear.
@@ -295,7 +316,7 @@ export function StoryboardCanvas({
   });
 
   useLayoutEffect(() => {
-    const svg = svgRef.current;
+    const svg = labelsRef.current;
     if (!svg) return;
     function measureLabels() {
       if (!svg?.isConnected) return;
@@ -570,7 +591,7 @@ export function StoryboardCanvas({
       function coordinate(value: number, sectionStart = 0) {
         const min = Math.min(0, sectionStart);
         if (event.altKey) return Math.max(min, value);
-        const gridMin = Math.ceil(min / STORYBOARD_GRID_SIZE) * STORYBOARD_GRID_SIZE;
+        const gridMin = ceilStoryboardCoordinate(min);
         return Math.max(gridMin, snapStoryboardCoordinate(value));
       }
       const next = {
@@ -886,7 +907,6 @@ export function StoryboardCanvas({
           >
             {frames.map(renderSection)}
             <svg
-              ref={svgRef}
               className="storyboard-lines"
               viewBox={`${origin.x} ${origin.y} ${width} ${height}`}
             >
@@ -898,8 +918,9 @@ export function StoryboardCanvas({
                     viewBox="0 0 10 10"
                     refX="8"
                     refY="5"
-                    markerWidth="7"
-                    markerHeight="7"
+                    markerUnits="userSpaceOnUse"
+                    markerWidth="14"
+                    markerHeight="14"
                     orient="auto-start-reverse"
                   >
                     <path
@@ -943,30 +964,6 @@ export function StoryboardCanvas({
                 );
               })}
               {draft && <path d={draft.path} className="storyboard-line storyboard-line--draft" />}
-              {drawnLinks.map(({ link, label, point, box, dimmed }) => {
-                if (!label) return null;
-                const hidden = crowdedLabels.has(link.id) && revealedLabel !== link.id;
-                return (
-                  <g
-                    key={link.id}
-                    data-storyboard-label-link={link.id}
-                    className={dimmed ? "is-dimmed" : undefined}
-                    visibility={hidden ? "hidden" : undefined}
-                    aria-hidden={hidden || undefined}
-                    transform={`translate(${point.x} ${point.y})`}
-                  >
-                    {box && <rect {...box} className="storyboard-line-label__background" />}
-                    <text
-                      className="storyboard-line-label"
-                      textAnchor="middle"
-                      dominantBaseline="central"
-                      data-storyboard-label
-                    >
-                      {label}
-                    </text>
-                  </g>
-                );
-              })}
             </svg>
 
             {folded.map(renderSection)}
@@ -1033,6 +1030,37 @@ export function StoryboardCanvas({
                 </div>
               );
             })}
+
+            <svg
+              ref={labelsRef}
+              className="storyboard-labels"
+              viewBox={`${origin.x} ${origin.y} ${width} ${height}`}
+            >
+              {drawnLinks.map(({ link, label, point, box, dimmed }) => {
+                if (!label) return null;
+                const hidden = crowdedLabels.has(link.id) && revealedLabel !== link.id;
+                return (
+                  <g
+                    key={link.id}
+                    data-storyboard-label-link={link.id}
+                    className={dimmed ? "is-dimmed" : undefined}
+                    visibility={hidden ? "hidden" : undefined}
+                    aria-hidden={hidden || undefined}
+                    transform={`translate(${point.x} ${point.y})`}
+                  >
+                    {box && <rect {...box} className="storyboard-line-label__background" />}
+                    <text
+                      className="storyboard-line-label"
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      data-storyboard-label
+                    >
+                      {label}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
 
             {scenes.length === 0 && sections.length === 0 ? (
               <p className="inspector-empty">Add a scene on the Scenes tab first.</p>

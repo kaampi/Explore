@@ -33,7 +33,7 @@ describe("arrangeStoryboard", () => {
       links(["a", "c"], ["a", "b"], ["b", "d"], ["d", "c"]),
       "a",
     );
-    expect(["a", "b", "d", "c"].map((id) => result.scenes.get(id)?.x)).toEqual([0, 280, 560, 840]);
+    expect(["a", "b", "d", "c"].map((id) => result.scenes.get(id)?.x)).toEqual([0, 320, 640, 960]);
   });
 
   it("ignores self-links and back edges when ranking a cycle", () => {
@@ -43,7 +43,7 @@ describe("arrangeStoryboard", () => {
       [],
       links(["a", "b"], ["b", "c"], ["c", "a"], ["b", "b"]),
     );
-    expect(scenes.map(({ id }) => result.scenes.get(id)?.x)).toEqual([0, 280, 560]);
+    expect(scenes.map(({ id }) => result.scenes.get(id)?.x)).toEqual([0, 320, 640]);
   });
 
   it.each([false, true])(
@@ -75,9 +75,9 @@ describe("arrangeStoryboard", () => {
     const below = Math.max(...["a", "b", "c"].map((id) => result.scenes.get(id)!.y));
     const x = result.scenes.get("x")!;
     const y = result.scenes.get("y")!;
-    expect(x.y).toBeGreaterThan(below);
+    expect(x.y - (below + 124)).toBeGreaterThanOrEqual(40);
     expect(y.y).toBe(x.y);
-    expect(Math.abs(x.x - y.x)).toBe(280);
+    expect(Math.abs(x.x - y.x)).toBe(320);
   });
 
   it("places independent scenes and group anchors on the 20 px grid", () => {
@@ -90,8 +90,36 @@ describe("arrangeStoryboard", () => {
       expect(x % 20).toBe(0);
       expect(y % 20).toBe(0);
     }
-    expect(Math.abs(result.scenes.get("b")!.y - result.scenes.get("c")!.y)).toBe(140);
+    expect(Math.abs(result.scenes.get("b")!.y - result.scenes.get("c")!.y)).toBe(180);
   });
+
+  it.each([
+    { collapsed: false, nextX: 900, nextY: 360, unreachableY: 540 },
+    { collapsed: true, nextX: 640, nextY: 180, unreachableY: 360 },
+  ])(
+    "uses the displayed group size for the column and row (folded: $collapsed)",
+    ({ collapsed, nextX, nextY, unreachableY }) => {
+      const sections: StoryboardSection[] = [
+        { id: "g", title: "Inn", kind: "group", collapsed, size: { width: 443.5, height: 312.5 } },
+      ];
+      const scenes = [
+        scene("start"),
+        scene("peer"),
+        { ...scene("member", 1_000, 320), storyboardSectionId: "g" },
+        scene("after"),
+        scene("unreachable"),
+      ];
+      const result = arrangeStoryboard(
+        scenes,
+        sections,
+        links(["start", "peer"], ["start", "member"], ["member", "after"]),
+      );
+      expect(result.sections.get("g")).toEqual({ x: 320, y: 0 });
+      expect(result.scenes.get("peer")).toEqual({ x: 320, y: nextY });
+      expect(result.scenes.get("after")).toEqual({ x: nextX, y: 0 });
+      expect(result.scenes.get("unreachable")).toEqual({ x: 0, y: unreachableY });
+    },
+  );
 
   it("orders each column to follow the heights of its predecessors", () => {
     const scenes = ["a", "b", "c", "d", "e"].map((id) => scene(id));
