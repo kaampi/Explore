@@ -4,7 +4,7 @@ import { useTranslate } from "../i18n/LanguageProvider";
 import type { EncounterAction } from "../../game/EncounterSchema";
 import { ItemIcon } from "./ItemIcon";
 import { Frame, NamePlate, NoteCard } from "./ornament";
-import type { ItemCardData } from "./itemCard";
+import type { ItemCardData } from "./itemCardData";
 import "./play-view.css";
 
 /** The word for what sort of thing it is, which is told in the line under the name. */

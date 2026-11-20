@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const workflow = readFileSync(".github/workflows/desktop-build.yml", "utf8");
+const workflow = readFileSync(".github/workflows/desktop-build.yml", "utf8").replace(/\r\n/g, "\n");
 const lines = workflow.split("\n");
 
 /** The steps of the job, each as its own block of text, in order. */

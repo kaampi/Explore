@@ -121,7 +121,7 @@ it("keeps the marks out of the story: they are in the strip above the field, not
   await draw(engine.getSession());
   expect(host.querySelector(".composer .play-notice")).not.toBeNull();
   expect(host.querySelector(".story .play-notice")).toBeNull();
-  const css = readFileSync("src/ui/play/play-view.css", "utf8");
+  const css = readFileSync("src/ui/play/play-view.css", "utf8").replace(/\r\n/g, "\n");
   const strip = css.slice(css.indexOf(".play-notices {"), css.indexOf(".play-notices:empty"));
   expect(strip).not.toContain("position: absolute");
 });
@@ -193,7 +193,7 @@ it("speaks Swedish when the interface is Swedish", async () => {
 });
 
 it("turns every movement off when the system asks for less motion", () => {
-  const css = readFileSync("src/ui/play/play-view.css", "utf8");
+  const css = readFileSync("src/ui/play/play-view.css", "utf8").replace(/\r\n/g, "\n");
   const reduced = css.slice(
     css.lastIndexOf("@media (prefers-reduced-motion: reduce) {\n  .play-arrival"),
   );
