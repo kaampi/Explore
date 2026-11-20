@@ -1,3 +1,5 @@
+import { cutsceneExample, CUTSCENE_EXAMPLE } from "../../cutscenes/example";
+import { installExampleOnce } from "../../scenarios/exampleLibrary";
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import type { CutsceneFilm } from "../../cutscenes/schema";
 import type { IndexedDBRepository } from "../../persistence/IndexedDBRepository";
@@ -43,6 +45,7 @@ export function CutsceneLibrary({
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [exampleInstalled, setExampleInstalled] = useState(false);
   const [dirty, setDirty] = useState(false);
   const changeDirty = useCallback(
     (next: boolean) => {
@@ -129,6 +132,21 @@ export function CutsceneLibrary({
       .catch(() => translate("csCouldNotLoad"));
   }
 
+  async function install() {
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      await installExampleOnce(repo, CUTSCENE_EXAMPLE, cutsceneExample);
+      setFilms(await repo.listCutsceneFilms());
+      setExampleInstalled(true);
+    } catch {
+      translate("csCouldNotSave");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="cutscene-library">
       <StudioList
@@ -147,6 +165,14 @@ export function CutsceneLibrary({
         onNew={() => leave(() => setEditor({ key: crypto.randomUUID() }))}
         newLabel={t("csNew")}
         empty={t("csEmpty")}
+        actions={
+          <div className="cutscene-library__sample">
+            <Button variant="quiet" size="compact" disabled={busy} onClick={() => void install()}>
+              {t("csInstallExample")}
+            </Button>
+            {exampleInstalled && <p role="status">{t("csExampleInstalled")}</p>}
+          </div>
+        }
         itemMenu={({ id }) => {
           const film = ordered.find((item) => item.id === id)!;
           return [

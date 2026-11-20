@@ -464,6 +464,8 @@ export function reachableFromStart(campaign: CampaignTemplate): Reach {
   };
   enter(first.id);
   const has = (needed: readonly string[]) => needed.every((flag) => flags.has(flag));
+  const films = new Set(campaign.cutsceneFilms?.map(({ id }) => id));
+  const reachedLinks = new Set<string>();
   let changed = true;
   while (changed) {
     changed = false;
@@ -506,6 +508,7 @@ export function reachableFromStart(campaign: CampaignTemplate): Reach {
         continue;
       if (link.requiresAbsentFlags.some((flag) => campaign.storyFlags.includes(flag))) continue;
       if (!campaign.scenes.some((item) => item.id === link.toSceneId)) continue;
+      reachedLinks.add(link.id);
       for (const flag of link.setsFlags)
         if (!flags.has(flag)) {
           flags.add(flag);
@@ -513,6 +516,21 @@ export function reachableFromStart(campaign: CampaignTemplate): Reach {
         }
       if (!scenes.has(link.toSceneId)) {
         enter(link.toSceneId);
+        changed = true;
+      }
+    }
+    for (const { filmId, trigger, setsFlags } of campaign.cutscenes) {
+      if (!films.has(filmId)) continue;
+      const ready =
+        trigger.kind === "scene"
+          ? scenes.has(trigger.sceneId)
+          : trigger.kind === "link"
+            ? reachedLinks.has(trigger.linkId)
+            : has(trigger.flags);
+      if (!ready) continue;
+      for (const flag of setsFlags) {
+        if (flags.has(flag)) continue;
+        flags.add(flag);
         changed = true;
       }
     }

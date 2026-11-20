@@ -253,3 +253,77 @@
     min-height: 17rem;
   }
 }
+
+.cutscene-placement-panel {
+  display: grid;
+  gap: var(--space-4);
+}
+.playable-storyboard .storyboard-cutscene.ui-button {
+  position: absolute;
+  display: grid;
+  justify-content: stretch;
+  text-decoration: none;
+  grid-template-columns: 1fr;
+  align-content: center;
+  justify-items: start;
+  gap: var(--space-1);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-2);
+  text-align: left;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: var(--shadow-menu);
+  touch-action: none;
+}
+.playable-storyboard .storyboard-cutscene.ui-button[aria-pressed="true"] {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+}
+.playable-storyboard .storyboard-cutscene.ui-button:hover {
+  background: var(--panel-raised);
+  text-decoration: none;
+}
+.storyboard-cutscene__label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  max-width: 100%;
+}
+.storyboard-cutscene__label strong,
+.storyboard-cutscene small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.storyboard-cutscene img {
+  width: 3rem;
+  height: 2rem;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+}
+.storyboard-cutscene small {
+  color: var(--text-dim);
+}
+.storyboard-cutscene__line {
+  stroke: var(--text-dim);
+  stroke-width: 1.5;
+  stroke-dasharray: 2 5;
+  pointer-events: none;
+}
+.storyboard-cutscene__icon {
+  flex: 0 0 1rem;
+  height: 0.875rem;
+  border: 1px solid var(--text-dim);
+  border-inline: 3px dotted var(--text-dim);
+  border-radius: var(--radius-sm);
+}
+.cutscene-library__sample {
+  padding: var(--space-2);
+}
+.cutscene-library__sample p {
+  padding-inline: var(--space-2);
+  color: var(--text-dim);
+}

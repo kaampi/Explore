@@ -20,3 +20,9 @@
 - Redigeringsvyn använder textfält och tidsinställningar bredvid ett stegrutnät. Förhandsvisningen visar bild när det finns en och startas uttryckligen. Enstegsförhandsvisning använder tidigare bild, text och musik när det valda steget behåller dem. Automatiska steg får tre sekunder när de väljs första gången.
 - Varje ändring i utkastet kan ångras. Redigering av ljudreferenser påverkar utkastet. En uppladdad ljudfil hamnar i det gemensamma ljudbiblioteket med dess vanliga begränsningar.
 - Navigering bort från bibliotekets studio använder samma bekräftelsemekanism som andra osparade studior. Studiofunktionen behåller sitt filmgränssnitt. Biblioteket sparar först och markerar utkastet som sparat när den uppdaterade filmen kommer tillbaka.
+
+## 20 november 2026 · Delmål 4
+
+- Placeringar som läggs till utan menyval använder vald scen, eller första scenen. Om filmhyllan är tom visas en saknad film tills författaren skapar eller väljer en. Varningarna blockerar aldrig spel.
+- Ordna fäster korten mot samma rutnät som Storyboard. Scen- och vägkort föredrar ett ledigt läge intill utlösaren. Faktakort läggs på en rad under spelkartans kort. Ångra återställer också placeringarna.
+- Exemplet *Before the bells* installeras från filmhyllan och blir ett vanligt äventyr i biblioteket. Det använder den befintliga budbärarens kort som utgångspunkt, en bild som redan följer med appen och textning för ljudsignaler.

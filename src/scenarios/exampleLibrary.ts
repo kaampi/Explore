@@ -83,6 +83,11 @@ export async function installExampleOnce(
   for (const place of fresh.places) await repo.savePlace(place);
   for (const person of fresh.characters) await repo.saveCharacter(person);
   for (const thing of fresh.objects) await repo.saveObject(thing);
+  if (fresh.campaign.cutsceneFilms?.length) {
+    const knownFilms = new Set((await repo.listCutsceneFilms()).map(({ id }) => id));
+    for (const film of fresh.campaign.cutsceneFilms)
+      if (!knownFilms.has(film.id)) await repo.saveCutsceneFilm(film);
+  }
   await repo.saveCampaign(fresh.campaign);
   return fresh;
 }
