@@ -1,5 +1,7 @@
 import { AdventureLinkSchema, AdventureGoalSchema } from "../game/AdventureSchema";
 import { upgradeMissingMessengerCampaign } from "../scenarios/missingMessenger";
+import { CutsceneSchema } from "../game/CutsceneSchema";
+import { StoryboardPositionSchema } from "./storyboardPosition";
 import { EncounterGameSchema } from "../game/EncounterSchema";
 import { ObjectLocationSchema } from "./objectLocation";
 import { CoreEntitySnapshotSchema, CoreOriginSchema, SceneDraftSchema } from "./coreOrigin";
@@ -281,12 +283,8 @@ export type CampaignTrigger = z.infer<typeof CampaignTriggerSchema>;
 export const StoryboardLinkSchema = AdventureLinkSchema;
 export type StoryboardLink = z.infer<typeof StoryboardLinkSchema>;
 
-/** Canvas placement for a scene card on the Storyboard. Missing = not yet placed. */
-export const StoryboardPositionSchema = z.object({
-  x: z.number(),
-  y: z.number(),
-});
-export type StoryboardPosition = z.infer<typeof StoryboardPositionSchema>;
+export { CutsceneSchema, CutsceneTriggerSchema, type Cutscene } from "../game/CutsceneSchema";
+export { StoryboardPositionSchema, type StoryboardPosition } from "./storyboardPosition";
 
 const storyboardSectionFields = {
   id: z.string().min(1),
@@ -494,6 +492,7 @@ export const CampaignTemplateSchema = z.object({
   scenes: z.array(CampaignSceneSchema).default([]),
   /** The Storyboard: how this campaign's scenes connect. */
   sceneLinks: z.array(StoryboardLinkSchema).default(() => []),
+  cutscenes: z.array(CutsceneSchema).default([]),
   /** Storyboard chapter groups, for chapter-shell export to the writing tool. */
   chapters: z.array(StoryboardChapterSchema).default(() => []),
   storyboardSections: z.array(StoryboardSectionSchema).optional(),

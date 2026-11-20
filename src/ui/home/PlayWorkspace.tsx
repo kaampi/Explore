@@ -28,6 +28,7 @@ import { Menu } from "../components/Menu";
 import { PlayMapCard } from "../components/PlayMapCard";
 import { usePlayMap } from "../components/usePlayMap";
 import { isGateTestSession } from "../../session/gateTest";
+import { adventureHasClock } from "../../game/AdventureEngine";
 import { PlayTopBar } from "../play/PlayTopBar";
 import { Journal } from "../play/Journal";
 import { OrnamentProvider, ornamentVars, useSimpleFrames } from "../play/ornament";
@@ -130,11 +131,7 @@ export function PlayWorkspace({
         {framed ? (
           <PlayTopBar
             placeName={placeName}
-            time={
-              run && run.links.some((link) => link.minutes !== undefined)
-                ? formatGameTime(run.clockMinutes)
-                : undefined
-            }
+            time={run && adventureHasClock(run) ? formatGameTime(run.clockMinutes) : undefined}
             onHome={() => {
               // The scene is saved on the way out, as the old "Save & return home" did.
               saveEncounter().then(

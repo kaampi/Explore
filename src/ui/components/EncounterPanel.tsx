@@ -1,7 +1,15 @@
 import { useArrivalResidents } from "./useArrivalResidents";
 import { useTranslate } from "../i18n/LanguageProvider";
+import { Button } from "./Button";
+import { pendingCutscene } from "../../game/cutscenes";
+import { CutsceneView } from "../play/CutsceneView";
 import { PlayerInventory } from "./PlayerInventory";
-import { adventureCompleted, knownThings, sceneWays } from "../../game/AdventureEngine";
+import {
+  adventureCompleted,
+  adventureHasClock,
+  knownThings,
+  sceneWays,
+} from "../../game/AdventureEngine";
 import { hasCombat, playerValues } from "../play/playerValues";
 import { ValueMeter } from "../play/ValueMeter";
 import { CombatColumn, type TurnEntry } from "../play/CombatColumn";
@@ -82,11 +90,21 @@ export function EncounterPanel({
       saveEncounter: saveSession,
       setCombatArtwork,
       transitionAdventure,
+      finishCutscene,
       rememberPlaceNote,
       populateResidents,
     } = useEngine(),
     session = useSession(),
     game = session.encounter!;
+  const cutscene = pendingCutscene(session);
+  const showingCutscene = !!cutscene;
+  const wasShowingCutscene = useRef(false);
+  useEffect(() => {
+    if (wasShowingCutscene.current && !showingCutscene) {
+      (document.getElementById("play-do") ?? document.getElementById("play-story"))?.focus();
+    }
+    wasShowingCutscene.current = showingCutscene;
+  }, [showingCutscene]);
   const { definition: d, state: s } = game,
     player = s.actors[d.playerId]!;
   const [selectedTarget, setSelectedTarget] = useState("");
@@ -97,7 +115,8 @@ export function EncounterPanel({
     [draftReply, setDraftReply] = useState("");
   const [notice, setNotice] = useState(""),
     [saving, setSaving] = useState(false),
-    [saveFailed, setSaveFailed] = useState(false);
+    [saveFailed, setSaveFailed] = useState(false),
+    [saveStatus, setSaveStatus] = useState<"pvProgressSaved" | "pvProgressSaveUnavailable">();
   const [menu, setMenu] = useState<{
     x: number;
     y: number;
@@ -123,7 +142,12 @@ export function EncounterPanel({
   const addressee = people.find((person) => person.id === talkingTo)?.id ?? people[0]?.id ?? "";
   const playback = useCombatPlayback(session, () => {
     const now = current.current;
-    if (now.phase === "combat" && now.actors[d.playerId]!.actionsLeft === 0 && !saveFailed) {
+    if (
+      !showingCutscene &&
+      now.phase === "combat" &&
+      now.actors[d.playerId]!.actionsLeft === 0 &&
+      !saveFailed
+    ) {
       void run({ kind: "end-turn" });
       return true;
     }
@@ -134,19 +158,20 @@ export function EncounterPanel({
     playback.actorId === d.playerId
       ? t("pvYourTurn")
       : t("pvTurnOf", { name: s.actors[playback.actorId]?.name ?? playback.actorId });
-  const busy = saving || waiting !== null || playback.active || saveFailed;
+  const busy = showingCutscene || saving || waiting !== null || playback.active || saveFailed;
   // The dice come first: while they roll, the line for the roll, its outcome and the marks wait.
   const settledTurn = useRef(lastTurnOf(session));
   if (!playback.active) settledTurn.current = lastTurnOf(session);
   const combatMatters = hasCombat(game);
   const values = playerValues(session);
-  const marks = useNotices(session, playback.active);
+  const marks = useNotices(session, playback.active || showingCutscene);
   // A world that invents residents gives an empty place its people once, on arrival.
   const arrivedAt = session.adventure?.currentSceneId;
   const [populating, setPopulating] = useState(false);
   useArrivalResidents(
     arrivedAt,
-    !!session.adventure?.openWorld?.generateResidents &&
+    !showingCutscene &&
+      !!session.adventure?.openWorld?.generateResidents &&
       !!arrivedAt &&
       !session.adventure.settled.includes(arrivedAt),
     (signal) => {
@@ -214,6 +239,7 @@ export function EncounterPanel({
     if (action.kind === "attack") setSelectedTarget(action.targetId);
     lock.current = true;
     setSaving(true);
+    setSaveStatus(undefined);
     setNotice("");
     setPending(null);
     const revision = s.revision;
@@ -333,6 +359,7 @@ export function EncounterPanel({
     if (lock.current || busy) return;
     lock.current = true;
     setSaving(true);
+    setSaveStatus(undefined);
     try {
       await transitionAdventure({
         id: crypto.randomUUID(),
@@ -351,6 +378,52 @@ export function EncounterPanel({
       setSaving(false);
     }
   }
+  async function completeCutscene(id: string) {
+    if (lock.current || saving || waiting !== null || saveFailed) return;
+    lock.current = true;
+    setSaving(true);
+    setPending(null);
+    setMenu(null);
+    setNotice("");
+    setSaveStatus(undefined);
+    try {
+      await finishCutscene(id);
+    } catch (error) {
+      if (error instanceof ActionSaveError) setSaveFailed(true);
+      else setSaveStatus("pvProgressSaveUnavailable");
+    } finally {
+      lock.current = false;
+      setSaving(false);
+    }
+  }
+  async function retrySave() {
+    if (lock.current) return;
+    lock.current = true;
+    setSaving(true);
+    try {
+      await saveSession();
+      setSaveFailed(false);
+      setSaveStatus("pvProgressSaved");
+    } catch {
+      setSaveStatus("pvProgressSaveUnavailable");
+    } finally {
+      lock.current = false;
+      setSaving(false);
+    }
+  }
+  const saveFeedback = (
+    <>
+      {saveFailed && (
+        <p role="alert">
+          {t("pvProgressSaveFailed")}{" "}
+          <Button variant="quiet" disabled={saving} onClick={() => void retrySave()}>
+            {t("epRetrySave")}
+          </Button>
+        </p>
+      )}
+      {saveStatus && <p role="status">{t(saveStatus)}</p>}
+    </>
+  );
   const preview = pending ? actionBlock(d, s, pending.action) : undefined;
   const fighters = projectFighters(session, playback.actors),
     targetId =
@@ -452,238 +525,236 @@ export function EncounterPanel({
       collapsed={layout === "medium" || (layout === "wide" && collapsedLeft)}
       rightCollapsed={layout === "wide" && collapsedRight}
       layout={layout}
+      cutsceneId={cutscene?.id}
       {...(onJournal ? { onJournal } : {})}
       left={leftColumn}
       center={
-        <div className={`chat-panel gate-scene-panel${arena ? " gate-scene-panel--combat" : ""}`}>
-          {menu && (
-            <Menu
-              label="Message actions"
-              at={{ x: menu.x, y: menu.y }}
-              onClose={() => setMenu(null)}
-              items={[
-                ...(menu.free && session.adventure
-                  ? [
-                      {
-                        label: t("rememberThis"),
-                        onSelect: () => {
-                          rememberPlaceNote(noteFrom(menu.text), menu.sceneId)
-                            .then(() =>
-                              setNotice(
-                                t("rememberedAt", {
-                                  place:
-                                    session.adventure?.scenes.find(
-                                      (scene) =>
-                                        scene.id ===
-                                        (menu.sceneId ?? session.adventure!.currentSceneId),
-                                    )?.name ?? "this place",
-                                }),
-                              ),
-                            )
-                            .catch((error: unknown) =>
-                              setNotice(
-                                error instanceof Error ? error.message : "Could not remember this.",
-                              ),
-                            );
-                        },
-                      },
-                    ]
-                  : []),
-                {
-                  label: "Copy",
-                  onSelect: () => {
-                    void navigator.clipboard?.writeText(menu.text);
-                  },
-                },
-              ]}
-            />
-          )}
-          <div className="gate-scene-status">
-            <span>
-              {fighters.player.position} ·{" "}
-              {arena
-                ? `Combat · round ${playback.round ?? s.round}`
-                : ended
-                  ? "Encounter complete"
-                  : "Exploration"}
-            </span>
-            <span>
-              {playback.active
-                ? turnLabel
-                : s.phase === "combat"
-                  ? `Actions ${player.actionsLeft} · Moves ${player.movesLeft}`
-                  : d.title}
-            </span>
-            {s.phase === "combat" && (
-              <span>
-                Order: {s.initiative!.order.map((id) => s.actors[id]!.name).join(" → ")} ·{" "}
-                {turnLabel}
-              </span>
-            )}
-          </div>
-          {(!ended || playback.active) && (
-            <a
-              href="#play-do"
-              className="play-skip"
-              onClick={(event) => {
-                event.preventDefault();
-                document.getElementById("play-do")?.focus();
-              }}
-            >
-              {t("pvSkipToDo")}
-            </a>
-          )}
-          <div className={`chat-stage${arena ? " chat-stage--combat" : ""}`}>
-            <PlayArrival arrival={marks.arrival} />
-            {arena && (
-              <CombatStage
-                player={fighters.player}
-                opponents={fighters.opponents}
-                selectedId={targetId}
-                onSelect={setSelectedTarget}
-                activeId={playback.actorId}
-                turnLabel={turnLabel}
-                round={playback.round ?? s.round}
-                range={fightRange}
-                actions={fightActions}
-                busy={busy}
-                onArtwork={setCombatArtwork}
-              />
-            )}
-            <StoryLog
-              rows={storyRows(session, {
-                earlier,
-                ...(playback.active ? { heldAfterTurn: settledTurn.current } : {}),
-              })}
-              {...(draftReply ? { draftReply } : {})}
-              hidden={arena}
-              showTime={!!session.adventure?.links.some((link) => link.minutes !== undefined)}
-              hasEarlier={storySegments(session).length > 1}
-              earlier={earlier}
-              onToggleEarlier={() => setEarlier(!earlier)}
-              canRemember={!!session.adventure}
-              onSaveIdea={onSaveIdea ? (turn) => onSaveIdea([turn]) : undefined}
-              onRemember={(row) =>
-                void rememberPlaceNote(noteFrom(row.text), row.sceneId)
-                  .then(() =>
-                    setNotice(
-                      t("rememberedAt", {
-                        place:
-                          session.adventure?.scenes.find(
-                            (scene) =>
-                              scene.id === (row.sceneId ?? session.adventure!.currentSceneId),
-                          )?.name ?? "this place",
-                      }),
-                    ),
-                  )
-                  .catch((error: unknown) =>
-                    setNotice(error instanceof Error ? error.message : "Could not remember this."),
-                  )
-              }
-              onRowMenu={(event, row) => {
-                event.preventDefault();
-                setMenu({
-                  x: event.clientX,
-                  y: event.clientY,
-                  text: row.kind === "do" ? row.label : row.text,
-                  free: row.kind === "person" && row.improvised,
-                  ...(row.kind === "person" && row.sceneId ? { sceneId: row.sceneId } : {}),
-                });
-              }}
-            />
-          </div>
-          <div className="gate-scene-composer">
-            <PlayNoticeStrip notices={marks.notices} />
-            {populating && (
-              <p role="status" className="playable-hint">
-                {t("lookingAround")}
-              </p>
-            )}
-            {notice && <p role="status">{notice}</p>}
-            {saveFailed && (
-              <p role="alert">
-                The action is resolved but saving failed. Keep this page open.{" "}
-                <button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      await saveSession();
-                      setSaveFailed(false);
-                      setNotice("Saved.");
-                    } catch {
-                      setNotice("Saving is still unavailable.");
-                    }
-                  }}
-                >
-                  {t("epRetrySave")}
-                </button>
-              </p>
-            )}
-            {pending && (
-              <div className="gate-action-preview" role="region" aria-label="Review your attempt">
-                <strong>{actionLabel(d, s, pending.action)}</strong>
-                {chance(pending.action) !== undefined && (
-                  <span>{chance(pending.action)}% chance · d100</span>
-                )}
-                {pendingInteraction && <p>{pendingInteraction.description}</p>}
-                {pending.action.kind === "attack" &&
-                  s.actors[pending.action.targetId]?.disposition === "surrendered" && (
-                    <p>{t("epThisOpponentHasSurrendered")}</p>
-                  )}
-                {preview && <p role="status">{preview}</p>}
-                <div>
-                  <button
-                    type="button"
-                    disabled={busy || !!preview}
-                    onClick={() => void run(pending.action, pending)}
-                  >
-                    {t("epAttempt")}
-                  </button>
-                  <button type="button" onClick={() => setPending(null)}>
-                    {t("epChange")}
-                  </button>
-                </div>
-              </div>
-            )}
-            {!ended || playback.active ? (
-              <WhatDoYouDo
-                game={game}
-                suggestions={suggestedCommands(game, addressee || undefined)}
-                groups={groupedCommands(game)}
-                mode={mode}
-                onMode={setMode}
-                say={say}
-                text={text}
-                onSay={setSay}
-                onText={(value) => {
-                  setText(value);
-                  setPending(null);
-                }}
-                busy={busy}
-                waiting={waiting}
-                onCancelWaiting={() => abortRef.current?.abort()}
-                onChoose={(command) => choose(command.action)}
-                onSubmitSay={() => void submitSay()}
-                onSubmitDo={() => void submitDo()}
-                titleFor={(command) =>
-                  command.blocked ??
-                  (command.action.kind === "interaction"
-                    ? d.interactions.find(
-                        (i) => i.id === (command.action as { interactionId: string }).interactionId,
-                      )?.description
-                    : undefined)
-                }
-              />
-            ) : (
-              <p>{t("epThisEncounterHasEnded")}</p>
-            )}
-          </div>
-          <CombatPlaybackOverlay
-            playback={playback}
-            names={Object.fromEntries(Object.values(s.actors).map((a) => [a.id, a.name]))}
-            statNames={Object.fromEntries(d.rules.attributes.map((a) => [a.id, a.name]))}
+        cutscene ? (
+          <CutsceneView
+            key={cutscene.id}
+            cutscene={cutscene}
+            busy={saving || waiting !== null || saveFailed}
+            onFinish={() => void completeCutscene(cutscene.id)}
+            status={saveFeedback}
           />
-        </div>
+        ) : (
+          <div className={`chat-panel gate-scene-panel${arena ? " gate-scene-panel--combat" : ""}`}>
+            {menu && (
+              <Menu
+                label="Message actions"
+                at={{ x: menu.x, y: menu.y }}
+                onClose={() => setMenu(null)}
+                items={[
+                  ...(menu.free && session.adventure
+                    ? [
+                        {
+                          label: t("rememberThis"),
+                          onSelect: () => {
+                            rememberPlaceNote(noteFrom(menu.text), menu.sceneId)
+                              .then(() =>
+                                setNotice(
+                                  t("rememberedAt", {
+                                    place:
+                                      session.adventure?.scenes.find(
+                                        (scene) =>
+                                          scene.id ===
+                                          (menu.sceneId ?? session.adventure!.currentSceneId),
+                                      )?.name ?? "this place",
+                                  }),
+                                ),
+                              )
+                              .catch((error: unknown) =>
+                                setNotice(
+                                  error instanceof Error
+                                    ? error.message
+                                    : "Could not remember this.",
+                                ),
+                              );
+                          },
+                        },
+                      ]
+                    : []),
+                  {
+                    label: "Copy",
+                    onSelect: () => {
+                      void navigator.clipboard?.writeText(menu.text);
+                    },
+                  },
+                ]}
+              />
+            )}
+            <div className="gate-scene-status">
+              <span>
+                {fighters.player.position} ·{" "}
+                {arena
+                  ? `Combat · round ${playback.round ?? s.round}`
+                  : ended
+                    ? "Encounter complete"
+                    : "Exploration"}
+              </span>
+              <span>
+                {playback.active
+                  ? turnLabel
+                  : s.phase === "combat"
+                    ? `Actions ${player.actionsLeft} · Moves ${player.movesLeft}`
+                    : d.title}
+              </span>
+              {s.phase === "combat" && (
+                <span>
+                  Order: {s.initiative!.order.map((id) => s.actors[id]!.name).join(" → ")} ·{" "}
+                  {turnLabel}
+                </span>
+              )}
+            </div>
+            {(!ended || playback.active) && (
+              <a
+                href="#play-do"
+                className="play-skip"
+                onClick={(event) => {
+                  event.preventDefault();
+                  document.getElementById("play-do")?.focus();
+                }}
+              >
+                {t("pvSkipToDo")}
+              </a>
+            )}
+            <div className={`chat-stage${arena ? " chat-stage--combat" : ""}`}>
+              <PlayArrival arrival={marks.arrival} />
+              {arena && (
+                <CombatStage
+                  player={fighters.player}
+                  opponents={fighters.opponents}
+                  selectedId={targetId}
+                  onSelect={setSelectedTarget}
+                  activeId={playback.actorId}
+                  turnLabel={turnLabel}
+                  round={playback.round ?? s.round}
+                  range={fightRange}
+                  actions={fightActions}
+                  busy={busy}
+                  onArtwork={setCombatArtwork}
+                />
+              )}
+              <StoryLog
+                rows={storyRows(session, {
+                  earlier,
+                  ...(playback.active ? { heldAfterTurn: settledTurn.current } : {}),
+                })}
+                {...(draftReply ? { draftReply } : {})}
+                hidden={arena}
+                showTime={!!session.adventure && adventureHasClock(session.adventure)}
+                hasEarlier={storySegments(session).length > 1}
+                earlier={earlier}
+                onToggleEarlier={() => setEarlier(!earlier)}
+                canRemember={!!session.adventure}
+                onSaveIdea={onSaveIdea ? (turn) => onSaveIdea([turn]) : undefined}
+                onRemember={(row) =>
+                  void rememberPlaceNote(noteFrom(row.text), row.sceneId)
+                    .then(() =>
+                      setNotice(
+                        t("rememberedAt", {
+                          place:
+                            session.adventure?.scenes.find(
+                              (scene) =>
+                                scene.id === (row.sceneId ?? session.adventure!.currentSceneId),
+                            )?.name ?? "this place",
+                        }),
+                      ),
+                    )
+                    .catch((error: unknown) =>
+                      setNotice(
+                        error instanceof Error ? error.message : "Could not remember this.",
+                      ),
+                    )
+                }
+                onRowMenu={(event, row) => {
+                  event.preventDefault();
+                  setMenu({
+                    x: event.clientX,
+                    y: event.clientY,
+                    text: row.kind === "do" ? row.label : row.text,
+                    free: row.kind === "person" && row.improvised,
+                    ...(row.kind === "person" && row.sceneId ? { sceneId: row.sceneId } : {}),
+                  });
+                }}
+              />
+            </div>
+            <div className="gate-scene-composer">
+              <PlayNoticeStrip notices={marks.notices} />
+              {populating && (
+                <p role="status" className="playable-hint">
+                  {t("lookingAround")}
+                </p>
+              )}
+              {notice && <p role="status">{notice}</p>}
+              {saveFeedback}
+              {pending && (
+                <div className="gate-action-preview" role="region" aria-label="Review your attempt">
+                  <strong>{actionLabel(d, s, pending.action)}</strong>
+                  {chance(pending.action) !== undefined && (
+                    <span>{chance(pending.action)}% chance · d100</span>
+                  )}
+                  {pendingInteraction && <p>{pendingInteraction.description}</p>}
+                  {pending.action.kind === "attack" &&
+                    s.actors[pending.action.targetId]?.disposition === "surrendered" && (
+                      <p>{t("epThisOpponentHasSurrendered")}</p>
+                    )}
+                  {preview && <p role="status">{preview}</p>}
+                  <div>
+                    <button
+                      type="button"
+                      disabled={busy || !!preview}
+                      onClick={() => void run(pending.action, pending)}
+                    >
+                      {t("epAttempt")}
+                    </button>
+                    <button type="button" onClick={() => setPending(null)}>
+                      {t("epChange")}
+                    </button>
+                  </div>
+                </div>
+              )}
+              {!ended || playback.active ? (
+                <WhatDoYouDo
+                  game={game}
+                  suggestions={suggestedCommands(game, addressee || undefined)}
+                  groups={groupedCommands(game)}
+                  mode={mode}
+                  onMode={setMode}
+                  say={say}
+                  text={text}
+                  onSay={setSay}
+                  onText={(value) => {
+                    setText(value);
+                    setPending(null);
+                  }}
+                  busy={busy}
+                  waiting={waiting}
+                  onCancelWaiting={() => abortRef.current?.abort()}
+                  onChoose={(command) => choose(command.action)}
+                  onSubmitSay={() => void submitSay()}
+                  onSubmitDo={() => void submitDo()}
+                  titleFor={(command) =>
+                    command.blocked ??
+                    (command.action.kind === "interaction"
+                      ? d.interactions.find(
+                          (i) =>
+                            i.id === (command.action as { interactionId: string }).interactionId,
+                        )?.description
+                      : undefined)
+                  }
+                />
+              ) : (
+                <p>{t("epThisEncounterHasEnded")}</p>
+              )}
+            </div>
+            <CombatPlaybackOverlay
+              playback={playback}
+              names={Object.fromEntries(Object.values(s.actors).map((a) => [a.id, a.name]))}
+              statNames={Object.fromEntries(d.rules.attributes.map((a) => [a.id, a.name]))}
+            />
+          </div>
+        )
       }
       right={
         arena ? (

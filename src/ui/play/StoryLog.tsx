@@ -7,8 +7,9 @@ import {
   type MouseEvent,
 } from "react";
 import { formatGameTime } from "../../state/gameClock";
+import { Button } from "../components/Button";
 import { useTranslate } from "../i18n/LanguageProvider";
-import type { StoryRow } from "./storyRows";
+import type { StoryTextRow, StoryRow } from "./storyRows";
 import { CheckCard, Divider, Frame, NamePlate } from "./ornament";
 
 /** Words only get quotes when nobody has put any in: an answer that tells and quotes is left as it is. */
@@ -45,10 +46,7 @@ export function StoryLog({
   canRemember: boolean;
   onSaveIdea?: ((turn: number) => void) | undefined;
   onRemember?: ((row: Extract<StoryRow, { kind: "person" }>) => void) | undefined;
-  onRowMenu: (
-    event: MouseEvent,
-    row: Extract<StoryRow, { kind: "narrator" | "say" | "do" | "person" }>,
-  ) => void;
+  onRowMenu: (event: MouseEvent, row: StoryTextRow) => void;
 }) {
   const t = useTranslate();
   const log = useRef<HTMLDivElement>(null);
@@ -99,33 +97,42 @@ export function StoryLog({
     failure: t("pvDegreeFailure"),
     severe: t("pvDegreeSevere"),
   };
-  const actions = (row: Extract<StoryRow, { kind: "narrator" | "say" | "do" | "person" }>) => (
+  const actions = (row: StoryTextRow) => (
     <span className="play-row__actions">
       {onSaveIdea && (
-        <button
-          type="button"
+        <Button
+          variant="quiet"
+          size="compact"
           className="play-row__action"
           tabIndex={row.key === current ? 0 : -1}
           aria-label={t("pvSaveIdeaRow")}
           onClick={() => onSaveIdea(row.turn)}
         >
           {t("pvSaveIdea")}
-        </button>
+        </Button>
       )}
       {canRemember && row.kind === "person" && row.improvised && onRemember && (
-        <button
-          type="button"
+        <Button
+          variant="quiet"
+          size="compact"
           className="play-row__action"
           tabIndex={row.key === current ? 0 : -1}
           onClick={() => onRemember(row)}
         >
           {t("rememberThis")}
-        </button>
+        </Button>
       )}
     </span>
   );
   return (
-    <Frame as="section" className="play-story" aria-label={t("pvStory")} hidden={hidden}>
+    <Frame
+      as="section"
+      id="play-story"
+      tabIndex={-1}
+      className="play-story"
+      aria-label={t("pvStory")}
+      hidden={hidden}
+    >
       <header className="play-story__head">
         <NamePlate>{t("pvStory")}</NamePlate>
         {hasEarlier && (
@@ -183,6 +190,23 @@ export function StoryLog({
               </CheckCard>
             );
           const menu = (event: MouseEvent) => onRowMenu(event, row);
+          if (row.kind === "cutscene")
+            return (
+              <div
+                key={row.key}
+                {...nav(row.key)}
+                className="play-row play-row--cutscene"
+                onContextMenu={menu}
+              >
+                <Divider>
+                  <h3>{row.title}</h3>
+                </Divider>
+                {row.text.split("\n\n").map((paragraph, index) => (
+                  <p key={index}>{paragraph}</p>
+                ))}
+                {actions(row)}
+              </div>
+            );
           if (row.kind === "narrator")
             return (
               <div

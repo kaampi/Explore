@@ -13,6 +13,8 @@ type Turn = {
   role: string;
   content: string;
   actionId?: string;
+  cutsceneId?: string;
+  adventureSceneId?: string;
   actionSceneId?: string;
   speakerId?: string;
   speakerName?: string;
@@ -24,6 +26,7 @@ export type StoryRow =
   | { kind: "divider"; key: string; place: string; minutes: number; current: boolean }
   /** Running prose: no bubble, no label. */
   | { kind: "narrator"; key: string; turn: number; text: string }
+  | { kind: "cutscene"; key: string; turn: number; title: string; text: string }
   /** What the player said: "YOU · SAY", a quote. */
   | { kind: "say"; key: string; turn: number; text: string }
   /** What the player did: "YOU · DO", the name of the action. */
@@ -54,6 +57,11 @@ export type StoryRow =
       damage?: number;
     };
 
+export type StoryTextRow = Extract<
+  StoryRow,
+  { kind: "narrator" | "say" | "do" | "person" | "cutscene" }
+>;
+
 /**
  * The story as rows. By default only the place the player is in; with `earlier`, every place they
  * have been in, each under a divider with its name and the time they came. Fights are left out:
@@ -82,7 +90,15 @@ export function storyRows(
       minutes: segment.minutes,
       current: segment === segments.at(-1) && position === shown.length - 1,
     });
-    for (let index = segment.from; index < segment.to; index++) {
+    const indexes = turns.slice(segment.from, segment.to).map((_, index) => segment.from + index);
+    if (turns[segment.from]?.adventureSceneId) {
+      // The cut-scenes queued by entering a place play before its arrival prose.
+      let cutscenes = 0;
+      while (cutscenes + 1 < indexes.length && turns[segment.from + cutscenes + 1]?.cutsceneId)
+        cutscenes++;
+      if (cutscenes) indexes.splice(cutscenes, 0, indexes.shift()!);
+    }
+    for (const index of indexes) {
       const turn = turns[index];
       if (!turn || typeof turn !== "object") continue;
       const entry = index ? adventureHistoryEntry(session, turn, index) : undefined;
@@ -109,6 +125,19 @@ export function storyRows(
       }
       // What the dice decided is told when they have landed.
       if (held) continue;
+      if (turn.cutsceneId) {
+        const cutscene = session.adventure?.cutscenes.find(({ id }) => id === turn.cutsceneId);
+        if (cutscene) {
+          rows.push({
+            kind: "cutscene",
+            key: `t${turn.turn}`,
+            turn: turn.turn,
+            title: cutscene.title,
+            text: turn.content,
+          });
+          continue;
+        }
+      }
       for (const [i, check] of (entry?.checks ?? []).entries())
         rows.push({
           kind: "check",

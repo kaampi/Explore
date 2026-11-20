@@ -29,6 +29,13 @@ const TRANSITIONS: Record<SessionState, Partial<Record<SessionEvent, SessionStat
   error: { reset: "idle" },
 };
 
+export class SessionNotIdleError extends Error {
+  constructor(current: SessionState | "cutscene") {
+    super(`Cannot start a new turn: session is currently "${current}", not "idle".`);
+    this.name = "SessionNotIdleError";
+  }
+}
+
 export class InvalidTransitionError extends Error {
   constructor(
     public readonly from: SessionState,

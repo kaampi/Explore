@@ -6,6 +6,7 @@ import { publicCommands, type PublicCommand } from "../game/catalog";
 import { greetingTarget, spokenInteraction, speechAddressee } from "../game/dialogue";
 import { proposeEncounterText } from "../game/intention";
 import { canNarrateOutcome } from "../game/narration";
+import { requireNoPendingCutscene } from "../game/cutscenes";
 import { adventureHistoryEntry } from "../game/AdventureEngine";
 import { pass1PredictTokens } from "../state/StateSchema";
 import {
@@ -339,6 +340,7 @@ export async function planSay(
     addresseeId?: string | undefined;
   } = {},
 ): Promise<SayPlan> {
+  requireNoPendingCutscene(session);
   const game = session.encounter;
   if (!game) return { kind: "plain" };
   const { definition: d, state: s } = game;
@@ -375,6 +377,7 @@ export async function planDo(
   provider: Provider | undefined,
   signal?: AbortSignal,
 ): Promise<DoPlan> {
+  requireNoPendingCutscene(session);
   const game = session.encounter;
   if (!game) return { kind: "none" };
   const local = proposeEncounterText(game, text);

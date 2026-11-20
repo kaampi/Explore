@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ActorSchema, BarrierSchema, EncounterGameSchema } from "./EncounterSchema";
+import { CutsceneSchema } from "./CutsceneSchema";
 import { WorldMapSchema } from "../library/worldMap";
 import { INITIAL_GAME_MINUTES } from "../state/gameClock";
 /** Shared with Storyboard; kept independent of library/session schemas. */
@@ -52,7 +53,7 @@ export const AdventureRunSchema = z.object({
   campaignId: z.string().min(1),
   title: z.string().min(1),
   currentSceneId: z.string().min(1),
-  /** Game time in minutes. It moves forward with the travel time of the ways taken, and nothing else. */
+  /** Game time in minutes. Ways and completed cut-scenes can advance it. */
   clockMinutes: z.number().int().nonnegative().default(INITIAL_GAME_MINUTES),
   /**
    * Things the player chose to keep from a free reply, by scene id. They are words the player
@@ -100,6 +101,9 @@ export const AdventureRunSchema = z.object({
     )
     .min(1),
   links: z.array(AdventureLinkSchema),
+  cutscenes: z.array(CutsceneSchema).default([]),
+  cutscenesSeen: z.array(z.string()).default([]),
+  cutscenesPending: z.array(z.string()).default([]),
   barriers: z.record(BarrierSchema).optional(),
   savedScenes: z.record(EncounterGameSchema).default({}),
   actors: z.record(ActorSchema).default({}),
@@ -111,6 +115,8 @@ export const AdventureRunSchema = z.object({
         from: z.string(),
         to: z.string(),
         stateVersion: z.number().int().nonnegative(),
+        // Older transitions only stored the way, so their time can be reconstructed from it.
+        clockMinutes: z.number().int().nonnegative().optional(),
       }),
     )
     .default([]),

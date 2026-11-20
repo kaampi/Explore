@@ -79,6 +79,7 @@ export type ChatPhase = "idle" | "streaming" | "error";
 
 export interface EngineContextValue {
   transitionAdventure: (request: AdventureTransition) => Promise<void>;
+  finishCutscene: (id: string) => Promise<void>;
   setCombatArtwork: (actorId: string, image: string | null) => Promise<void>;
   executeEncounterAction: (request: EncounterRequest) => Promise<void>;
   saveEncounter: () => Promise<void>;
@@ -876,6 +877,15 @@ export function EngineProvider({
     transitionAdventure: async (request) => {
       stateEngine.transitionAdventure(request);
       eventLogSnapshotRef.current = sharedEventLog.all();
+      notifySession();
+      try {
+        await repo.saveSession(stateEngine.getSession());
+      } catch (error) {
+        throw new ActionSaveError(error);
+      }
+    },
+    finishCutscene: async (id) => {
+      if (!stateEngine.finishCutscene(id)) return;
       notifySession();
       try {
         await repo.saveSession(stateEngine.getSession());

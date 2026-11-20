@@ -17,6 +17,7 @@ export function PlayFrame({
   collapsed = false,
   rightCollapsed = false,
   layout = "wide",
+  cutsceneId,
   onJournal,
 }: {
   /** The right column is folded to a narrow strip. */
@@ -25,6 +26,7 @@ export function PlayFrame({
   collapsed?: boolean;
   /** "narrow": one column, with the right column and the journal behind buttons. */
   layout?: PlayLayout;
+  cutsceneId?: string | undefined;
   /** Opens the journal. The narrow layout has a button for it among the others. */
   onJournal?: () => void;
   left: ReactNode;
@@ -32,11 +34,12 @@ export function PlayFrame({
   right: ReactNode;
 }) {
   const t = useTranslate();
-  const [sceneOpen, setSceneOpen] = useState(false);
+  const [panel, setPanel] = useState<{ cutsceneId: string | undefined } | null>(null);
   const narrow = layout === "narrow";
+  const sceneOpen = panel !== null && panel.cutsceneId === cutsceneId;
   useEffect(() => {
-    if (!narrow) setSceneOpen(false);
-  }, [narrow]);
+    if (!narrow || !sceneOpen) setPanel(null);
+  }, [narrow, sceneOpen]);
   return (
     <div
       className={`play-view${collapsed ? " play-view--collapsed" : ""}${rightCollapsed ? " play-view--right-collapsed" : ""}${narrow ? " play-view--narrow" : ""}`}
@@ -49,7 +52,7 @@ export function PlayFrame({
           <button
             type="button"
             className="ui-button ui-button--secondary"
-            onClick={() => setSceneOpen(true)}
+            onClick={() => setPanel({ cutsceneId })}
           >
             {t("pvInTheScene")}
           </button>
@@ -63,7 +66,7 @@ export function PlayFrame({
       <div className="play-view__center">{center}</div>
       {narrow ? (
         sceneOpen && (
-          <Modal title={t("pvInTheScene")} onClose={() => setSceneOpen(false)} side>
+          <Modal title={t("pvInTheScene")} onClose={() => setPanel(null)} side>
             {right}
           </Modal>
         )

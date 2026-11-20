@@ -84,6 +84,13 @@ export function adventureOptions(session: Session) {
       ...(link.minutes !== undefined ? { minutes: link.minutes } : {}),
     }));
 }
+export function adventureHasClock(run: AdventureRun): boolean {
+  return (
+    run.links.some((link) => link.minutes !== undefined) ||
+    run.cutscenes.some((cutscene) => cutscene.minutes !== undefined)
+  );
+}
+
 export function adventureCompleted(session: Session) {
   const goal = session.adventure?.goal,
     flags = new Set([...session.storyFlags, ...(session.encounter?.state.flags ?? [])]);
@@ -160,6 +167,7 @@ export function advanceAdventure(session: Session, raw: AdventureTransition) {
     from,
     to: target.id,
     stateVersion: session.stateVersion + 1,
+    clockMinutes: run.clockMinutes,
   });
   return { run, game, flags: game.state.flags, target, label: link.label || target.name };
 }
@@ -206,7 +214,7 @@ export function unifyAdventureEquipment(run: AdventureRun) {
 }
 
 /** The flags that are set now: the story's and the live scene's. */
-function currentFlags(session: Session): Set<string> {
+export function currentFlags(session: Session): Set<string> {
   return new Set([...session.storyFlags, ...(session.encounter?.state.flags ?? [])]);
 }
 
@@ -277,7 +285,9 @@ function visitedScenes(run: AdventureRun, startingScene: string) {
   };
   note(startingScene);
   for (const move of run.transitions) {
-    clock += run.links.find((link) => link.id === move.linkId)?.minutes ?? 0;
+    clock =
+      move.clockMinutes ??
+      clock + (run.links.find((link) => link.id === move.linkId)?.minutes ?? 0);
     note(move.to);
   }
   note(run.currentSceneId);
@@ -515,9 +525,12 @@ export function storySegments(session: Session): StorySegment[] {
   });
   let clock = INITIAL_GAME_MINUTES;
   return starts.map((start, position) => {
-    if (position > 0)
-      clock +=
-        run?.links.find((link) => link.id === run.transitions[position - 1]?.linkId)?.minutes ?? 0;
+    if (position > 0) {
+      const move = run?.transitions[position - 1];
+      clock =
+        move?.clockMinutes ??
+        clock + (run?.links.find((link) => link.id === move?.linkId)?.minutes ?? 0);
+    }
     return {
       sceneId: start.sceneId,
       place: nameOf(start.sceneId),

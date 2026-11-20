@@ -16,9 +16,10 @@ import type {
 } from "../library/LibrarySchema";
 import { adventureMapPlaces, bindSceneMapPlace, mapPlaceForScene } from "../library/adventureMap";
 import { AdventureRunSchema, type AdventureNarration, type Persona } from "../game/AdventureSchema";
+import { dueCutscenes, queueCutscenes } from "../game/cutscenes";
 import { unifyAdventureEquipment } from "../game/AdventureEngine";
 import { bodyPlanSummary, factionSummary } from "../context/bodyPlan";
-import type { AnatomyTemplate } from "../state/StateSchema";
+import type { AnatomyTemplate, Session } from "../state/StateSchema";
 import { scaffoldIntoAdventure } from "../library/worldScaffold";
 import { isOpenDraft } from "../library/sceneFormat";
 import { createSessionFromSetup } from "./createSession";
@@ -193,6 +194,7 @@ export function startPlayableCampaign(
         currentSceneId: scene.id,
         scenes,
         links: campaign.sceneLinks,
+        cutscenes: campaign.cutscenes,
         goal: campaign.goal,
         cast: castFor(campaign, sources.characters ?? [], sources),
         moods: moodsFor(campaign),
@@ -280,5 +282,11 @@ export function startPlayableCampaign(
     places.find((p) => p.id === scene.placeId),
   );
   if (authorTheme) session.authorTheme = authorTheme;
-  return parseSession(session);
+  const beforeStart: Session = {
+    ...session,
+    adventure: undefined,
+    encounter: undefined,
+    storyFlags: [],
+  };
+  return parseSession(queueCutscenes(session, dueCutscenes(beforeStart, session)));
 }
