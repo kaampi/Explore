@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import type { CutsceneFilm, ImageCell } from "../../cutscenes/schema";
+import { signalCycleSeconds } from "../../cutscenes/signalTiming";
 
 type Picture = CutsceneFilm["images"][number];
 
@@ -70,7 +71,7 @@ export function SignalInterference({
   exitProgress?: number;
 }) {
   // Change the interval between bursts without increasing the contrast or flash rate.
-  const interval = 1.65 - density * 1.1;
+  const interval = signalCycleSeconds(density);
   const phase = (((exitProgress ?? 0) * seconds) % interval) / interval;
   if (!strength || !seconds || (exitProgress !== undefined && phase >= 0.21)) return null;
 

@@ -2,9 +2,17 @@ import { z } from "zod";
 import { StoryboardPositionSchema } from "../library/storyboardPosition";
 
 const Seconds = z.number().min(0).max(30);
-export const IMAGE_EFFECT_DEFAULTS = { strength: 70, density: 50, seconds: 6 } as const;
+export const SIGNAL_DEFAULTS = { strength: 70, density: 50, seconds: 6 } as const;
 const Percentage = z.number().min(0).max(100);
 const Delay = z.number().min(0).max(10).default(0);
+
+export const REVEAL_PAUSE_SECONDS = 1;
+const SignalSettingsSchema = z.object({
+  seconds: Seconds.default(SIGNAL_DEFAULTS.seconds),
+  strength: Percentage.default(SIGNAL_DEFAULTS.strength),
+  density: Percentage.default(SIGNAL_DEFAULTS.density),
+});
+export type SignalSettings = z.infer<typeof SignalSettingsSchema>;
 
 export const CutsceneImageSchema = z.object({
   id: z.string().min(1),
@@ -33,13 +41,7 @@ export const ImageCellSchema = z.object({
   during: z
     .enum(["none", "slow-zoom", "pan-left", "pan-right", "shake", "unblur", "signal-glitch"])
     .default("none"),
-  signal: z
-    .object({
-      seconds: Seconds.default(IMAGE_EFFECT_DEFAULTS.seconds),
-      strength: Percentage.default(IMAGE_EFFECT_DEFAULTS.strength),
-      density: Percentage.default(IMAGE_EFFECT_DEFAULTS.density),
-    })
-    .optional(),
+  signal: SignalSettingsSchema.optional(),
   filter: z.enum(["none", "dark", "grayscale", "sepia", "cold", "warm"]).default("none"),
 });
 
@@ -60,14 +62,18 @@ export const TextCellSchema = z.object({
   align: z.enum(["left", "center", "right"]).default("left"),
   font: z.enum(["reading", "heading"]).default("reading"),
   in: z.object({
-    effect: z.enum(["none", "fade", "typewriter", "zoom-in", "slide-up"]),
+    effect: z.enum(["none", "fade", "typewriter", "word-reveal", "zoom-in", "slide-up"]),
     seconds: Seconds.default(1),
     delay: Delay,
+    pauseBefore: z.number().int().min(1).max(1200).optional(),
+    pauseSeconds: Seconds.optional(),
   }),
   out: z.object({
     effect: z.enum(["stay", "fade", "zoom-out"]),
     seconds: Seconds.default(0.5),
   }),
+  during: z.enum(["none", "signal-glitch"]).optional(),
+  signal: SignalSettingsSchema.optional(),
 });
 
 export const BeatSchema = z.object({

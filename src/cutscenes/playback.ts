@@ -1,4 +1,12 @@
-import type { CutsceneBeat, CutsceneFilm, ImageCell, SoundCell, TextCell } from "./schema";
+import {
+  REVEAL_PAUSE_SECONDS,
+  type CutsceneBeat,
+  type CutsceneFilm,
+  type ImageCell,
+  type SoundCell,
+  type TextCell,
+} from "./schema";
+import { revealWords } from "./textReveal";
 
 type ImageLayer = { step: number; imageId: string; cell: ImageCell };
 type TextLayer = { step: number; cell: TextCell };
@@ -18,6 +26,7 @@ export type PlaybackStep = {
     delay: number;
     enter: number;
     leave: number;
+    revealPause?: { at: number; duration: number };
   };
   sound: { previousMusic?: SoundCue | undefined; cue?: SoundCue | undefined; delay: number };
   transition: {
@@ -68,11 +77,23 @@ export function planPlayback(film: CutsceneFilm, simple = false): PlaybackPlan {
     const cell = beat.text;
     const currentText = cell ? { step, cell } : heldText;
     heldText = cell?.out.effect === "stay" ? currentText : cell ? undefined : heldText;
+    const enter = cell ? length(cell.in.effect, cell.in.seconds, simple) : 0;
+    let revealPause: PlaybackStep["text"]["revealPause"];
+    if (cell?.in.effect === "word-reveal" && !simple && cell.in.pauseBefore !== undefined) {
+      const wordCount = revealWords(cell.text).length;
+      if (cell.in.pauseBefore <= wordCount) {
+        revealPause = {
+          at: ((cell.in.pauseBefore - 1) / wordCount) * enter,
+          duration: ms(cell.in.pauseSeconds ?? REVEAL_PAUSE_SECONDS),
+        };
+      }
+    }
     const text = {
       previous: previousText,
       current: currentText,
       delay: cell && !simple ? ms(cell.in.delay) : 0,
-      enter: cell ? length(cell.in.effect, cell.in.seconds, simple) : 0,
+      enter: enter + (revealPause?.duration ?? 0),
+      ...(revealPause ? { revealPause } : {}),
       leave: cell ? length(cell.out.effect, cell.out.seconds, simple) : 0,
     };
 
@@ -181,6 +202,10 @@ export function playbackFrame(plan: PlaybackPlan, state: Playing) {
   const textTime = elapsed - step.text.delay;
   const image = step.image;
   const text = step.text;
+  const pause = text.revealPause;
+  const pausedFor = pause ? Math.min(pause.duration, Math.max(0, textTime - pause.at)) : 0;
+  const revealTime = textTime - pausedFor;
+  const revealDuration = text.enter - (pause?.duration ?? 0);
   const cue = elapsed >= step.sound.delay ? step.sound.cue : undefined;
   const music =
     cue?.cell.action === "music"
@@ -197,7 +222,12 @@ export function playbackFrame(plan: PlaybackPlan, state: Playing) {
     imageIn: imageTime < 0 ? 1 : fraction(imageTime, image.enter),
     imageOut: fraction(imageTime, image.leave),
     text: textTime < 0 ? text.previous : text.current,
-    textIn: textTime < 0 ? 1 : fraction(textTime, text.enter),
+    textIn:
+      textTime < 0
+        ? 1
+        : pause && revealDuration === 0 && pausedFor < pause.duration
+          ? 0
+          : fraction(revealTime, revealDuration),
     textOut:
       state.phase === "exit"
         ? fraction(state.elapsed, text.leave)

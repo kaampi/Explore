@@ -7,7 +7,7 @@ import {
   type PlaybackState,
 } from "../../cutscenes/playback";
 import {
-  IMAGE_EFFECT_DEFAULTS,
+  SIGNAL_DEFAULTS,
   type CutsceneFilm,
   type ImageCell,
   type TextCell,
@@ -25,6 +25,7 @@ import {
 import { playThemeStyle } from "../themes/ThemeProvider";
 import type { PlayTheme } from "../themes/theme";
 import { MeltImage, SignalInterference } from "./ImageEffects";
+import { CutsceneTextContent } from "./TextEffects";
 import { useCutsceneSound, type CutsceneSound } from "./useCutsceneSound";
 import "./cutscenes.css";
 
@@ -89,12 +90,16 @@ function SceneVisual({
   const picture = images.find(({ id }) => id === frame?.image?.imageId);
   const oldPicture = images.find(({ id }) => id === frame?.previousImage?.imageId);
   const text = frame?.text?.cell;
-  const typewriter = text?.in.effect === "typewriter";
   const textProgress = frame?.textIn ?? 1;
-  const letters = Array.from(text?.text ?? "");
-  const words = typewriter
-    ? letters.slice(0, Math.floor(letters.length * textProgress)).join("")
-    : text?.text;
+  const words = text && (
+    <CutsceneTextContent
+      key={frame?.text?.step}
+      text={text}
+      progress={textProgress}
+      paused={paused}
+      reduced={reduced}
+    />
+  );
   const textStyle = {
     ...(text ? enterText(text.in.effect, textProgress) : {}),
     ...(text ? exitText(text.out.effect, frame?.textOut ?? 0) : {}),
@@ -124,11 +129,11 @@ function SceneVisual({
       ].map(({ layer, asset, outgoing }) => {
         const { cell } = layer;
         const progress = frame?.imageOut ?? 0;
-        const strength = (cell.out.strength ?? IMAGE_EFFECT_DEFAULTS.strength) / 100;
+        const strength = (cell.out.strength ?? SIGNAL_DEFAULTS.strength) / 100;
         const melt = outgoing && !reduced && cell.out.effect === "melt" && strength > 0;
         const signalExit = outgoing && !reduced && cell.out.effect === "signal-glitch";
         const signalDuring = !outgoing && !reduced && cell.during === "signal-glitch";
-        const signal = cell.signal ?? IMAGE_EFFECT_DEFAULTS;
+        const signal = cell.signal ?? SIGNAL_DEFAULTS;
         return (
           <div
             key={layer.step}
@@ -172,7 +177,7 @@ function SceneVisual({
                 filter={cell.filter}
                 seconds={cell.out.seconds}
                 strength={strength}
-                density={(cell.out.density ?? IMAGE_EFFECT_DEFAULTS.density) / 100}
+                density={(cell.out.density ?? SIGNAL_DEFAULTS.density) / 100}
                 paused={paused}
                 exitProgress={progress}
               />

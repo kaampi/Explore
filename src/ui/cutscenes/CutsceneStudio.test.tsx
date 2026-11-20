@@ -385,3 +385,61 @@ it("saves separate display and exit settings and previews the exit without a sec
     await ui.close();
   }
 });
+
+it("sets a pause before a specific repeated word and saves it with text interference", async () => {
+  const ui = setup();
+  const saved = vi.fn();
+  const film = CutsceneFilmSchema.parse({
+    id: "note",
+    title: "The note",
+    createdAt: "",
+    updatedAt: "",
+    beats: [{ id: "one" }],
+  });
+  try {
+    await act(async () =>
+      ui.root.render(
+        <CutsceneStudio
+          film={film}
+          previewTheme={PRESET_THEMES[0]!}
+          onClose={() => {}}
+          onSave={saved}
+        />,
+      ),
+    );
+    const group = (name: string) =>
+      Array.from(ui.host.querySelectorAll("fieldset")).find(
+        (item) => item.querySelector("legend")?.textContent === name,
+      )!;
+    await ui.click("Step 1, Text");
+    await ui.input("Text", "Mona … Mona!");
+    const entrance = group("Entrance");
+    await ui.input("Text", "word-reveal", entrance);
+    const wordOptions = ui.field("Pause before word", entrance) as HTMLSelectElement;
+    expect(Array.from(wordOptions.options, (option) => option.textContent)).toEqual([
+      "None",
+      "1. Mona",
+      "2. Mona",
+    ]);
+    await ui.input("Pause before word", "2", entrance);
+    await ui.input("Pause length (s)", "2.5", entrance);
+    await ui.input("Pause before word", "0", entrance);
+    expect(entrance.textContent).not.toContain("Pause length (s)");
+    await ui.input("Pause before word", "2", entrance);
+    const during = group("While the text is visible");
+    await ui.input("Text", "signal-glitch", during);
+    await ui.input("Strength (%)", "40", during);
+    await ui.file("Save");
+    expect(saved.mock.calls[0]?.[0].beats).toMatchObject([
+      {
+        text: {
+          in: { effect: "word-reveal", pauseBefore: 2, pauseSeconds: 2.5 },
+          during: "signal-glitch",
+          signal: { strength: 40 },
+        },
+      },
+    ]);
+  } finally {
+    await ui.close();
+  }
+});
