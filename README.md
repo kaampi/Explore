@@ -42,7 +42,13 @@ Each is a sibling, not a module of another. Use Explore on its own, or connect i
 
 ## Quickstart
 
-**Windows desktop app (Tauri alpha)** — installer builds are available through [Desktop build (Windows)](https://github.com/kaampi/Explore/actions/workflows/desktop-build.yml). Open a successful run, download **kaampi-explore-windows-installer** from **Artifacts**, extract the ZIP, and run **kaampi-Explore-Setup.exe**. GitHub sign-in is required for artifact downloads. If no successful build is available yet, use the source instructions below. Builds are unsigned, and Windows may show a SmartScreen warning. See [Installing and running kaampi Explore](docs/running.md).
+**Windows desktop app (Tauri alpha)**
+
+1. [Download the Windows installer](https://github.com/kaampi/Explore/releases/download/alpha-latest/kaampi-Explore-Setup.exe). No GitHub sign-in or ZIP extraction is needed.
+2. **Run kaampi-Explore-Setup.exe.** The installer is unsigned. If Windows shows a SmartScreen warning, choose **More information**, then **Run anyway**.
+3. **Follow the installation.** Close Explore if prompted. The new version replaces the old one and keeps your data.
+
+The **Update available** button in the desktop app explains the same steps. If no installer has been published, use the source instructions below. See [Installing and running kaampi Explore](docs/running.md).
 
 The installer includes the app runtime; Node.js and Rust are only needed for development. Your AI model server runs separately. Codex pairing and opening installed sibling apps are Windows desktop features. Linux and macOS currently use the browser version from source; desktop installers for those platforms are not published.
 

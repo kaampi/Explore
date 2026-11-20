@@ -1,3 +1,4 @@
+import { isTauri } from "@tauri-apps/api/core";
 import {
   createContext,
   useCallback,
@@ -8,13 +9,40 @@ import {
   type ReactNode,
 } from "react";
 
+import type { TranslationKey } from "../i18n/LanguageProvider";
+
 export const UPDATE_INTERVAL = 30 * 60 * 1000;
-export const UPDATE_DOWNLOADS =
-  "https://github.com/kaampi/Explore/actions/workflows/desktop-build.yml";
+const INSTALLER_NAME = "kaampi-Explore-Setup.exe";
+/** The installer, at an address that never changes and needs no sign-in. */
+export const INSTALLER_URL = `https://github.com/kaampi/Explore/releases/download/alpha-latest/${INSTALLER_NAME}`;
+export const RUNNING_DOCS_URL = "https://github.com/kaampi/Explore/blob/main/docs/running.md";
+const RELEASE_API = "https://api.github.com/repos/kaampi/Explore/releases/tags/alpha-latest";
+const COMPARE_API = "https://api.github.com/repos/kaampi/Explore/compare";
 const revision = import.meta.env.VITE_EXPLORE_REVISION as string | undefined;
 export const UPDATE_CACHE_KEY = `explore-update-check:${revision ?? "unknown"}`;
-type Snapshot = { available: boolean; checking: boolean; message: string; lastChecked: number };
-type Updates = Snapshot & { check: (manual?: boolean) => Promise<void> };
+/**
+ * `message` is the key of a text in LanguageProvider, or empty. The view translates it.
+ */
+type Snapshot = {
+  available: boolean;
+  checking: boolean;
+  message: TranslationKey | "";
+  lastChecked: number;
+};
+type Updates = Snapshot & {
+  check: (manual?: boolean) => Promise<void>;
+  /** The desktop app checks for a new installer; the browser compares its code with main. */
+  desktop: boolean;
+};
+/** A problem with a text of its own. */
+class UpdateError extends Error {
+  constructor(readonly key: TranslationKey) {
+    super(key);
+  }
+}
+const statusError = (status: number) =>
+  new UpdateError(status === 403 || status === 429 ? "updRateLimit" : "updCouldNot");
+const REVISION = /^Revision:\s*([0-9a-f]{40})\s*$/im;
 const Context = createContext<Updates | null>(null);
 function cached(): Snapshot {
   try {
@@ -63,42 +91,64 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
     controller.current = current;
     lastAttempt.current = Date.now();
     const timeout = window.setTimeout(() => current.abort(), 15_000);
-    if (manual) setSnapshot((value) => ({ ...value, checking: true, message: "Checking GitHub…" }));
-    try {
-      if (!revision)
-        throw new Error("This build has no version identifier. See the latest builds on GitHub.");
-      const response = await fetch(
-        `https://api.github.com/repos/kaampi/Explore/compare/${encodeURIComponent(revision)}...main`,
-        { headers: { Accept: "application/vnd.github+json" }, signal: current.signal },
-      );
-      if (response.status === 404)
-        throw new Error(
-          "This development version cannot be compared with GitHub. See the latest builds there.",
-        );
-      if (!response.ok)
-        throw new Error(
-          response.status === 403 || response.status === 429
-            ? "GitHub is temporarily limiting checks. Try again later."
-            : "Could not check for updates. Try again later.",
-        );
+    if (manual)
+      setSnapshot((value) => ({ ...value, checking: true, message: "updCheckingGitHub" }));
+    const get = (url: string) =>
+      fetch(url, { headers: { Accept: "application/vnd.github+json" }, signal: current.signal });
+    /** How many commits `to` is ahead of `from`, by GitHub's comparison. */
+    const commitsAhead = async (from: string, to: string) => {
+      const response = await get(`${COMPARE_API}/${encodeURIComponent(from)}...${to}`);
+      if (response.status === 404) throw new UpdateError("updDevelopment");
+      if (!response.ok) throw statusError(response.status);
       const result = (await response.json()) as { ahead_by?: unknown };
       if (
         typeof result.ahead_by !== "number" ||
         !Number.isSafeInteger(result.ahead_by) ||
         result.ahead_by < 0
       )
-        throw new Error("GitHub returned an unexpected result.");
+        throw new UpdateError("updUnexpected");
+      return result.ahead_by;
+    };
+    try {
+      if (!revision) throw new UpdateError("updNoVersion");
+      const desktop = isTauri();
+      let available = false;
+      let none = false;
+      if (desktop) {
+        // An update is a new installer: the pre-release alpha-latest names the commit it was built from.
+        const response = await get(RELEASE_API);
+        if (response.status === 404) none = true;
+        else {
+          if (!response.ok) throw statusError(response.status);
+          const release = (await response.json()) as { body?: unknown; assets?: unknown };
+          const built =
+            typeof release.body === "string" ? REVISION.exec(release.body)?.[1] : undefined;
+          if (!built) throw new UpdateError("updNoRevision");
+          // Replacing an asset with --clobber can leave the release without a file.
+          none =
+            !Array.isArray(release.assets) ||
+            !release.assets.some(
+              (asset: { name?: unknown; state?: unknown } | null) =>
+                asset?.name === INSTALLER_NAME && asset.state === "uploaded",
+            );
+          if (!none && built.toLowerCase() !== revision.toLowerCase())
+            available = (await commitsAhead(revision, built.toLowerCase())) > 0;
+        }
+      } else available = (await commitsAhead(revision, "main")) > 0;
       if (!mounted.current || current.signal.aborted) return;
-      const available = result.ahead_by > 0,
-        lastChecked = Date.now();
-      const next = {
+      const lastChecked = Date.now();
+      const next: Snapshot = {
         available,
         checking: false,
         lastChecked,
         message: manual
-          ? available
-            ? "A newer Explore version is available."
-            : "You have the latest Explore code on main."
+          ? none
+            ? "updNoInstaller"
+            : available
+              ? "updNewer"
+              : desktop
+                ? "updLatestApp"
+                : "updLatestMain"
           : "",
       };
       state.current = next;
@@ -115,10 +165,10 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
           ...value,
           checking: false,
           message: current.signal.aborted
-            ? "The update check timed out. Try again later."
-            : error instanceof Error
-              ? error.message
-              : "Could not check for updates.",
+            ? "updTimeout"
+            : error instanceof UpdateError
+              ? error.key
+              : "updCouldNot",
         }));
     } finally {
       window.clearTimeout(timeout);
@@ -146,6 +196,10 @@ export function UpdateProvider({ children }: { children: ReactNode }) {
       lastAttempt.current = 0;
     };
   }, [check]);
-  return <Context.Provider value={{ ...snapshot, check }}>{children}</Context.Provider>;
+  return (
+    <Context.Provider value={{ ...snapshot, check, desktop: isTauri() }}>
+      {children}
+    </Context.Provider>
+  );
 }
 export const useUpdates = () => useContext(Context);

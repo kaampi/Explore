@@ -4,7 +4,15 @@ kaampi Explore is a local-first application. You run its interface on your compu
 
 ## Windows desktop app (Tauri alpha)
 
-Open [Desktop build (Windows)](https://github.com/kaampi/Explore/actions/workflows/desktop-build.yml) and select a successful run. Under **Artifacts**, download **kaampi-explore-windows-installer**, extract the ZIP, and run **kaampi-Explore-Setup.exe**. You need to sign in to GitHub to download build artifacts. If the first build has not completed successfully yet, use the browser/source instructions below. Artifacts are retained for 90 days; these are alpha test builds, not signed stable releases.
+Download the installer from [https://github.com/kaampi/Explore/releases/download/alpha-latest/kaampi-Explore-Setup.exe](https://github.com/kaampi/Explore/releases/download/alpha-latest/kaampi-Explore-Setup.exe). You do not need to sign in to GitHub and there is no ZIP to unpack. The address is fixed and serves the latest published Windows build from `main`.
+
+1. **Download** the installer file.
+2. **Run the file.** Windows may say that it does not recognise the app, because the app is not signed yet. Choose **More information**, then **Run anyway**.
+3. **Follow the installation.** Close Explore if the installer asks you to. The new version replaces the old one.
+
+Your worlds, characters and conversations are kept. To be safe, use **Export library** in the library first.
+
+The installer is published as the pre-release **Senaste alfa** (tag `alpha-latest`) by the workflow [Desktop build (Windows)](https://github.com/kaampi/Explore/actions/workflows/desktop-build.yml) after each successful build on `main`. Its description says which commit it was built from (`Revision: …`); the app checks that the installer is present and compares that commit with its own to tell whether an update exists. Only a change to the code makes a new build, so a commit that only changes documents does not give "Update available". The same file is also kept for 14 days as a workflow artifact, for troubleshooting only. If no installer has been published yet, use the browser/source instructions below. These are alpha test builds, not signed stable releases.
 
 The installer includes the app runtime; you do not need Node.js or Rust to use it. Run your local model server separately. Windows may show a SmartScreen warning because the installer is unsigned. Codex pairing and opening installed Write/Comic windows require the desktop app. Linux and macOS desktop installers are not currently published.
 
