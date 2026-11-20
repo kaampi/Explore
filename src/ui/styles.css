@@ -1632,6 +1632,188 @@ textarea.setup-field__story {
   grid-template-columns: 520px 1fr;
 }
 
+.studio-split--rulesets {
+  grid-template-columns: 300px 1fr;
+}
+
+.studio-split--rulesets .studio-sheet {
+  max-width: 1120px;
+}
+
+/* One attribute in a rule-set: three rows (numbers, meanings, how it plays). */
+.rs-attr {
+  position: relative;
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  margin-bottom: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+
+.studio-sheet--form .rs-attr .setup-field {
+  margin: 0;
+  gap: var(--space-1);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-dim);
+}
+
+.rs-attr__top {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) 120px 76px 76px 96px;
+  padding-right: calc(var(--control-compact) - var(--space-2));
+  gap: var(--space-3);
+  align-items: end;
+}
+
+.rs-attr__top input,
+.rs-attr__top select {
+  width: 100%;
+  min-width: 0;
+}
+
+.rs-attr__name input {
+  font-weight: 600;
+}
+
+/* Inputs here are 15 % tighter than the shared 10px 12px. */
+.studio-sheet--form .rs-attr :is(input, select, textarea) {
+  padding: 8.5px 10px;
+}
+
+:root .rs-attr .rs-attr__remove {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-1);
+}
+
+/* Picture beside the rule-set name. */
+.rs-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.rs-head__text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.rs-head__picture {
+  position: relative;
+  flex: none;
+}
+
+.rs-head__pick {
+  display: grid;
+  place-items: center;
+  width: 88px;
+  height: 88px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--text-faint);
+  font-size: 28px;
+  cursor: pointer;
+}
+
+.rs-head__pick:has(img) {
+  border-style: solid;
+}
+
+.rs-head__pick:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.rs-head__pick img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+:root .rs-head .rs-head__clear {
+  position: absolute;
+  top: calc(var(--space-2) * -1);
+  right: calc(var(--space-2) * -1);
+  background: var(--panel-raised);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+}
+
+.rs-attr__meanings {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.rs-attr__meanings--text {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+}
+
+.rs-attr textarea {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.rs-attr__meanings textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.rs-attr__bottom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-6);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.studio-sheet--form .rs-attr .rs-attr__inline {
+  flex-direction: row;
+  align-items: center;
+  margin: 0;
+  gap: var(--space-2);
+}
+
+.rs-attr__inline select {
+  width: auto;
+  min-width: 10em;
+}
+
+@media (max-width: 1200px) {
+  .studio-split--rulesets {
+    grid-template-columns: 220px 1fr;
+  }
+}
+
+/* The card follows its own width, not the window's: side menus eat into it. */
+.studio-split--rulesets .studio-sheet {
+  container-type: inline-size;
+}
+
+@container (max-width: 720px) {
+  .rs-attr__top {
+    grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr));
+  }
+
+  .rs-attr__name {
+    grid-column: 1 / -1;
+  }
+
+  .rs-attr__meanings,
+  .rs-attr__meanings--text {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .studio-split--atlas {
   display: flex;
   grid-template-columns: none;
@@ -2991,7 +3173,8 @@ textarea.setup-field__story {
     padding-top: 0;
   }
 
-  .studio-split--shelf {
+  .studio-split--shelf,
+  .studio-split--rulesets {
     grid-template-columns: 1fr;
   }
 
