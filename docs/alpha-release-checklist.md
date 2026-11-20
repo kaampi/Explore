@@ -18,6 +18,7 @@ This checklist tracks readiness for the first public tester build. **A public re
 - [ ] Verify character import, conversations and basic backup/export.
 - [ ] Verify Windows launcher on a clean machine; macOS/Linux testers should confirm their launchers.
 - [ ] Review bundled images and third-party assets for distribution rights.
+- [ ] The pre-release `alpha-latest` ("Senaste alfa") has the new installer and the right commit: after a build from `main`, open the release, check that `kaampi-Explore-Setup.exe` was replaced and that the `Revision:` line in the description is the commit that was built. Check that the fixed download address works in a private browser window, without signing in.
 - [ ] Create GitHub pre-release tag (proposed: `v0.1.0-alpha.1`) and release notes **only after passing gates**.
 
 ## Known limitations to disclose
