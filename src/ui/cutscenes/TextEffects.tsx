@@ -3,6 +3,40 @@ import { SIGNAL_DEFAULTS, type TextCell } from "../../cutscenes/schema";
 import { signalCycleSeconds } from "../../cutscenes/signalTiming";
 import { revealWords, textGraphemes } from "../../cutscenes/textReveal";
 
+import { NamePlate, NoteCard } from "../play/ornament";
+
+export function CutsceneTextLayout({
+  text,
+  overImage,
+  style,
+  hidden,
+  children,
+}: {
+  text: TextCell;
+  overImage: boolean;
+  style?: CSSProperties;
+  hidden?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div className={`cutscene-reel__text cutscene-reel__text--${text.position}`}>
+      <div
+        className={`cutscene-reel__copy cutscene-reel__copy--${text.style} cutscene-reel__copy--size-${text.size} cutscene-reel__copy--font-${text.font}${overImage ? " cutscene-reel__copy--over-image" : ""}`}
+        style={{ ...style, textAlign: text.align }}
+        aria-hidden={hidden}
+      >
+        {text.style === "title" ? (
+          <NamePlate as="p">{children}</NamePlate>
+        ) : text.style === "letter" ? (
+          <NoteCard>{children}</NoteCard>
+        ) : (
+          <p>{children}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 const signalMarks = ["/", "?", "×", "·"] as const;
 
 function textPieces(text: string, effect: TextCell["in"]["effect"]) {

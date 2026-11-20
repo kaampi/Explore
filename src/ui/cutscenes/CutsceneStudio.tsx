@@ -20,6 +20,8 @@ import { Button } from "../components/Button";
 import { useContextMenu, type MenuItem } from "../components/Menu";
 import { Modal } from "../components/Modal";
 import { useTranslate } from "../i18n/LanguageProvider";
+import { OrnamentProvider, ornamentVars, useSimpleFrames } from "../play/ornament";
+import { playThemeStyle } from "../themes/ThemeProvider";
 import { sceneImagesFromFile } from "../studio/portrait";
 import { PRESET_THEMES, type PlayTheme } from "../themes/theme";
 import { CutsceneFileMenu, CutsceneLibraryMenu } from "./CutsceneFileMenu";
@@ -34,6 +36,7 @@ import {
   type Channel,
 } from "./CutsceneFields";
 import { StepTimeline, WorkspaceZoom } from "./StepTimeline";
+import { CutsceneTextLayout } from "./TextEffects";
 import { useWorkspaceView } from "./useWorkspaceView";
 import "./cutscene-studio.css";
 
@@ -219,9 +222,11 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
   const timing = plan.steps[beatIndex]!;
   const preview = useMemo(() => oneStep(draft, beatIndex, timing), [draft, beatIndex, timing]);
   const previewWorkspace = useWorkspaceView();
-  const previewSource = preview.beats[0]?.image.source;
+  const simpleFrames = useSimpleFrames(false);
+  const previewBeat = preview.beats[0]!;
+  const previewSource = previewBeat.image.source;
   const poster =
-    previewSource?.kind === "set"
+    previewSource.kind === "set"
       ? draft.images.find(({ id }) => id === previewSource.imageId)
       : undefined;
   const trackNames = new Map(tracks.map(({ id, name }) => [id, name]));
@@ -594,23 +599,24 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
                 <div
                   className="cutscene-studio__poster-stage"
                   style={{
+                    ...playThemeStyle(theme),
+                    ...ornamentVars(theme, { simple: simpleFrames }),
                     transform: `translate(${previewWorkspace.view.x}px, ${previewWorkspace.view.y}px) scale(${previewWorkspace.view.zoom})`,
                   }}
                 >
                   {poster && (
                     <img
-                      className={`cutscene-reel__picture cutscene-reel__filter--${preview.beats[0]?.image.filter ?? "none"}`}
+                      className={`cutscene-reel__picture cutscene-reel__filter--${previewBeat.image.filter}`}
                       src={poster.dataUrl}
                       alt={poster.alt}
                     />
                   )}
-                  {preview.beats[0]?.text && (
-                    <div
-                      className={`cutscene-studio__poster-copy cutscene-studio__poster-copy--${preview.beats[0].text.position}`}
-                      style={{ textAlign: preview.beats[0].text.align }}
-                    >
-                      {preview.beats[0].text.text}
-                    </div>
+                  {previewBeat.text && (
+                    <OrnamentProvider theme={theme} simple={simpleFrames}>
+                      <CutsceneTextLayout text={previewBeat.text} overImage={Boolean(poster)}>
+                        {previewBeat.text.text}
+                      </CutsceneTextLayout>
+                    </OrnamentProvider>
                   )}
                 </div>
               </div>

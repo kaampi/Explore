@@ -24,6 +24,21 @@ export const channelLabels = {
 export const labelFor = (value: string) =>
   `csValue_${value.replaceAll("-", "_")}` as TranslationKey;
 
+const textEntranceHints = {
+  none: "csTextAppearHint",
+  fade: "csTextFadeInHint",
+  typewriter: "csTextTypewriterHint",
+  "word-reveal": "csTextWordRevealHint",
+  "zoom-in": "csTextZoomInHint",
+  "slide-up": "csTextSlideUpHint",
+} as const;
+
+const textExitHints = {
+  stay: "csTextStayHint",
+  fade: "csTextFadeOutHint",
+  "zoom-out": "csTextZoomOutHint",
+} as const;
+
 export function Pick<T extends string>({
   label,
   value,
@@ -486,21 +501,24 @@ export function CutsceneFields({
             options={["reading", "heading"]}
             onChange={(font) => field("text", { font })}
           />
-          <Group label={t("csEnter")}>
+          <Group label={t("csTextEntrance")}>
             <Pick
-              label={t("csText")}
+              label={t("csTextEffect")}
               value={text.in.effect}
               options={["none", "fade", "typewriter", "word-reveal", "zoom-in", "slide-up"]}
               onChange={(effect) => field("text", { in: { ...text.in, effect } })}
             />
+            <small className="cutscene-field__hint">{t(textEntranceHints[text.in.effect])}</small>
+            {text.in.effect !== "none" && (
+              <Num
+                label={t("csLength")}
+                value={text.in.seconds}
+                max={30}
+                onChange={(seconds) => field("text", { in: { ...text.in, seconds } })}
+              />
+            )}
             <Num
-              label={t("csLength")}
-              value={text.in.seconds}
-              max={30}
-              onChange={(seconds) => field("text", { in: { ...text.in, seconds } })}
-            />
-            <Num
-              label={t("csDelay")}
+              label={t("csTextStartDelay")}
               value={text.in.delay}
               max={10}
               onChange={(delay) => field("text", { in: { ...text.in, delay } })}
@@ -538,31 +556,37 @@ export function CutsceneFields({
           </Group>
           <Group label={t("csTextDuring")}>
             <Pick
-              label={t("csText")}
+              label={t("csTextEffect")}
               value={text.during ?? "none"}
               options={["none", "signal-glitch"]}
               onChange={(during) => field("text", { during })}
             />
             {text.during === "signal-glitch" && (
-              <SignalFields
-                signal={text.signal ?? SIGNAL_DEFAULTS}
-                onChange={(signal) => field("text", { signal })}
-              />
+              <>
+                <small className="cutscene-field__hint">{t("csTextSignalHint")}</small>
+                <SignalFields
+                  signal={text.signal ?? SIGNAL_DEFAULTS}
+                  onChange={(signal) => field("text", { signal })}
+                />
+              </>
             )}
           </Group>
-          <Group label={t("csExit")}>
+          <Group label={t("csTextExit")}>
             <Pick
-              label={t("csText")}
+              label={t("csTextEffect")}
               value={text.out.effect}
               options={["stay", "fade", "zoom-out"]}
               onChange={(effect) => field("text", { out: { ...text.out, effect } })}
             />
-            <Num
-              label={t("csLength")}
-              value={text.out.seconds}
-              max={30}
-              onChange={(seconds) => field("text", { out: { ...text.out, seconds } })}
-            />
+            <small className="cutscene-field__hint">{t(textExitHints[text.out.effect])}</small>
+            {text.out.effect !== "stay" && (
+              <Num
+                label={t("csLength")}
+                value={text.out.seconds}
+                max={30}
+                onChange={(seconds) => field("text", { out: { ...text.out, seconds } })}
+              />
+            )}
           </Group>
         </>
       )}
