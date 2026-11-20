@@ -300,7 +300,7 @@ it("projects the selected step's actual playback times and edits its outgoing tr
     expect(ui.findButton("Next step", timeline)?.disabled).toBe(true);
     await ui.click("Previous step", timeline);
     await ui.click("Text · Someone is there. · 2 sec to 2 sec", timeline);
-    await ui.input("Delay (s)", "2.5");
+    await ui.input("Wait before showing text (s)", "2.5");
     expect(timeline.textContent).toContain("Advances at 2.5 sec");
     await ui.click("Transition · Step 1 → Step 2");
     await ui.input("Transition", "crossfade");
@@ -438,8 +438,29 @@ it("sets a pause before a specific repeated word and saves it with text interfer
       )!;
     await ui.click("Step 1, Text");
     await ui.input("Text", "Mona … Mona!");
-    const entrance = group("Entrance");
-    await ui.input("Text", "word-reveal", entrance);
+    const stage = ui.host.querySelector(".cutscene-studio__poster-stage")!;
+    const copy = stage.querySelector<HTMLDivElement>(".cutscene-reel__copy")!;
+    expect(copy.textContent).toBe("Mona … Mona!");
+    await ui.input("Style", "whisper");
+    await ui.input("Size", "large");
+    await ui.input("Position", "top");
+    await ui.input("Alignment", "right");
+    await ui.input("Font", "heading");
+    expect(copy.classList).toContain("cutscene-reel__copy--whisper");
+    expect(copy.classList).toContain("cutscene-reel__copy--size-large");
+    expect(copy.classList).toContain("cutscene-reel__copy--font-heading");
+    expect(copy.parentElement?.classList).toContain("cutscene-reel__text--top");
+    expect(copy.style.textAlign).toBe("right");
+
+    const entrance = group("How the text appears");
+    expect(entrance.textContent).not.toContain("Duration (s)");
+    await ui.input("Effect", "word-reveal", entrance);
+    expect(entrance.textContent).toContain("Words appear one at a time.");
+    expect(entrance.textContent).toContain("Duration (s)");
+    const exit = group("How the text leaves");
+    expect(exit.textContent).not.toContain("Duration (s)");
+    await ui.input("Effect", "fade", exit);
+    expect(exit.textContent).toContain("Duration (s)");
     const wordOptions = ui.field("Pause before word", entrance) as HTMLSelectElement;
     expect(Array.from(wordOptions.options, (option) => option.textContent)).toEqual([
       "None",
@@ -452,7 +473,7 @@ it("sets a pause before a specific repeated word and saves it with text interfer
     expect(entrance.textContent).not.toContain("Pause length (s)");
     await ui.input("Pause before word", "2", entrance);
     const during = group("While the text is visible");
-    await ui.input("Text", "signal-glitch", during);
+    await ui.input("Effect", "signal-glitch", during);
     await ui.input("Strength (%)", "40", during);
     await ui.file("Save");
     expect(saved.mock.calls[0]?.[0].beats).toMatchObject([
