@@ -19,6 +19,7 @@ export type PlaybackStep = {
     delay: number;
     enter: number;
     leave: number;
+    melt: number;
   };
   text: {
     previous?: TextLayer | undefined;
@@ -59,6 +60,7 @@ export function planPlayback(film: CutsceneFilm, simple = false): PlaybackPlan {
     if (beat.image.source.kind === "set")
       activeImage = { step, imageId: beat.image.source.imageId, cell: beat.image };
     else if (beat.image.source.kind === "clear") activeImage = undefined;
+    const melt = changingImage && activeImage?.cell.out.effect === "melt" ? activeImage : undefined;
     const image = {
       previous: previousImage,
       current: activeImage,
@@ -71,7 +73,9 @@ export function planPlayback(film: CutsceneFilm, simple = false): PlaybackPlan {
         changingImage && previousImage
           ? length(previousImage.cell.out.effect, previousImage.cell.out.seconds, simple)
           : 0,
+      melt: melt ? length("melt", melt.cell.out.seconds, simple) : 0,
     };
+    if (melt) activeImage = undefined;
 
     const previousText = heldText;
     const cell = beat.text;
@@ -151,7 +155,7 @@ function transitionOrNext(plan: PlaybackPlan, state: Playing, step: PlaybackStep
 }
 
 function leaveStep(plan: PlaybackPlan, state: Playing, step: PlaybackStep): PlaybackState {
-  return step.text.leave
+  return Math.max(step.text.leave, step.image.melt) > 0
     ? { ...state, phase: "exit", elapsed: 0, channelsDone: true }
     : transitionOrNext(plan, state, step);
 }
@@ -169,7 +173,8 @@ export function advancePlayback(
   const step = plan.steps[state.step]!;
   if (event.type === "continue") {
     if (state.phase === "transition") return nextStep(plan, state);
-    if (state.phase === "exit") return transitionOrNext(plan, state, step);
+    if (state.phase === "exit")
+      return state.elapsed < step.image.melt ? state : transitionOrNext(plan, state, step);
     if (!state.channelsDone && state.elapsed < step.readyAt)
       return { ...state, channelsDone: true };
     return step.advanceAt === undefined ? leaveStep(plan, state, step) : state;
@@ -177,7 +182,9 @@ export function advancePlayback(
   if (state.paused || event.elapsed <= 0) return state;
   const elapsed = state.elapsed + event.elapsed;
   if (state.phase === "exit") {
-    return elapsed >= step.text.leave ? transitionOrNext(plan, state, step) : { ...state, elapsed };
+    return elapsed >= Math.max(step.text.leave, step.image.melt)
+      ? transitionOrNext(plan, state, step)
+      : { ...state, elapsed };
   }
   if (state.phase === "transition") {
     return elapsed >= step.transition.duration ? nextStep(plan, state) : { ...state, elapsed };
@@ -201,6 +208,8 @@ export function playbackFrame(plan: PlaybackPlan, state: Playing) {
   const imageTime = elapsed - step.image.delay;
   const textTime = elapsed - step.text.delay;
   const image = step.image;
+  const melting = image.melt > 0 && state.phase === "exit" && state.elapsed < image.melt;
+  const melted = image.melt > 0 && state.phase !== "step";
   const text = step.text;
   const pause = text.revealPause;
   const pausedFor = pause ? Math.min(pause.duration, Math.max(0, textTime - pause.at)) : 0;
@@ -214,13 +223,14 @@ export function playbackFrame(plan: PlaybackPlan, state: Playing) {
         ? undefined
         : step.sound.previousMusic;
   return {
-    image: imageTime < 0 ? image.previous : image.current,
-    previousImage:
-      imageTime >= 0 && image.previous !== image.current && imageTime < image.leave
+    image: melted ? undefined : imageTime < 0 ? image.previous : image.current,
+    previousImage: melting
+      ? image.current
+      : !melted && imageTime >= 0 && image.previous !== image.current && imageTime < image.leave
         ? image.previous
         : undefined,
     imageIn: imageTime < 0 ? 1 : fraction(imageTime, image.enter),
-    imageOut: fraction(imageTime, image.leave),
+    imageOut: melting ? fraction(state.elapsed, image.melt) : fraction(imageTime, image.leave),
     text: textTime < 0 ? text.previous : text.current,
     textIn:
       textTime < 0
@@ -229,7 +239,7 @@ export function playbackFrame(plan: PlaybackPlan, state: Playing) {
           ? 0
           : fraction(revealTime, revealDuration),
     textOut:
-      state.phase === "exit"
+      state.phase === "exit" && text.leave > 0
         ? fraction(state.elapsed, text.leave)
         : state.phase === "transition" && text.leave > 0
           ? 1
