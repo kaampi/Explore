@@ -172,6 +172,18 @@ export function CutsceneFields({
             </label>
           </>
         )}
+        <Pick
+          label={t("csDuring")}
+          value={image.during}
+          options={["none", "slow-zoom", "pan-left", "pan-right", "shake", "unblur"]}
+          onChange={(during) => field("image", { during })}
+        />
+        <Pick
+          label={t("csFilter")}
+          value={image.filter}
+          options={["none", "dark", "grayscale", "sepia", "cold", "warm"]}
+          onChange={(filter) => field("image", { filter })}
+        />
         <Group label={t("csEnter")}>
           <Pick
             label={t("csImage")}

@@ -102,8 +102,12 @@ it("edits every channel, previews, reorders steps, and saves through the film AP
   try {
     await act(async () => ui.root.render(<Host />));
     await ui.input("Title", "At dawn");
+    await ui.click("Settings");
     await ui.input("Display", "fullscreen");
+    await ui.click("Close dialog", ui.host.querySelector("dialog")!);
     await ui.input("Image", "clear");
+    await ui.input("Motion while displayed", "pan-left");
+    await ui.input("Image filter", "warm");
     const firstImage = ui.findButton("Step 1, Image")!;
     await act(async () =>
       firstImage.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true })),
@@ -149,7 +153,7 @@ it("edits every channel, previews, reorders steps, and saves through the film AP
         { text: { text: "Someone arrives." } },
         {
           text: { text: "Dawn breaks.", style: "whisper" },
-          image: { source: { kind: "clear" } },
+          image: { source: { kind: "clear" }, during: "pan-left", filter: "warm" },
           sound: { action: "effect", caption: "[A knock]" },
           advance: { kind: "after", seconds: 3 },
         },

@@ -144,23 +144,44 @@ function Reel({ film, theme, simple, sound, onEnd }: CutscenePlayerProps) {
       >
         <div className="cutscene-reel__visual">
           {oldPicture && (
-            <div className={`cutscene-reel__exit cutscene-reel__exit--${out}`} aria-hidden="true">
-              <img
-                alt=""
-                src={oldPicture.dataUrl}
-                style={{ opacity: 1 - (frame?.imageOut ?? 0) }}
-              />
-            </div>
-          )}
-          {picture && (
-            <img
-              key={frame?.image?.step}
-              className="cutscene-reel__image"
-              alt={picture.alt}
-              src={picture.dataUrl}
-              style={enterImage(frame?.image?.cell.in.effect ?? "none", frame?.imageIn ?? 1)}
+            <div
+              className={`cutscene-reel__exit-color cutscene-reel__exit--${out}`}
+              aria-hidden="true"
             />
           )}
+          {[
+            ...(oldPicture && frame?.previousImage
+              ? [
+                  {
+                    layer: frame.previousImage,
+                    asset: oldPicture,
+                    outgoing: true,
+                  },
+                ]
+              : []),
+            ...(picture && frame?.image
+              ? [{ layer: frame.image, asset: picture, outgoing: false }]
+              : []),
+          ].map(({ layer, asset, outgoing }) => (
+            <div
+              key={layer.step}
+              className="cutscene-reel__image"
+              aria-hidden={outgoing || undefined}
+              style={
+                outgoing
+                  ? { opacity: 1 - (frame?.imageOut ?? 0), zIndex: 1 }
+                  : enterImage(layer.cell.in.effect, frame?.imageIn ?? 1)
+              }
+            >
+              <img
+                alt={outgoing ? "" : asset.alt}
+                src={asset.dataUrl}
+                className={`cutscene-reel__picture cutscene-reel__filter--${layer.cell.filter}`}
+                data-motion={reduced ? "none" : layer.cell.during}
+                data-paused={paused}
+              />
+            </div>
+          ))}
           <span className="visually-hidden" aria-live="polite">
             {picture?.alt}
           </span>

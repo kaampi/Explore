@@ -26,3 +26,9 @@
 - Placeringar som läggs till utan menyval använder vald scen, eller första scenen. Om filmhyllan är tom visas en saknad film tills författaren skapar eller väljer en. Varningarna blockerar aldrig spel.
 - Ordna fäster korten mot samma rutnät som Storyboard. Scen- och vägkort föredrar ett ledigt läge intill utlösaren. Faktakort läggs på en rad under spelkartans kort. Ångra återställer också placeringarna.
 - Exemplet *Before the bells* installeras från filmhyllan och blir ett vanligt äventyr i biblioteket. Det använder den befintliga budbärarens kort som utgångspunkt, en bild som redan följer med appen och textning för ljudsignaler.
+
+## 20 november 2026 · Delmål 5
+
+- Studion följer skissen från genomgången: förhandsvisning till vänster, vald cells panel till höger och hela kanalrutnätet längst ned. Vald rad och kolumn markeras. Den stillastående förhandsvisningen visar valt stegs bild och text direkt; film och enskilda steg kan spelas därifrån.
+- Filmens toppmeny har Arkiv för att spara och stänga, och Inställningar för kolumn eller helskärm, överhoppning och förhandsvisningstema. På smala skärmar finns steglista och separat panel.
+- Rörelser och filter använder de befintliga uppräknade värdena i filmformatet. De har fasta förlopp, fortsätter när bilden behålls och pausar tillsammans med filmen. Enkla ramar och minskad rörelse stänger av rörelsen, med filtret kvar. Brev använder temats `NoteCard`.

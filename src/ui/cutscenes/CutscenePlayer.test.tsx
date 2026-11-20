@@ -178,6 +178,49 @@ describe("the independent cut-scene player", () => {
     }
   });
 
+  it("keeps visible motion and filter across steps and disables motion with simple frames", async () => {
+    const film = model([
+      {
+        id: "one",
+        image: {
+          source: { kind: "set", imageId: "room" },
+          during: "slow-zoom",
+          filter: "sepia",
+          in: { effect: "none" },
+          out: { effect: "none" },
+        },
+      },
+      {
+        id: "two",
+        text: {
+          text: "Keep this letter.",
+          style: "letter",
+          in: { effect: "none" },
+          out: { effect: "stay" },
+        },
+      },
+    ]);
+    const moving = await mount(film);
+    try {
+      const image = moving.host.querySelector("img")!;
+      expect(image.dataset.motion).toBe("slow-zoom");
+      expect(image.classList.contains("cutscene-reel__filter--sepia")).toBe(true);
+      await moving.press("Enter");
+      expect(moving.host.querySelector("img")).toBe(image);
+      expect(moving.host.querySelector(".orn-note")?.textContent).toBe("Keep this letter.");
+    } finally {
+      await moving.close();
+    }
+    const still = await mount(film, { simple: true });
+    try {
+      const image = still.host.querySelector("img")!;
+      expect(image.dataset.motion).toBe("none");
+      expect(image.classList.contains("cutscene-reel__filter--sepia")).toBe(true);
+    } finally {
+      await still.close();
+    }
+  });
+
   it("announces missing audio, loops available music and releases it at the end", async () => {
     const pause = vi.fn();
     const revoke = vi.fn();
