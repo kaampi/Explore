@@ -74,8 +74,8 @@ export function HomeScreen({
   const [voiceId, setVoiceId] = useState("");
   const [rulesetId, setRulesetId] = useState("");
   const chatPlaces = mergeWithExamples(places, [examplePlaceTemplate()]);
-  const chatVoices = mergeWithExamples(voices, exampleVoiceTemplates());
   const language = useLanguageControls()?.language;
+  const chatVoices = mergeWithExamples(voices, exampleVoiceTemplates(language));
   const chatRulesets = mergeWithExamples(rulesets, exampleRulesetTemplates(language));
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);

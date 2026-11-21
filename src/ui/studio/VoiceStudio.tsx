@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 import { newVoiceTemplate, type LibrarySource, type VoiceTemplate } from "@library/LibrarySchema";
 import { exampleVoiceTemplates, mergeWithExamples } from "@library/exampleTemplates";
-import { useTranslate } from "../i18n/LanguageProvider";
+import { useLanguageControls, useTranslate } from "../i18n/LanguageProvider";
 import { withOriginalTimestamps } from "@library/fromForm";
 import { StudioList } from "./StudioList";
 import { FormSection } from "./FormSection";
@@ -33,6 +33,7 @@ function draftFrom(template: VoiceTemplate): Draft {
 
 export function VoiceStudio({ repo }: { repo: IndexedDBRepository }) {
   const t = useTranslate();
+  const language = useLanguageControls()?.language;
   const [library, setLibrary] = useState<VoiceTemplate[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -60,7 +61,7 @@ export function VoiceStudio({ repo }: { repo: IndexedDBRepository }) {
   }, [repo]);
 
   const savedIds = new Set(library.map((item) => item.id));
-  const items = mergeWithExamples(library, exampleVoiceTemplates());
+  const items = mergeWithExamples(library, exampleVoiceTemplates(language));
 
   function open(id: string) {
     const item = items.find((row) => row.id === id);
