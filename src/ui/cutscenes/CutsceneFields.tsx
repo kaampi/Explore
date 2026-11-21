@@ -15,6 +15,8 @@ import { useTranslate, type TranslationKey } from "../i18n/LanguageProvider";
 
 export const channels = ["image", "sound", "text", "advance"] as const;
 export type Channel = (typeof channels)[number];
+export type MediaChannel = Exclude<Channel, "advance">;
+export type ChannelDialog = "effects" | "timing";
 export const channelLabels = {
   image: "csImage",
   sound: "csSound",
@@ -115,20 +117,26 @@ function Group({ label, children }: { label: string; children: ReactNode }) {
 
 function SignalFields({
   signal,
+  section,
   onChange,
 }: {
+  section: ChannelDialog;
   signal: SignalSettings;
   onChange: (value: SignalSettings) => void;
 }) {
   const t = useTranslate();
-  return (
-    <>
+  if (section === "timing") {
+    return (
       <Num
         label={t("csLength")}
         value={signal.seconds}
         max={30}
         onChange={(seconds) => onChange({ ...signal, seconds })}
       />
+    );
+  }
+  return (
+    <>
       <Num
         label={t("csEffectStrength")}
         value={signal.strength}
@@ -151,6 +159,7 @@ export function CutsceneFields({
   film,
   beat,
   channel,
+  section = "content",
   tracks,
   onChange,
   onImage,
@@ -160,6 +169,7 @@ export function CutsceneFields({
   film: CutsceneFilm;
   beat: CutsceneBeat;
   channel: Channel;
+  section?: ChannelDialog | "content";
   tracks: AudioTrack[];
   onChange: (update: (step: CutsceneBeat) => CutsceneBeat) => void;
   onImage: (file: File) => void;
@@ -173,6 +183,12 @@ export function CutsceneFields({
   if (channel === "image") {
     const { image } = beat;
     const signal = image.signal ?? SIGNAL_DEFAULTS;
+    function updateEntrance(patch: Partial<typeof image.in>) {
+      onChange((step) => ({
+        ...step,
+        image: { ...step.image, in: { ...step.image.in, ...patch } },
+      }));
+    }
     function updateExit(patch: Partial<typeof image.out>) {
       onChange((step) => ({
         ...step,
@@ -181,166 +197,202 @@ export function CutsceneFields({
     }
     const active = image.source.kind === "set" ? image.source.imageId : undefined;
     const picture = film.images.find(({ id }) => id === active);
+    if (section === "content")
+      return (
+        <>
+          <label className="cutscene-field">
+            <span>{t("csImage")}</span>
+            <select
+              value={active ? `asset:${active}` : image.source.kind}
+              onChange={(event) => {
+                const source = event.target.value;
+                field("image", {
+                  source:
+                    source === "keep" || source === "clear"
+                      ? { kind: source }
+                      : { kind: "set", imageId: source.slice("asset:".length) },
+                });
+              }}
+            >
+              <option value="keep">{t("csValue_keep")}</option>
+              <option value="clear">{t("csValue_clear")}</option>
+              {active && !picture && (
+                <option value={`asset:${active}`}>{t("csMissingImage")}</option>
+              )}
+              {film.images.map((item, index) => (
+                <option key={item.id} value={`asset:${item.id}`}>
+                  {item.alt || `${t("csImage")} ${index + 1}`}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="cutscene-field">
+            <span>{t("csImageUpload")}</span>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (file) onImage(file);
+              }}
+            />
+          </label>
+          {picture && (
+            <>
+              <img className="cutscene-studio__thumb" src={picture.thumbDataUrl} alt="" />
+              <label className="cutscene-field">
+                <span>{t("csImageAlt")}</span>
+                <input
+                  value={picture.alt}
+                  maxLength={200}
+                  onChange={(event) => onAlt(picture.id, event.target.value)}
+                />
+              </label>
+            </>
+          )}
+        </>
+      );
     return (
       <>
-        <label className="cutscene-field">
-          <span>{t("csImage")}</span>
-          <select
-            value={active ? `asset:${active}` : image.source.kind}
-            onChange={(event) => {
-              const source = event.target.value;
-              field("image", {
-                source:
-                  source === "keep" || source === "clear"
-                    ? { kind: source }
-                    : { kind: "set", imageId: source.slice("asset:".length) },
-              });
-            }}
-          >
-            <option value="keep">{t("csValue_keep")}</option>
-            <option value="clear">{t("csValue_clear")}</option>
-            {active && !picture && <option value={`asset:${active}`}>{t("csMissingImage")}</option>}
-            {film.images.map((item, index) => (
-              <option key={item.id} value={`asset:${item.id}`}>
-                {item.alt || `${t("csImage")} ${index + 1}`}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="cutscene-field">
-          <span>{t("csImageUpload")}</span>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              event.target.value = "";
-              if (file) onImage(file);
-            }}
-          />
-        </label>
-        {picture && (
+        {section === "effects" && (
           <>
-            <img className="cutscene-studio__thumb" src={picture.thumbDataUrl} alt="" />
-            <label className="cutscene-field">
-              <span>{t("csImageAlt")}</span>
-              <input
-                value={picture.alt}
-                maxLength={200}
-                onChange={(event) => onAlt(picture.id, event.target.value)}
-              />
-            </label>
+            <Pick
+              label={t("csDuring")}
+              value={image.during}
+              options={[
+                "none",
+                "slow-zoom",
+                "pan-left",
+                "pan-right",
+                "shake",
+                "unblur",
+                "signal-glitch",
+              ]}
+              onChange={(during) => field("image", { during })}
+            />
+            <Pick
+              label={t("csFilter")}
+              value={image.filter}
+              options={["none", "dark", "grayscale", "sepia", "cold", "warm"]}
+              onChange={(filter) => field("image", { filter })}
+            />
           </>
         )}
-        <Pick
-          label={t("csDuring")}
-          value={image.during}
-          options={[
-            "none",
-            "slow-zoom",
-            "pan-left",
-            "pan-right",
-            "shake",
-            "unblur",
-            "signal-glitch",
-          ]}
-          onChange={(during) => field("image", { during })}
-        />
         {image.during === "signal-glitch" && (
           <Group label={t("csValue_signal_glitch")}>
-            <SignalFields signal={signal} onChange={(signal) => field("image", { signal })} />
+            <SignalFields
+              section={section}
+              signal={signal}
+              onChange={(signal) => field("image", { signal })}
+            />
           </Group>
         )}
-        <Pick
-          label={t("csFilter")}
-          value={image.filter}
-          options={["none", "dark", "grayscale", "sepia", "cold", "warm"]}
-          onChange={(filter) => field("image", { filter })}
-        />
         <Group label={t("csEnter")}>
-          <Pick
-            label={t("csImage")}
-            value={image.in.effect}
-            options={["none", "fade", "slide-left", "slide-right", "zoom-in"]}
-            onChange={(effect) =>
-              onChange((step) => ({
-                ...step,
-                image: { ...step.image, in: { ...step.image.in, effect } },
-              }))
-            }
-          />
-          <Num
-            label={t("csLength")}
-            value={image.in.seconds}
-            max={30}
-            onChange={(seconds) =>
-              onChange((step) => ({
-                ...step,
-                image: { ...step.image, in: { ...step.image.in, seconds } },
-              }))
-            }
-          />
-          <Num
-            label={t("csDelay")}
-            value={image.in.delay}
-            max={10}
-            onChange={(delay) =>
-              onChange((step) => ({
-                ...step,
-                image: { ...step.image, in: { ...step.image.in, delay } },
-              }))
-            }
-          />
-        </Group>
-        <Group label={t("csExit")}>
-          <Pick
-            label={t("csImage")}
-            value={image.out.effect}
-            options={["none", "fade", "fade-black", "fade-white", "melt", "signal-glitch"]}
-            onChange={(effect) => updateExit({ effect })}
-          />
-          <Num
-            label={t("csLength")}
-            value={image.out.seconds}
-            max={30}
-            onChange={(seconds) => updateExit({ seconds })}
-          />
-          {image.out.effect === "melt" && (
-            <small className="cutscene-field__hint">{t("csImageMeltHint")}</small>
-          )}
-          {(image.out.effect === "melt" || image.out.effect === "signal-glitch") && (
-            <Num
-              label={t("csEffectStrength")}
-              value={image.out.strength ?? SIGNAL_DEFAULTS.strength}
-              max={100}
-              step={1}
-              onChange={(strength) => updateExit({ strength })}
+          {section === "effects" ? (
+            <Pick
+              label={t("csTextEffect")}
+              value={image.in.effect}
+              options={["none", "fade", "slide-left", "slide-right", "zoom-in"]}
+              onChange={(effect) => updateEntrance({ effect })}
             />
-          )}
-          {image.out.effect === "signal-glitch" && (
-            <Num
-              label={t("csSignalDensity")}
-              value={image.out.density ?? SIGNAL_DEFAULTS.density}
-              max={100}
-              step={1}
-              onChange={(density) => updateExit({ density })}
-            />
+          ) : (
+            <>
+              <Num
+                label={t("csDelay")}
+                value={image.in.delay}
+                max={10}
+                onChange={(delay) => updateEntrance({ delay })}
+              />
+              {image.in.effect !== "none" && (
+                <Num
+                  label={t("csLength")}
+                  value={image.in.seconds}
+                  max={30}
+                  onChange={(seconds) => updateEntrance({ seconds })}
+                />
+              )}
+            </>
           )}
         </Group>
+        {(section === "effects" || image.out.effect !== "none") && (
+          <Group label={t("csExit")}>
+            {section === "effects" ? (
+              <>
+                <Pick
+                  label={t("csTextEffect")}
+                  value={image.out.effect}
+                  options={["none", "fade", "fade-black", "fade-white", "melt", "signal-glitch"]}
+                  onChange={(effect) => updateExit({ effect })}
+                />
+                {image.out.effect === "melt" && (
+                  <small className="cutscene-field__hint">{t("csImageMeltHint")}</small>
+                )}
+                {(image.out.effect === "melt" || image.out.effect === "signal-glitch") && (
+                  <Num
+                    label={t("csEffectStrength")}
+                    value={image.out.strength ?? SIGNAL_DEFAULTS.strength}
+                    max={100}
+                    step={1}
+                    onChange={(strength) => updateExit({ strength })}
+                  />
+                )}
+                {image.out.effect === "signal-glitch" && (
+                  <Num
+                    label={t("csSignalDensity")}
+                    value={image.out.density ?? SIGNAL_DEFAULTS.density}
+                    max={100}
+                    step={1}
+                    onChange={(density) => updateExit({ density })}
+                  />
+                )}
+              </>
+            ) : (
+              <Num
+                label={t("csLength")}
+                value={image.out.seconds}
+                max={30}
+                onChange={(seconds) => updateExit({ seconds })}
+              />
+            )}
+          </Group>
+        )}
       </>
     );
   }
 
   if (channel === "sound") {
     const { sound } = beat;
+    if (section === "effects")
+      return (
+        <>
+          <Pick
+            label={t("csSoundAction")}
+            value={sound.action}
+            options={["none", "music", "stop-music", "effect"]}
+            onChange={(action) => field("sound", { action })}
+          />
+        </>
+      );
+    if (section === "timing")
+      return (
+        <>
+          <Num
+            label={t("csFade")}
+            value={sound.fadeSeconds}
+            max={30}
+            onChange={(fadeSeconds) => field("sound", { fadeSeconds })}
+          />
+          <Num
+            label={t("csDelay")}
+            value={sound.delay}
+            max={10}
+            onChange={(delay) => field("sound", { delay })}
+          />
+        </>
+      );
     return (
       <>
-        <Pick
-          label={t("csSoundAction")}
-          value={sound.action}
-          options={["none", "music", "stop-music", "effect"]}
-          onChange={(action) => field("sound", { action })}
-        />
         <label className="cutscene-field">
           <span>{t("csTrack")}</span>
           <select
@@ -382,18 +434,6 @@ export function CutsceneFields({
           max={100}
           step={1}
           onChange={(volume) => field("sound", { volume: volume / 100 })}
-        />
-        <Num
-          label={t("csFade")}
-          value={sound.fadeSeconds}
-          max={30}
-          onChange={(fadeSeconds) => field("sound", { fadeSeconds })}
-        />
-        <Num
-          label={t("csDelay")}
-          value={sound.delay}
-          max={10}
-          onChange={(delay) => field("sound", { delay })}
         />
         <label className="cutscene-field">
           <span>{t("csCaption")}</span>
@@ -440,71 +480,81 @@ export function CutsceneFields({
   const { text } = beat;
   const words = text?.in.effect === "word-reveal" ? revealWords(text.text) : [];
   const pauseBefore = text?.in.pauseBefore ?? 0;
+  if (section === "content")
+    return (
+      <>
+        <label className="cutscene-field">
+          <span>{t("csText")}</span>
+          <textarea
+            rows={4}
+            value={text?.text ?? ""}
+            placeholder={t("csReadingText")}
+            maxLength={1200}
+            onChange={(event) => {
+              const value = event.target.value;
+              onChange((step) => {
+                if (value)
+                  return {
+                    ...step,
+                    text: step.text
+                      ? { ...step.text, text: value }
+                      : {
+                          ...TextCellSchema.parse({
+                            text: "x",
+                            in: { effect: "none" },
+                            out: { effect: "stay" },
+                          }),
+                          text: value,
+                        },
+                  };
+                const { text: _text, ...withoutText } = step;
+                return withoutText;
+              });
+            }}
+          />
+        </label>
+        {text && (
+          <>
+            <Pick
+              label={t("csTextStyle")}
+              value={text.style}
+              options={["narrator", "title", "whisper", "shout", "letter"]}
+              onChange={(style) => field("text", { style })}
+            />
+            <Pick
+              label={t("csSize")}
+              value={text.size}
+              options={["small", "normal", "large"]}
+              onChange={(size) => field("text", { size })}
+            />
+            <Pick
+              label={t("csPosition")}
+              value={text.position}
+              options={["top", "middle", "bottom"]}
+              onChange={(position) => field("text", { position })}
+            />
+            <Pick
+              label={t("csAlignment")}
+              value={text.align}
+              options={["left", "center", "right"]}
+              onChange={(align) => field("text", { align })}
+            />
+            <Pick
+              label={t("csFont")}
+              value={text.font}
+              options={["reading", "heading"]}
+              onChange={(font) => field("text", { font })}
+            />
+          </>
+        )}
+      </>
+    );
+  if (!text) return null;
   return (
     <>
-      <label className="cutscene-field">
-        <span>{t("csText")}</span>
-        <textarea
-          rows={4}
-          value={text?.text ?? ""}
-          placeholder={t("csReadingText")}
-          maxLength={1200}
-          onChange={(event) => {
-            const value = event.target.value;
-            onChange((step) => {
-              if (value)
-                return {
-                  ...step,
-                  text: step.text
-                    ? { ...step.text, text: value }
-                    : {
-                        ...TextCellSchema.parse({
-                          text: "x",
-                          in: { effect: "none" },
-                          out: { effect: "stay" },
-                        }),
-                        text: value,
-                      },
-                };
-              const { text: _text, ...withoutText } = step;
-              return withoutText;
-            });
-          }}
-        />
-      </label>
-      {text && (
-        <>
-          <Pick
-            label={t("csTextStyle")}
-            value={text.style}
-            options={["narrator", "title", "whisper", "shout", "letter"]}
-            onChange={(style) => field("text", { style })}
-          />
-          <Pick
-            label={t("csSize")}
-            value={text.size}
-            options={["small", "normal", "large"]}
-            onChange={(size) => field("text", { size })}
-          />
-          <Pick
-            label={t("csPosition")}
-            value={text.position}
-            options={["top", "middle", "bottom"]}
-            onChange={(position) => field("text", { position })}
-          />
-          <Pick
-            label={t("csAlignment")}
-            value={text.align}
-            options={["left", "center", "right"]}
-            onChange={(align) => field("text", { align })}
-          />
-          <Pick
-            label={t("csFont")}
-            value={text.font}
-            options={["reading", "heading"]}
-            onChange={(font) => field("text", { font })}
-          />
-          <Group label={t("csTextEntrance")}>
+      <Group label={t("csTextEntrance")}>
+        {section === "effects" ? (
+          <>
             <Pick
               label={t("csTextEffect")}
               value={text.in.effect}
@@ -512,20 +562,6 @@ export function CutsceneFields({
               onChange={(effect) => field("text", { in: { ...text.in, effect } })}
             />
             <small className="cutscene-field__hint">{t(textEntranceHints[text.in.effect])}</small>
-            {text.in.effect !== "none" && (
-              <Num
-                label={t("csLength")}
-                value={text.in.seconds}
-                max={30}
-                onChange={(seconds) => field("text", { in: { ...text.in, seconds } })}
-              />
-            )}
-            <Num
-              label={t("csTextStartDelay")}
-              value={text.in.delay}
-              max={10}
-              onChange={(delay) => field("text", { in: { ...text.in, delay } })}
-            />
             {words.length > 0 && (
               <label className="cutscene-field">
                 <span>{t("csPauseBeforeWord")}</span>
@@ -548,6 +584,23 @@ export function CutsceneFields({
                 </select>
               </label>
             )}
+          </>
+        ) : (
+          <>
+            {text.in.effect !== "none" && (
+              <Num
+                label={t("csLength")}
+                value={text.in.seconds}
+                max={30}
+                onChange={(seconds) => field("text", { in: { ...text.in, seconds } })}
+              />
+            )}
+            <Num
+              label={t("csTextStartDelay")}
+              value={text.in.delay}
+              max={10}
+              onChange={(delay) => field("text", { in: { ...text.in, delay } })}
+            />
             {pauseBefore > 0 && pauseBefore <= words.length && (
               <Num
                 label={t("csRevealPauseLength")}
@@ -556,42 +609,54 @@ export function CutsceneFields({
                 onChange={(pauseSeconds) => field("text", { in: { ...text.in, pauseSeconds } })}
               />
             )}
-          </Group>
-          <Group label={t("csTextDuring")}>
+          </>
+        )}
+      </Group>
+      {(section === "effects" || text.during === "signal-glitch") && (
+        <Group label={t("csTextDuring")}>
+          {section === "effects" && (
             <Pick
               label={t("csTextEffect")}
               value={text.during ?? "none"}
               options={["none", "signal-glitch"]}
               onChange={(during) => field("text", { during })}
             />
-            {text.during === "signal-glitch" && (
-              <>
+          )}
+          {text.during === "signal-glitch" && (
+            <>
+              {section === "effects" && (
                 <small className="cutscene-field__hint">{t("csTextSignalHint")}</small>
-                <SignalFields
-                  signal={text.signal ?? SIGNAL_DEFAULTS}
-                  onChange={(signal) => field("text", { signal })}
-                />
-              </>
-            )}
-          </Group>
-          <Group label={t("csTextExit")}>
-            <Pick
-              label={t("csTextEffect")}
-              value={text.out.effect}
-              options={["stay", "fade", "zoom-out"]}
-              onChange={(effect) => field("text", { out: { ...text.out, effect } })}
-            />
-            <small className="cutscene-field__hint">{t(textExitHints[text.out.effect])}</small>
-            {text.out.effect !== "stay" && (
-              <Num
-                label={t("csLength")}
-                value={text.out.seconds}
-                max={30}
-                onChange={(seconds) => field("text", { out: { ...text.out, seconds } })}
+              )}
+              <SignalFields
+                section={section}
+                signal={text.signal ?? SIGNAL_DEFAULTS}
+                onChange={(signal) => field("text", { signal })}
               />
-            )}
-          </Group>
-        </>
+            </>
+          )}
+        </Group>
+      )}
+      {(section === "effects" || text.out.effect !== "stay") && (
+        <Group label={t("csTextExit")}>
+          {section === "effects" ? (
+            <>
+              <Pick
+                label={t("csTextEffect")}
+                value={text.out.effect}
+                options={["stay", "fade", "zoom-out"]}
+                onChange={(effect) => field("text", { out: { ...text.out, effect } })}
+              />
+              <small className="cutscene-field__hint">{t(textExitHints[text.out.effect])}</small>
+            </>
+          ) : (
+            <Num
+              label={t("csLength")}
+              value={text.out.seconds}
+              max={30}
+              onChange={(seconds) => field("text", { out: { ...text.out, seconds } })}
+            />
+          )}
+        </Group>
       )}
     </>
   );

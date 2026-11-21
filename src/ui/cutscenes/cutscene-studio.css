@@ -321,13 +321,23 @@
   grid-auto-rows: var(--lane-height);
   padding-block-start: var(--ruler-height);
 }
-.cutscene-time__labels .ui-button {
+.cutscene-time__label-row {
+  display: grid;
+  grid-template-columns: minmax(max-content, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-1);
+}
+.cutscene-time__label.ui-button {
   justify-content: flex-start;
 }
 .cutscene-time__labels button[aria-pressed="true"],
 .cutscene-time__footer button[aria-pressed="true"] {
   background: var(--panel-raised);
   color: var(--accent);
+}
+.cutscene-studio__channel-fields {
+  display: grid;
+  gap: var(--space-3);
 }
 .cutscene-time__viewport {
   position: relative;

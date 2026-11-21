@@ -159,7 +159,7 @@ export function CutsceneLibrary({
   ];
 
   return (
-    <div className="cutscene-library">
+    <div className="cutscene-library" data-editor-open={Boolean(editor)}>
       <div className="cutscene-library__detail">
         {error && (
           <p role="alert" className="cutscene-studio__feedback">
