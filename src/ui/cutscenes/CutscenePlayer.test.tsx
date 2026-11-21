@@ -436,6 +436,76 @@ describe("the independent cut-scene player", () => {
     },
   );
 
+  it("plays a sequence of text clips without restarting the zoom or looping music", async () => {
+    const play = vi.fn(async () => {});
+    const pause = vi.fn();
+    vi.stubGlobal("URL", { createObjectURL: () => "blob:music", revokeObjectURL: vi.fn() });
+    vi.stubGlobal(
+      "Audio",
+      class {
+        paused = false;
+        play = play;
+        pause = pause;
+      },
+    );
+    const loadTrack = vi.fn(async () => new Blob(["rain"]));
+    const ui = await mount(
+      model([
+        {
+          id: "one",
+          image: {
+            source: { kind: "set", imageId: "room" },
+            in: { effect: "none" },
+            out: { effect: "none" },
+            during: "slow-zoom",
+          },
+          sound: { action: "music", trackId: "rain" },
+          textClips: [
+            {
+              id: "a",
+              text: "First light",
+              in: { effect: "none", delay: 0.2 },
+              out: { effect: "stay" },
+              endAt: 0.8,
+            },
+            {
+              id: "b",
+              text: "Someone knocks",
+              in: { effect: "typewriter", seconds: 0.2, delay: 1 },
+              out: { effect: "stay" },
+              endAt: 1.7,
+            },
+          ],
+        },
+      ]),
+      { sound: { enabled: true, volume: 1, loadTrack } },
+    );
+    try {
+      const image = ui.host.querySelector("img");
+      const caption = () => ui.host.querySelectorAll('[aria-live="polite"]')[1]?.textContent;
+      expect(image?.dataset.motion).toBe("slow-zoom");
+      expect(caption()).toBe("");
+      await ui.press("Enter");
+      await settle(350);
+      expect(caption()).toBe("First light");
+      await settle(570);
+      expect(caption()).toBe("");
+      await settle(400);
+      expect(caption()).toBe("Someone knocks");
+      expect(ui.host.querySelector("img")).toBe(image);
+      expect(loadTrack).toHaveBeenCalledExactlyOnceWith("rain");
+      expect(play).toHaveBeenCalledOnce();
+      expect(pause).not.toHaveBeenCalled();
+      await settle(450);
+      expect(caption()).toBe("");
+      expect(ui.onEnd).not.toHaveBeenCalled();
+      await ui.press("Enter");
+      expect(ui.onEnd).toHaveBeenCalledExactlyOnceWith("finished");
+    } finally {
+      await ui.close();
+    }
+  });
+
   it("announces missing audio, loops available music and releases it at the end", async () => {
     const pause = vi.fn();
     const revoke = vi.fn();

@@ -10,16 +10,14 @@ import {
 import {
   CutsceneFilmSchema,
   MAX_CLIP_END_SECONDS,
+  MIN_CLIP_MS,
   type CutsceneBeat,
   type CutsceneFilm,
+  type TextCell,
+  type TextClip,
 } from "../../cutscenes/schema";
 import { planPlayback } from "../../cutscenes/playback";
-import {
-  stepTimeline,
-  type ClipEdge,
-  type TimelineClip,
-  type TimelineLane,
-} from "../../cutscenes/stepTimeline";
+import { stepTimeline, type ClipEdge, type TimelineClip } from "../../cutscenes/stepTimeline";
 import {
   addAudioTrack,
   loadAudioBlob,
@@ -154,7 +152,24 @@ function StepTransition({
 }
 
 type History = { previous: CutsceneFilm[]; value: CutsceneFilm; next: CutsceneFilm[] };
-type Selection = { beatId: string; channel: Channel };
+type Selection = { beatId: string; channel: Channel; textClipId?: string | undefined };
+type TextSlot = { start: number; end: number };
+type NewText = TextSlot & { id: string; legacyId: string };
+
+function nextTextSlot(track: TextSlot[]): TextSlot | undefined {
+  const min = MIN_CLIP_MS / 1000;
+  const last = track.at(-1)?.end ?? 0;
+  if (last <= MAX_CLIP_END_SECONDS - min) {
+    return { start: last, end: Math.min(MAX_CLIP_END_SECONDS, last + 3) };
+  }
+
+  let start = 0;
+  for (const clip of track) {
+    if (clip.start >= start + min) return { start, end: Math.min(clip.start, start + 3) };
+    start = clip.end;
+  }
+  return undefined;
+}
 
 function oneStep(
   film: CutsceneFilm,
@@ -177,7 +192,7 @@ function oneStep(
               },
             }
           : {}),
-        ...(beat.text === undefined && context.text.current
+        ...(!beat.textClips && beat.text === undefined && context.text.current
           ? { text: context.text.current.cell }
           : {}),
         ...(beat.sound.action === "none" && context.sound.previousMusic
@@ -214,6 +229,7 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
   const [channelDialog, setChannelDialog] = useState<{
     channel: MediaChannel;
     section: ChannelDialog;
+    newText?: NewText;
   }>();
   const [message, setMessage] = useState("");
   const [, updateBaseline] = useState(0);
@@ -236,10 +252,34 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
     previewTheme;
   const plan = useMemo(() => planPlayback(draft), [draft]);
   const timing = plan.steps[beatIndex]!;
+  const timeline = stepTimeline(timing);
+  const selectedTextClip =
+    beat.textClips?.find(({ id }) => selection.beatId === beat.id && id === selection.textClipId) ??
+    beat.textClips?.[0];
+  const newText = channelDialog?.newText;
+  const dialogTextClip = newText
+    ? beat.textClips?.find(({ id }) => id === newText.id)
+    : selectedTextClip;
+  const legacyTextEnd = beat.text
+    ? Math.min(
+        MAX_CLIP_END_SECONDS,
+        (timing.text.end ??
+          timing.text.delay + Math.max(3000, timing.text.enter + timing.text.leave + MIN_CLIP_MS)) /
+          1000,
+      )
+    : undefined;
+  const nextText = nextTextSlot(
+    beat.textClips?.map((clip) => ({ start: clip.in.delay, end: clip.endAt })) ??
+      (beat.text && legacyTextEnd !== undefined
+        ? [{ start: beat.text.in.delay, end: legacyTextEnd }]
+        : []),
+  );
+
   const preview = useMemo(() => oneStep(draft, beatIndex, timing), [draft, beatIndex, timing]);
   const previewWorkspace = useWorkspaceView();
   const simpleFrames = useSimpleFrames(false);
   const previewBeat = preview.beats[0]!;
+  const posterText = selectedTextClip ?? previewBeat.text;
   const previewSource = previewBeat.image.source;
   const poster =
     previewSource.kind === "set"
@@ -318,7 +358,24 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
       beats: value.beats.map((item) => (item.id === id ? update(item) : item)),
     }));
   }
-  function updateClipEdge(lane: TimelineLane, edge: ClipEdge, seconds: number | undefined) {
+  function updateClipEdge(clip: TimelineClip, edge: ClipEdge, seconds: number | undefined) {
+    const { lane, textClipId } = clip;
+    if (textClipId) {
+      if (seconds === undefined) return;
+      setSelection({ beatId: beat.id, channel: "text", textClipId });
+      updateBeat(beat.id, (step) => ({
+        ...step,
+        textClips: step.textClips?.map((text) =>
+          text.id !== textClipId
+            ? text
+            : edge === "end"
+              ? { ...text, endAt: seconds }
+              : { ...text, in: { ...text.in, delay: seconds } },
+        ),
+      }));
+      setPlaying(undefined);
+      return;
+    }
     const end = <T extends { endAt?: number | undefined }>(cell: T): T => {
       const next = { ...cell };
       if (seconds === undefined) delete next.endAt;
@@ -351,6 +408,72 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
     setPlaying(undefined);
   }
 
+  function openNewText() {
+    if (!nextText) return;
+    const clip = { ...nextText, id: crypto.randomUUID(), legacyId: crypto.randomUUID() };
+    setTransitionId(undefined);
+    setSelection({ beatId: beat.id, channel: "text", textClipId: clip.id });
+    setPanelOpen(false);
+    setPlaying(undefined);
+    setChannelDialog({ channel: "text", section: "content", newText: clip });
+  }
+
+  function updateText(
+    textClipId: string | undefined,
+    pending: NewText | undefined,
+    change: (text: TextCell | undefined) => TextCell | undefined,
+  ) {
+    updateBeat(beat.id, (step) => {
+      if (!textClipId && !pending) {
+        const text = change(step.text);
+        const next = { ...step };
+        if (text?.text) next.text = text;
+        else delete next.text;
+        return next;
+      }
+      const id = textClipId ?? pending?.id;
+      const clips = step.textClips ?? [];
+      const existing = clips.find((clip) => clip.id === id);
+      if (existing) {
+        const changed = change(existing);
+        if (!changed) return step;
+        return {
+          ...step,
+          textClips: clips.map((clip) =>
+            clip.id === id ? { ...changed, id: clip.id, endAt: clip.endAt } : clip,
+          ),
+        };
+      }
+      if (!pending) return step;
+
+      const text = change(undefined);
+      if (!text) return step;
+      const next = { ...step };
+      const oldText = step.text;
+      if (oldText) delete next.text;
+      next.textClips = [
+        ...clips,
+        ...(oldText && legacyTextEnd !== undefined
+          ? [{ ...oldText, id: pending.legacyId, endAt: legacyTextEnd }]
+          : []),
+        { ...text, id: pending.id, in: { ...text.in, delay: pending.start }, endAt: pending.end },
+      ].sort((a, b) => a.in.delay - b.in.delay);
+      return next;
+    });
+  }
+
+  function removeText(clip: TextClip) {
+    updateBeat(beat.id, (step) => {
+      const clips = step.textClips?.filter(({ id }) => id !== clip.id);
+      const next = { ...step };
+      if (clips?.length) next.textClips = clips;
+      else delete next.textClips;
+      return next;
+    });
+    setSelection({ beatId: beat.id, channel: "text" });
+    setChannelDialog(undefined);
+  }
+
   function addStep(after: number, duplicate?: CutsceneBeat) {
     if (draft.beats.length >= 60) return;
     const next = duplicate ? { ...structuredClone(duplicate), id: crypto.randomUUID() } : newBeat();
@@ -358,7 +481,7 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
       ...value,
       beats: [...value.beats.slice(0, after + 1), next, ...value.beats.slice(after + 1)],
     }));
-    setSelection({ ...selection, beatId: next.id });
+    setSelection({ beatId: next.id, channel: selection.channel });
   }
   function moveStep(from: number, to: number) {
     if (from === to || from < 0 || to < 0 || to >= draft.beats.length) return;
@@ -457,7 +580,7 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
     onSave(parsed.data);
   }
 
-  function timelineContent({ lane, source }: TimelineClip) {
+  function timelineContent({ lane, source, textClipId }: TimelineClip) {
     if (lane === "image") {
       const layer = timing.image[source];
       const picture = draft.images.find(({ id }) => id === layer?.imageId);
@@ -465,7 +588,12 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
         ? { label: picture.alt || t("csImage"), thumb: picture.thumbDataUrl }
         : { label: t("csMissingImage") };
     }
-    if (lane === "text") return { label: timing.text[source]?.cell.text ?? t("csText") };
+    if (lane === "text") {
+      const text = textClipId
+        ? beat.textClips?.find(({ id }) => id === textClipId)
+        : timing.text[source]?.cell;
+      return { label: text?.text.trim() || t("csText") };
+    }
     const sound = (source === "previous" ? timing.sound.previousMusic : timing.sound.cue)?.cell;
     return {
       label:
@@ -479,7 +607,7 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
     const next = draft.beats[number - 1];
     if (!next || next.id === beat.id) return;
     setTransitionId(undefined);
-    setSelection({ ...selection, beatId: next.id });
+    setSelection({ beatId: next.id, channel: selection.channel });
     setPlaying(undefined);
   }
 
@@ -533,13 +661,24 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
     hasPicture && beat.image.out.effect !== "none" && beat.image.out.seconds > 0;
   const channelDialogTitle = channelDialog
     ? channelDialog.section === "content"
-      ? t(channelLabels[channelDialog.channel])
+      ? newText
+        ? t("csAddTextClip")
+        : t(channelLabels[channelDialog.channel])
       : t(channelDialog.section === "effects" ? "csChannelEffects" : "csChannelTiming", {
           channel: t(channelLabels[channelDialog.channel]),
         })
     : "";
 
-  function fields(channel: Channel, section: ChannelDialog = "content") {
+  function fields(
+    channel: Channel,
+    section: ChannelDialog = "content",
+    textClip?: TextClip,
+    pending?: NewText,
+  ) {
+    const text = pending || beat.textClips ? textClip : beat.text;
+    const bounds = timeline.clips.find(
+      (clip) => clip.lane === "text" && clip.textClipId === textClip?.id && clip.bounds,
+    )?.bounds;
     return (
       <CutsceneFields
         film={draft}
@@ -547,6 +686,13 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
         channel={channel}
         section={section}
         tracks={tracks}
+        text={text}
+        textStart={
+          textClip && bounds
+            ? { min: bounds.minStart / 1000, max: bounds.maxStart / 1000 }
+            : undefined
+        }
+        onTextChange={(change) => updateText(textClip?.id, pending, change)}
         onChange={(update) => updateBeat(beat.id, update)}
         onImage={(file) => void uploadImage(file)}
         onAlt={(id, alt) =>
@@ -561,34 +707,41 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
   }
 
   function clipEndFields(channel: MediaChannel) {
-    const clip = stepTimeline(timing).clips.find((clip) => clip.lane === channel && clip.bounds);
+    const clip = timeline.clips.find(
+      (item) =>
+        item.lane === channel &&
+        item.textClipId === (channel === "text" ? dialogTextClip?.id : undefined) &&
+        item.bounds,
+    );
     if (!clip?.bounds) return null;
-    const { minEnd, fixedEnd } = clip.bounds;
+    const { minEnd, maxEnd, fixedEnd } = clip.bounds;
     return (
       <>
-        <label className="cutscene-field cutscene-field--check">
-          <input
-            type="checkbox"
-            checked={fixedEnd !== undefined}
-            onChange={(event) =>
-              updateClipEdge(
-                channel,
-                "end",
-                event.target.checked
-                  ? Math.max(minEnd, clip.end, clip.start + 1000) / 1000
-                  : undefined,
-              )
-            }
-          />
-          <span>{t("csFixedEnd")}</span>
-        </label>
+        {!clip.textClipId && (
+          <label className="cutscene-field cutscene-field--check">
+            <input
+              type="checkbox"
+              checked={fixedEnd !== undefined}
+              onChange={(event) =>
+                updateClipEdge(
+                  clip,
+                  "end",
+                  event.target.checked
+                    ? Math.min(maxEnd, Math.max(minEnd, clip.end, clip.start + 1000)) / 1000
+                    : undefined,
+                )
+              }
+            />
+            <span>{t("csFixedEnd")}</span>
+          </label>
+        )}
         {fixedEnd !== undefined && (
           <Num
             label={t("csEndTime")}
             min={minEnd / 1000}
-            max={MAX_CLIP_END_SECONDS}
+            max={maxEnd / 1000}
             value={fixedEnd / 1000}
-            onChange={(seconds) => updateClipEdge(channel, "end", seconds)}
+            onChange={(seconds) => updateClipEdge(clip, "end", seconds)}
           />
         )}
       </>
@@ -625,7 +778,7 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
           channel: t(channelLabels[selection.channel]),
         })}
       </h3>
-      {fields(selection.channel)}
+      {fields(selection.channel, "content", selectedTextClip)}
       <Button onClick={() => setPlaying(preview)}>{t("csPlayStep")}</Button>
       {selection.channel === "image" && canPreviewExit && (
         <Button onClick={previewImageExit}>{t("csPreviewImageExit")}</Button>
@@ -708,10 +861,10 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
                       alt={poster.alt}
                     />
                   )}
-                  {previewBeat.text && (
+                  {posterText && (
                     <OrnamentProvider theme={theme} simple={simpleFrames}>
-                      <CutsceneTextLayout text={previewBeat.text} overImage={Boolean(poster)}>
-                        {previewBeat.text.text}
+                      <CutsceneTextLayout text={posterText} overImage={Boolean(poster)}>
+                        {posterText.text}
                       </CutsceneTextLayout>
                     </OrnamentProvider>
                   )}
@@ -756,6 +909,8 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
         onStep={selectStep}
         onAdd={() => addStep(beatIndex)}
         selected={editingTransition ? undefined : selection.channel}
+        selectedTextId={selectedTextClip?.id}
+        onAddText={nextText ? openNewText : undefined}
         contentFor={timelineContent}
         onClipEdge={updateClipEdge}
         canEditChannel={(channel, section) => {
@@ -772,11 +927,15 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
               ? Boolean(timing.sound.previousMusic?.cell.trackId)
               : Boolean(beat.sound.trackId);
           }
-          return Boolean(beat.text?.text.trim());
+          return Boolean((selectedTextClip ?? beat.text)?.text.trim());
         }}
-        onOpenChannelDialog={(channel, section) => {
+        onOpenChannelDialog={(channel, section, textClipId) => {
           setTransitionId(undefined);
-          setSelection({ beatId: beat.id, channel });
+          setSelection({
+            beatId: beat.id,
+            channel,
+            textClipId: textClipId ?? selectedTextClip?.id,
+          });
           setPanelOpen(false);
           setChannelDialog({ channel, section });
         }}
@@ -803,8 +962,20 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
       {channelDialog && (
         <Modal title={channelDialogTitle} onClose={() => setChannelDialog(undefined)}>
           <div className="cutscene-studio__channel-fields">
-            {fields(channelDialog.channel, channelDialog.section)}
+            {fields(channelDialog.channel, channelDialog.section, dialogTextClip, newText)}
+            {channelDialog.channel === "text" &&
+              channelDialog.section === "content" &&
+              dialogTextClip && (
+                <Button variant="quiet" onClick={() => removeText(dialogTextClip)}>
+                  {t("csRemoveTextClip")}
+                </Button>
+              )}
             {channelDialog.section === "timing" && clipEndFields(channelDialog.channel)}
+            {channelDialog.channel === "text" &&
+              channelDialog.section !== "content" &&
+              timing.textClips.some(
+                (clip) => clip.current.clipId === dialogTextClip?.id && clip.shortened,
+              ) && <small className="cutscene-field__hint">{t("csTextEffectsFitClip")}</small>}
             {channelDialog.section === "content" && message && (
               <p role="status" className="cutscene-studio__feedback">
                 {message}

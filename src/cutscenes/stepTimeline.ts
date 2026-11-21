@@ -1,14 +1,21 @@
-import { MIN_CLIP_MS, type PlaybackStep } from "./playback";
-import { MAX_CLIP_START_SECONDS } from "./schema";
+import type { PlaybackStep } from "./playback";
+import { MAX_CLIP_END_SECONDS, MAX_CLIP_START_SECONDS, MIN_CLIP_MS } from "./schema";
 
 export type TimelineLane = "image" | "sound" | "text";
 
 export type ClipEdge = "start" | "end";
-export type ClipBounds = { minEnd: number; maxStart: number; fixedEnd?: number };
+export type ClipBounds = {
+  minStart: number;
+  maxStart: number;
+  minEnd: number;
+  maxEnd: number;
+  fixedEnd?: number;
+};
 
 export type TimelineClip = {
   lane: TimelineLane;
   source: "current" | "previous";
+  textClipId?: string;
   start: number;
   end: number;
   enter?: number;
@@ -43,8 +50,10 @@ export function clipBounds(step: PlaybackStep, lane: TimelineLane): ClipBounds |
   }
   const startMax = MAX_CLIP_START_SECONDS * 1000;
   return {
+    minStart: 0,
     minEnd: delay + occupied + MIN_CLIP_MS,
     maxStart: end === undefined ? startMax : Math.min(startMax, end - occupied - MIN_CLIP_MS),
+    maxEnd: MAX_CLIP_END_SECONDS * 1000,
     ...(end === undefined ? {} : { fixedEnd: end }),
   };
 }
@@ -97,6 +106,24 @@ export function stepTimeline(step: PlaybackStep) {
       ...(bounds ? { bounds } : {}),
     });
   }
+  step.textClips.forEach((clip, index, track) => {
+    clips.push({
+      lane: "text",
+      source: "current",
+      textClipId: clip.current.clipId,
+      start: clip.delay,
+      end: clip.end,
+      enter: clip.enter,
+      leave: clip.leave,
+      bounds: {
+        minStart: track[index - 1]?.end ?? 0,
+        maxStart: clip.end - MIN_CLIP_MS,
+        minEnd: clip.delay + MIN_CLIP_MS,
+        maxEnd: track[index + 1]?.delay ?? MAX_CLIP_END_SECONDS * 1000,
+        fixedEnd: clip.end,
+      },
+    });
+  });
 
   const action = sound.cue?.cell.action;
   const changesMusic = action === "music" || action === "stop-music";

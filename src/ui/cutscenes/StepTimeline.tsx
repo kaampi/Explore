@@ -6,7 +6,6 @@ import {
   type TimelineClip,
   type TimelineLane,
 } from "../../cutscenes/stepTimeline";
-import { MAX_CLIP_END_SECONDS } from "../../cutscenes/schema";
 import { Button, IconButton } from "../components/Button";
 import { MenuButton, useContextMenu, type MenuItem } from "../components/Menu";
 import { useTranslate } from "../i18n/LanguageProvider";
@@ -75,11 +74,13 @@ export function StepTimeline({
   onStep,
   onAdd,
   selected,
+  selectedTextId,
   onSelect,
   contentFor,
   onOpenChannelDialog,
   canEditChannel,
   onClipEdge,
+  onAddText,
 }: {
   step: PlaybackStep;
   number: number;
@@ -89,11 +90,13 @@ export function StepTimeline({
   onStep: (number: number) => void;
   onAdd: () => void;
   selected: Channel | undefined;
+  selectedTextId: string | undefined;
   onSelect: (channel: Channel, openInspector?: boolean) => void;
   contentFor: (clip: TimelineClip) => ClipContent;
-  onOpenChannelDialog: (channel: MediaChannel, dialog: ChannelDialog) => void;
+  onOpenChannelDialog: (channel: MediaChannel, dialog: ChannelDialog, textClipId?: string) => void;
   canEditChannel: (channel: MediaChannel, section: "effects" | "timing") => boolean;
-  onClipEdge: (lane: TimelineLane, edge: ClipEdge, seconds: number | undefined) => void;
+  onClipEdge: (clip: TimelineClip, edge: ClipEdge, seconds: number | undefined) => void;
+  onAddText?: () => void;
 }) {
   const t = useTranslate();
   const workspace = useWorkspaceView(true, timelineMaxZoom);
@@ -132,15 +135,16 @@ export function StepTimeline({
     const bounds = clip.bounds;
     if (!bounds) return null;
     const current = clip[edge];
-    const minimum = edge === "start" ? 0 : bounds.minEnd;
-    const maximum = edge === "start" ? bounds.maxStart : MAX_CLIP_END_SECONDS * 1000;
+    const minimum = edge === "start" ? bounds.minStart : bounds.minEnd;
+    const maximum = edge === "start" ? bounds.maxStart : bounds.maxEnd;
     const clamp = (value: number) =>
       Math.min(maximum, Math.max(minimum, Math.round(value / snapMs) * snapMs));
-    const label = t(edge === "start" ? "csClipStart" : "csClipEnd", {
+    const edgeLabel = t(edge === "start" ? "csClipStart" : "csClipEnd", {
       channel: t(channelLabels[clip.lane]),
     });
+    const label = clip.textClipId ? `${edgeLabel} · ${contentFor(clip).label}` : edgeLabel;
     const commit = (time: number) => {
-      if (Math.abs(time - current) > 0.0001) onClipEdge(clip.lane, edge, time / 1000);
+      if (Math.abs(time - current) > 0.0001) onClipEdge(clip, edge, time / 1000);
     };
     const clearDrag = (pointerId: number) => {
       if (drag.current?.pointer !== pointerId) return;
@@ -193,9 +197,13 @@ export function StepTimeline({
             event.preventDefault();
             const increment = event.shiftKey ? 1000 : snapMs;
             commit(clamp(current + (event.key === "ArrowRight" ? increment : -increment)));
-          } else if (edge === "end" && (event.key === "Delete" || event.key === "Backspace")) {
+          } else if (
+            !clip.textClipId &&
+            edge === "end" &&
+            (event.key === "Delete" || event.key === "Backspace")
+          ) {
             event.preventDefault();
-            if (bounds.fixedEnd !== undefined) onClipEdge(clip.lane, edge, undefined);
+            if (bounds.fixedEnd !== undefined) onClipEdge(clip, edge, undefined);
           }
         }}
       />
@@ -214,18 +222,20 @@ export function StepTimeline({
           });
     const width = clip.end - clip.start;
     return (
-      <Fragment key={clip.source}>
+      <Fragment key={clip.textClipId ?? clip.source}>
         <Button
           size="compact"
           variant="quiet"
           className="cutscene-time__clip"
           aria-label={`${t(channelLabels[clip.lane])} · ${label}`}
-          aria-pressed={selected === clip.lane}
+          aria-pressed={
+            selected === clip.lane && (!clip.textClipId || selectedTextId === clip.textClipId)
+          }
           title={`${content.label} · ${label}`}
           data-instant={width === 0}
           style={{ left: x(clip.start), width: width ? x(width) : undefined }}
           aria-haspopup="dialog"
-          onClick={() => onOpenChannelDialog(clip.lane, "content")}
+          onClick={() => onOpenChannelDialog(clip.lane, "content", clip.textClipId)}
         >
           {content.thumb && <img src={content.thumb} alt="" draggable={false} />}
           <span className="cutscene-time__clip-title">{content.label}</span>
@@ -370,6 +380,17 @@ export function StepTimeline({
                     }
                     onClick={() => onOpenChannelDialog(lane, "timing")}
                   />
+                  {lane === "text" && (
+                    <IconButton
+                      size="compact"
+                      variant="quiet"
+                      label={t("csAddTextClip")}
+                      aria-haspopup="dialog"
+                      disabled={!onAddText}
+                      icon={<span aria-hidden="true">+</span>}
+                      onClick={onAddText}
+                    />
+                  )}
                 </>
               )}
             </div>

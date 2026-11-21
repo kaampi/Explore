@@ -323,7 +323,7 @@
 }
 .cutscene-time__label-row {
   display: grid;
-  grid-template-columns: minmax(max-content, 1fr) auto auto;
+  grid-template-columns: minmax(max-content, 1fr) auto auto minmax(0, 1.7rem);
   align-items: center;
   gap: var(--space-1);
 }

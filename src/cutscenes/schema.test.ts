@@ -121,3 +121,21 @@ describe("cut-scene format", () => {
     expect(fromVersion1(result.placement)).toBeUndefined();
   });
 });
+
+it("sorts text clips and accepts touching edges but rejects overlap or repeated IDs", () => {
+  const text = (id: string, delay: number, endAt: number) => ({
+    id,
+    text: id,
+    in: { effect: "none", delay },
+    out: { effect: "stay" },
+    endAt,
+  });
+  const first = text("first", 4, 7);
+  const second = text("second", 7, 10);
+  expect(
+    BeatSchema.parse({ id: "one", textClips: [second, first] }).textClips?.map(({ id }) => id),
+  ).toEqual(["first", "second"]);
+  for (const invalid of [text("second", 6.9, 10), text("first", 7, 10), text("second", 7, 7.05)]) {
+    expect(BeatSchema.safeParse({ id: "one", textClips: [first, invalid] }).success).toBe(false);
+  }
+});
