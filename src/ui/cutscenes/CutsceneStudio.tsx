@@ -657,6 +657,11 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
   }
 
   const hasPicture = beat.image.source.kind === "set" && Boolean(poster);
+  const textContentOpen = channelDialog?.channel === "text" && channelDialog.section === "content";
+  const posterStyle = {
+    ...playThemeStyle(theme),
+    ...ornamentVars(theme, { simple: simpleFrames }),
+  };
   const canPreviewExit =
     hasPicture && beat.image.out.effect !== "none" && beat.image.out.seconds > 0;
   const channelDialogTitle = channelDialog
@@ -687,6 +692,8 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
         section={section}
         tracks={tracks}
         text={text}
+        textThemeColor={poster ? "#ffffff" : theme.text}
+        overImage={Boolean(poster)}
         textStart={
           textClip && bounds
             ? { min: bounds.minStart / 1000, max: bounds.maxStart / 1000 }
@@ -703,6 +710,27 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
         }
         onTrack={(file) => void uploadAudio(file)}
       />
+    );
+  }
+
+  function posterContents(text?: TextCell) {
+    return (
+      <>
+        {poster && (
+          <img
+            className={`cutscene-reel__picture cutscene-reel__filter--${previewBeat.image.filter}`}
+            src={poster.dataUrl}
+            alt={poster.alt}
+          />
+        )}
+        {text && (
+          <OrnamentProvider theme={theme} simple={simpleFrames}>
+            <CutsceneTextLayout text={text} overImage={Boolean(poster)}>
+              {text.text}
+            </CutsceneTextLayout>
+          </OrnamentProvider>
+        )}
+      </>
     );
   }
 
@@ -849,25 +877,11 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
                 <div
                   className="cutscene-studio__poster-stage"
                   style={{
-                    ...playThemeStyle(theme),
-                    ...ornamentVars(theme, { simple: simpleFrames }),
+                    ...posterStyle,
                     transform: `translate(${previewWorkspace.view.x}px, ${previewWorkspace.view.y}px) scale(${previewWorkspace.view.zoom})`,
                   }}
                 >
-                  {poster && (
-                    <img
-                      className={`cutscene-reel__picture cutscene-reel__filter--${previewBeat.image.filter}`}
-                      src={poster.dataUrl}
-                      alt={poster.alt}
-                    />
-                  )}
-                  {posterText && (
-                    <OrnamentProvider theme={theme} simple={simpleFrames}>
-                      <CutsceneTextLayout text={posterText} overImage={Boolean(poster)}>
-                        {posterText.text}
-                      </CutsceneTextLayout>
-                    </OrnamentProvider>
-                  )}
+                  {posterContents(posterText)}
                 </div>
               </div>
             )}
@@ -960,39 +974,57 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
         </Modal>
       )}
       {channelDialog && (
-        <Modal title={channelDialogTitle} onClose={() => setChannelDialog(undefined)}>
-          <div className="cutscene-studio__channel-fields">
-            {fields(channelDialog.channel, channelDialog.section, dialogTextClip, newText)}
-            {channelDialog.channel === "text" &&
-              channelDialog.section === "content" &&
-              dialogTextClip && (
-                <Button variant="quiet" onClick={() => removeText(dialogTextClip)}>
-                  {t("csRemoveTextClip")}
-                </Button>
-              )}
-            {channelDialog.section === "timing" && clipEndFields(channelDialog.channel)}
-            {channelDialog.channel === "text" &&
-              channelDialog.section !== "content" &&
-              timing.textClips.some(
-                (clip) => clip.current.clipId === dialogTextClip?.id && clip.shortened,
-              ) && <small className="cutscene-field__hint">{t("csTextEffectsFitClip")}</small>}
-            {channelDialog.section === "content" && message && (
-              <p role="status" className="cutscene-studio__feedback">
-                {message}
-              </p>
+        <Modal
+          title={channelDialogTitle}
+          wide={textContentOpen}
+          onClose={() => setChannelDialog(undefined)}
+        >
+          <div className={textContentOpen ? "cutscene-studio__text-dialog" : undefined}>
+            {textContentOpen && (
+              <div
+                className="cutscene-studio__poster-stage cutscene-studio__text-preview"
+                style={posterStyle}
+                role="region"
+                aria-label={t("csPreview")}
+              >
+                {posterContents(
+                  dialogTextClip ?? (newText || beat.textClips ? undefined : beat.text),
+                )}
+              </div>
             )}
-            {channelDialog.channel === "image" &&
-              channelDialog.section === "effects" &&
-              canPreviewExit && (
-                <Button
-                  onClick={() => {
-                    setChannelDialog(undefined);
-                    previewImageExit();
-                  }}
-                >
-                  {t("csPreviewImageExit")}
-                </Button>
+            <div className="cutscene-studio__channel-fields">
+              {fields(channelDialog.channel, channelDialog.section, dialogTextClip, newText)}
+              {channelDialog.channel === "text" &&
+                channelDialog.section === "content" &&
+                dialogTextClip && (
+                  <Button variant="quiet" onClick={() => removeText(dialogTextClip)}>
+                    {t("csRemoveTextClip")}
+                  </Button>
+                )}
+              {channelDialog.section === "timing" && clipEndFields(channelDialog.channel)}
+              {channelDialog.channel === "text" &&
+                channelDialog.section !== "content" &&
+                timing.textClips.some(
+                  (clip) => clip.current.clipId === dialogTextClip?.id && clip.shortened,
+                ) && <small className="cutscene-field__hint">{t("csTextEffectsFitClip")}</small>}
+              {channelDialog.section === "content" && message && (
+                <p role="status" className="cutscene-studio__feedback">
+                  {message}
+                </p>
               )}
+              {channelDialog.channel === "image" &&
+                channelDialog.section === "effects" &&
+                canPreviewExit && (
+                  <Button
+                    onClick={() => {
+                      setChannelDialog(undefined);
+                      previewImageExit();
+                    }}
+                  >
+                    {t("csPreviewImageExit")}
+                  </Button>
+                )}
+            </div>
           </div>
         </Modal>
       )}

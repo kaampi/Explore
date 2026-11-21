@@ -18,19 +18,46 @@ export function CutsceneTextLayout({
   hidden?: boolean;
   children: ReactNode;
 }) {
+  const { outline, strip } = text;
+  const ink: CSSProperties = {
+    color: text.color,
+    ...(outline?.enabled
+      ? {
+          WebkitTextStroke: `${outline.width}px ${outline.color}`,
+          paintOrder: "stroke fill",
+        }
+      : {}),
+  };
+  const content = text.color || outline?.enabled ? <span style={ink}>{children}</span> : children;
+  const copyStyle = {
+    ...style,
+    textAlign: text.align,
+    ...(strip?.enabled
+      ? {
+          "--cutscene-strip-color": strip.color,
+          "--cutscene-strip-padding": `${strip.padding}px`,
+        }
+      : {}),
+  } as CSSProperties;
   return (
-    <div className={`cutscene-reel__text cutscene-reel__text--${text.position}`}>
+    <div
+      className={`cutscene-reel__text cutscene-reel__text--${text.position}`}
+      data-horizontal={text.horizontal}
+    >
       <div
         className={`cutscene-reel__copy cutscene-reel__copy--${text.style} cutscene-reel__copy--size-${text.size} cutscene-reel__copy--font-${text.font}${overImage ? " cutscene-reel__copy--over-image" : ""}`}
-        style={{ ...style, textAlign: text.align }}
+        data-strip={strip ? (strip.enabled ? strip.style : "off") : undefined}
+        style={copyStyle}
         aria-hidden={hidden}
       >
         {text.style === "title" ? (
-          <NamePlate as="p">{children}</NamePlate>
+          <NamePlate as="p" className="cutscene-reel__ornament">
+            {content}
+          </NamePlate>
         ) : text.style === "letter" ? (
-          <NoteCard>{children}</NoteCard>
+          <NoteCard className="cutscene-reel__ornament">{content}</NoteCard>
         ) : (
-          <p>{children}</p>
+          <p>{content}</p>
         )}
       </div>
     </div>

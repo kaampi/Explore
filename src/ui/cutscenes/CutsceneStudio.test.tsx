@@ -741,3 +741,96 @@ it("adds texts to one step, edits the selected clip, and stops its drag at the n
     await ui.close();
   }
 });
+
+it("previews and saves text ink, outline, strip and position for just the selected clip", async () => {
+  const ui = setup();
+  const saved = vi.fn();
+  const clip = (id: string, delay: number, endAt: number) => ({
+    id,
+    text: id,
+    in: { effect: "none", delay },
+    out: { effect: "stay" },
+    endAt,
+  });
+  const film = CutsceneFilmSchema.parse({
+    id: "scene",
+    title: "Scene",
+    createdAt: "",
+    updatedAt: "",
+    beats: [
+      {
+        id: "one",
+        textClips: [{ ...clip("First", 0, 3), style: "title" }, clip("Second", 3, 6)],
+      },
+    ],
+  });
+  try {
+    await act(async () =>
+      ui.root.render(
+        <CutsceneStudio
+          film={film}
+          previewTheme={PRESET_THEMES[0]!}
+          onClose={() => {}}
+          onSave={saved}
+        />,
+      ),
+    );
+    await ui.click("Text · First · 0 sec to 3 sec");
+    const dialog = ui.dialog();
+    const toggle = async (label: string) => {
+      await act(async () => (ui.field(label, dialog) as HTMLInputElement).click());
+    };
+    const copy = dialog.querySelector<HTMLElement>(".cutscene-reel__copy")!;
+    expect(copy.textContent).toBe("First");
+    expect(copy.dataset.strip).toBeUndefined();
+    await ui.input("Text color", "#ffcc00", dialog);
+    await toggle("Outline");
+    await ui.input("Outline color", "#123456", dialog);
+    await ui.input("Outline thickness (px)", "3", dialog);
+    await toggle("Show strip");
+    await ui.input("Strip color", "#183044", dialog);
+    await ui.input("Side padding (px)", "23", dialog);
+    await ui.input("Strip style", "soft-edges", dialog);
+    await ui.input("Position", "top", dialog);
+    await ui.input("Horizontal position", "right", dialog);
+
+    const ink = copy.querySelector<HTMLElement>(".orn-nameplate > span")!;
+    expect(ink.style.color).toBe("rgb(255, 204, 0)");
+    expect(ink.style.getPropertyValue("-webkit-text-stroke")).toBe("3px #123456");
+    expect(copy.dataset.strip).toBe("soft-edges");
+    expect(copy.style.getPropertyValue("--cutscene-strip-color")).toBe("#183044");
+    expect(copy.style.getPropertyValue("--cutscene-strip-padding")).toBe("23px");
+    expect(copy.parentElement?.dataset.horizontal).toBe("right");
+    expect(copy.parentElement?.classList).toContain("cutscene-reel__text--top");
+
+    await toggle("Show strip");
+    await toggle("Outline");
+    expect(copy.dataset.strip).toBe("off");
+    expect(ink.style.getPropertyValue("-webkit-text-stroke")).toBe("");
+    await toggle("Show strip");
+    await toggle("Outline");
+    expect(ui.field("Side padding (px)", dialog).value).toBe("23");
+    expect(ui.field("Outline thickness (px)", dialog).value).toBe("3");
+    await ui.closeDialog();
+    await ui.file("Save");
+    const clips = CutsceneFilmSchema.parse(saved.mock.lastCall?.[0]).beats[0]?.textClips;
+    expect(clips?.[0]).toMatchObject({
+      color: "#ffcc00",
+      outline: { enabled: true, color: "#123456", width: 3 },
+      strip: { enabled: true, color: "#183044", padding: 23, style: "soft-edges" },
+      position: "top",
+      horizontal: "right",
+    });
+    expect(clips?.[1]?.color).toBeUndefined();
+    expect(clips?.[1]?.strip).toBeUndefined();
+
+    await ui.click("Play from the start");
+    const played = ui.host.querySelector<HTMLElement>(".cutscene-reel .cutscene-reel__copy");
+    expect(played?.dataset.strip).toBe("soft-edges");
+    expect(played?.querySelector<HTMLElement>(".orn-nameplate > span")?.style.color).toBe(
+      "rgb(255, 204, 0)",
+    );
+  } finally {
+    await ui.close();
+  }
+});

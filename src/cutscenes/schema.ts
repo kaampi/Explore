@@ -69,6 +69,18 @@ export const SoundCellSchema = z.object({
   caption: z.string().max(120).default(""),
 });
 
+const HexColor = z.string().regex(/^#[\da-f]{6}$/i);
+export const TEXT_STRIP_STYLES = ["square", "rounded", "pill", "soft-edges"] as const;
+export const TEXT_OUTLINE_MAX = 8;
+export const TEXT_STRIP_PADDING_MAX = 96;
+export const DEFAULT_TEXT_OUTLINE = { enabled: false, color: "#000000", width: 2 };
+export const DEFAULT_TEXT_STRIP = {
+  enabled: false,
+  color: "#202020",
+  padding: 16,
+  style: "rounded",
+} as const;
+
 export const TextCellSchema = z.object({
   text: z.string().trim().min(1).max(1200),
   style: z.enum(["narrator", "title", "whisper", "shout", "letter"]).default("narrator"),
@@ -76,6 +88,23 @@ export const TextCellSchema = z.object({
   position: z.enum(["top", "middle", "bottom"]).default("bottom"),
   align: z.enum(["left", "center", "right"]).default("left"),
   font: z.enum(["reading", "heading"]).default("reading"),
+  horizontal: z.enum(["left", "center", "right"]).optional(),
+  color: HexColor.optional(),
+  outline: z
+    .object({
+      enabled: z.boolean(),
+      color: HexColor,
+      width: z.number().min(0.5).max(TEXT_OUTLINE_MAX),
+    })
+    .optional(),
+  strip: z
+    .object({
+      enabled: z.boolean(),
+      color: HexColor,
+      padding: z.number().min(0).max(TEXT_STRIP_PADDING_MAX),
+      style: z.enum(TEXT_STRIP_STYLES),
+    })
+    .optional(),
   in: z.object({
     effect: z.enum(["none", "fade", "typewriter", "word-reveal", "zoom-in", "slide-up"]),
     seconds: Seconds.default(1),
