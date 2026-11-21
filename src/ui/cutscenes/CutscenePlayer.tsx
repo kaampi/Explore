@@ -129,7 +129,15 @@ function SceneVisual({
         const { cell } = layer;
         const progress = frame?.imageOut ?? 0;
         const strength = (cell.out.strength ?? SIGNAL_DEFAULTS.strength) / 100;
-        const melt = outgoing && !reduced && cell.out.effect === "melt" && strength > 0;
+        const canMelt = !reduced && cell.out.effect === "melt" && strength > 0;
+        const melt = outgoing && canMelt;
+        const imageProps = {
+          alt: outgoing || silent ? "" : asset.alt,
+          src: asset.dataUrl,
+          className: `cutscene-reel__picture cutscene-reel__filter--${cell.filter}`,
+          "data-motion": reduced ? "none" : cell.during,
+          "data-paused": paused,
+        };
         const signalExit = outgoing && !reduced && cell.out.effect === "signal-glitch";
         const signalDuring = !outgoing && !reduced && cell.during === "signal-glitch";
         const signal = cell.signal ?? SIGNAL_DEFAULTS;
@@ -144,21 +152,14 @@ function SceneVisual({
                 : enterImage(cell.in.effect, frame?.imageIn ?? 1)
             }
           >
-            <img
-              alt={outgoing || silent ? "" : asset.alt}
-              src={asset.dataUrl}
-              className={`cutscene-reel__picture cutscene-reel__filter--${cell.filter}`}
-              data-motion={reduced ? "none" : cell.during}
-              data-paused={paused}
-              style={melt ? { visibility: "hidden" } : undefined}
-            />
-            {melt && (
+            {canMelt ? (
               <MeltImage
-                picture={asset}
-                filter={cell.filter}
-                progress={progress}
+                {...imageProps}
+                progress={melt ? progress : undefined}
                 strength={strength}
               />
+            ) : (
+              <img {...imageProps} />
             )}
             {signalDuring && (
               <SignalInterference

@@ -240,7 +240,19 @@
   pointer-events: none;
 }
 
-.cutscene-reel__melt,
+.cutscene-reel__melt {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.cutscene-reel__melt[data-painted] {
+  visibility: visible;
+}
+
+.cutscene-reel__melt[data-painted] + img {
+  visibility: hidden;
+}
+
 .cutscene-reel__signal,
 .cutscene-reel__signal-band {
   position: absolute;
