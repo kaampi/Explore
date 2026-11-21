@@ -5,7 +5,7 @@ import { loadingBayScenario } from "./encounterScenario";
 import { PlayStartPaths } from "./PlayStartPaths";
 import { CheckUpdates } from "./CheckUpdates";
 import { useEffect, useState } from "react";
-import { useTranslate } from "../i18n/LanguageProvider";
+import { useLanguageControls, useTranslate } from "../i18n/LanguageProvider";
 import conversationsWorld from "../assets/conversations-world.webp";
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 import {
@@ -75,7 +75,8 @@ export function HomeScreen({
   const [rulesetId, setRulesetId] = useState("");
   const chatPlaces = mergeWithExamples(places, [examplePlaceTemplate()]);
   const chatVoices = mergeWithExamples(voices, exampleVoiceTemplates());
-  const chatRulesets = mergeWithExamples(rulesets, exampleRulesetTemplates());
+  const language = useLanguageControls()?.language;
+  const chatRulesets = mergeWithExamples(rulesets, exampleRulesetTemplates(language));
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { discovery, preferredModel, refresh } = useConnection();

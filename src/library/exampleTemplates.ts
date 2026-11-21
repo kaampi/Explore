@@ -13,6 +13,8 @@ import {
   type RulesetTemplate,
   type VoiceTemplate,
 } from "./LibrarySchema";
+import { bundledRulesetCover, exampleGenreRulesets } from "./genreRulesets";
+import { localizeRuleset, type ExampleLanguage } from "./exampleRulesetTexts";
 import { ROOM_FROM_LANDMARK } from "@state/playerDestination";
 
 export const EXAMPLE_CHARACTER_ID = "example-emma";
@@ -234,6 +236,7 @@ export function exampleFantasyRuleset(): RulesetTemplate {
   return RulesetTemplateSchema.parse({
     id: EXAMPLE_RULESET_FANTASY_ID,
     name: "Klassisk fantasy",
+    imageDataUrl: bundledRulesetCover(EXAMPLE_RULESET_FANTASY_ID),
     attributes: [
       {
         id: "strength",
@@ -344,8 +347,9 @@ export function exampleClosenessRuleset(): RulesetTemplate {
   });
 }
 
-export function exampleRulesetTemplates(): RulesetTemplate[] {
-  return [exampleFantasyRuleset(), exampleClosenessRuleset()];
+export function exampleRulesetTemplates(language: ExampleLanguage = "en"): RulesetTemplate[] {
+  const sets = [exampleFantasyRuleset(), exampleClosenessRuleset(), ...exampleGenreRulesets()];
+  return language === "en" ? sets : sets.map((set) => localizeRuleset(set, language));
 }
 
 export function exampleRingObject(): ObjectTemplate {

@@ -1,5 +1,5 @@
 import { AuthorThemePicker } from "../themes/AuthorThemePicker";
-import { useTranslate } from "../i18n/LanguageProvider";
+import { useLanguageControls, useTranslate } from "../i18n/LanguageProvider";
 import { syncAdventure } from "../../library/sceneSync";
 import { remapAttribute } from "../../library/sceneParts";
 import { RuleSetChange } from "./RuleSetChange";
@@ -301,7 +301,8 @@ export function CampaignStudio({
   }, [repo, resume]);
 
   const visibleVoices = mergeWithExamples(voices, exampleVoiceTemplates());
-  const visibleRulesets = mergeWithExamples(rulesets, exampleRulesetTemplates());
+  const language = useLanguageControls()?.language;
+  const visibleRulesets = mergeWithExamples(rulesets, exampleRulesetTemplates(language));
   const visibleObjects = mergeWithExamples(objects, exampleObjectTemplates());
   const visibleCharacters = mergeWithExamples(characters, [exampleCharacterTemplate()]);
   const visiblePlaces = mergeWithExamples(

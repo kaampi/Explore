@@ -1,4 +1,4 @@
-import { useTranslate } from "../i18n/LanguageProvider";
+import { useLanguageControls, useTranslate } from "../i18n/LanguageProvider";
 import { pinSessionAnatomy, pinSessionFactions } from "@state/anatomy";
 import { useEffect, useState } from "react";
 import { IndexedDBRepository } from "@persistence/IndexedDBRepository";
@@ -153,7 +153,8 @@ export function AdventureStudio({
   }, [repo]);
 
   const visibleVoices = mergeWithExamples(voices, exampleVoiceTemplates());
-  const visibleRulesets = mergeWithExamples(rulesets, exampleRulesetTemplates());
+  const language = useLanguageControls()?.language;
+  const visibleRulesets = mergeWithExamples(rulesets, exampleRulesetTemplates(language));
   const visibleObjects = mergeWithExamples(objects, exampleObjectTemplates());
   const visibleCharacters = mergeWithExamples(characters, [exampleCharacterTemplate()]);
   const visiblePlaces = mergeWithExamples(places, [examplePlaceTemplate()]);

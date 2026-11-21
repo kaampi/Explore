@@ -1,4 +1,4 @@
-import { useTranslate } from "../i18n/LanguageProvider";
+import { useLanguageControls, useTranslate } from "../i18n/LanguageProvider";
 import { useEffect, useRef, useState } from "react";
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 import {
@@ -7,6 +7,7 @@ import {
   type RulesetTemplate,
 } from "@library/LibrarySchema";
 import { exampleRulesetTemplates, mergeWithExamples } from "@library/exampleTemplates";
+import { bundledRulesetCover } from "@library/genreRulesets";
 import { withOriginalTimestamps } from "@library/fromForm";
 import { slugifyCharacterId } from "@session/createSession";
 import type { AttributeDef } from "@state/StateSchema";
@@ -221,13 +222,15 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
   }, [repo]);
 
   const savedIds = new Set(library.map((item) => item.id));
-  const items = mergeWithExamples(library, exampleRulesetTemplates());
+  const language = useLanguageControls()?.language;
+  const items = mergeWithExamples(library, exampleRulesetTemplates(language));
+  const pictureFor = (item: RulesetTemplate) => item.imageDataUrl ?? bundledRulesetCover(item.id);
 
   function open(id: string) {
     const item = items.find((row) => row.id === id);
     if (!item) return;
     setSelectedId(id);
-    setDraft(draftFrom(item));
+    setDraft(draftFrom({ ...item, imageDataUrl: pictureFor(item) }));
     setError(null);
     setNotice(null);
   }
@@ -261,7 +264,10 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
         name,
         attributes,
         ...(playerHealth !== undefined ? { playerHealth } : {}),
-        ...(draft.imageDataUrl ? { imageDataUrl: draft.imageDataUrl } : {}),
+        // An explicit blank lets a saved copy hide its bundled cover.
+        ...(draft.imageDataUrl || (draft.id && bundledRulesetCover(draft.id))
+          ? { imageDataUrl: draft.imageDataUrl }
+          : {}),
         source: draft.source,
       });
       const previous = library.find((item) => item.id === built.id);
@@ -297,12 +303,15 @@ export function RulesetStudio({ repo }: { repo: IndexedDBRepository }) {
     <div className="studio-split studio-split--shelf studio-split--rulesets">
       <StudioList
         heading="Rule-sets"
-        items={items.map((item) => ({
-          id: item.id,
-          name: item.name,
-          caption: sourceCaption(item.source, savedIds.has(item.id)),
-          ...(item.imageDataUrl ? { thumb: item.imageDataUrl } : {}),
-        }))}
+        items={items.map((item) => {
+          const picture = pictureFor(item);
+          return {
+            id: item.id,
+            name: item.name,
+            caption: sourceCaption(item.source, savedIds.has(item.id)),
+            ...(picture ? { thumb: picture } : {}),
+          };
+        })}
         selectedId={selectedId}
         onSelect={open}
         onNew={() => {
