@@ -194,6 +194,8 @@ export function skillIdFor(
   const lower = text.trim().toLowerCase();
   const byName = scales.find((scale) => scale.name.trim().toLowerCase() === lower);
   if (byName) return byName.id;
+  const byIdIgnoringCase = scales.find((scale) => scale.id.toLowerCase() === lower);
+  if (byIdIgnoringCase) return byIdIgnoringCase.id;
   // The adventure changed rule-set and the author said what the old skill is now.
   const renamed = aliases[lower];
   return renamed && scales.some((scale) => scale.id === renamed) ? renamed : text;

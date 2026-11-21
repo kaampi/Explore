@@ -6,6 +6,7 @@ import { afterEach, expect, it } from "vitest";
 import { RulesetStudio } from "../../src/ui/studio/RulesetStudio";
 import { LanguageProvider } from "../../src/ui/i18n/LanguageProvider";
 import { IndexedDBRepository } from "../../src/persistence/IndexedDBRepository";
+import { exampleFantasyRuleset } from "../../src/library/exampleTemplates";
 import { newRulesetTemplate } from "../../src/library/LibrarySchema";
 import { AttributeDefSchema } from "../../src/state/StateSchema";
 
@@ -91,7 +92,7 @@ it("shows the picture of a rule-set in the list and beside the name, and Remove 
   const ui = await mount([set]);
 
   // In the list, before it is opened.
-  expect(ui.host.querySelector(".studio-list__thumb[src]")!.getAttribute("src")).toBe(PICTURE);
+  expect(ui.host.querySelector(`.studio-list__thumb[src="${PICTURE}"]`)).not.toBeNull();
 
   await ui.open("Pictured");
   const header = () => ui.host.querySelector(".rs-head__pick")!;
@@ -109,7 +110,7 @@ it("shows the picture of a rule-set in the list and beside the name, and Remove 
     await new Promise((resolve) => setTimeout(resolve, 40));
   });
   expect((await ui.repo.loadRuleset(set.id)).imageDataUrl).toBeUndefined();
-  expect(ui.host.querySelector(".studio-list__thumb[src]")).toBeNull();
+  expect(ui.host.querySelector(`.studio-list__thumb[src="${PICTURE}"]`)).toBeNull();
 });
 
 it("shows a rule-set with no picture with a plus to add one, and no Remove picture", async () => {
@@ -154,4 +155,31 @@ it("gives the high meaning a neutral example text", async () => {
   );
   expect(placeholders).toContain("{{char}} does it with ease.");
   expect(placeholders.join(" ")).not.toContain("starts and stays in contact");
+});
+
+it("shows bundled covers for existing saved rules and respects custom or explicitly removed pictures", async () => {
+  const set = { ...exampleFantasyRuleset(), name: "My campaign rules", playerHealth: 32 };
+  delete set.imageDataUrl;
+  const ui = await mount([set]);
+  const cover = "/rulesets/fantasy.webp";
+  const thumbnail = (url: string) => ui.host.querySelector(`.studio-list__thumb[src="${url}"]`);
+  expect(thumbnail(cover)).not.toBeNull();
+  await ui.open(set.name);
+  expect(ui.host.querySelector(".rs-head__pick img")?.getAttribute("src")).toBe(cover);
+  await ui.click(ui.host.querySelector('button[aria-label="Remove picture"]'));
+  await ui.click(ui.button("Save"));
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 40));
+  });
+  expect(thumbnail(cover)).toBeNull();
+  expect(await ui.repo.loadRuleset(set.id)).toMatchObject({
+    name: set.name,
+    playerHealth: 32,
+    attributes: set.attributes,
+    imageDataUrl: "",
+  });
+
+  const custom = await mount([{ ...set, imageDataUrl: PICTURE }]);
+  await custom.open(set.name);
+  expect(custom.host.querySelector(".rs-head__pick img")?.getAttribute("src")).toBe(PICTURE);
 });
