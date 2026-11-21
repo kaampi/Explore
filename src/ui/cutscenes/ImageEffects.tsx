@@ -1,48 +1,122 @@
-import type { CSSProperties } from "react";
+import {
+  useCallback,
+  useLayoutEffect,
+  useRef,
+  type CSSProperties,
+  type ImgHTMLAttributes,
+} from "react";
 import type { CutsceneFilm, ImageCell } from "../../cutscenes/schema";
 import { signalCycleSeconds } from "../../cutscenes/signalTiming";
 
 type Picture = CutsceneFilm["images"][number];
 
-const meltRuns = [
-  0.12, 0.05, 0, 0.11, 0.26, 0.29, 0.17, 0.08, 0.14, 0.22, 0.31, 0.18, 0.06, 0.03, 0.09, 0.2, 0.28,
-  0.17, 0.09, 0.15, 0.22, 0.1, 0.04, 0.15,
-];
+const turn = 2 * Math.PI;
+
+function paintMelt(
+  canvas: HTMLCanvasElement,
+  picture: HTMLImageElement,
+  progress: number,
+  strength: number,
+) {
+  const { naturalWidth, naturalHeight } = picture;
+  const { clientWidth, clientHeight } = canvas;
+  if (!naturalWidth || !naturalHeight || !clientWidth || !clientHeight) return false;
+  const context = canvas.getContext("2d");
+  if (!context) return false;
+
+  // Limit how many columns are drawn on a large or high-density screen.
+  const resolution = Math.min(1, 800 / clientWidth, 900 / clientHeight);
+  const width = Math.max(1, Math.round(clientWidth * resolution));
+  const height = Math.max(1, Math.round(clientHeight * resolution));
+  if (canvas.width !== width) canvas.width = width;
+  if (canvas.height !== height) canvas.height = height;
+  context.clearRect(0, 0, width, height);
+
+  // Match the main image's centered object-fit: cover crop.
+  const scale = Math.max(width / naturalWidth, height / naturalHeight);
+  const sourceWidth = width / scale;
+  const sourceHeight = height / scale;
+  const sourceX = (naturalWidth - sourceWidth) / 2;
+  const sourceY = (naturalHeight - sourceHeight) / 2;
+  const column = sourceWidth / width;
+  if (progress === 0) {
+    context.drawImage(picture, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, width, height);
+    return true;
+  }
+
+  for (let x = 0; x < width; x++) {
+    const along = (x + 0.5) / width;
+    // Smooth waves of different sizes give irregular drips without seams between columns.
+    const ridge =
+      0.5 +
+      0.29 * Math.sin(turn * (along * 4 + 0.12)) +
+      0.15 * Math.sin(turn * (along * 9 - 0.17)) +
+      0.06 * Math.sin(turn * (along * 17 + 0.34));
+    const lag = ridge * strength * 0.52;
+    const flow = Math.max(0, (progress - lag) / (1 - lag));
+    const fall = height * 1.06 * flow ** 1.6;
+    const stretch = height * strength * (1 - ridge) * flow * 0.6;
+    if (fall >= height) continue;
+    context.drawImage(
+      picture,
+      sourceX + x * column,
+      sourceY,
+      column,
+      sourceHeight,
+      x,
+      fall,
+      1,
+      height + stretch,
+    );
+  }
+  return true;
+}
 
 export function MeltImage({
-  picture,
-  filter,
   progress,
   strength,
-}: {
-  picture: Picture;
-  filter: ImageCell["filter"];
-  progress: number;
+  className,
+  ...picture
+}: ImgHTMLAttributes<HTMLImageElement> & {
+  progress: number | undefined;
   strength: number;
+  className: string;
 }) {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const image = useRef<HTMLImageElement>(null);
+  const active = progress !== undefined;
+  const draw = useCallback(() => {
+    if (!canvas.current || !image.current || progress === undefined) return;
+    canvas.current.toggleAttribute(
+      "data-painted",
+      paintMelt(canvas.current, image.current, progress, strength),
+    );
+  }, [progress, strength]);
+  const redraw = useRef(draw);
+  useLayoutEffect(() => {
+    redraw.current = draw;
+    draw();
+  }, [draw]);
+  useLayoutEffect(() => {
+    if (!active || !canvas.current || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => redraw.current());
+    observer.observe(canvas.current);
+    return () => observer.disconnect();
+  }, [active]);
+
   return (
-    <div aria-hidden="true" className="cutscene-reel__melt">
-      {meltRuns.map((delay, index) => {
-        const lag = delay * strength;
-        const flow = Math.max(0, (progress - lag) / (1 - lag));
-        const left = (index / meltRuns.length) * 100;
-        const right = ((index + 1) / meltRuns.length) * 100;
-        return (
-          <img
-            key={index}
-            alt=""
-            src={picture.dataUrl}
-            draggable={false}
-            className={`cutscene-reel__picture cutscene-reel__filter--${filter}`}
-            style={{
-              clipPath: `inset(0 ${Math.max(0, 100 - right - 0.1)}% 0 ${left}%)`,
-              transform: `translateY(${flow ** 1.4 * 108}%) scaleY(${1 + flow * strength * 0.42})`,
-              transformOrigin: "top",
-            }}
-          />
-        );
-      })}
-    </div>
+    <>
+      {active && (
+        <canvas ref={canvas} className={`${className} cutscene-reel__melt`} aria-hidden="true" />
+      )}
+      <img
+        {...picture}
+        ref={image}
+        className={className}
+        onLoad={draw}
+        style={active ? { opacity: 1 - progress } : undefined}
+      />
+    </>
   );
 }
 

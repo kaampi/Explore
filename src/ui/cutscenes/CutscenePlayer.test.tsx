@@ -246,15 +246,37 @@ describe("the independent cut-scene player", () => {
       const ui = await mount(film);
       try {
         const button = last ? "Continue the game" : "Continue";
-        const strips = () => ui.host.querySelector<HTMLImageElement>(".cutscene-reel__melt img");
-        expect(strips()).toBeNull();
+        const canvas = () => ui.host.querySelector<HTMLCanvasElement>("canvas.cutscene-reel__melt");
+        expect(canvas()).toBeNull();
+        const picture = ui.host.querySelector("img")!;
         await ui.click(button);
-        const initialTransform = strips()?.style.transform;
-        expect(initialTransform).toBeTruthy();
+        const surface = canvas()!;
+        expect(surface).toBeTruthy();
+        expect(ui.host.querySelector("img")).toBe(picture);
+        const drawImage = vi.fn();
+        vi.spyOn(surface, "getContext").mockReturnValue({
+          clearRect: vi.fn(),
+          drawImage,
+        } as unknown as CanvasRenderingContext2D);
+        Object.defineProperties(picture, {
+          naturalWidth: { value: 400 },
+          naturalHeight: { value: 200 },
+        });
+        Object.defineProperties(surface, {
+          clientWidth: { value: 240 },
+          clientHeight: { value: 160 },
+        });
+
         await ui.click(button);
         await settle(400);
-        expect(strips()?.style.transform).not.toBe(initialTransform);
-        expect(strips()).toBeTruthy();
+        expect(canvas()).toBe(surface);
+        expect(surface.hasAttribute("data-painted")).toBe(true);
+        const offsets = drawImage.mock.calls.slice(-240).map((call) => Number(call[6]));
+        expect(offsets).toHaveLength(240);
+        expect(Math.max(...offsets) - Math.min(...offsets)).toBeGreaterThan(15);
+        expect(
+          Math.max(...offsets.slice(1).map((offset, i) => Math.abs(offset - offsets[i]!))),
+        ).toBeLessThan(5);
         expect(ui.host.querySelector(".cutscene-reel__copy")?.textContent).toBe("First");
         expect(ui.onEnd).not.toHaveBeenCalled();
         await settle(700);
