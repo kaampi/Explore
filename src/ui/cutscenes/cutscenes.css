@@ -248,23 +248,31 @@
   filter: var(--cutscene-filter) hue-rotate(var(--cutscene-signal-tint));
 }
 
-.cutscene-reel__signal[data-ambient="true"] {
+.cutscene-reel__signal[data-ambient="true"],
+.cutscene-reel__glyph::after,
+.cutscene-reel__glyph-ink {
   animation: cutscene-signal-burst var(--cutscene-signal-period) step-end
     var(--cutscene-signal-cycles);
+}
+
+.cutscene-reel__signal[data-ambient="true"],
+.cutscene-reel__glyph::after {
   opacity: 0;
 }
 
-.cutscene-reel__signal[data-paused="true"] {
+.cutscene-reel__signal[data-paused="true"],
+.cutscene-reel__text-signal[data-paused="true"] .cutscene-reel__glyph::after,
+.cutscene-reel__text-signal[data-paused="true"] .cutscene-reel__glyph-ink {
   animation-play-state: paused;
 }
 
 @keyframes cutscene-signal-burst {
   0% {
-    opacity: 1;
+    opacity: var(--cutscene-burst-opacity, 1);
   }
   21%,
   100% {
-    opacity: 0;
+    opacity: var(--cutscene-quiet-opacity, 0);
   }
 }
 
@@ -272,4 +280,28 @@
   .cutscene-reel__signal {
     display: none;
   }
+  .cutscene-reel__glyph::after,
+  .cutscene-reel__glyph-ink {
+    animation: none;
+  }
+}
+
+.cutscene-reel__glyph {
+  position: relative;
+}
+
+.cutscene-reel__glyph::after {
+  content: attr(data-noise);
+  position: absolute;
+  inset-inline-start: 0;
+  transform: translateX(var(--cutscene-glyph-offset));
+}
+
+.cutscene-reel__glyph:nth-child(even)::after {
+  transform: translateX(calc(-1 * var(--cutscene-glyph-offset)));
+}
+
+.cutscene-reel__glyph-ink {
+  --cutscene-burst-opacity: 0;
+  --cutscene-quiet-opacity: 1;
 }

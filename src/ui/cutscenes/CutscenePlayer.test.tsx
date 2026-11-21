@@ -279,6 +279,66 @@ describe("the independent cut-scene player", () => {
     },
   );
 
+  it("holds the chosen word until the pause ends and can display text and image interference together", async () => {
+    const leadIn = "Through the doorway …\n";
+    const source = leadIn + "Mona.";
+    const film = model([
+      {
+        id: "show",
+        image: {
+          source: { kind: "set", imageId: "room" },
+          during: "signal-glitch",
+          in: { effect: "none" },
+          out: { effect: "none" },
+        },
+        text: {
+          text: source,
+          in: { effect: "word-reveal", seconds: 1, pauseBefore: 4, pauseSeconds: 1 },
+          out: { effect: "stay" },
+          during: "signal-glitch",
+        },
+        advance: { kind: "after", seconds: 1 },
+      },
+      { id: "next" },
+    ]);
+    const ui = await mount(film);
+    try {
+      const signal = ui.host.querySelector<HTMLElement>(".cutscene-reel__text-signal")!;
+      const picture = ui.host.querySelector<HTMLElement>(".cutscene-reel__signal")!;
+      expect(signal.style.getPropertyValue("--cutscene-signal-period")).toBe(
+        picture.style.getPropertyValue("--cutscene-signal-period"),
+      );
+      expect(ui.host.querySelector(".cutscene-reel__glyph[data-noise]")).not.toBeNull();
+      const visible = () =>
+        Array.from(signal.children)
+          .filter((part) => getComputedStyle(part).visibility !== "hidden")
+          .map((part) => part.textContent)
+          .join("");
+      expect(visible()).toBe("");
+      await settle(1050);
+      expect(visible()).toBe(leadIn);
+      expect(ui.host.querySelectorAll('[aria-live="polite"]')[1]?.textContent).toBe(source);
+      await ui.click("Pause");
+      await settle(2200);
+      expect(signal.dataset.paused).toBe("true");
+      expect(visible()).toBe(leadIn);
+      await ui.click("Resume");
+      await settle(1050);
+      expect(visible()).toBe(source);
+      expect(ui.host.querySelector(".cutscene-reel__text-signal")).toBe(signal);
+    } finally {
+      await ui.close();
+    }
+
+    const still = await mount(film, { simple: true });
+    try {
+      expect(still.host.querySelector(".cutscene-reel__copy")?.textContent).toBe(source);
+      expect(still.host.querySelector(".cutscene-reel__text-signal")).toBeNull();
+    } finally {
+      await still.close();
+    }
+  });
+
   it("announces missing audio, loops available music and releases it at the end", async () => {
     const pause = vi.fn();
     const revoke = vi.fn();
