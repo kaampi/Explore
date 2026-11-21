@@ -7,9 +7,19 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { CutsceneFilmSchema, type CutsceneBeat, type CutsceneFilm } from "../../cutscenes/schema";
+import {
+  CutsceneFilmSchema,
+  MAX_CLIP_END_SECONDS,
+  type CutsceneBeat,
+  type CutsceneFilm,
+} from "../../cutscenes/schema";
 import { planPlayback } from "../../cutscenes/playback";
-import type { TimelineClip } from "../../cutscenes/stepTimeline";
+import {
+  stepTimeline,
+  type ClipEdge,
+  type TimelineClip,
+  type TimelineLane,
+} from "../../cutscenes/stepTimeline";
 import {
   addAudioTrack,
   loadAudioBlob,
@@ -308,6 +318,39 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
       beats: value.beats.map((item) => (item.id === id ? update(item) : item)),
     }));
   }
+  function updateClipEdge(lane: TimelineLane, edge: ClipEdge, seconds: number | undefined) {
+    const end = <T extends { endAt?: number | undefined }>(cell: T): T => {
+      const next = { ...cell };
+      if (seconds === undefined) delete next.endAt;
+      else next.endAt = seconds;
+      return next;
+    };
+    updateBeat(beat.id, (step) => {
+      if (lane === "image") {
+        const { image } = step;
+        return {
+          ...step,
+          image:
+            edge === "end" ? end(image) : { ...image, in: { ...image.in, delay: seconds ?? 0 } },
+        };
+      }
+      if (lane === "sound") {
+        const { sound } = step;
+        return {
+          ...step,
+          sound: edge === "end" ? end(sound) : { ...sound, delay: seconds ?? 0 },
+        };
+      }
+      if (!step.text) return step;
+      const { text } = step;
+      return {
+        ...step,
+        text: edge === "end" ? end(text) : { ...text, in: { ...text.in, delay: seconds ?? 0 } },
+      };
+    });
+    setPlaying(undefined);
+  }
+
   function addStep(after: number, duplicate?: CutsceneBeat) {
     if (draft.beats.length >= 60) return;
     const next = duplicate ? { ...structuredClone(duplicate), id: crypto.randomUUID() } : newBeat();
@@ -464,10 +507,12 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
     const image = timing.image.current;
     if (!image) return;
     const show = newBeat();
+    const previewImage = { ...image.cell };
+    delete previewImage.endAt;
     const beats: CutsceneBeat[] = [
       {
         ...show,
-        image: { ...image.cell, during: "none", in: show.image.in },
+        image: { ...previewImage, during: "none", in: show.image.in },
         advance: { kind: "after", seconds: 1 },
       },
     ];
@@ -512,6 +557,41 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
         }
         onTrack={(file) => void uploadAudio(file)}
       />
+    );
+  }
+
+  function clipEndFields(channel: MediaChannel) {
+    const clip = stepTimeline(timing).clips.find((clip) => clip.lane === channel && clip.bounds);
+    if (!clip?.bounds) return null;
+    const { minEnd, fixedEnd } = clip.bounds;
+    return (
+      <>
+        <label className="cutscene-field cutscene-field--check">
+          <input
+            type="checkbox"
+            checked={fixedEnd !== undefined}
+            onChange={(event) =>
+              updateClipEdge(
+                channel,
+                "end",
+                event.target.checked
+                  ? Math.max(minEnd, clip.end, clip.start + 1000) / 1000
+                  : undefined,
+              )
+            }
+          />
+          <span>{t("csFixedEnd")}</span>
+        </label>
+        {fixedEnd !== undefined && (
+          <Num
+            label={t("csEndTime")}
+            min={minEnd / 1000}
+            max={MAX_CLIP_END_SECONDS}
+            value={fixedEnd / 1000}
+            onChange={(seconds) => updateClipEdge(channel, "end", seconds)}
+          />
+        )}
+      </>
     );
   }
 
@@ -677,6 +757,7 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
         onAdd={() => addStep(beatIndex)}
         selected={editingTransition ? undefined : selection.channel}
         contentFor={timelineContent}
+        onClipEdge={updateClipEdge}
         canEditChannel={(channel, section) => {
           if (channel === "image") {
             return (
@@ -723,6 +804,7 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
         <Modal title={channelDialogTitle} onClose={() => setChannelDialog(undefined)}>
           <div className="cutscene-studio__channel-fields">
             {fields(channelDialog.channel, channelDialog.section)}
+            {channelDialog.section === "timing" && clipEndFields(channelDialog.channel)}
             {channelDialog.section === "content" && message && (
               <p role="status" className="cutscene-studio__feedback">
                 {message}

@@ -403,6 +403,39 @@ describe("the independent cut-scene player", () => {
     }
   });
 
+  it.each(["music", "effect"])(
+    "stops timed %s at the clip end while the step stays open",
+    async (action) => {
+      const pause = vi.fn();
+      const play = vi.fn(async () => {});
+      const revoke = vi.fn();
+      vi.stubGlobal("URL", { createObjectURL: () => "blob:timed", revokeObjectURL: revoke });
+      vi.stubGlobal(
+        "Audio",
+        class {
+          paused = false;
+          play = play;
+          pause = pause;
+        },
+      );
+      const ui = await mount(
+        model([{ id: "first", sound: { action, trackId: "bell", delay: 0.2, endAt: 1 } }]),
+        { sound: { enabled: true, volume: 1, loadTrack: async () => new Blob(["bell"]) } },
+      );
+      try {
+        await settle(300);
+        expect(play).toHaveBeenCalledOnce();
+        expect(pause).not.toHaveBeenCalled();
+        await settle(850);
+        expect(pause).toHaveBeenCalledOnce();
+        expect(revoke).toHaveBeenCalledWith("blob:timed");
+        expect(ui.onEnd).not.toHaveBeenCalled();
+      } finally {
+        await ui.close();
+      }
+    },
+  );
+
   it("announces missing audio, loops available music and releases it at the end", async () => {
     const pause = vi.fn();
     const revoke = vi.fn();

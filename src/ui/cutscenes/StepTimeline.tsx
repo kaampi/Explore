@@ -1,6 +1,12 @@
-import type { ReactNode } from "react";
+import { Fragment, useRef, useState, type ReactNode } from "react";
 import type { PlaybackStep } from "../../cutscenes/playback";
-import { stepTimeline, type TimelineClip, type TimelineLane } from "../../cutscenes/stepTimeline";
+import {
+  stepTimeline,
+  type ClipEdge,
+  type TimelineClip,
+  type TimelineLane,
+} from "../../cutscenes/stepTimeline";
+import { MAX_CLIP_END_SECONDS } from "../../cutscenes/schema";
 import { Button, IconButton } from "../components/Button";
 import { MenuButton, useContextMenu, type MenuItem } from "../components/Menu";
 import { useTranslate } from "../i18n/LanguageProvider";
@@ -50,6 +56,14 @@ export function WorkspaceZoom({ workspace }: { workspace: ReturnType<typeof useW
   );
 }
 
+const snapMs = 100;
+type EdgeDrag = {
+  pointer: number;
+  origin: number;
+  startX: number;
+  msPerPixel: number;
+  moved: boolean;
+};
 type ClipContent = { label: string; thumb?: string };
 
 export function StepTimeline({
@@ -65,6 +79,7 @@ export function StepTimeline({
   contentFor,
   onOpenChannelDialog,
   canEditChannel,
+  onClipEdge,
 }: {
   step: PlaybackStep;
   number: number;
@@ -78,9 +93,12 @@ export function StepTimeline({
   contentFor: (clip: TimelineClip) => ClipContent;
   onOpenChannelDialog: (channel: MediaChannel, dialog: ChannelDialog) => void;
   canEditChannel: (channel: MediaChannel, section: "effects" | "timing") => boolean;
+  onClipEdge: (lane: TimelineLane, edge: ClipEdge, seconds: number | undefined) => void;
 }) {
   const t = useTranslate();
   const workspace = useWorkspaceView(true, timelineMaxZoom);
+  const drag = useRef<EdgeDrag>();
+  const [guide, setGuide] = useState<{ lane: TimelineLane; time: number }>();
   const { clips, advance, readyAt, exit, end, transition } = stepTimeline(step);
   const limit = Math.max(overviewMs, readyAt >= end || (advance ?? 0) >= end ? end + 1000 : end);
   const minimumTick = limit / (8 * workspace.view.zoom);
@@ -110,6 +128,80 @@ export function StepTimeline({
       : [{ lane, clips: laneClips }];
   });
 
+  function edgeHandle(clip: TimelineClip, edge: ClipEdge) {
+    const bounds = clip.bounds;
+    if (!bounds) return null;
+    const current = clip[edge];
+    const minimum = edge === "start" ? 0 : bounds.minEnd;
+    const maximum = edge === "start" ? bounds.maxStart : MAX_CLIP_END_SECONDS * 1000;
+    const clamp = (value: number) =>
+      Math.min(maximum, Math.max(minimum, Math.round(value / snapMs) * snapMs));
+    const label = t(edge === "start" ? "csClipStart" : "csClipEnd", {
+      channel: t(channelLabels[clip.lane]),
+    });
+    const commit = (time: number) => {
+      if (Math.abs(time - current) > 0.0001) onClipEdge(clip.lane, edge, time / 1000);
+    };
+    const clearDrag = (pointerId: number) => {
+      if (drag.current?.pointer !== pointerId) return;
+      drag.current = undefined;
+      setGuide(undefined);
+    };
+    return (
+      <button
+        type="button"
+        className="cutscene-time__handle"
+        data-edge={edge}
+        style={{ left: x(current) }}
+        aria-label={label}
+        title={`${label} · ${seconds(current)}`}
+        onPointerDown={(event) => {
+          if (event.button !== 0 || !event.isPrimary || event.ctrlKey || drag.current) return;
+          const lane = event.currentTarget.parentElement;
+          const width = lane?.getBoundingClientRect().width ?? 0;
+          if (!width) return;
+          event.stopPropagation();
+          event.currentTarget.setPointerCapture(event.pointerId);
+          drag.current = {
+            pointer: event.pointerId,
+            origin: current,
+            startX: event.clientX,
+            msPerPixel: limit / width,
+            moved: false,
+          };
+        }}
+        onPointerMove={(event) => {
+          const active = drag.current;
+          if (!active || active.pointer !== event.pointerId) return;
+          const dx = event.clientX - active.startX;
+          if (!active.moved && Math.abs(dx) < 2) return;
+          active.moved = true;
+          setGuide({ lane: clip.lane, time: clamp(active.origin + dx * active.msPerPixel) });
+        }}
+        onPointerUp={(event) => {
+          const active = drag.current;
+          if (!active || active.pointer !== event.pointerId) return;
+          const dx = event.clientX - active.startX;
+          clearDrag(event.pointerId);
+          if (active.moved || Math.abs(dx) >= 2)
+            commit(clamp(active.origin + dx * active.msPerPixel));
+        }}
+        onPointerCancel={(event) => clearDrag(event.pointerId)}
+        onLostPointerCapture={(event) => clearDrag(event.pointerId)}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+            event.preventDefault();
+            const increment = event.shiftKey ? 1000 : snapMs;
+            commit(clamp(current + (event.key === "ArrowRight" ? increment : -increment)));
+          } else if (edge === "end" && (event.key === "Delete" || event.key === "Backspace")) {
+            event.preventDefault();
+            if (bounds.fixedEnd !== undefined) onClipEdge(clip.lane, edge, undefined);
+          }
+        }}
+      />
+    );
+  }
+
   function clipButton(clip: TimelineClip) {
     const content = contentFor(clip);
     const label =
@@ -122,36 +214,39 @@ export function StepTimeline({
           });
     const width = clip.end - clip.start;
     return (
-      <Button
-        key={clip.source}
-        size="compact"
-        variant="quiet"
-        className="cutscene-time__clip"
-        aria-label={`${t(channelLabels[clip.lane])} · ${label}`}
-        aria-pressed={selected === clip.lane}
-        title={`${content.label} · ${label}`}
-        data-instant={width === 0}
-        style={{ left: x(clip.start), width: width ? x(width) : undefined }}
-        aria-haspopup="dialog"
-        onClick={() => onOpenChannelDialog(clip.lane, "content")}
-      >
-        {content.thumb && <img src={content.thumb} alt="" draggable={false} />}
-        <span className="cutscene-time__clip-title">{content.label}</span>
-        {width > 0 && !!clip.enter && (
-          <i
-            aria-hidden="true"
-            data-shape="in"
-            style={{ width: `${(clip.enter / width) * 100}%` }}
-          />
-        )}
-        {width > 0 && !!clip.leave && (
-          <i
-            aria-hidden="true"
-            data-shape="out"
-            style={{ width: `${(clip.leave / width) * 100}%` }}
-          />
-        )}
-      </Button>
+      <Fragment key={clip.source}>
+        <Button
+          size="compact"
+          variant="quiet"
+          className="cutscene-time__clip"
+          aria-label={`${t(channelLabels[clip.lane])} · ${label}`}
+          aria-pressed={selected === clip.lane}
+          title={`${content.label} · ${label}`}
+          data-instant={width === 0}
+          style={{ left: x(clip.start), width: width ? x(width) : undefined }}
+          aria-haspopup="dialog"
+          onClick={() => onOpenChannelDialog(clip.lane, "content")}
+        >
+          {content.thumb && <img src={content.thumb} alt="" draggable={false} />}
+          <span className="cutscene-time__clip-title">{content.label}</span>
+          {width > 0 && !!clip.enter && (
+            <i
+              aria-hidden="true"
+              data-shape="in"
+              style={{ width: `${(clip.enter / width) * 100}%` }}
+            />
+          )}
+          {width > 0 && !!clip.leave && (
+            <i
+              aria-hidden="true"
+              data-shape="out"
+              style={{ width: `${(clip.leave / width) * 100}%` }}
+            />
+          )}
+        </Button>
+        {edgeHandle(clip, "start")}
+        {edgeHandle(clip, "end")}
+      </Fragment>
     );
   }
 
@@ -312,6 +407,11 @@ export function StepTimeline({
                   <i className="cutscene-time__tick" key={tick} style={{ left: x(tick) }} />
                 ))}
                 {rowClips.map(clipButton)}
+                {guide?.lane === lane && rowClips.some((clip) => clip.bounds) && (
+                  <span className="cutscene-time__edge-guide" style={{ left: x(guide.time) }}>
+                    {seconds(guide.time)}
+                  </span>
+                )}
                 {rowClips.some((clip) => clip.waits) && (
                   <span
                     className="cutscene-time__open"

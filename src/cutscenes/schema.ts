@@ -11,7 +11,10 @@ export const IMAGE_MOTION_SECONDS = {
   shake: 0.55,
   unblur: 1.6,
 } as const;
-const Delay = z.number().min(0).max(10).default(0);
+export const MAX_CLIP_START_SECONDS = 30;
+export const MAX_CLIP_END_SECONDS = 150;
+const Delay = z.number().min(0).max(MAX_CLIP_START_SECONDS).default(0);
+const ClipEnd = z.number().min(0).max(MAX_CLIP_END_SECONDS).optional();
 
 export const REVEAL_PAUSE_SECONDS = 1;
 const SignalSettingsSchema = z.object({
@@ -48,6 +51,7 @@ export const ImageCellSchema = z.object({
   during: z
     .enum(["none", "slow-zoom", "pan-left", "pan-right", "shake", "unblur", "signal-glitch"])
     .default("none"),
+  endAt: ClipEnd,
   motionSeconds: Seconds.optional(),
   signal: SignalSettingsSchema.optional(),
   filter: z.enum(["none", "dark", "grayscale", "sepia", "cold", "warm"]).default("none"),
@@ -59,6 +63,7 @@ export const SoundCellSchema = z.object({
   volume: z.number().min(0).max(1).default(0.8),
   fadeSeconds: Seconds.default(0),
   delay: Delay,
+  endAt: ClipEnd,
   caption: z.string().max(120).default(""),
 });
 
@@ -80,6 +85,7 @@ export const TextCellSchema = z.object({
     effect: z.enum(["stay", "fade", "zoom-out"]),
     seconds: Seconds.default(0.5),
   }),
+  endAt: ClipEnd,
   during: z.enum(["none", "signal-glitch"]).optional(),
   signal: SignalSettingsSchema.optional(),
 });

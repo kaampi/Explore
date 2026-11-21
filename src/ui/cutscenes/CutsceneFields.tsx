@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import {
   BeatSchema,
   IMAGE_MOTION_SECONDS,
+  MAX_CLIP_START_SECONDS,
   REVEAL_PAUSE_SECONDS,
   SIGNAL_DEFAULTS,
   type SignalSettings,
@@ -310,7 +311,7 @@ export function CutsceneFields({
             <Num
               label={t("csDelay")}
               value={image.in.delay}
-              max={10}
+              max={MAX_CLIP_START_SECONDS}
               onChange={(delay) => updateEntrance({ delay })}
             />
           )}
@@ -379,7 +380,7 @@ export function CutsceneFields({
             <Num
               label={t("csDelay")}
               value={sound.delay}
-              max={10}
+              max={MAX_CLIP_START_SECONDS}
               onChange={(delay) => field("sound", { delay })}
             />
           )}
@@ -602,7 +603,7 @@ export function CutsceneFields({
           <Num
             label={t("csTextStartDelay")}
             value={text.in.delay}
-            max={10}
+            max={MAX_CLIP_START_SECONDS}
             onChange={(delay) => field("text", { in: { ...text.in, delay } })}
           />
         )}

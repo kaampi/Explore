@@ -578,3 +578,85 @@ it("sets a pause before a specific repeated word and saves it with text interfer
     await ui.close();
   }
 });
+
+it("drags the authored clip edges, saves one history entry per drag, and can clear an end", async () => {
+  const ui = setup();
+  const saved = vi.fn();
+  const film = CutsceneFilmSchema.parse({
+    id: "bell",
+    title: "Bell",
+    createdAt: "",
+    updatedAt: "",
+    images: [{ id: "door", dataUrl: "example", thumbDataUrl: "example" }],
+    beats: [
+      {
+        id: "one",
+        image: {
+          source: { kind: "set", imageId: "door" },
+          in: { effect: "none" },
+          out: { effect: "none" },
+        },
+        text: { text: "Look up.", in: { effect: "none", delay: 1 }, out: { effect: "stay" } },
+        sound: { action: "effect", trackId: "bell", delay: 2 },
+        advance: { kind: "after", seconds: 12 },
+      },
+    ],
+  });
+  try {
+    await act(async () =>
+      ui.root.render(
+        <CutsceneStudio
+          film={film}
+          previewTheme={PRESET_THEMES[0]!}
+          onSave={saved}
+          onClose={() => {}}
+        />,
+      ),
+    );
+    async function drag(label: string, amount: number) {
+      const handle = ui.findButton(label)!;
+      expect(handle).toBeTruthy();
+      handle.setPointerCapture = vi.fn();
+      handle.parentElement!.getBoundingClientRect = () => ({ width: 400 }) as DOMRect;
+      for (const [type, offset] of [
+        ["pointerdown", 0],
+        ["pointermove", amount / 2],
+        ["pointermove", amount],
+        ["pointerup", amount],
+      ] as const) {
+        const event = new MouseEvent(type, { bubbles: true, clientX: 150 + offset, button: 0 });
+        Object.assign(event, { pointerId: 5, isPrimary: true });
+        await act(async () => handle.dispatchEvent(event));
+      }
+    }
+    // The overview spans 20 seconds at 400 pixels.
+    await drag("Image clip start", 60);
+    await drag("Image clip end", -40);
+    await drag("Text clip start", 60);
+    await drag("Text clip end", -120);
+    await drag("Sound clip start", 120);
+    await drag("Sound clip end", 20);
+    expect(ui.findButton("Sound clip end")?.title).toContain("9 sec");
+
+    await ui.click("Undo");
+    expect(ui.findButton("Sound clip end")?.title).toContain("8 sec");
+    await ui.click("Redo");
+    expect(ui.findButton("Sound clip end")?.title).toContain("9 sec");
+    await ui.file("Save");
+    expect(saved.mock.lastCall?.[0].beats[0]).toMatchObject({
+      image: { in: { delay: 3 }, endAt: 10 },
+      text: { in: { delay: 4 }, endAt: 6 },
+      sound: { delay: 8, endAt: 9 },
+      advance: { kind: "after", seconds: 12 },
+    });
+
+    await ui.click("Text timing");
+    expect(ui.field("Clip ends at (s)", ui.dialog()).value).toBe("6");
+    await act(async () => (ui.field("Set clip end", ui.dialog()) as HTMLInputElement).click());
+    await ui.closeDialog();
+    await ui.file("Save");
+    expect(saved.mock.lastCall?.[0].beats[0].text.endAt).toBeUndefined();
+  } finally {
+    await ui.close();
+  }
+});

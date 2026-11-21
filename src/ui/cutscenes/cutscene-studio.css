@@ -455,6 +455,50 @@
   transform: rotate(45deg);
   background: var(--lane-color);
 }
+.cutscene-time__handle {
+  position: absolute;
+  z-index: 3;
+  inset-block: 0.42rem;
+  width: 0.65rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--lane-color);
+  background: transparent;
+  cursor: ew-resize;
+  pointer-events: auto;
+  touch-action: none;
+}
+.cutscene-time__handle[data-edge="start"] {
+  transform: translateX(-100%);
+}
+.cutscene-time__handle::before {
+  content: "";
+  position: absolute;
+  inset-block: 0.27rem;
+  inset-inline: 0.22rem;
+  border-radius: 2px;
+  background: currentColor;
+  opacity: 0.7;
+}
+.cutscene-time__handle:hover,
+.cutscene-time__handle:focus-visible {
+  color: var(--text);
+  background: var(--panel-raised);
+}
+.cutscene-time__edge-guide {
+  position: absolute;
+  z-index: 4;
+  top: 0;
+  bottom: 0;
+  border-inline-start: 2px solid var(--accent);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 0.75rem;
+  padding-inline: 0.25rem;
+  white-space: nowrap;
+  pointer-events: none;
+}
 .cutscene-time__open {
   position: absolute;
   right: 0;
