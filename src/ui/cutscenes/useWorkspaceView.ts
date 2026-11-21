@@ -8,7 +8,7 @@ import {
 } from "react";
 
 const origin = { zoom: 1, x: 0, y: 0 };
-const maxZoom = 8;
+const previewMaxZoom = 8;
 
 function constrain(view: typeof origin, width: number, height: number) {
   return {
@@ -18,7 +18,7 @@ function constrain(view: typeof origin, width: number, height: number) {
   };
 }
 
-export function useWorkspaceView(horizontal = false) {
+export function useWorkspaceView(horizontal = false, maxZoom = previewMaxZoom) {
   const [view, setView] = useState(origin);
   const viewport = useRef<HTMLDivElement>(null);
   const space = useRef(false);
@@ -98,7 +98,7 @@ export function useWorkspaceView(horizontal = false) {
       window.removeEventListener("keyup", up);
       window.removeEventListener("blur", blur);
     };
-  }, [horizontal, zoomAt]);
+  }, [horizontal, maxZoom, zoomAt]);
 
   const end = (event: PointerEvent<HTMLDivElement>) => {
     if (gesture.current?.pointer !== event.pointerId) return;
@@ -107,6 +107,7 @@ export function useWorkspaceView(horizontal = false) {
   };
   return {
     view,
+    maxZoom,
     mode,
     reset: () => setView(origin),
     zoomBy: (factor: number) => {

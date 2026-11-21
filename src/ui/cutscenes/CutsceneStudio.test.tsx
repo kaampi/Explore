@@ -318,6 +318,8 @@ it("projects the selected step's actual playback times and edits its outgoing tr
       ),
     );
     const timeline = ui.host.querySelector('[aria-label="Step timeline · Step 1"]')!;
+    const ruler = timeline.querySelector(".cutscene-time__ruler")!;
+    expect(ruler.lastElementChild?.textContent).toBe("20 sec");
     expect(ui.host.querySelectorAll(".cutscene-time")).toHaveLength(1);
     expect(ui.host.querySelector("table")).toBeNull();
     expect(timeline.querySelector('[aria-label="Sound · Sound cue at 0 sec"]')).toBeTruthy();
@@ -332,9 +334,17 @@ it("projects the selected step's actual playback times and edits its outgoing tr
     await ui.click("Previous step", timeline);
     await ui.click("Text · Someone is there. · 2 sec to 2 sec", timeline);
     await ui.click("Text timing", timeline);
-    await ui.input("Wait before showing text (s)", "2.5", ui.dialog());
+    await ui.input("Wait before showing text (s)", "4", ui.dialog());
     await ui.closeDialog();
-    expect(timeline.textContent).toContain("Advances at 2.5 sec");
+    expect(
+      timeline.querySelector('[aria-label="Text · Someone is there. · 4 sec to 4 sec"]'),
+    ).toBeTruthy();
+    await ui.click("Sound timing", timeline);
+    await ui.input("Delay (s)", "8.5", ui.dialog());
+    await ui.closeDialog();
+    expect(timeline.querySelector('[aria-label="Sound · Sound cue at 8.5 sec"]')).toBeTruthy();
+    expect(timeline.textContent).toContain("Advances at 8.5 sec");
+    expect(ruler.lastElementChild?.textContent).toBe("20 sec");
     await ui.click("Transition · Step 1 → Step 2");
     await ui.input("Transition", "crossfade");
     await ui.input("Duration (s)", "0.8");

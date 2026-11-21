@@ -13,6 +13,8 @@ import {
 import { useWorkspaceView } from "./useWorkspaceView";
 
 const lanes = ["image", "sound", "text"] as const;
+const overviewMs = 20_000;
+const timelineMaxZoom = 80;
 const clock = (ms: number) =>
   new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(ms / 1000);
 
@@ -41,7 +43,7 @@ export function WorkspaceZoom({ workspace }: { workspace: ReturnType<typeof useW
         size="compact"
         label={t("csZoomIn")}
         icon={<span aria-hidden="true">+</span>}
-        disabled={zoom === 8}
+        disabled={zoom === workspace.maxZoom}
         onClick={() => workspace.zoomBy(1.5)}
       />
     </div>
@@ -78,12 +80,13 @@ export function StepTimeline({
   hasText: boolean;
 }) {
   const t = useTranslate();
-  const workspace = useWorkspaceView(true);
+  const workspace = useWorkspaceView(true, timelineMaxZoom);
   const { clips, advance, readyAt, exit, end, transition } = stepTimeline(step);
-  const limit = readyAt >= end || (advance ?? 0) >= end ? end + 1000 : end;
+  const limit = Math.max(overviewMs, readyAt >= end || (advance ?? 0) >= end ? end + 1000 : end);
   const minimumTick = limit / (8 * workspace.view.zoom);
   const tickSpacing =
-    [100, 250, 500, 1000, 2000, 5000, 10000].find((interval) => interval >= minimumTick) ?? 20000;
+    [50, 100, 250, 500, 1000, 2000, 5000, 10000].find((interval) => interval >= minimumTick) ??
+    20000;
   const ticks = Array.from(
     { length: Math.floor(limit / tickSpacing) + 1 },
     (_, i) => i * tickSpacing,
