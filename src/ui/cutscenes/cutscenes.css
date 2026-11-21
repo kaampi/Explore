@@ -160,19 +160,19 @@
 }
 
 .cutscene-reel__picture[data-motion="slow-zoom"] {
-  animation: cutscene-slow-zoom 14s ease-out both;
+  animation: cutscene-slow-zoom ease-out both;
 }
 .cutscene-reel__picture[data-motion="pan-left"] {
-  animation: cutscene-pan-left 12s ease-in-out both;
+  animation: cutscene-pan-left ease-in-out both;
 }
 .cutscene-reel__picture[data-motion="pan-right"] {
-  animation: cutscene-pan-left 12s ease-in-out reverse both;
+  animation: cutscene-pan-left ease-in-out reverse both;
 }
 .cutscene-reel__picture[data-motion="shake"] {
-  animation: cutscene-shake 0.55s ease-out both;
+  animation: cutscene-shake ease-out both;
 }
 .cutscene-reel__picture[data-motion="unblur"] {
-  animation: cutscene-unblur 1.6s ease-out both;
+  animation: cutscene-unblur ease-out both;
 }
 .cutscene-reel__picture[data-paused="true"] {
   animation-play-state: paused;

@@ -185,6 +185,7 @@ describe("the independent cut-scene player", () => {
         image: {
           source: { kind: "set", imageId: "room" },
           during: "slow-zoom",
+          motionSeconds: 3.5,
           filter: "sepia",
           in: { effect: "none" },
           out: { effect: "none" },
@@ -204,6 +205,7 @@ describe("the independent cut-scene player", () => {
     try {
       const image = moving.host.querySelector("img")!;
       expect(image.dataset.motion).toBe("slow-zoom");
+      expect(image.style.animationDuration).toBe("3.5s");
       expect(image.classList.contains("cutscene-reel__filter--sepia")).toBe(true);
       await moving.press("Enter");
       expect(moving.host.querySelector("img")).toBe(image);

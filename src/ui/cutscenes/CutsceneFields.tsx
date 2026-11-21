@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import {
   BeatSchema,
+  IMAGE_MOTION_SECONDS,
   REVEAL_PAUSE_SECONDS,
   SIGNAL_DEFAULTS,
   type SignalSettings,
@@ -16,7 +17,7 @@ import { useTranslate, type TranslationKey } from "../i18n/LanguageProvider";
 export const channels = ["image", "sound", "text", "advance"] as const;
 export type Channel = (typeof channels)[number];
 export type MediaChannel = Exclude<Channel, "advance">;
-export type ChannelDialog = "effects" | "timing";
+export type ChannelDialog = "content" | "effects" | "timing";
 export const channelLabels = {
   image: "csImage",
   sound: "csSound",
@@ -120,37 +121,37 @@ function SignalFields({
   section,
   onChange,
 }: {
-  section: ChannelDialog;
+  section: Exclude<ChannelDialog, "content">;
   signal: SignalSettings;
   onChange: (value: SignalSettings) => void;
 }) {
   const t = useTranslate();
-  if (section === "timing") {
-    return (
+  return (
+    <>
       <Num
         label={t("csLength")}
         value={signal.seconds}
         max={30}
         onChange={(seconds) => onChange({ ...signal, seconds })}
       />
-    );
-  }
-  return (
-    <>
-      <Num
-        label={t("csEffectStrength")}
-        value={signal.strength}
-        max={100}
-        step={1}
-        onChange={(strength) => onChange({ ...signal, strength })}
-      />
-      <Num
-        label={t("csSignalDensity")}
-        value={signal.density}
-        max={100}
-        step={1}
-        onChange={(density) => onChange({ ...signal, density })}
-      />
+      {section === "effects" && (
+        <>
+          <Num
+            label={t("csEffectStrength")}
+            value={signal.strength}
+            max={100}
+            step={1}
+            onChange={(strength) => onChange({ ...signal, strength })}
+          />
+          <Num
+            label={t("csSignalDensity")}
+            value={signal.density}
+            max={100}
+            step={1}
+            onChange={(density) => onChange({ ...signal, density })}
+          />
+        </>
+      )}
     </>
   );
 }
@@ -169,7 +170,7 @@ export function CutsceneFields({
   film: CutsceneFilm;
   beat: CutsceneBeat;
   channel: Channel;
-  section?: ChannelDialog | "content";
+  section?: ChannelDialog;
   tracks: AudioTrack[];
   onChange: (update: (step: CutsceneBeat) => CutsceneBeat) => void;
   onImage: (file: File) => void;
@@ -271,6 +272,15 @@ export function CutsceneFields({
               ]}
               onChange={(during) => field("image", { during })}
             />
+            {image.during !== "none" && image.during !== "signal-glitch" && (
+              <Num
+                label={t("csLength")}
+                value={image.motionSeconds ?? IMAGE_MOTION_SECONDS[image.during]}
+                max={30}
+                step={0.05}
+                onChange={(motionSeconds) => field("image", { motionSeconds })}
+              />
+            )}
             <Pick
               label={t("csFilter")}
               value={image.filter}
@@ -297,27 +307,25 @@ export function CutsceneFields({
               onChange={(effect) => updateEntrance({ effect })}
             />
           ) : (
-            <>
-              <Num
-                label={t("csDelay")}
-                value={image.in.delay}
-                max={10}
-                onChange={(delay) => updateEntrance({ delay })}
-              />
-              {image.in.effect !== "none" && (
-                <Num
-                  label={t("csLength")}
-                  value={image.in.seconds}
-                  max={30}
-                  onChange={(seconds) => updateEntrance({ seconds })}
-                />
-              )}
-            </>
+            <Num
+              label={t("csDelay")}
+              value={image.in.delay}
+              max={10}
+              onChange={(delay) => updateEntrance({ delay })}
+            />
+          )}
+          {image.in.effect !== "none" && (
+            <Num
+              label={t("csLength")}
+              value={image.in.seconds}
+              max={30}
+              onChange={(seconds) => updateEntrance({ seconds })}
+            />
           )}
         </Group>
         {(section === "effects" || image.out.effect !== "none") && (
           <Group label={t("csExit")}>
-            {section === "effects" ? (
+            {section === "effects" && (
               <>
                 <Pick
                   label={t("csTextEffect")}
@@ -347,7 +355,8 @@ export function CutsceneFields({
                   />
                 )}
               </>
-            ) : (
+            )}
+            {image.out.effect !== "none" && (
               <Num
                 label={t("csLength")}
                 value={image.out.seconds}
@@ -363,36 +372,43 @@ export function CutsceneFields({
 
   if (channel === "sound") {
     const { sound } = beat;
-    if (section === "effects")
+    if (section !== "content") {
       return (
         <>
-          <Pick
-            label={t("csSoundAction")}
-            value={sound.action}
-            options={["none", "music", "stop-music", "effect"]}
-            onChange={(action) => field("sound", { action })}
-          />
-        </>
-      );
-    if (section === "timing")
-      return (
-        <>
+          {section === "timing" && (
+            <Num
+              label={t("csDelay")}
+              value={sound.delay}
+              max={10}
+              onChange={(delay) => field("sound", { delay })}
+            />
+          )}
           <Num
             label={t("csFade")}
             value={sound.fadeSeconds}
             max={30}
             onChange={(fadeSeconds) => field("sound", { fadeSeconds })}
           />
-          <Num
-            label={t("csDelay")}
-            value={sound.delay}
-            max={10}
-            onChange={(delay) => field("sound", { delay })}
-          />
+          {section === "effects" && sound.action !== "stop-music" && (
+            <Num
+              label={t("csVolume")}
+              value={Math.round(sound.volume * 100)}
+              max={100}
+              step={1}
+              onChange={(volume) => field("sound", { volume: volume / 100 })}
+            />
+          )}
         </>
       );
+    }
     return (
       <>
+        <Pick
+          label={t("csSoundAction")}
+          value={sound.action}
+          options={["none", "music", "stop-music", "effect"]}
+          onChange={(action) => field("sound", { action })}
+        />
         <label className="cutscene-field">
           <span>{t("csTrack")}</span>
           <select
@@ -400,8 +416,12 @@ export function CutsceneFields({
             onChange={(event) => {
               const trackId = event.target.value;
               onChange((step) => {
-                const { trackId: _oldTrack, ...withoutTrack } = step.sound;
-                return { ...step, sound: trackId ? { ...withoutTrack, trackId } : withoutTrack };
+                const updated = { ...step.sound };
+                if (trackId) {
+                  updated.trackId = trackId;
+                  if (updated.action === "none") updated.action = "effect";
+                } else delete updated.trackId;
+                return { ...step, sound: updated };
               });
             }}
           >
@@ -428,13 +448,6 @@ export function CutsceneFields({
             }}
           />
         </label>
-        <Num
-          label={t("csVolume")}
-          value={Math.round(sound.volume * 100)}
-          max={100}
-          step={1}
-          onChange={(volume) => field("sound", { volume: volume / 100 })}
-        />
         <label className="cutscene-field">
           <span>{t("csCaption")}</span>
           <input
@@ -586,30 +599,28 @@ export function CutsceneFields({
             )}
           </>
         ) : (
-          <>
-            {text.in.effect !== "none" && (
-              <Num
-                label={t("csLength")}
-                value={text.in.seconds}
-                max={30}
-                onChange={(seconds) => field("text", { in: { ...text.in, seconds } })}
-              />
-            )}
-            <Num
-              label={t("csTextStartDelay")}
-              value={text.in.delay}
-              max={10}
-              onChange={(delay) => field("text", { in: { ...text.in, delay } })}
-            />
-            {pauseBefore > 0 && pauseBefore <= words.length && (
-              <Num
-                label={t("csRevealPauseLength")}
-                value={text.in.pauseSeconds ?? REVEAL_PAUSE_SECONDS}
-                max={30}
-                onChange={(pauseSeconds) => field("text", { in: { ...text.in, pauseSeconds } })}
-              />
-            )}
-          </>
+          <Num
+            label={t("csTextStartDelay")}
+            value={text.in.delay}
+            max={10}
+            onChange={(delay) => field("text", { in: { ...text.in, delay } })}
+          />
+        )}
+        {text.in.effect !== "none" && (
+          <Num
+            label={t("csLength")}
+            value={text.in.seconds}
+            max={30}
+            onChange={(seconds) => field("text", { in: { ...text.in, seconds } })}
+          />
+        )}
+        {pauseBefore > 0 && pauseBefore <= words.length && (
+          <Num
+            label={t("csRevealPauseLength")}
+            value={text.in.pauseSeconds ?? REVEAL_PAUSE_SECONDS}
+            max={30}
+            onChange={(pauseSeconds) => field("text", { in: { ...text.in, pauseSeconds } })}
+          />
         )}
       </Group>
       {(section === "effects" || text.during === "signal-glitch") && (
@@ -638,7 +649,7 @@ export function CutsceneFields({
       )}
       {(section === "effects" || text.out.effect !== "stay") && (
         <Group label={t("csTextExit")}>
-          {section === "effects" ? (
+          {section === "effects" && (
             <>
               <Pick
                 label={t("csTextEffect")}
@@ -648,7 +659,8 @@ export function CutsceneFields({
               />
               <small className="cutscene-field__hint">{t(textExitHints[text.out.effect])}</small>
             </>
-          ) : (
+          )}
+          {text.out.effect !== "stay" && (
             <Num
               label={t("csLength")}
               value={text.out.seconds}

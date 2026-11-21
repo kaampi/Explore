@@ -4,6 +4,13 @@ import { StoryboardPositionSchema } from "../library/storyboardPosition";
 const Seconds = z.number().min(0).max(30);
 export const SIGNAL_DEFAULTS = { strength: 70, density: 50, seconds: 6 } as const;
 const Percentage = z.number().min(0).max(100);
+export const IMAGE_MOTION_SECONDS = {
+  "slow-zoom": 14,
+  "pan-left": 12,
+  "pan-right": 12,
+  shake: 0.55,
+  unblur: 1.6,
+} as const;
 const Delay = z.number().min(0).max(10).default(0);
 
 export const REVEAL_PAUSE_SECONDS = 1;
@@ -41,6 +48,7 @@ export const ImageCellSchema = z.object({
   during: z
     .enum(["none", "slow-zoom", "pan-left", "pan-right", "shake", "unblur", "signal-glitch"])
     .default("none"),
+  motionSeconds: Seconds.optional(),
   signal: SignalSettingsSchema.optional(),
   filter: z.enum(["none", "dark", "grayscale", "sepia", "cold", "warm"]).default("none"),
 });
