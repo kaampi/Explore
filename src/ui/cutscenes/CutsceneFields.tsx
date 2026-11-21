@@ -1,10 +1,15 @@
 import type { ReactNode } from "react";
 import {
   BeatSchema,
+  DEFAULT_TEXT_OUTLINE,
+  DEFAULT_TEXT_STRIP,
   IMAGE_MOTION_SECONDS,
   MAX_CLIP_START_SECONDS,
   REVEAL_PAUSE_SECONDS,
   SIGNAL_DEFAULTS,
+  TEXT_OUTLINE_MAX,
+  TEXT_STRIP_PADDING_MAX,
+  TEXT_STRIP_STYLES,
   type SignalSettings,
   TextCellSchema,
   type CutsceneBeat,
@@ -14,6 +19,7 @@ import {
 import { revealWords } from "../../cutscenes/textReveal";
 import type { AudioTrack } from "../audio/audioStorage";
 import { AUDIO_ACCEPT } from "../audio/audioStorage";
+import { Button } from "../components/Button";
 import { useTranslate, type TranslationKey } from "../i18n/LanguageProvider";
 
 export const channels = ["image", "sound", "text", "advance"] as const;
@@ -118,6 +124,112 @@ function Group({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
+function ColorField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (color: string) => void;
+}) {
+  return (
+    <label className="cutscene-field cutscene-field--color">
+      <span>{label}</span>
+      <input type="color" value={value} onChange={(event) => onChange(event.target.value)} />
+    </label>
+  );
+}
+
+function TextAppearanceFields({
+  text,
+  themeColor,
+  overImage,
+  update,
+}: {
+  text: TextCell;
+  themeColor: string;
+  overImage: boolean;
+  update: (patch: Partial<TextCell>) => void;
+}) {
+  const t = useTranslate();
+  const outline = text.outline ?? DEFAULT_TEXT_OUTLINE;
+  const strip = text.strip ?? { ...DEFAULT_TEXT_STRIP, enabled: overImage };
+  return (
+    <>
+      <Group label={t("csTextAppearance")}>
+        <ColorField
+          label={t("csTextColor")}
+          value={text.color ?? themeColor}
+          onChange={(color) => update({ color })}
+        />
+        {text.color && (
+          <Button variant="quiet" size="compact" onClick={() => update({ color: undefined })}>
+            {t("csTextThemeColor")}
+          </Button>
+        )}
+        <label className="cutscene-field cutscene-field--check">
+          <input
+            type="checkbox"
+            checked={outline.enabled}
+            onChange={(event) => update({ outline: { ...outline, enabled: event.target.checked } })}
+          />
+          <span>{t("csTextOutline")}</span>
+        </label>
+        {outline.enabled && (
+          <>
+            <ColorField
+              label={t("csTextOutlineColor")}
+              value={outline.color}
+              onChange={(color) => update({ outline: { ...outline, color } })}
+            />
+            <Num
+              label={t("csTextOutlineWidth")}
+              value={outline.width}
+              min={0.5}
+              max={TEXT_OUTLINE_MAX}
+              step={0.5}
+              onChange={(width) => update({ outline: { ...outline, width } })}
+            />
+          </>
+        )}
+      </Group>
+      <Group label={t("csTextStrip")}>
+        <label className="cutscene-field cutscene-field--check">
+          <input
+            type="checkbox"
+            checked={strip.enabled}
+            onChange={(event) => update({ strip: { ...strip, enabled: event.target.checked } })}
+          />
+          <span>{t("csTextStripShow")}</span>
+        </label>
+        {strip.enabled && (
+          <>
+            <ColorField
+              label={t("csTextStripColor")}
+              value={strip.color}
+              onChange={(color) => update({ strip: { ...strip, color } })}
+            />
+            <Num
+              label={t("csTextStripPadding")}
+              value={strip.padding}
+              max={TEXT_STRIP_PADDING_MAX}
+              step={1}
+              onChange={(padding) => update({ strip: { ...strip, padding } })}
+            />
+            <Pick
+              label={t("csTextStripStyle")}
+              value={strip.style}
+              options={TEXT_STRIP_STYLES}
+              onChange={(style) => update({ strip: { ...strip, style } })}
+            />
+          </>
+        )}
+      </Group>
+    </>
+  );
+}
+
 function SignalFields({
   signal,
   section,
@@ -170,6 +282,8 @@ export function CutsceneFields({
   onTrack,
   text,
   textStart,
+  textThemeColor,
+  overImage,
   onTextChange,
 }: {
   film: CutsceneFilm;
@@ -183,6 +297,8 @@ export function CutsceneFields({
   onTrack: (file: File) => void;
   text?: TextCell | undefined;
   textStart?: { min: number; max: number } | undefined;
+  textThemeColor: string;
+  overImage: boolean;
   onTextChange: (update: (cell: TextCell | undefined) => TextCell | undefined) => void;
 }) {
   const t = useTranslate();
@@ -550,6 +666,12 @@ export function CutsceneFields({
               onChange={(position) => updateText({ position })}
             />
             <Pick
+              label={t("csTextHorizontalPosition")}
+              value={text.horizontal ?? "center"}
+              options={["left", "center", "right"]}
+              onChange={(horizontal) => updateText({ horizontal })}
+            />
+            <Pick
               label={t("csAlignment")}
               value={text.align}
               options={["left", "center", "right"]}
@@ -560,6 +682,12 @@ export function CutsceneFields({
               value={text.font}
               options={["reading", "heading"]}
               onChange={(font) => updateText({ font })}
+            />
+            <TextAppearanceFields
+              text={text}
+              themeColor={textThemeColor}
+              overImage={overImage}
+              update={updateText}
             />
           </>
         )}

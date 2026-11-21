@@ -118,6 +118,50 @@
   background: color-mix(in srgb, var(--scrim) 78%, transparent);
   color: var(--photo-text);
 }
+.cutscene-reel__text[data-horizontal="left"],
+.cutscene-reel__text[data-horizontal="left"] > .cutscene-reel__copy {
+  margin-inline-start: 0;
+}
+.cutscene-reel__text[data-horizontal="right"],
+.cutscene-reel__text[data-horizontal="right"] > .cutscene-reel__copy {
+  margin-inline-end: 0;
+}
+.cutscene-reel__copy[data-strip] > .cutscene-reel__ornament[data-orn-set] {
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  clip-path: none;
+  max-width: 100%;
+  color: inherit;
+}
+.cutscene-reel__copy[data-strip] > .cutscene-reel__ornament[data-orn-set]::before {
+  content: none;
+}
+.cutscene-reel__copy[data-strip="off"] {
+  background: none;
+  padding-inline: 0;
+}
+.cutscene-reel__copy[data-strip]:where(:not([data-strip="off"])) {
+  background: var(--cutscene-strip-color);
+  padding-inline: var(--cutscene-strip-padding);
+}
+.cutscene-reel__copy[data-strip="square"],
+.cutscene-reel__copy[data-strip="soft-edges"] {
+  border-radius: 0;
+}
+.cutscene-reel__copy[data-strip="pill"] {
+  border-radius: 100vmax;
+}
+.cutscene-reel__copy[data-strip="soft-edges"] {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--cutscene-strip-color) 14%,
+    var(--cutscene-strip-color) 86%,
+    transparent
+  );
+}
 .cutscene-reel__caption {
   z-index: 3;
   justify-self: center;

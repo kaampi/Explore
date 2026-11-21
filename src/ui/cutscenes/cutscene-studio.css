@@ -77,6 +77,15 @@
   align-items: center;
   gap: var(--space-2);
 }
+.cutscene-field--color {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+.cutscene-field--color input[type="color"] {
+  width: 3rem;
+  height: var(--control-compact);
+  padding: var(--space-1);
+}
 .cutscene-field-group {
   display: grid;
   min-width: 0;
@@ -338,6 +347,30 @@
 .cutscene-studio__channel-fields {
   display: grid;
   gap: var(--space-3);
+}
+.cutscene-studio__text-dialog {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(14rem, 19rem);
+  align-items: start;
+  gap: var(--space-4);
+}
+.cutscene-studio__text-preview {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  pointer-events: auto;
+  z-index: 1;
+}
+@media (max-width: 680px) {
+  .cutscene-studio__text-dialog {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cutscene-studio__text-preview {
+    max-height: 28vh;
+  }
 }
 .cutscene-time__viewport {
   position: relative;
