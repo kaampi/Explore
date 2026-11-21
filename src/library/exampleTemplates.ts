@@ -15,6 +15,7 @@ import {
 } from "./LibrarySchema";
 import { bundledRulesetCover, exampleGenreRulesets } from "./genreRulesets";
 import { localizeRuleset, type ExampleLanguage } from "./exampleRulesetTexts";
+import { genreVoiceTemplates } from "./genreVoices";
 import { ROOM_FROM_LANDMARK } from "@state/playerDestination";
 
 export const EXAMPLE_CHARACTER_ID = "example-emma";
@@ -228,8 +229,8 @@ export function exampleFreighterVoice(): VoiceTemplate {
   });
 }
 
-export function exampleVoiceTemplates(): VoiceTemplate[] {
-  return [exampleTolkienVoice(), exampleFreighterVoice()];
+export function exampleVoiceTemplates(language: ExampleLanguage = "en"): VoiceTemplate[] {
+  return [exampleTolkienVoice(), exampleFreighterVoice(), ...genreVoiceTemplates(language)];
 }
 
 export function exampleFantasyRuleset(): RulesetTemplate {

@@ -152,8 +152,8 @@ export function AdventureStudio({
     };
   }, [repo]);
 
-  const visibleVoices = mergeWithExamples(voices, exampleVoiceTemplates());
   const language = useLanguageControls()?.language;
+  const visibleVoices = mergeWithExamples(voices, exampleVoiceTemplates(language));
   const visibleRulesets = mergeWithExamples(rulesets, exampleRulesetTemplates(language));
   const visibleObjects = mergeWithExamples(objects, exampleObjectTemplates());
   const visibleCharacters = mergeWithExamples(characters, [exampleCharacterTemplate()]);
