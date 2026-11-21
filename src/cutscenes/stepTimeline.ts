@@ -1,6 +1,10 @@
-import type { PlaybackStep } from "./playback";
+import { MIN_CLIP_MS, type PlaybackStep } from "./playback";
+import { MAX_CLIP_START_SECONDS } from "./schema";
 
 export type TimelineLane = "image" | "sound" | "text";
+
+export type ClipEdge = "start" | "end";
+export type ClipBounds = { minEnd: number; maxStart: number; fixedEnd?: number };
 
 export type TimelineClip = {
   lane: TimelineLane;
@@ -11,13 +15,46 @@ export type TimelineClip = {
   leave?: number;
   waits?: boolean;
   cue?: boolean;
+  bounds?: ClipBounds;
 };
 
-export function stepTimeline({ image, sound, text, advanceAt, readyAt, transition }: PlaybackStep) {
+export function clipBounds(step: PlaybackStep, lane: TimelineLane): ClipBounds | undefined {
+  let delay: number;
+  let occupied: number;
+  let end: number | undefined;
+  if (lane === "image") {
+    const { image } = step;
+    if (!image.current || image.current === image.previous) return undefined;
+    delay = image.delay;
+    occupied = Math.max(image.enter, image.leave) + image.exit;
+    end = image.end;
+  } else if (lane === "text") {
+    const { text } = step;
+    if (!text.current || text.current === text.previous) return undefined;
+    delay = text.delay;
+    occupied = text.enter + text.leave;
+    end = text.end;
+  } else {
+    const { sound } = step;
+    if (!sound.cue || sound.cue.cell.action === "stop-music") return undefined;
+    delay = sound.delay;
+    occupied = sound.cue.cell.fadeSeconds * 1000;
+    end = sound.end;
+  }
+  const startMax = MAX_CLIP_START_SECONDS * 1000;
+  return {
+    minEnd: delay + occupied + MIN_CLIP_MS,
+    maxStart: end === undefined ? startMax : Math.min(startMax, end - occupied - MIN_CLIP_MS),
+    ...(end === undefined ? {} : { fixedEnd: end }),
+  };
+}
+
+export function stepTimeline(step: PlaybackStep) {
+  const { image, sound, text, advanceAt, readyAt, transition } = step;
   const advance = advanceAt === undefined ? undefined : Math.max(advanceAt, readyAt);
   const holdUntil = advance ?? readyAt;
   const waits = advance === undefined;
-  const exit = Math.max(image.melt, text.leave);
+  const exit = Math.max(image.melt, text.end === undefined ? text.leave : 0);
   const clips: TimelineClip[] = [];
 
   if (image.previous && image.previous !== image.current && image.delay + image.leave > 0) {
@@ -30,14 +67,16 @@ export function stepTimeline({ image, sound, text, advanceAt, readyAt, transitio
     });
   }
   if (image.current) {
+    const bounds = clipBounds(step, "image");
     clips.push({
       lane: "image",
       source: "current",
       start: image.delay,
-      end: holdUntil + (waits ? 0 : image.melt),
+      end: image.end ?? holdUntil + (waits ? 0 : image.melt),
       enter: image.enter,
-      leave: waits ? 0 : image.melt,
-      waits,
+      leave: image.end !== undefined ? image.exit : waits ? 0 : image.melt,
+      waits: waits && image.end === undefined,
+      ...(bounds ? { bounds } : {}),
     });
   }
 
@@ -45,15 +84,17 @@ export function stepTimeline({ image, sound, text, advanceAt, readyAt, transitio
     clips.push({ lane: "text", source: "previous", start: 0, end: text.delay });
   }
   if (text.current) {
-    const leave = waits ? 0 : text.leave;
+    const leave = waits && text.end === undefined ? 0 : text.leave;
+    const bounds = clipBounds(step, "text");
     clips.push({
       lane: "text",
       source: "current",
       start: text.delay,
-      end: holdUntil + leave,
+      end: text.end ?? holdUntil + leave,
       enter: text.enter,
       leave,
-      waits,
+      waits: waits && text.end === undefined,
+      ...(bounds ? { bounds } : {}),
     });
   }
 
@@ -71,15 +112,17 @@ export function stepTimeline({ image, sound, text, advanceAt, readyAt, transitio
   }
   if (sound.cue) {
     const fade = sound.cue.cell.fadeSeconds * 1000;
+    const bounds = clipBounds(step, "sound");
     clips.push({
       lane: "sound",
       source: "current",
       start: sound.delay,
-      end: action === "music" ? holdUntil : sound.delay + fade,
+      end: sound.end ?? (action === "music" ? holdUntil : sound.delay + fade),
       cue: true,
       enter: action === "stop-music" ? 0 : fade,
       leave: action === "stop-music" ? fade : 0,
-      waits: waits && action === "music",
+      waits: waits && action === "music" && sound.end === undefined,
+      ...(bounds ? { bounds } : {}),
     });
   }
 

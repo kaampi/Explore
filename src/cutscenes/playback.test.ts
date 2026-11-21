@@ -7,6 +7,7 @@ import {
   type PlaybackState,
 } from "./playback";
 import { CutsceneFilmSchema } from "./schema";
+import { stepTimeline } from "./stepTimeline";
 
 function film(beats: unknown[], skippable = true) {
   return CutsceneFilmSchema.parse({
@@ -227,4 +228,59 @@ it("transitions after text exits, keeping the incoming channel clock stopped unt
   expect(advancePlayback(plan, half, { type: "continue" })).toEqual(next);
   expect(planPlayback(source, true).steps[0]?.transition.duration).toBe(150);
   expect(source.beats[1]?.transition.effect).toBe("cut");
+});
+
+it("finishes each bounded clip on its own clock and separates an image exit from leaving the step", () => {
+  const plan = planPlayback(
+    film([
+      {
+        id: "timed",
+        image: {
+          source: { kind: "set", imageId: "room" },
+          in: { effect: "none", delay: 1 },
+          out: { effect: "melt", seconds: 2 },
+          endAt: 8,
+        },
+        text: {
+          text: "A bell rings.",
+          in: { effect: "none", delay: 2 },
+          out: { effect: "fade", seconds: 1 },
+          endAt: 5,
+        },
+        sound: { action: "music", delay: 3, trackId: "bell", endAt: 7 },
+      },
+      { id: "after" },
+    ]),
+  );
+  const frame = (elapsed: number) => playbackFrame(plan, { ...startPlayback(), elapsed });
+  expect(frame(500)).toMatchObject({ image: undefined, text: undefined, music: undefined });
+  expect(frame(4500)).toMatchObject({
+    image: { imageId: "room" },
+    text: { cell: { text: "A bell rings." } },
+    textOut: 0.5,
+    music: { cell: { trackId: "bell" } },
+  });
+  expect(frame(7000)).toMatchObject({
+    image: undefined,
+    previousImage: { imageId: "room" },
+    imageOut: 0.5,
+    text: undefined,
+    music: undefined,
+  });
+  expect(frame(8000)).toMatchObject({ image: undefined, previousImage: undefined, ready: true });
+  expect(playbackFrame(plan, startPlayback(1))).toMatchObject({
+    image: undefined,
+    text: undefined,
+    music: undefined,
+  });
+  const timeline = stepTimeline(plan.steps[0]!);
+  expect(timeline.clips.map(({ lane, start, end }) => [lane, start, end])).toEqual([
+    ["image", 1000, 8000],
+    ["text", 2000, 5000],
+    ["sound", 3000, 7000],
+  ]);
+  expect(timeline.exit).toBe(0);
+  expect(
+    advancePlayback(plan, { ...startPlayback(), elapsed: 8000 }, { type: "continue" }),
+  ).toEqual(startPlayback(1));
 });

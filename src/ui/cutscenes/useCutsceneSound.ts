@@ -75,7 +75,8 @@ export function useCutsceneSound(
     const previous = queues.music;
     if (previous) {
       delete queues.music;
-      const seconds = ended ? 1 : enabled ? cueFade.current : 0;
+      const seconds =
+        previous.cue.cell.endAt !== undefined ? 0 : ended ? 1 : enabled ? cueFade.current : 0;
       fade(previous, 0, seconds, () => release(previous));
     }
     const trackId = music?.cell.trackId;
@@ -111,6 +112,10 @@ export function useCutsceneSound(
   useEffect(() => {
     let cancelled = false;
     const queues = runtime.current;
+    let active: Track | undefined;
+    function stop(track: Track) {
+      if (queues.effects.delete(track)) release(track);
+    }
     const trackId = effect?.cell.trackId;
     if (enabled && !ended && effect && trackId) {
       void Promise.resolve()
@@ -121,11 +126,9 @@ export function useCutsceneSound(
           const audio = new Audio(url);
           const track = { audio, url, frame: 0, cue: effect };
           queues.effects.add(track);
+          active = track;
           audio.volume = effect.cell.fadeSeconds ? 0 : volumeFor(effect, params.current.volume);
-          audio.onended = () => {
-            queues.effects.delete(track);
-            release(track);
-          };
+          audio.onended = () => stop(track);
           if (params.current.paused) return;
           try {
             await audio.play();
@@ -133,14 +136,14 @@ export function useCutsceneSound(
             setAudible((held) => new Set([...held, effect.step]));
             fade(track, volumeFor(effect, params.current.volume), effect.cell.fadeSeconds);
           } catch {
-            queues.effects.delete(track);
-            release(track);
+            stop(track);
           }
         })
         .catch(() => {});
     }
     return () => {
       cancelled = true;
+      if (active && effect?.cell.endAt !== undefined) stop(active);
     };
   }, [effect, enabled, ended, loadTrack]);
 

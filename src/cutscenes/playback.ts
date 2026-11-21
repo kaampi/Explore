@@ -20,6 +20,8 @@ export type PlaybackStep = {
     enter: number;
     leave: number;
     melt: number;
+    exit: number;
+    end?: number;
   };
   text: {
     previous?: TextLayer | undefined;
@@ -27,9 +29,15 @@ export type PlaybackStep = {
     delay: number;
     enter: number;
     leave: number;
+    end?: number;
     revealPause?: { at: number; duration: number };
   };
-  sound: { previousMusic?: SoundCue | undefined; cue?: SoundCue | undefined; delay: number };
+  sound: {
+    previousMusic?: SoundCue | undefined;
+    cue?: SoundCue | undefined;
+    delay: number;
+    end?: number;
+  };
   transition: {
     effect: CutsceneBeat["transition"]["effect"];
     duration: number;
@@ -40,6 +48,7 @@ export type PlaybackStep = {
 
 export type PlaybackPlan = { skippable: boolean; steps: PlaybackStep[]; canPause: boolean };
 
+export const MIN_CLIP_MS = 100;
 const ms = (seconds: number) => seconds * 1000;
 
 function length(effect: string, seconds: number, simple: boolean) {
@@ -60,27 +69,44 @@ export function planPlayback(film: CutsceneFilm, simple = false): PlaybackPlan {
     if (beat.image.source.kind === "set")
       activeImage = { step, imageId: beat.image.source.imageId, cell: beat.image };
     else if (beat.image.source.kind === "clear") activeImage = undefined;
-    const melt = changingImage && activeImage?.cell.out.effect === "melt" ? activeImage : undefined;
+    const imageDelay = changingImage && !simple ? ms(beat.image.in.delay) : 0;
+    const imageEnter =
+      changingImage && activeImage
+        ? length(activeImage.cell.in.effect, activeImage.cell.in.seconds, simple)
+        : 0;
+    const imageLeave =
+      changingImage && previousImage
+        ? length(previousImage.cell.out.effect, previousImage.cell.out.seconds, simple)
+        : 0;
+    const imageExit = activeImage
+      ? length(activeImage.cell.out.effect, activeImage.cell.out.seconds, simple)
+      : 0;
+    const imageEnd =
+      activeImage && changingImage && activeImage.cell.endAt !== undefined
+        ? Math.max(
+            ms(activeImage.cell.endAt),
+            imageDelay + Math.max(imageEnter, imageLeave) + imageExit + MIN_CLIP_MS,
+          )
+        : undefined;
+    const meltsOnAdvance =
+      changingImage && activeImage?.cell.out.effect === "melt" && imageEnd === undefined;
     const image = {
       previous: previousImage,
       current: activeImage,
-      delay: changingImage && !simple ? ms(beat.image.in.delay) : 0,
-      enter:
-        changingImage && activeImage
-          ? length(activeImage.cell.in.effect, activeImage.cell.in.seconds, simple)
-          : 0,
-      leave:
-        changingImage && previousImage
-          ? length(previousImage.cell.out.effect, previousImage.cell.out.seconds, simple)
-          : 0,
-      melt: melt ? length("melt", melt.cell.out.seconds, simple) : 0,
+      delay: imageDelay,
+      enter: imageEnter,
+      leave: imageLeave,
+      exit: imageExit,
+      melt: meltsOnAdvance ? imageExit : 0,
+      ...(imageEnd !== undefined ? { end: imageEnd } : {}),
     };
-    if (melt) activeImage = undefined;
+    if (meltsOnAdvance || imageEnd !== undefined) activeImage = undefined;
 
     const previousText = heldText;
     const cell = beat.text;
     const currentText = cell ? { step, cell } : heldText;
-    heldText = cell?.out.effect === "stay" ? currentText : cell ? undefined : heldText;
+    if (cell)
+      heldText = cell.out.effect === "stay" && cell.endAt === undefined ? currentText : undefined;
     const enter = cell ? length(cell.in.effect, cell.in.seconds, simple) : 0;
     let revealPause: PlaybackStep["text"]["revealPause"];
     if (cell?.in.effect === "word-reveal" && !simple && cell.in.pauseBefore !== undefined) {
@@ -92,18 +118,37 @@ export function planPlayback(film: CutsceneFilm, simple = false): PlaybackPlan {
         };
       }
     }
+    const textDelay = cell && !simple ? ms(cell.in.delay) : 0;
+    const textEnter = enter + (revealPause?.duration ?? 0);
+    const textLeave = cell ? length(cell.out.effect, cell.out.seconds, simple) : 0;
+    const textEnd =
+      cell?.endAt === undefined
+        ? undefined
+        : Math.max(ms(cell.endAt), textDelay + textEnter + textLeave + MIN_CLIP_MS);
     const text = {
       previous: previousText,
       current: currentText,
-      delay: cell && !simple ? ms(cell.in.delay) : 0,
-      enter: enter + (revealPause?.duration ?? 0),
+      delay: textDelay,
+      enter: textEnter,
       ...(revealPause ? { revealPause } : {}),
-      leave: cell ? length(cell.out.effect, cell.out.seconds, simple) : 0,
+      leave: textLeave,
+      ...(textEnd !== undefined ? { end: textEnd } : {}),
     };
 
     const cue = beat.sound.action === "none" ? undefined : { step, cell: beat.sound };
-    const sound = { previousMusic: music, cue, delay: cue ? ms(cue.cell.delay) : 0 };
-    if (cue?.cell.action === "music") music = cue;
+    const soundDelay = cue ? ms(cue.cell.delay) : 0;
+    const soundReady = soundDelay + (cue ? ms(cue.cell.fadeSeconds) : 0);
+    const soundEnd =
+      cue?.cell.endAt === undefined || cue.cell.action === "stop-music"
+        ? undefined
+        : Math.max(ms(cue.cell.endAt), soundReady + MIN_CLIP_MS);
+    const sound = {
+      previousMusic: music,
+      cue,
+      delay: soundDelay,
+      ...(soundEnd !== undefined ? { end: soundEnd } : {}),
+    };
+    if (cue?.cell.action === "music") music = soundEnd === undefined ? cue : undefined;
     else if (cue?.cell.action === "stop-music") music = undefined;
 
     const effect = step < film.beats.length - 1 ? (beat.transition?.effect ?? "cut") : "cut";
@@ -114,9 +159,9 @@ export function planPlayback(film: CutsceneFilm, simple = false): PlaybackPlan {
       text,
       sound,
       readyAt: Math.max(
-        image.delay + Math.max(image.enter, image.leave),
-        text.delay + text.enter,
-        sound.delay + (cue ? ms(cue.cell.fadeSeconds) : 0),
+        image.end ?? image.delay + Math.max(image.enter, image.leave),
+        text.end ?? text.delay + text.enter,
+        sound.end ?? soundReady,
       ),
       advanceAt: beat.advance.kind === "after" ? ms(beat.advance.seconds) : undefined,
     };
@@ -124,7 +169,13 @@ export function planPlayback(film: CutsceneFilm, simple = false): PlaybackPlan {
   return {
     skippable: film.skippable,
     steps,
-    canPause: steps.some((step) => step.advanceAt !== undefined),
+    canPause: steps.some(
+      (step) =>
+        step.advanceAt !== undefined ||
+        step.image.end !== undefined ||
+        step.text.end !== undefined ||
+        step.sound.end !== undefined,
+    ),
   };
 }
 
@@ -154,8 +205,12 @@ function transitionOrNext(plan: PlaybackPlan, state: Playing, step: PlaybackStep
     : nextStep(plan, state);
 }
 
+function exitLength(step: PlaybackStep) {
+  return Math.max(step.text.end === undefined ? step.text.leave : 0, step.image.melt);
+}
+
 function leaveStep(plan: PlaybackPlan, state: Playing, step: PlaybackStep): PlaybackState {
-  return Math.max(step.text.leave, step.image.melt) > 0
+  return exitLength(step) > 0
     ? { ...state, phase: "exit", elapsed: 0, channelsDone: true }
     : transitionOrNext(plan, state, step);
 }
@@ -182,7 +237,7 @@ export function advancePlayback(
   if (state.paused || event.elapsed <= 0) return state;
   const elapsed = state.elapsed + event.elapsed;
   if (state.phase === "exit") {
-    return elapsed >= Math.max(step.text.leave, step.image.melt)
+    return elapsed >= exitLength(step)
       ? transitionOrNext(plan, state, step)
       : { ...state, elapsed };
   }
@@ -209,29 +264,52 @@ export function playbackFrame(plan: PlaybackPlan, state: Playing) {
   const textTime = elapsed - step.text.delay;
   const image = step.image;
   const melting = image.melt > 0 && state.phase === "exit" && state.elapsed < image.melt;
-  const melted = image.melt > 0 && state.phase !== "step";
+  const timedImageExit =
+    image.end !== undefined &&
+    image.exit > 0 &&
+    elapsed >= image.end - image.exit &&
+    elapsed < image.end
+      ? fraction(elapsed - (image.end - image.exit), image.exit)
+      : undefined;
+  const imageGone =
+    (image.melt > 0 && state.phase !== "step") || (image.end !== undefined && elapsed >= image.end);
   const text = step.text;
   const pause = text.revealPause;
   const pausedFor = pause ? Math.min(pause.duration, Math.max(0, textTime - pause.at)) : 0;
   const revealTime = textTime - pausedFor;
   const revealDuration = text.enter - (pause?.duration ?? 0);
-  const cue = elapsed >= step.sound.delay ? step.sound.cue : undefined;
+  const soundStarted = elapsed >= step.sound.delay;
+  const soundEnded = step.sound.end !== undefined && elapsed >= step.sound.end;
+  const cue = soundStarted && !soundEnded ? step.sound.cue : undefined;
+  const action = soundStarted ? step.sound.cue?.cell.action : undefined;
   const music =
-    cue?.cell.action === "music"
-      ? cue
-      : cue?.cell.action === "stop-music"
-        ? undefined
-        : step.sound.previousMusic;
+    action === "music" ? cue : action === "stop-music" ? undefined : step.sound.previousMusic;
   return {
-    image: melted ? undefined : imageTime < 0 ? image.previous : image.current,
-    previousImage: melting
-      ? image.current
-      : !melted && imageTime >= 0 && image.previous !== image.current && imageTime < image.leave
-        ? image.previous
-        : undefined,
+    image:
+      imageGone || timedImageExit !== undefined
+        ? undefined
+        : imageTime < 0
+          ? image.previous
+          : image.current,
+    previousImage:
+      melting || timedImageExit !== undefined
+        ? image.current
+        : !imageGone &&
+            imageTime >= 0 &&
+            image.previous !== image.current &&
+            imageTime < image.leave
+          ? image.previous
+          : undefined,
     imageIn: imageTime < 0 ? 1 : fraction(imageTime, image.enter),
-    imageOut: melting ? fraction(state.elapsed, image.melt) : fraction(imageTime, image.leave),
-    text: textTime < 0 ? text.previous : text.current,
+    imageOut:
+      timedImageExit ??
+      (melting ? fraction(state.elapsed, image.melt) : fraction(imageTime, image.leave)),
+    text:
+      text.end !== undefined && elapsed >= text.end
+        ? undefined
+        : textTime < 0
+          ? text.previous
+          : text.current,
     textIn:
       textTime < 0
         ? 1
@@ -239,11 +317,15 @@ export function playbackFrame(plan: PlaybackPlan, state: Playing) {
           ? 0
           : fraction(revealTime, revealDuration),
     textOut:
-      state.phase === "exit" && text.leave > 0
-        ? fraction(state.elapsed, text.leave)
-        : state.phase === "transition" && text.leave > 0
-          ? 1
-          : 0,
+      text.end !== undefined
+        ? text.leave > 0
+          ? fraction(elapsed - (text.end - text.leave), text.leave)
+          : 0
+        : state.phase === "exit" && text.leave > 0
+          ? fraction(state.elapsed, text.leave)
+          : state.phase === "transition" && text.leave > 0
+            ? 1
+            : 0,
     cue,
     music,
     ready: state.channelsDone || state.elapsed >= step.readyAt,
