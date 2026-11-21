@@ -605,7 +605,7 @@ export function CutsceneFields({
           <Num
             label={t("csTextStartDelay")}
             value={text.in.delay}
-            min={textStart?.min}
+            min={textStart?.min ?? 0}
             max={textStart?.max ?? MAX_CLIP_START_SECONDS}
             onChange={(delay) => updateText({ in: { ...text.in, delay } })}
           />

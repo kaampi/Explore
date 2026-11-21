@@ -96,7 +96,7 @@ export function StepTimeline({
   onOpenChannelDialog: (channel: MediaChannel, dialog: ChannelDialog, textClipId?: string) => void;
   canEditChannel: (channel: MediaChannel, section: "effects" | "timing") => boolean;
   onClipEdge: (clip: TimelineClip, edge: ClipEdge, seconds: number | undefined) => void;
-  onAddText?: () => void;
+  onAddText: (() => void) | undefined;
 }) {
   const t = useTranslate();
   const workspace = useWorkspaceView(true, timelineMaxZoom);
