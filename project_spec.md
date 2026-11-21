@@ -14,12 +14,34 @@ The original six phases below are the Master Spec roadmap. Phases 1–5 are in t
 - Pass 1 streams prose. Pass 2 may propose lockable mutations. The player can reject layers, lock fields, and undo.
 - Dialogue is not the map. Canon is the current scene, ground story, active place notes, and **objects placed in the scene**. Ground story and the object list are writer fact; a character only knows what they have seen or been told. Hearing a name is not having lived that past. A thing the player shows is only the words they used — Pass 1 does not invent a famous owner or a hidden history for it.
 - The player controls only their own body. Lines that dictate what a character does or says are wishes, not facts. Asking for a kiss or hug is a request; live meters decide whether it happens this beat. A night, a time-skip, or walking back to the bar is the next beat of the same scene — not a new customer, and not a new crisis, unless an authored **once-beat** is firing this turn.
-- Attributes (rule-set fields) are labels the model can read. They are not dice. Pass 2 may **nudge** a number only when that field’s **Move / beat** (`maxShift`) is above 0 — closeness meters, not a fight. Default 0 keeps Styrka still. Checks, object rolls, and combat are not wired. The live pattern to extend is **Favor** (engine d100, Pass 1 narrates). A later CheckEngine starts at object cards (`checkAttribute`), player-tapped, scale-normalized like trait bands — not a D&D ruleset and not Pass 2 rolling on its own. If a fight is ever resolved, **the engine owns the outcome, then Pass 1 narrates it**. (Friends & Fables had to take 5e combat off by default after AI-narrated mechanics proved unreliable.)
+- Attributes (rule-set fields) are labels the model can read. They are not dice. Pass 2 may **nudge** a number only when that field’s **Move / beat** (`maxShift`) is above 0 — closeness meters, not a fight. Default 0 keeps Styrka still. In the **AI track** (see *Two play tracks* below) checks, object rolls, and combat are not wired; the live pattern there is **Favor** (engine d100, Pass 1 narrates). In the **engine track** checks, combat, barriers, and health are already resolved by code (`src/game/`, d100 through `RulesAdapter`). Either way **the engine owns the outcome, then the AI narrates it** — never the reverse. (Friends & Fables had to take 5e combat off by default after AI-narrated mechanics proved unreliable.)
 - Pictures (portraits, place thumbs, chat backdrops) and **place audio** are **UI only**. They are never assembled into the prompt.
 - The public bar is dressed. An undressed state stays in a private room unless the player said they'd walk out like that. Walking back to work restores indoor clothes (an apron if they tend bar). Live wearing and holding are tracked as fact, not assumed: an undressed character has no dress pocket; empty hands are empty.
 - Until a given name is spoken in chat, narration uses Pronoun (`she` / `her`, `he` / `his`). The writer still knows the true name so they can introduce themselves. There is no nickname field — a name the player has not heard is not on the card.
 
 UI is English. Engines are framework-free TypeScript; React (`src/ui/`) consumes them.
+
+---
+
+## Two play tracks (and the target)
+
+Explore currently has two play tracks that do not meet, plus an older third.
+
+| Track | Code | Used by | Who decides |
+| --- | --- | --- | --- |
+| **AI track** | `SessionEngine`, `StateEngine`, `ContextEngine`, `ChatPanel` | Free play, the "With rules" chat, older campaign scenes | The AI narrates freely. Rules decide almost nothing. |
+| **Engine track** | `src/game/` (`EncounterEngine`, `AdventureEngine`), `EncounterPanel` | Storyboard adventures, the depot | The engine decides everything. AI is off. A free-text line with no authored match gets "This scene has no prepared reply for that topic yet". |
+| **Legacy gatehouse** | `src/checks/gate*.ts`, `GateScenePanel` | Older gatehouse saves and scenario | Its own engine. To be folded into the engine track. |
+
+**Target: one track. The engine decides; the AI interprets the player's intent and narrates the outcome.** Free play and rule-governed adventure become two settings of the same turn, not two systems.
+
+Rules for the target:
+
+1. **The engine owns truth.** AI text never changes flags, locks, items, health, positions, or rolls. The AI may only (a) propose an action from `encounterCommands(game)` and (b) word events the engine has already settled.
+2. **No re-rolls.** Rolls, costs, and consequences are stored once. Regenerate may only change wording.
+3. **Old saves open.** Schema changes are additive with a default, or come with a tested migration.
+
+The target is not built yet. The table rows describe what is in use today.
 
 ---
 
@@ -103,11 +125,20 @@ Looks on the character card is body and face. Outfit and handheld things are sce
 
 Phase 6 does not block play, Studio, or context slices.
 
+### Built in the engine track, not yet in the AI track
+
+The engine track (`src/game/`) already has d100 checks with degrees of success, combat with weapons, hostilities and health, barriers, and adventure transitions. It reaches the player only through Storyboard adventures and the depot. `src/checks/CheckEngine.ts` and `playerCheck.ts` hold the older player-tapped check used from the AI track.
+
+- **Checks vs meters (AI track).** Trust / Värme already **gate closeness in Pass 1**. Trust is 0–100. The desire signal is the marked field’s **band** (same high/low/mid as Pass 1 meanings), so a 1–18 scale works. Authored high/low/mid trait meanings are in Pass 1 as required state. Pass 2 may move a **cast** rule-set number only when that field's `maxShift` is above 0. Campaign **You** stats exist as Pass 1 labels (same as cast); they are not dice, and Pass 2 does not move them.
+- **Rule-set in the engine track.** The engine reaches rules only through `RulesAdapter` (`src/game/rules.ts`). Playable adventures hardcode `Adventure · d100`, health 20/12, and the skills Observation and Persuasion. The campaign's chosen rule-set does not yet supply skills, values, or health.
+- **Object properties.** Object cards store weight / difficulty / `checkAttribute`. The engine track does not use them yet. When it does, normalize the live number onto 0–100 with the same per-field min–max as trait bands: `(value − min) / (max − min) × 100`. Do not hardcode a 0–100 threshold (that was the warm-beat bug). Checks are player-initiated only, never Pass 2 deciding to roll.
+- **3D dice (UI only, idea).** `@3d-dice/dice-box` lives in `src/ui/`, never in an engine. The engine still owns the number; the box is the throw the player sees, not a second RNG. Same rule as portraits and place audio: not assembled into the prompt.
+
 ### Designed, not built
 
-- **Checks vs meters.** Trust / Värme already **gate closeness in Pass 1**. Trust is 0–100. The desire signal is the marked field’s **band** (same high/low/mid as Pass 1 meanings), so a 1–18 scale works. Authored high/low/mid trait meanings are in Pass 1 as required state. Number attributes used as *dice checks* (strength vs a stone) are not wired. Pass 2 may move a **cast** rule-set number only when that field's `maxShift` is above 0. Campaign **You** stats exist as Pass 1 labels (same as cast); they are not dice, and Pass 2 does not move them.
-- **Object rolls / CheckEngine (later).** Object cards already store weight / difficulty / `checkAttribute`. Nothing rolls them. When they do: a new isolated `CheckEngine` (pure code, no LLM, same test shape as StateEngine). Input `{ attribute, character, difficulty }` → `{ roll, target, success }`. Reuse the Favor pattern already in play (d100 in code; Pass 1 only narrates). Normalize the live number onto 0–100 with the same per-field min–max as trait bands: `(value − min) / (max − min) × 100` — do not hardcode a 0–100 threshold (that was the warm-beat bug). **Player-initiated** only: a Cast/object button (“try to lift the stone”), never Pass 2 deciding to roll. The outcome is required Pass 1 fact, like Here or a band meaning. First and only check type until that feels right: **object interaction**. Not skills, saves, or combat on day one. Do not import a RoleForge/D&D architecture — generalize Favor. **3D dice (UI only):** `@3d-dice/dice-box` (BabylonJS + AmmoJS, web workers, React examples; same family as D&D Beyond / Roll20 rollers). Lives in `src/ui/`, never in an engine. CheckEngine still owns the number — the box is the throw the player sees, not a second RNG. Same rule as portraits and place audio: not assembled into the prompt.
-- **Combat / 5e-style resolution.** Out of scope until object checks are proven. Same order as Favor: engine owns the outcome, then Pass 1 narrates. Friends & Fables had to take AI-narrated 5e combat off by default; do not start here.
+- **AI in engine scenes.** Free speech to a character, free-text action interpretation, and narrated outcomes in the engine track. Constraint: the AI proposes from `encounterCommands(game)` and words settled events; it never sets flags or rolls. Needs a written contract before code.
+- **Free play in the world.** A map place becoming an engine scene automatically, persistent place state per playthrough, travel time between scenes. See `docs/TODO.md` and `docs/game-time-and-journeys-ideas.md`.
+- **Multi-figure player-controlled combat.** Out of scope. Friends & Fables had to take AI-narrated 5e combat off by default; the engine owns the outcome, then the AI narrates.
 - **Object pictures.** Same UI-only pair as places (thumb in Cast, high-res reveal when the player actually holds the thing). Pickup is not first-class inventory yet (`holding` is a free string).
 - **Relative positioning / proximity zones** as live play logic.
 
