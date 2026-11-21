@@ -1548,6 +1548,14 @@ textarea.setup-field__story {
   background: var(--bg);
 }
 
+.studio:has(> .studio-body > .cutscene-library[data-editor-open="true"]) {
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.studio:has(> .studio-body > .cutscene-library[data-editor-open="true"]) > .studio-nav {
+  display: none;
+}
+
 .studio-nav {
   display: flex;
   align-items: center;

@@ -4,7 +4,12 @@ import { stepTimeline, type TimelineClip, type TimelineLane } from "../../cutsce
 import { Button, IconButton } from "../components/Button";
 import { MenuButton, useContextMenu, type MenuItem } from "../components/Menu";
 import { useTranslate } from "../i18n/LanguageProvider";
-import { channelLabels, type Channel } from "./CutsceneFields";
+import {
+  channelLabels,
+  type Channel,
+  type ChannelDialog,
+  type MediaChannel,
+} from "./CutsceneFields";
 import { useWorkspaceView } from "./useWorkspaceView";
 
 const lanes = ["image", "sound", "text"] as const;
@@ -56,6 +61,8 @@ export function StepTimeline({
   selected,
   onSelect,
   contentFor,
+  onOpenChannelDialog,
+  hasText,
 }: {
   step: PlaybackStep;
   number: number;
@@ -67,6 +74,8 @@ export function StepTimeline({
   selected: Channel | undefined;
   onSelect: (channel: Channel, openInspector?: boolean) => void;
   contentFor: (clip: TimelineClip) => ClipContent;
+  onOpenChannelDialog: (channel: MediaChannel, dialog: ChannelDialog) => void;
+  hasText: boolean;
 }) {
   const t = useTranslate();
   const workspace = useWorkspaceView(true);
@@ -194,34 +203,76 @@ export function StepTimeline({
       <div className="cutscene-time__body">
         <div className="cutscene-time__labels">
           {tracks.map(({ lane }, index) => (
-            <Button
-              key={`${lane}-${index}`}
-              size="compact"
-              variant="quiet"
-              aria-pressed={selected === lane}
-              aria-label={`${stepLabel}, ${t(channelLabels[lane])}`}
-              onClick={() => onSelect(lane)}
-              onKeyDown={(event) => {
-                const direction = event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0;
-                const otherStep =
-                  event.key === "ArrowLeft"
-                    ? number - 1
-                    : event.key === "ArrowRight"
-                      ? number + 1
-                      : 0;
-                if (direction) {
-                  event.preventDefault();
-                  const next = Math.min(tracks.length - 1, Math.max(0, index + direction));
-                  onSelect(tracks[next]!.lane, false);
-                  event.currentTarget.parentElement?.querySelectorAll("button")[next]?.focus();
-                } else if (otherStep >= 1 && otherStep <= count) {
-                  event.preventDefault();
-                  onStep(otherStep);
-                }
-              }}
-            >
-              {t(channelLabels[lane])}
-            </Button>
+            <div className="cutscene-time__label-row" key={`${lane}-${index}`}>
+              <Button
+                className="cutscene-time__label"
+                size="compact"
+                variant="quiet"
+                aria-pressed={selected === lane}
+                aria-label={`${stepLabel}, ${t(channelLabels[lane])}`}
+                onClick={() => onSelect(lane)}
+                onKeyDown={(event) => {
+                  const direction =
+                    event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0;
+                  const otherStep =
+                    event.key === "ArrowLeft"
+                      ? number - 1
+                      : event.key === "ArrowRight"
+                        ? number + 1
+                        : 0;
+                  if (direction) {
+                    event.preventDefault();
+                    const next = Math.min(tracks.length - 1, Math.max(0, index + direction));
+                    onSelect(tracks[next]!.lane, false);
+                    const labels = event.currentTarget
+                      .closest(".cutscene-time__labels")
+                      ?.querySelectorAll<HTMLButtonElement>(".cutscene-time__label");
+                    labels?.[next]?.focus();
+                  } else if (otherStep >= 1 && otherStep <= count) {
+                    event.preventDefault();
+                    onStep(otherStep);
+                  }
+                }}
+              >
+                {t(channelLabels[lane])}
+              </Button>
+              {tracks[index - 1]?.lane !== lane && (
+                <>
+                  <IconButton
+                    size="compact"
+                    variant="quiet"
+                    label={t("csChannelEffects", { channel: t(channelLabels[lane]) })}
+                    aria-haspopup="dialog"
+                    disabled={lane === "text" && !hasText}
+                    icon={<span aria-hidden="true">Fx</span>}
+                    onClick={() => onOpenChannelDialog(lane, "effects")}
+                  />
+                  <IconButton
+                    size="compact"
+                    variant="quiet"
+                    label={t("csChannelTiming", { channel: t(channelLabels[lane]) })}
+                    aria-haspopup="dialog"
+                    disabled={lane === "text" && !hasText}
+                    icon={
+                      <svg
+                        aria-hidden="true"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 20 20"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                      >
+                        <circle cx="10" cy="10" r="7.25" />
+                        <path d="M10 6v4l2.6 1.6" />
+                      </svg>
+                    }
+                    onClick={() => onOpenChannelDialog(lane, "timing")}
+                  />
+                </>
+              )}
+            </div>
           ))}
         </div>
         <div

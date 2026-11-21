@@ -75,7 +75,24 @@ function setup() {
       await act(async () => new Promise((resolve) => setTimeout(resolve, 4)));
     expect(done()).toBe(true);
   }
-  return { host, root, click, field, input, action, file, close, waitFor, findButton };
+  function dialog() {
+    return host.querySelector<HTMLDialogElement>("dialog[open]")!;
+  }
+  const closeDialog = () => click("Close dialog", dialog());
+  return {
+    host,
+    root,
+    click,
+    field,
+    input,
+    action,
+    file,
+    close,
+    waitFor,
+    findButton,
+    dialog,
+    closeDialog,
+  };
 }
 
 it("edits every channel, previews, reorders steps, and saves through the film API", async () => {
@@ -110,14 +127,22 @@ it("edits every channel, previews, reorders steps, and saves through the film AP
     await ui.input("Display", "fullscreen");
     await ui.click("Close dialog", ui.host.querySelector("dialog")!);
     await ui.input("Image", "clear");
-    await ui.input("Motion while displayed", "pan-left");
-    await ui.input("Image filter", "warm");
+    await ui.click("Image effects");
+    await ui.input("Motion while displayed", "pan-left", ui.dialog());
+    await ui.input("Image filter", "warm", ui.dialog());
+    await ui.closeDialog();
     const firstImage = ui.findButton("Step 1, Image")!;
     await act(async () =>
       firstImage.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true })),
     );
     expect(document.activeElement).toBe(ui.findButton("Step 1, Sound"));
-    await ui.input("Action", "effect");
+    await ui.click("Sound effects");
+    await ui.input("Action", "effect", ui.dialog());
+    await ui.closeDialog();
+    await ui.click("Sound timing");
+    await ui.input("Fade (s)", "0.25", ui.dialog());
+    await ui.input("Delay (s)", "0.5", ui.dialog());
+    await ui.closeDialog();
     await ui.input("Caption when sound is unavailable", "[A knock]");
     await ui.click("Step 1, Text");
     await ui.input("Text", "Dawn breaks.");
@@ -148,7 +173,7 @@ it("edits every channel, previews, reorders steps, and saves through the film AP
     expect(ui.host.querySelector(".cutscene-reel")).toBeTruthy();
     await ui.click("Stop preview");
     expect(saved).not.toHaveBeenCalled();
-    await ui.file("Close");
+    await ui.file("Close editor");
     expect(ui.host.querySelector("dialog")?.textContent).toContain("unsaved changes");
     await ui.click("Cancel", ui.host.querySelector("dialog")!);
     expect(closed).not.toHaveBeenCalled();
@@ -162,12 +187,12 @@ it("edits every channel, previews, reorders steps, and saves through the film AP
         {
           text: { text: "Dawn breaks.", style: "whisper" },
           image: { source: { kind: "clear" }, during: "pan-left", filter: "warm" },
-          sound: { action: "effect", caption: "[A knock]" },
+          sound: { action: "effect", caption: "[A knock]", fadeSeconds: 0.25, delay: 0.5 },
           advance: { kind: "after", seconds: 3 },
         },
       ],
     });
-    await ui.file("Close");
+    await ui.file("Close editor");
     expect(closed).toHaveBeenCalledOnce();
   } finally {
     await ui.close();
@@ -185,7 +210,13 @@ it("creates, duplicates, renames and deletes library films with a usage warning"
         </ThemeProvider>,
       ),
     );
+    expect(ui.host.querySelector(".cutscene-library")?.getAttribute("data-editor-open")).toBe(
+      "false",
+    );
     await ui.file("+ New film");
+    expect(ui.host.querySelector(".cutscene-library")?.getAttribute("data-editor-open")).toBe(
+      "true",
+    );
     await ui.click("Settings");
     await ui.input("Title", "At the house");
     await ui.click("Close dialog", ui.host.querySelector("dialog")!);
@@ -300,7 +331,9 @@ it("projects the selected step's actual playback times and edits its outgoing tr
     expect(ui.findButton("Next step", timeline)?.disabled).toBe(true);
     await ui.click("Previous step", timeline);
     await ui.click("Text · Someone is there. · 2 sec to 2 sec", timeline);
-    await ui.input("Wait before showing text (s)", "2.5");
+    await ui.click("Text timing", timeline);
+    await ui.input("Wait before showing text (s)", "2.5", ui.dialog());
+    await ui.closeDialog();
     expect(timeline.textContent).toContain("Advances at 2.5 sec");
     await ui.click("Transition · Step 1 → Step 2");
     await ui.input("Transition", "crossfade");
@@ -384,14 +417,21 @@ it("saves separate display and exit settings and previews the exit without a sec
       Array.from(ui.host.querySelectorAll("fieldset")).find(
         (item) => item.querySelector("legend")?.textContent === name,
       )!;
-    await ui.input("Motion while displayed", "signal-glitch");
+    await ui.click("Image effects");
+    expect(ui.dialog().getAttribute("aria-label")).toBe("Image effects");
+    await ui.input("Motion while displayed", "signal-glitch", ui.dialog());
     await ui.input("Strength (%)", "28", group("Signal interference"));
     await ui.input("Interference density (%)", "40", group("Signal interference"));
-    await ui.input("Duration (s)", "4", group("Signal interference"));
     const exit = group("Exit");
-    await ui.input("Image", "melt", exit);
-    await ui.input("Duration (s)", "2.5", exit);
+    await ui.input("Effect", "melt", exit);
     await ui.input("Strength (%)", "85", exit);
+    expect(ui.dialog().textContent).not.toContain("Duration (s)");
+    await ui.closeDialog();
+    await ui.click("Image timing");
+    await ui.input("Duration (s)", "4", group("Signal interference"));
+    await ui.input("Duration (s)", "2.5", group("Exit"));
+    expect(ui.dialog().querySelector("select")).toBeNull();
+    await ui.closeDialog();
     await ui.click("Preview image exit");
     expect(ui.host.querySelector(".cutscene-reel__picture")?.getAttribute("src")).toBe("example");
     expect(ui.host.querySelector(".cutscene-reel__signal")).toBeNull();
@@ -452,15 +492,12 @@ it("sets a pause before a specific repeated word and saves it with text interfer
     expect(copy.parentElement?.classList).toContain("cutscene-reel__text--top");
     expect(copy.style.textAlign).toBe("right");
 
+    await ui.click("Text effects");
     const entrance = group("How the text appears");
-    expect(entrance.textContent).not.toContain("Duration (s)");
     await ui.input("Effect", "word-reveal", entrance);
     expect(entrance.textContent).toContain("Words appear one at a time.");
-    expect(entrance.textContent).toContain("Duration (s)");
     const exit = group("How the text leaves");
-    expect(exit.textContent).not.toContain("Duration (s)");
     await ui.input("Effect", "fade", exit);
-    expect(exit.textContent).toContain("Duration (s)");
     const wordOptions = ui.field("Pause before word", entrance) as HTMLSelectElement;
     expect(Array.from(wordOptions.options, (option) => option.textContent)).toEqual([
       "None",
@@ -468,18 +505,20 @@ it("sets a pause before a specific repeated word and saves it with text interfer
       "2. Mona",
     ]);
     await ui.input("Pause before word", "2", entrance);
-    await ui.input("Pause length (s)", "2.5", entrance);
-    await ui.input("Pause before word", "0", entrance);
-    expect(entrance.textContent).not.toContain("Pause length (s)");
-    await ui.input("Pause before word", "2", entrance);
     const during = group("While the text is visible");
     await ui.input("Effect", "signal-glitch", during);
     await ui.input("Strength (%)", "40", during);
+    await ui.closeDialog();
+    await ui.click("Text timing");
+    await ui.input("Pause length (s)", "2.5", group("How the text appears"));
+    await ui.input("Duration (s)", "1.4", group("How the text leaves"));
+    await ui.closeDialog();
     await ui.file("Save");
     expect(saved.mock.calls[0]?.[0].beats).toMatchObject([
       {
         text: {
           in: { effect: "word-reveal", pauseBefore: 2, pauseSeconds: 2.5 },
+          out: { effect: "fade", seconds: 1.4 },
           during: "signal-glitch",
           signal: { strength: 40 },
         },

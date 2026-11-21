@@ -34,6 +34,8 @@ import {
   Num,
   Pick,
   type Channel,
+  type ChannelDialog,
+  type MediaChannel,
 } from "./CutsceneFields";
 import { StepTimeline, WorkspaceZoom } from "./StepTimeline";
 import { CutsceneTextLayout } from "./TextEffects";
@@ -199,6 +201,10 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
   const [settingsOpen, setSettingsOpen] = useState(false);
   const libraryMenu = useContext(CutsceneLibraryMenu);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [channelDialog, setChannelDialog] = useState<{
+    channel: MediaChannel;
+    section: ChannelDialog;
+  }>();
   const [message, setMessage] = useState("");
   const [, updateBaseline] = useState(0);
   const narrow = useNarrowStudio();
@@ -475,6 +481,27 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
     setPlaying({ ...draft, skippable: true, beats });
   }
 
+  function fields(channel: Channel, section?: ChannelDialog) {
+    return (
+      <CutsceneFields
+        film={draft}
+        beat={beat}
+        channel={channel}
+        {...(section ? { section } : {})}
+        tracks={tracks}
+        onChange={(update) => updateBeat(beat.id, update)}
+        onImage={(file) => void uploadImage(file)}
+        onAlt={(id, alt) =>
+          edit((value) => ({
+            ...value,
+            images: value.images.map((image) => (image.id === id ? { ...image, alt } : image)),
+          }))
+        }
+        onTrack={(file) => void uploadAudio(file)}
+      />
+    );
+  }
+
   const inspector = editingTransition ? (
     <section className="cutscene-studio__inspector" aria-label={transitionLabel(beatIndex)}>
       <h3>{transitionLabel(beatIndex)}</h3>
@@ -505,21 +532,7 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
           channel: t(channelLabels[selection.channel]),
         })}
       </h3>
-      <CutsceneFields
-        film={draft}
-        beat={beat}
-        channel={selection.channel}
-        tracks={tracks}
-        onChange={(update) => updateBeat(beat.id, update)}
-        onImage={(file) => void uploadImage(file)}
-        onAlt={(id, alt) =>
-          edit((value) => ({
-            ...value,
-            images: value.images.map((image) => (image.id === id ? { ...image, alt } : image)),
-          }))
-        }
-        onTrack={(file) => void uploadAudio(file)}
-      />
+      {fields(selection.channel)}
       <Button onClick={() => setPlaying(preview)}>{t("csPlayStep")}</Button>
       {selection.channel === "image" &&
         beat.image.source.kind === "set" &&
@@ -655,6 +668,13 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
         onAdd={() => addStep(beatIndex)}
         selected={editingTransition ? undefined : selection.channel}
         contentFor={timelineContent}
+        hasText={Boolean(beat.text)}
+        onOpenChannelDialog={(channel, section) => {
+          setTransitionId(undefined);
+          setSelection({ beatId: beat.id, channel });
+          setPanelOpen(false);
+          setChannelDialog({ channel, section });
+        }}
         onSelect={(channel, openInspector = true) => {
           setTransitionId(undefined);
           setSelection({ beatId: beat.id, channel });
@@ -673,6 +693,18 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
           <Button variant="quiet" onClick={() => setPanelOpen(false)}>
             {t("csBackSteps")}
           </Button>
+        </Modal>
+      )}
+      {channelDialog && (
+        <Modal
+          title={t(channelDialog.section === "effects" ? "csChannelEffects" : "csChannelTiming", {
+            channel: t(channelLabels[channelDialog.channel]),
+          })}
+          onClose={() => setChannelDialog(undefined)}
+        >
+          <div className="cutscene-studio__channel-fields">
+            {fields(channelDialog.channel, channelDialog.section)}
+          </div>
         </Modal>
       )}
       {settingsOpen && (
