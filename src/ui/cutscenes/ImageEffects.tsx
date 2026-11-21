@@ -76,6 +76,7 @@ export function MeltImage({
   progress,
   strength,
   className,
+  style,
   ...picture
 }: ImgHTMLAttributes<HTMLImageElement> & {
   progress: number | undefined;
@@ -114,7 +115,7 @@ export function MeltImage({
         ref={image}
         className={className}
         onLoad={draw}
-        style={active ? { opacity: 1 - progress } : undefined}
+        style={active ? { ...style, opacity: 1 - progress } : style}
       />
     </>
   );

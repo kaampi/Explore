@@ -7,6 +7,7 @@ import {
   type PlaybackState,
 } from "../../cutscenes/playback";
 import {
+  IMAGE_MOTION_SECONDS,
   SIGNAL_DEFAULTS,
   type CutsceneFilm,
   type ImageCell,
@@ -131,12 +132,19 @@ function SceneVisual({
         const strength = (cell.out.strength ?? SIGNAL_DEFAULTS.strength) / 100;
         const canMelt = !reduced && cell.out.effect === "melt" && strength > 0;
         const melt = outgoing && canMelt;
+        const motion = cell.during;
+        const motionSeconds =
+          motion === "none" || motion === "signal-glitch"
+            ? undefined
+            : (cell.motionSeconds ?? IMAGE_MOTION_SECONDS[motion]);
         const imageProps = {
           alt: outgoing || silent ? "" : asset.alt,
           src: asset.dataUrl,
           className: `cutscene-reel__picture cutscene-reel__filter--${cell.filter}`,
           "data-motion": reduced ? "none" : cell.during,
           "data-paused": paused,
+          style:
+            motionSeconds === undefined ? undefined : { animationDuration: `${motionSeconds}s` },
         };
         const signalExit = outgoing && !reduced && cell.out.effect === "signal-glitch";
         const signalDuring = !outgoing && !reduced && cell.during === "signal-glitch";

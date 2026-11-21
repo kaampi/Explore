@@ -64,7 +64,7 @@ export function StepTimeline({
   onSelect,
   contentFor,
   onOpenChannelDialog,
-  hasText,
+  canEditChannel,
 }: {
   step: PlaybackStep;
   number: number;
@@ -77,7 +77,7 @@ export function StepTimeline({
   onSelect: (channel: Channel, openInspector?: boolean) => void;
   contentFor: (clip: TimelineClip) => ClipContent;
   onOpenChannelDialog: (channel: MediaChannel, dialog: ChannelDialog) => void;
-  hasText: boolean;
+  canEditChannel: (channel: MediaChannel, section: "effects" | "timing") => boolean;
 }) {
   const t = useTranslate();
   const workspace = useWorkspaceView(true, timelineMaxZoom);
@@ -132,7 +132,8 @@ export function StepTimeline({
         title={`${content.label} · ${label}`}
         data-instant={width === 0}
         style={{ left: x(clip.start), width: width ? x(width) : undefined }}
-        onClick={() => onSelect(clip.lane)}
+        aria-haspopup="dialog"
+        onClick={() => onOpenChannelDialog(clip.lane, "content")}
       >
         {content.thumb && <img src={content.thumb} alt="" draggable={false} />}
         <span className="cutscene-time__clip-title">{content.label}</span>
@@ -213,7 +214,8 @@ export function StepTimeline({
                 variant="quiet"
                 aria-pressed={selected === lane}
                 aria-label={`${stepLabel}, ${t(channelLabels[lane])}`}
-                onClick={() => onSelect(lane)}
+                aria-haspopup="dialog"
+                onClick={() => onOpenChannelDialog(lane, "content")}
                 onKeyDown={(event) => {
                   const direction =
                     event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0;
@@ -246,7 +248,7 @@ export function StepTimeline({
                     variant="quiet"
                     label={t("csChannelEffects", { channel: t(channelLabels[lane]) })}
                     aria-haspopup="dialog"
-                    disabled={lane === "text" && !hasText}
+                    disabled={!canEditChannel(lane, "effects")}
                     icon={<span aria-hidden="true">Fx</span>}
                     onClick={() => onOpenChannelDialog(lane, "effects")}
                   />
@@ -255,7 +257,7 @@ export function StepTimeline({
                     variant="quiet"
                     label={t("csChannelTiming", { channel: t(channelLabels[lane]) })}
                     aria-haspopup="dialog"
-                    disabled={lane === "text" && !hasText}
+                    disabled={!canEditChannel(lane, "timing")}
                     icon={
                       <svg
                         aria-hidden="true"

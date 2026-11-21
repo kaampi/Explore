@@ -355,6 +355,7 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
   }
 
   async function uploadImage(file: File) {
+    setMessage("");
     if (draft.images.length >= 30) return setMessage(t("csImageMax"));
     try {
       const picture = await sceneImagesFromFile(file);
@@ -386,6 +387,7 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
     }
   }
   async function uploadAudio(file: File) {
+    setMessage("");
     try {
       const track = await addAudioTrack(file);
       setTracks((existing) => [...existing, track]);
@@ -481,13 +483,24 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
     setPlaying({ ...draft, skippable: true, beats });
   }
 
-  function fields(channel: Channel, section?: ChannelDialog) {
+  const hasPicture = beat.image.source.kind === "set" && Boolean(poster);
+  const canPreviewExit =
+    hasPicture && beat.image.out.effect !== "none" && beat.image.out.seconds > 0;
+  const channelDialogTitle = channelDialog
+    ? channelDialog.section === "content"
+      ? t(channelLabels[channelDialog.channel])
+      : t(channelDialog.section === "effects" ? "csChannelEffects" : "csChannelTiming", {
+          channel: t(channelLabels[channelDialog.channel]),
+        })
+    : "";
+
+  function fields(channel: Channel, section: ChannelDialog = "content") {
     return (
       <CutsceneFields
         film={draft}
         beat={beat}
         channel={channel}
-        {...(section ? { section } : {})}
+        section={section}
         tracks={tracks}
         onChange={(update) => updateBeat(beat.id, update)}
         onImage={(file) => void uploadImage(file)}
@@ -534,13 +547,9 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
       </h3>
       {fields(selection.channel)}
       <Button onClick={() => setPlaying(preview)}>{t("csPlayStep")}</Button>
-      {selection.channel === "image" &&
-        beat.image.source.kind === "set" &&
-        poster &&
-        beat.image.out.effect !== "none" &&
-        beat.image.out.seconds > 0 && (
-          <Button onClick={previewImageExit}>{t("csPreviewImageExit")}</Button>
-        )}
+      {selection.channel === "image" && canPreviewExit && (
+        <Button onClick={previewImageExit}>{t("csPreviewImageExit")}</Button>
+      )}
     </section>
   );
 
@@ -668,7 +677,22 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
         onAdd={() => addStep(beatIndex)}
         selected={editingTransition ? undefined : selection.channel}
         contentFor={timelineContent}
-        hasText={Boolean(beat.text)}
+        canEditChannel={(channel, section) => {
+          if (channel === "image") {
+            return (
+              hasPicture ||
+              (section === "timing" &&
+                beat.image.source.kind === "clear" &&
+                Boolean(timing.image.previous))
+            );
+          }
+          if (channel === "sound") {
+            return beat.sound.action === "stop-music"
+              ? Boolean(timing.sound.previousMusic?.cell.trackId)
+              : Boolean(beat.sound.trackId);
+          }
+          return Boolean(beat.text?.text.trim());
+        }}
         onOpenChannelDialog={(channel, section) => {
           setTransitionId(undefined);
           setSelection({ beatId: beat.id, channel });
@@ -696,14 +720,26 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
         </Modal>
       )}
       {channelDialog && (
-        <Modal
-          title={t(channelDialog.section === "effects" ? "csChannelEffects" : "csChannelTiming", {
-            channel: t(channelLabels[channelDialog.channel]),
-          })}
-          onClose={() => setChannelDialog(undefined)}
-        >
+        <Modal title={channelDialogTitle} onClose={() => setChannelDialog(undefined)}>
           <div className="cutscene-studio__channel-fields">
             {fields(channelDialog.channel, channelDialog.section)}
+            {channelDialog.section === "content" && message && (
+              <p role="status" className="cutscene-studio__feedback">
+                {message}
+              </p>
+            )}
+            {channelDialog.channel === "image" &&
+              channelDialog.section === "effects" &&
+              canPreviewExit && (
+                <Button
+                  onClick={() => {
+                    setChannelDialog(undefined);
+                    previewImageExit();
+                  }}
+                >
+                  {t("csPreviewImageExit")}
+                </Button>
+              )}
           </div>
         </Modal>
       )}
@@ -746,7 +782,7 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
           </div>
         </Modal>
       )}
-      {message && (
+      {message && channelDialog?.section !== "content" && (
         <p className="cutscene-studio__feedback" role="alert">
           {message}
         </p>
