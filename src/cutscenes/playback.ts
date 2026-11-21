@@ -1,4 +1,5 @@
 import {
+  MIN_CLIP_MS,
   REVEAL_PAUSE_SECONDS,
   type CutsceneBeat,
   type CutsceneFilm,
@@ -9,7 +10,23 @@ import {
 import { revealWords } from "./textReveal";
 
 type ImageLayer = { step: number; imageId: string; cell: ImageCell };
-type TextLayer = { step: number; cell: TextCell };
+type TextLayer = { step: number; cell: TextCell; clipId?: string };
+type TextTiming = {
+  delay: number;
+  enter: number;
+  leave: number;
+  shortened?: true;
+  revealPause?: { at: number; duration: number };
+};
+type TextPlayback = TextTiming & {
+  previous?: TextLayer | undefined;
+  current?: TextLayer | undefined;
+  end?: number;
+};
+type ScheduledText = TextTiming & {
+  current: TextLayer & { clipId: string };
+  end: number;
+};
 type SoundCue = { step: number; cell: SoundCell };
 
 export type PlaybackStep = {
@@ -23,15 +40,8 @@ export type PlaybackStep = {
     exit: number;
     end?: number;
   };
-  text: {
-    previous?: TextLayer | undefined;
-    current?: TextLayer | undefined;
-    delay: number;
-    enter: number;
-    leave: number;
-    end?: number;
-    revealPause?: { at: number; duration: number };
-  };
+  text: TextPlayback;
+  textClips: ScheduledText[];
   sound: {
     previousMusic?: SoundCue | undefined;
     cue?: SoundCue | undefined;
@@ -48,13 +58,42 @@ export type PlaybackStep = {
 
 export type PlaybackPlan = { skippable: boolean; steps: PlaybackStep[]; canPause: boolean };
 
-export const MIN_CLIP_MS = 100;
 const ms = (seconds: number) => seconds * 1000;
 
 function length(effect: string, seconds: number, simple: boolean) {
   if (effect === "none" || effect === "stay") return 0;
   if (!simple) return ms(seconds);
   return effect.startsWith("fade") ? Math.min(ms(seconds), 150) : 0;
+}
+
+function textTiming(cell: TextCell, simple: boolean, span?: number): TextTiming {
+  const entrance = length(cell.in.effect, cell.in.seconds, simple);
+  const leave = length(cell.out.effect, cell.out.seconds, simple);
+  let revealPause: TextTiming["revealPause"];
+  if (cell.in.effect === "word-reveal" && !simple && cell.in.pauseBefore !== undefined) {
+    const wordCount = revealWords(cell.text).length;
+    if (cell.in.pauseBefore <= wordCount) {
+      revealPause = {
+        at: ((cell.in.pauseBefore - 1) / wordCount) * entrance,
+        duration: ms(cell.in.pauseSeconds ?? REVEAL_PAUSE_SECONDS),
+      };
+    }
+  }
+  const enter = entrance + (revealPause?.duration ?? 0);
+  // Keep both effects inside the scheduled clip, even when its edges are trimmed.
+  const scale =
+    span === undefined || enter + leave === 0
+      ? 1
+      : Math.min(1, Math.max(0, span - MIN_CLIP_MS) / (enter + leave));
+  return {
+    delay: simple && span === undefined ? 0 : ms(cell.in.delay),
+    enter: enter * scale,
+    leave: leave * scale,
+    ...(scale < 1 ? { shortened: true as const } : {}),
+    ...(revealPause
+      ? { revealPause: { at: revealPause.at * scale, duration: revealPause.duration * scale } }
+      : {}),
+  };
 }
 
 /** Delays and durations are relative to the start of each step, in milliseconds. */
@@ -103,35 +142,28 @@ export function planPlayback(film: CutsceneFilm, simple = false): PlaybackPlan {
     if (meltsOnAdvance || imageEnd !== undefined) activeImage = undefined;
 
     const previousText = heldText;
-    const cell = beat.text;
-    const currentText = cell ? { step, cell } : heldText;
-    if (cell)
+    const textClips: ScheduledText[] = (beat.textClips ?? []).map((cell) => ({
+      ...textTiming(cell, simple, ms(cell.endAt - cell.in.delay)),
+      current: { step, cell, clipId: cell.id },
+      end: ms(cell.endAt),
+    }));
+    const cell = beat.textClips ? undefined : beat.text;
+    const currentText = cell ? { step, cell } : beat.textClips ? undefined : heldText;
+    if (beat.textClips) heldText = undefined;
+    else if (cell)
       heldText = cell.out.effect === "stay" && cell.endAt === undefined ? currentText : undefined;
-    const enter = cell ? length(cell.in.effect, cell.in.seconds, simple) : 0;
-    let revealPause: PlaybackStep["text"]["revealPause"];
-    if (cell?.in.effect === "word-reveal" && !simple && cell.in.pauseBefore !== undefined) {
-      const wordCount = revealWords(cell.text).length;
-      if (cell.in.pauseBefore <= wordCount) {
-        revealPause = {
-          at: ((cell.in.pauseBefore - 1) / wordCount) * enter,
-          duration: ms(cell.in.pauseSeconds ?? REVEAL_PAUSE_SECONDS),
-        };
-      }
-    }
-    const textDelay = cell && !simple ? ms(cell.in.delay) : 0;
-    const textEnter = enter + (revealPause?.duration ?? 0);
-    const textLeave = cell ? length(cell.out.effect, cell.out.seconds, simple) : 0;
+    const textLayout = cell
+      ? textTiming(cell, simple)
+      : { delay: textClips[0]?.delay ?? 0, enter: 0, leave: 0 };
+    const { delay, enter, leave } = textLayout;
     const textEnd =
       cell?.endAt === undefined
         ? undefined
-        : Math.max(ms(cell.endAt), textDelay + textEnter + textLeave + MIN_CLIP_MS);
+        : Math.max(ms(cell.endAt), delay + enter + leave + MIN_CLIP_MS);
     const text = {
+      ...textLayout,
       previous: previousText,
       current: currentText,
-      delay: textDelay,
-      enter: textEnter,
-      ...(revealPause ? { revealPause } : {}),
-      leave: textLeave,
       ...(textEnd !== undefined ? { end: textEnd } : {}),
     };
 
@@ -157,10 +189,11 @@ export function planPlayback(film: CutsceneFilm, simple = false): PlaybackPlan {
       transition: { effect, duration },
       image,
       text,
+      textClips,
       sound,
       readyAt: Math.max(
         image.end ?? image.delay + Math.max(image.enter, image.leave),
-        text.end ?? text.delay + text.enter,
+        textClips.at(-1)?.end ?? text.end ?? text.delay + text.enter,
         sound.end ?? soundReady,
       ),
       advanceAt: beat.advance.kind === "after" ? ms(beat.advance.seconds) : undefined,
@@ -174,6 +207,7 @@ export function planPlayback(film: CutsceneFilm, simple = false): PlaybackPlan {
         step.advanceAt !== undefined ||
         step.image.end !== undefined ||
         step.text.end !== undefined ||
+        step.textClips.length > 0 ||
         step.sound.end !== undefined,
     ),
   };
@@ -230,6 +264,7 @@ export function advancePlayback(
     if (state.phase === "transition") return nextStep(plan, state);
     if (state.phase === "exit")
       return state.elapsed < step.image.melt ? state : transitionOrNext(plan, state, step);
+    if (state.elapsed < (step.textClips.at(-1)?.end ?? 0)) return state;
     if (!state.channelsDone && state.elapsed < step.readyAt)
       return { ...state, channelsDone: true };
     return step.advanceAt === undefined ? leaveStep(plan, state, step) : state;
@@ -261,7 +296,6 @@ export function playbackFrame(plan: PlaybackPlan, state: Playing) {
   const step = plan.steps[state.step]!;
   const elapsed = state.channelsDone ? step.readyAt : state.elapsed;
   const imageTime = elapsed - step.image.delay;
-  const textTime = elapsed - step.text.delay;
   const image = step.image;
   const melting = image.melt > 0 && state.phase === "exit" && state.elapsed < image.melt;
   const timedImageExit =
@@ -273,7 +307,9 @@ export function playbackFrame(plan: PlaybackPlan, state: Playing) {
       : undefined;
   const imageGone =
     (image.melt > 0 && state.phase !== "step") || (image.end !== undefined && elapsed >= image.end);
-  const text = step.text;
+  const text: TextPlayback =
+    step.textClips.find((clip) => elapsed >= clip.delay && elapsed < clip.end) ?? step.text;
+  const textTime = elapsed - text.delay;
   const pause = text.revealPause;
   const pausedFor = pause ? Math.min(pause.duration, Math.max(0, textTime - pause.at)) : 0;
   const revealTime = textTime - pausedFor;

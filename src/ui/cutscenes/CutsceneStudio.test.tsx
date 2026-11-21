@@ -660,3 +660,84 @@ it("drags the authored clip edges, saves one history entry per drag, and can cle
     await ui.close();
   }
 });
+
+it("adds texts to one step, edits the selected clip, and stops its drag at the next clip", async () => {
+  const ui = setup();
+  const saved = vi.fn();
+  const film = CutsceneFilmSchema.parse({
+    id: "dawn",
+    title: "Dawn",
+    createdAt: "",
+    updatedAt: "",
+    beats: [
+      {
+        id: "one",
+        text: { text: "First light", in: { effect: "none" }, out: { effect: "stay" } },
+      },
+    ],
+  });
+  try {
+    await act(async () =>
+      ui.root.render(
+        <CutsceneStudio
+          film={film}
+          previewTheme={PRESET_THEMES[0]!}
+          onSave={saved}
+          onClose={() => {}}
+        />,
+      ),
+    );
+
+    await ui.click("Add text clip");
+    expect(ui.field("Text", ui.dialog()).value).toBe("");
+    await ui.closeDialog();
+    expect(ui.findButton("Text clip start · First light")).toBeUndefined();
+
+    await ui.click("Add text clip");
+    await ui.input("Text", "Someone knocks", ui.dialog());
+    await ui.closeDialog();
+    expect(ui.host.querySelector(".cutscene-reel__copy")?.textContent).toBe("Someone knocks");
+    await ui.click("Text effects");
+    await ui.input("Effect", "typewriter", ui.dialog());
+    await ui.closeDialog();
+
+    await ui.click("Text timing");
+    expect(ui.field("Wait before showing text (s)", ui.dialog()).value).toBe("3");
+    await ui.input("Wait before showing text (s)", "4", ui.dialog());
+    await ui.closeDialog();
+
+    const edge = ui.findButton("Text clip end · First light")!;
+    expect(edge).toBeTruthy();
+    edge.setPointerCapture = vi.fn();
+    edge.parentElement!.getBoundingClientRect = () => ({ width: 400 }) as DOMRect;
+    for (const [type, clientX] of [
+      ["pointerdown", 60],
+      ["pointermove", 130],
+      ["pointerup", 130],
+    ] as const) {
+      const event = new MouseEvent(type, { bubbles: true, clientX, button: 0 });
+      Object.assign(event, { pointerId: 5, isPrimary: true });
+      await act(async () => edge.dispatchEvent(event));
+    }
+    expect(edge.title).toContain("4 sec");
+    await ui.file("Save");
+    expect(saved.mock.lastCall?.[0].beats).toMatchObject([
+      {
+        textClips: [
+          { text: "First light", in: { delay: 0 }, endAt: 4 },
+          { text: "Someone knocks", in: { delay: 4, effect: "typewriter" }, endAt: 6 },
+        ],
+      },
+    ]);
+    expect(saved.mock.lastCall?.[0].beats[0].text).toBeUndefined();
+
+    await ui.click("Text · Someone knocks · 4 sec to 6 sec");
+    await ui.click("Remove text clip", ui.dialog());
+    await ui.file("Save");
+    expect(
+      saved.mock.lastCall?.[0].beats[0].textClips.map((clip: { text: string }) => clip.text),
+    ).toEqual(["First light"]);
+  } finally {
+    await ui.close();
+  }
+});

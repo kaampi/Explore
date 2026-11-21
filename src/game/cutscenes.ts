@@ -80,7 +80,12 @@ export function finishCutscene(session: Session, id: string): Session {
   const cutscene = pendingCutscene(session);
   if (!run || !cutscene || cutscene.id !== id) return session;
   const film = run.cutsceneFilms.find((item) => item.id === cutscene.filmId);
-  const content = film?.beats.flatMap(({ text }) => (text ? [text.text] : [])).join("\n\n") ?? "";
+  const content =
+    film?.beats
+      .flatMap(
+        ({ text, textClips }) => textClips?.map((clip) => clip.text) ?? (text ? [text.text] : []),
+      )
+      .join("\n\n") ?? "";
 
   const turn =
     Math.max(

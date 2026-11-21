@@ -9,6 +9,7 @@ import {
   TextCellSchema,
   type CutsceneBeat,
   type CutsceneFilm,
+  type TextCell,
 } from "../../cutscenes/schema";
 import { revealWords } from "../../cutscenes/textReveal";
 import type { AudioTrack } from "../audio/audioStorage";
@@ -167,6 +168,9 @@ export function CutsceneFields({
   onImage,
   onAlt,
   onTrack,
+  text,
+  textStart,
+  onTextChange,
 }: {
   film: CutsceneFilm;
   beat: CutsceneBeat;
@@ -177,6 +181,9 @@ export function CutsceneFields({
   onImage: (file: File) => void;
   onAlt: (id: string, alt: string) => void;
   onTrack: (file: File) => void;
+  text?: TextCell | undefined;
+  textStart?: { min: number; max: number } | undefined;
+  onTextChange: (update: (cell: TextCell | undefined) => TextCell | undefined) => void;
 }) {
   const t = useTranslate();
   const field = <K extends Channel>(key: K, patch: Partial<CutsceneBeat[K]>) =>
@@ -491,7 +498,8 @@ export function CutsceneFields({
     );
   }
 
-  const { text } = beat;
+  const updateText = (patch: Partial<TextCell>) =>
+    onTextChange((cell) => cell && { ...cell, ...patch });
   const words = text?.in.effect === "word-reveal" ? revealWords(text.text) : [];
   const pauseBefore = text?.in.pauseBefore ?? 0;
   if (section === "content")
@@ -506,23 +514,17 @@ export function CutsceneFields({
             maxLength={1200}
             onChange={(event) => {
               const value = event.target.value;
-              onChange((step) => {
-                if (value)
-                  return {
-                    ...step,
-                    text: step.text
-                      ? { ...step.text, text: value }
-                      : {
-                          ...TextCellSchema.parse({
-                            text: "x",
-                            in: { effect: "none" },
-                            out: { effect: "stay" },
-                          }),
-                          text: value,
-                        },
-                  };
-                const { text: _text, ...withoutText } = step;
-                return withoutText;
+              onTextChange((cell) => {
+                if (cell) return { ...cell, text: value };
+                if (!value.trim()) return undefined;
+                return {
+                  ...TextCellSchema.parse({
+                    text: "x",
+                    in: { effect: "none" },
+                    out: { effect: "stay" },
+                  }),
+                  text: value,
+                };
               });
             }}
           />
@@ -533,31 +535,31 @@ export function CutsceneFields({
               label={t("csTextStyle")}
               value={text.style}
               options={["narrator", "title", "whisper", "shout", "letter"]}
-              onChange={(style) => field("text", { style })}
+              onChange={(style) => updateText({ style })}
             />
             <Pick
               label={t("csSize")}
               value={text.size}
               options={["small", "normal", "large"]}
-              onChange={(size) => field("text", { size })}
+              onChange={(size) => updateText({ size })}
             />
             <Pick
               label={t("csPosition")}
               value={text.position}
               options={["top", "middle", "bottom"]}
-              onChange={(position) => field("text", { position })}
+              onChange={(position) => updateText({ position })}
             />
             <Pick
               label={t("csAlignment")}
               value={text.align}
               options={["left", "center", "right"]}
-              onChange={(align) => field("text", { align })}
+              onChange={(align) => updateText({ align })}
             />
             <Pick
               label={t("csFont")}
               value={text.font}
               options={["reading", "heading"]}
-              onChange={(font) => field("text", { font })}
+              onChange={(font) => updateText({ font })}
             />
           </>
         )}
@@ -573,7 +575,7 @@ export function CutsceneFields({
               label={t("csTextEffect")}
               value={text.in.effect}
               options={["none", "fade", "typewriter", "word-reveal", "zoom-in", "slide-up"]}
-              onChange={(effect) => field("text", { in: { ...text.in, effect } })}
+              onChange={(effect) => updateText({ in: { ...text.in, effect } })}
             />
             <small className="cutscene-field__hint">{t(textEntranceHints[text.in.effect])}</small>
             {words.length > 0 && (
@@ -586,7 +588,7 @@ export function CutsceneFields({
                     const entrance = { ...text.in };
                     if (value) entrance.pauseBefore = value;
                     else delete entrance.pauseBefore;
-                    field("text", { in: entrance });
+                    updateText({ in: entrance });
                   }}
                 >
                   <option value={0}>{t("csValue_none")}</option>
@@ -603,8 +605,9 @@ export function CutsceneFields({
           <Num
             label={t("csTextStartDelay")}
             value={text.in.delay}
-            max={MAX_CLIP_START_SECONDS}
-            onChange={(delay) => field("text", { in: { ...text.in, delay } })}
+            min={textStart?.min ?? 0}
+            max={textStart?.max ?? MAX_CLIP_START_SECONDS}
+            onChange={(delay) => updateText({ in: { ...text.in, delay } })}
           />
         )}
         {text.in.effect !== "none" && (
@@ -612,7 +615,7 @@ export function CutsceneFields({
             label={t("csLength")}
             value={text.in.seconds}
             max={30}
-            onChange={(seconds) => field("text", { in: { ...text.in, seconds } })}
+            onChange={(seconds) => updateText({ in: { ...text.in, seconds } })}
           />
         )}
         {pauseBefore > 0 && pauseBefore <= words.length && (
@@ -620,7 +623,7 @@ export function CutsceneFields({
             label={t("csRevealPauseLength")}
             value={text.in.pauseSeconds ?? REVEAL_PAUSE_SECONDS}
             max={30}
-            onChange={(pauseSeconds) => field("text", { in: { ...text.in, pauseSeconds } })}
+            onChange={(pauseSeconds) => updateText({ in: { ...text.in, pauseSeconds } })}
           />
         )}
       </Group>
@@ -631,7 +634,7 @@ export function CutsceneFields({
               label={t("csTextEffect")}
               value={text.during ?? "none"}
               options={["none", "signal-glitch"]}
-              onChange={(during) => field("text", { during })}
+              onChange={(during) => updateText({ during })}
             />
           )}
           {text.during === "signal-glitch" && (
@@ -642,7 +645,7 @@ export function CutsceneFields({
               <SignalFields
                 section={section}
                 signal={text.signal ?? SIGNAL_DEFAULTS}
-                onChange={(signal) => field("text", { signal })}
+                onChange={(signal) => updateText({ signal })}
               />
             </>
           )}
@@ -656,7 +659,7 @@ export function CutsceneFields({
                 label={t("csTextEffect")}
                 value={text.out.effect}
                 options={["stay", "fade", "zoom-out"]}
-                onChange={(effect) => field("text", { out: { ...text.out, effect } })}
+                onChange={(effect) => updateText({ out: { ...text.out, effect } })}
               />
               <small className="cutscene-field__hint">{t(textExitHints[text.out.effect])}</small>
             </>
@@ -666,7 +669,7 @@ export function CutsceneFields({
               label={t("csLength")}
               value={text.out.seconds}
               max={30}
-              onChange={(seconds) => field("text", { out: { ...text.out, seconds } })}
+              onChange={(seconds) => updateText({ out: { ...text.out, seconds } })}
             />
           )}
         </Group>

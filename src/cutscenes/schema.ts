@@ -13,6 +13,8 @@ export const IMAGE_MOTION_SECONDS = {
 } as const;
 export const MAX_CLIP_START_SECONDS = 30;
 export const MAX_CLIP_END_SECONDS = 150;
+export const MIN_CLIP_MS = 100;
+const MAX_TEXT_CLIP_START_SECONDS = MAX_CLIP_END_SECONDS - MIN_CLIP_MS / 1000;
 const Delay = z.number().min(0).max(MAX_CLIP_START_SECONDS).default(0);
 const ClipEnd = z.number().min(0).max(MAX_CLIP_END_SECONDS).optional();
 
@@ -90,6 +92,31 @@ export const TextCellSchema = z.object({
   signal: SignalSettingsSchema.optional(),
 });
 
+const TextClipSchema = TextCellSchema.extend({
+  id: z.string().min(1),
+  in: TextCellSchema.shape.in.extend({
+    delay: z.number().min(0).max(MAX_TEXT_CLIP_START_SECONDS).default(0),
+  }),
+  endAt: ClipEnd.unwrap(),
+});
+
+const TextTrackSchema = z
+  .array(TextClipSchema)
+  .min(1)
+  .transform((clips) => clips.sort((a, b) => a.in.delay - b.in.delay))
+  .refine((clips) => new Set(clips.map(({ id }) => id)).size === clips.length, {
+    message: "Text clips must have unique IDs within a step",
+  })
+  .refine(
+    (clips) =>
+      clips.every(
+        (clip, index) =>
+          (clip.endAt - clip.in.delay) * 1000 >= MIN_CLIP_MS - 1e-6 &&
+          (index === 0 || (clips[index - 1]!.endAt - clip.in.delay) * 1000 <= 1e-6),
+      ),
+    { message: "Text clips need a duration of at least 0.1 seconds and cannot overlap" },
+  );
+
 export const BeatSchema = z.object({
   id: z.string().min(1),
   image: ImageCellSchema.default({
@@ -99,6 +126,7 @@ export const BeatSchema = z.object({
   }),
   sound: SoundCellSchema.default({ action: "none" }),
   text: TextCellSchema.optional(),
+  textClips: TextTrackSchema.optional(),
   transition: z
     .object({
       effect: z.enum(["cut", "crossfade", "through-black"]),
@@ -167,6 +195,7 @@ export type CutsceneBeat = z.infer<typeof BeatSchema>;
 export type ImageCell = z.infer<typeof ImageCellSchema>;
 export type SoundCell = z.infer<typeof SoundCellSchema>;
 export type TextCell = z.infer<typeof TextCellSchema>;
+export type TextClip = z.infer<typeof TextClipSchema>;
 
 const unknownDate = "1970-01-01T00:00:00.000Z";
 

@@ -93,7 +93,7 @@ function SceneVisual({
   const textProgress = frame?.textIn ?? 1;
   const words = text && (
     <CutsceneTextContent
-      key={frame?.text?.step}
+      key={frame?.text?.clipId ?? frame?.text?.step}
       text={text}
       progress={textProgress}
       paused={paused}
@@ -218,6 +218,8 @@ function Reel({ film, theme, simple, sound, onEnd }: CutscenePlayerProps) {
   const frame = ended ? undefined : playbackFrame(plan, state);
   const paused = !ended && state.paused;
   const timed = !ended && plan.steps[state.step]?.advanceAt !== undefined;
+  const textSequencePlaying =
+    !ended && state.elapsed < (plan.steps[state.step]?.textClips.at(-1)?.end ?? 0);
   const ticking = !ended && !paused && (state.phase !== "step" || timed || !frame?.ready);
   const caption = useCutsceneSound(sound, frame?.cue, frame?.music, paused, ended);
   const emitted = useRef(false);
@@ -332,7 +334,10 @@ function Reel({ film, theme, simple, sound, onEnd }: CutscenePlayerProps) {
             )}
             <Button
               variant="primary"
-              disabled={ended || (timed && !!frame?.ready && state.phase === "step")}
+              disabled={
+                ended ||
+                (state.phase === "step" && (textSequencePlaying || (timed && !!frame?.ready)))
+              }
               onClick={continueBeat}
             >
               {t(
