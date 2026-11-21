@@ -1,10 +1,14 @@
 import type { ReactNode } from "react";
 import {
   BeatSchema,
+  REVEAL_PAUSE_SECONDS,
+  SIGNAL_DEFAULTS,
+  type SignalSettings,
   TextCellSchema,
   type CutsceneBeat,
   type CutsceneFilm,
 } from "../../cutscenes/schema";
+import { revealWords } from "../../cutscenes/textReveal";
 import type { AudioTrack } from "../audio/audioStorage";
 import { AUDIO_ACCEPT } from "../audio/audioStorage";
 import { useTranslate, type TranslationKey } from "../i18n/LanguageProvider";
@@ -94,6 +98,40 @@ function Group({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
+function SignalFields({
+  signal,
+  onChange,
+}: {
+  signal: SignalSettings;
+  onChange: (value: SignalSettings) => void;
+}) {
+  const t = useTranslate();
+  return (
+    <>
+      <Num
+        label={t("csLength")}
+        value={signal.seconds}
+        max={30}
+        onChange={(seconds) => onChange({ ...signal, seconds })}
+      />
+      <Num
+        label={t("csEffectStrength")}
+        value={signal.strength}
+        max={100}
+        step={1}
+        onChange={(strength) => onChange({ ...signal, strength })}
+      />
+      <Num
+        label={t("csSignalDensity")}
+        value={signal.density}
+        max={100}
+        step={1}
+        onChange={(density) => onChange({ ...signal, density })}
+      />
+    </>
+  );
+}
+
 export function CutsceneFields({
   film,
   beat,
@@ -119,6 +157,13 @@ export function CutsceneFields({
 
   if (channel === "image") {
     const { image } = beat;
+    const signal = image.signal ?? SIGNAL_DEFAULTS;
+    function updateExit(patch: Partial<typeof image.out>) {
+      onChange((step) => ({
+        ...step,
+        image: { ...step.image, out: { ...step.image.out, ...patch } },
+      }));
+    }
     const active = image.source.kind === "set" ? image.source.imageId : undefined;
     const picture = film.images.find(({ id }) => id === active);
     return (
@@ -175,9 +220,22 @@ export function CutsceneFields({
         <Pick
           label={t("csDuring")}
           value={image.during}
-          options={["none", "slow-zoom", "pan-left", "pan-right", "shake", "unblur"]}
+          options={[
+            "none",
+            "slow-zoom",
+            "pan-left",
+            "pan-right",
+            "shake",
+            "unblur",
+            "signal-glitch",
+          ]}
           onChange={(during) => field("image", { during })}
         />
+        {image.during === "signal-glitch" && (
+          <Group label={t("csValue_signal_glitch")}>
+            <SignalFields signal={signal} onChange={(signal) => field("image", { signal })} />
+          </Group>
+        )}
         <Pick
           label={t("csFilter")}
           value={image.filter}
@@ -223,25 +281,33 @@ export function CutsceneFields({
           <Pick
             label={t("csImage")}
             value={image.out.effect}
-            options={["none", "fade", "fade-black", "fade-white"]}
-            onChange={(effect) =>
-              onChange((step) => ({
-                ...step,
-                image: { ...step.image, out: { ...step.image.out, effect } },
-              }))
-            }
+            options={["none", "fade", "fade-black", "fade-white", "melt", "signal-glitch"]}
+            onChange={(effect) => updateExit({ effect })}
           />
           <Num
             label={t("csLength")}
             value={image.out.seconds}
             max={30}
-            onChange={(seconds) =>
-              onChange((step) => ({
-                ...step,
-                image: { ...step.image, out: { ...step.image.out, seconds } },
-              }))
-            }
+            onChange={(seconds) => updateExit({ seconds })}
           />
+          {(image.out.effect === "melt" || image.out.effect === "signal-glitch") && (
+            <Num
+              label={t("csEffectStrength")}
+              value={image.out.strength ?? SIGNAL_DEFAULTS.strength}
+              max={100}
+              step={1}
+              onChange={(strength) => updateExit({ strength })}
+            />
+          )}
+          {image.out.effect === "signal-glitch" && (
+            <Num
+              label={t("csSignalDensity")}
+              value={image.out.density ?? SIGNAL_DEFAULTS.density}
+              max={100}
+              step={1}
+              onChange={(density) => updateExit({ density })}
+            />
+          )}
         </Group>
       </>
     );
@@ -354,6 +420,8 @@ export function CutsceneFields({
   }
 
   const { text } = beat;
+  const words = text?.in.effect === "word-reveal" ? revealWords(text.text) : [];
+  const pauseBefore = text?.in.pauseBefore ?? 0;
   return (
     <>
       <label className="cutscene-field">
@@ -422,7 +490,7 @@ export function CutsceneFields({
             <Pick
               label={t("csText")}
               value={text.in.effect}
-              options={["none", "fade", "typewriter", "zoom-in", "slide-up"]}
+              options={["none", "fade", "typewriter", "word-reveal", "zoom-in", "slide-up"]}
               onChange={(effect) => field("text", { in: { ...text.in, effect } })}
             />
             <Num
@@ -437,6 +505,50 @@ export function CutsceneFields({
               max={10}
               onChange={(delay) => field("text", { in: { ...text.in, delay } })}
             />
+            {words.length > 0 && (
+              <label className="cutscene-field">
+                <span>{t("csPauseBeforeWord")}</span>
+                <select
+                  value={pauseBefore <= words.length ? pauseBefore : 0}
+                  onChange={(event) => {
+                    const value = Number(event.target.value);
+                    const entrance = { ...text.in };
+                    if (value) entrance.pauseBefore = value;
+                    else delete entrance.pauseBefore;
+                    field("text", { in: entrance });
+                  }}
+                >
+                  <option value={0}>{t("csValue_none")}</option>
+                  {words.map(({ label }, index) => (
+                    <option key={index} value={index + 1}>
+                      {index + 1}. {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {pauseBefore > 0 && pauseBefore <= words.length && (
+              <Num
+                label={t("csRevealPauseLength")}
+                value={text.in.pauseSeconds ?? REVEAL_PAUSE_SECONDS}
+                max={30}
+                onChange={(pauseSeconds) => field("text", { in: { ...text.in, pauseSeconds } })}
+              />
+            )}
+          </Group>
+          <Group label={t("csTextDuring")}>
+            <Pick
+              label={t("csText")}
+              value={text.during ?? "none"}
+              options={["none", "signal-glitch"]}
+              onChange={(during) => field("text", { during })}
+            />
+            {text.during === "signal-glitch" && (
+              <SignalFields
+                signal={text.signal ?? SIGNAL_DEFAULTS}
+                onChange={(signal) => field("text", { signal })}
+              />
+            )}
           </Group>
           <Group label={t("csExit")}>
             <Pick

@@ -33,8 +33,8 @@ function setup() {
     expect(item, name).toBeDefined();
     await act(async () => item?.click());
   }
-  function field(label: string) {
-    const caption = Array.from(host.querySelectorAll("label")).find(
+  function field(label: string, scope: ParentNode = host) {
+    const caption = Array.from(scope.querySelectorAll("label")).find(
       (item) => item.querySelector("span")?.textContent === label,
     );
     const control = caption?.querySelector<
@@ -43,8 +43,8 @@ function setup() {
     expect(control, label).toBeDefined();
     return control!;
   }
-  async function input(label: string, value: string) {
-    const control = field(label);
+  async function input(label: string, value: string, scope: ParentNode = host) {
+    const control = field(label, scope);
     await act(async () => {
       Object.getOwnPropertyDescriptor(Object.getPrototypeOf(control), "value")!.set!.call(
         control,
@@ -319,6 +319,126 @@ it("projects the selected step's actual playback times and edits its outgoing tr
         ]),
       }),
     );
+  } finally {
+    await ui.close();
+  }
+});
+
+it("saves separate display and exit settings and previews the exit without a second step", async () => {
+  const ui = setup();
+  const saved = vi.fn();
+  const film = CutsceneFilmSchema.parse({
+    id: "signal",
+    title: "Signal",
+    createdAt: "",
+    updatedAt: "",
+    beats: [
+      {
+        id: "one",
+        image: {
+          source: { kind: "set", imageId: "still" },
+          in: { effect: "none" },
+          out: { effect: "none" },
+        },
+      },
+    ],
+    images: [{ id: "still", dataUrl: "example", thumbDataUrl: "example" }],
+  });
+  try {
+    await act(async () =>
+      ui.root.render(
+        <CutsceneStudio
+          film={film}
+          previewTheme={PRESET_THEMES[0]!}
+          onClose={() => {}}
+          onSave={saved}
+        />,
+      ),
+    );
+    const group = (name: string) =>
+      Array.from(ui.host.querySelectorAll("fieldset")).find(
+        (item) => item.querySelector("legend")?.textContent === name,
+      )!;
+    await ui.input("Motion while displayed", "signal-glitch");
+    await ui.input("Strength (%)", "28", group("Signal interference"));
+    await ui.input("Interference density (%)", "40", group("Signal interference"));
+    await ui.input("Duration (s)", "4", group("Signal interference"));
+    const exit = group("Exit");
+    await ui.input("Image", "melt", exit);
+    await ui.input("Duration (s)", "2.5", exit);
+    await ui.input("Strength (%)", "85", exit);
+    await ui.click("Preview image exit");
+    expect(ui.host.querySelector(".cutscene-reel__picture")?.getAttribute("src")).toBe("example");
+    expect(ui.host.querySelector(".cutscene-reel__signal")).toBeNull();
+    await ui.click("Stop preview");
+    await ui.file("Save");
+    expect(saved.mock.calls[0]?.[0].beats).toMatchObject([
+      {
+        image: {
+          during: "signal-glitch",
+          signal: { strength: 28, density: 40, seconds: 4 },
+          out: { effect: "melt", seconds: 2.5, strength: 85 },
+        },
+      },
+    ]);
+  } finally {
+    await ui.close();
+  }
+});
+
+it("sets a pause before a specific repeated word and saves it with text interference", async () => {
+  const ui = setup();
+  const saved = vi.fn();
+  const film = CutsceneFilmSchema.parse({
+    id: "note",
+    title: "The note",
+    createdAt: "",
+    updatedAt: "",
+    beats: [{ id: "one" }],
+  });
+  try {
+    await act(async () =>
+      ui.root.render(
+        <CutsceneStudio
+          film={film}
+          previewTheme={PRESET_THEMES[0]!}
+          onClose={() => {}}
+          onSave={saved}
+        />,
+      ),
+    );
+    const group = (name: string) =>
+      Array.from(ui.host.querySelectorAll("fieldset")).find(
+        (item) => item.querySelector("legend")?.textContent === name,
+      )!;
+    await ui.click("Step 1, Text");
+    await ui.input("Text", "Mona … Mona!");
+    const entrance = group("Entrance");
+    await ui.input("Text", "word-reveal", entrance);
+    const wordOptions = ui.field("Pause before word", entrance) as HTMLSelectElement;
+    expect(Array.from(wordOptions.options, (option) => option.textContent)).toEqual([
+      "None",
+      "1. Mona",
+      "2. Mona",
+    ]);
+    await ui.input("Pause before word", "2", entrance);
+    await ui.input("Pause length (s)", "2.5", entrance);
+    await ui.input("Pause before word", "0", entrance);
+    expect(entrance.textContent).not.toContain("Pause length (s)");
+    await ui.input("Pause before word", "2", entrance);
+    const during = group("While the text is visible");
+    await ui.input("Text", "signal-glitch", during);
+    await ui.input("Strength (%)", "40", during);
+    await ui.file("Save");
+    expect(saved.mock.calls[0]?.[0].beats).toMatchObject([
+      {
+        text: {
+          in: { effect: "word-reveal", pauseBefore: 2, pauseSeconds: 2.5 },
+          during: "signal-glitch",
+          signal: { strength: 40 },
+        },
+      },
+    ]);
   } finally {
     await ui.close();
   }
