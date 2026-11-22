@@ -127,24 +127,24 @@ it("edits every channel, previews, reorders steps, and saves through the film AP
     await ui.input("Title", "At dawn");
     await ui.input("Display", "fullscreen");
     await ui.click("Close dialog", ui.host.querySelector("dialog")!);
-    for (const channel of ["Image", "Sound", "Text"]) {
+    for (const channel of ["Background", "Sound", "Text"]) {
       expect(ui.findButton(`${channel} effects`)?.disabled).toBe(true);
       expect(ui.findButton(`${channel} timing`)?.disabled).toBe(true);
     }
-    await ui.click("Step 1, Image");
-    expect(ui.dialog().getAttribute("aria-label")).toBe("Image");
+    await ui.click("Step 1, Background");
+    expect(ui.dialog().getAttribute("aria-label")).toBe("Background");
     const uploadImage = ui.field("Upload image", ui.dialog());
     expect(uploadImage.getAttribute("type")).toBe("file");
-    await ui.input("Image", "asset:door", ui.dialog());
+    await ui.input("Background", "asset:door", ui.dialog());
     await ui.closeDialog();
-    expect(ui.findButton("Image timing")?.disabled).toBe(false);
-    await ui.click("Image effects");
+    expect(ui.findButton("Background timing")?.disabled).toBe(false);
+    await ui.click("Background effects");
     await ui.input("Motion while displayed", "pan-left", ui.dialog());
     expect(ui.field("Duration (s)", ui.dialog()).value).toBe("12");
     await ui.input("Duration (s)", "3", ui.dialog());
     await ui.input("Image filter", "warm", ui.dialog());
     await ui.closeDialog();
-    const firstImage = ui.findButton("Step 1, Image")!;
+    const firstImage = ui.findButton("Step 1, Background")!;
     await act(async () =>
       firstImage.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true })),
     );
@@ -356,7 +356,7 @@ it("projects the selected step's actual playback times and edits its outgoing tr
     expect(ui.host.querySelectorAll(".cutscene-time")).toHaveLength(1);
     expect(ui.host.querySelector("table")).toBeNull();
     expect(timeline.querySelector('[aria-label="Sound · Sound cue at 0 sec"]')).toBeTruthy();
-    const picture = timeline.querySelector('[aria-label="Image · Image · 0.5 sec to 2 sec"]')!;
+    const picture = timeline.querySelector('[aria-label="Background · Image · 0.5 sec to 2 sec"]')!;
     expect(picture.querySelector("img")?.getAttribute("src")).toBe("example");
     expect(picture.querySelector<HTMLElement>('[data-shape="in"]')?.style.width).toContain("66.66");
     expect(timeline.textContent).toContain("Advances at 2 sec");
@@ -462,8 +462,8 @@ it("saves separate display and exit settings and previews the exit without a sec
       Array.from(ui.host.querySelectorAll("fieldset")).find(
         (item) => item.querySelector("legend")?.textContent === name,
       )!;
-    await ui.click("Image effects");
-    expect(ui.dialog().getAttribute("aria-label")).toBe("Image effects");
+    await ui.click("Background effects");
+    expect(ui.dialog().getAttribute("aria-label")).toBe("Background effects");
     await ui.input("Motion while displayed", "signal-glitch", ui.dialog());
     await ui.input("Strength (%)", "28", group("Signal interference"));
     await ui.input("Interference density (%)", "40", group("Signal interference"));
@@ -473,13 +473,13 @@ it("saves separate display and exit settings and previews the exit without a sec
     await ui.input("Duration (s)", "4", group("Signal interference"));
     await ui.input("Duration (s)", "2.5", group("Exit"));
     await ui.closeDialog();
-    await ui.click("Image timing");
+    await ui.click("Background timing");
     expect(ui.field("Duration (s)", group("Signal interference")).value).toBe("4");
     expect(ui.field("Duration (s)", group("Exit")).value).toBe("2.5");
     expect(ui.dialog().querySelector("select")).toBeNull();
     await ui.closeDialog();
-    await ui.click("Image effects");
-    await ui.click("Preview image exit", ui.dialog());
+    await ui.click("Background effects");
+    await ui.click("Preview background exit", ui.dialog());
     expect(ui.host.querySelector("dialog[open]")).toBeNull();
     expect(ui.host.querySelector(".cutscene-reel__picture")?.getAttribute("src")).toBe("example");
     expect(ui.host.querySelector(".cutscene-reel__signal")).toBeNull();
@@ -630,8 +630,8 @@ it("drags the authored clip edges, saves one history entry per drag, and can cle
       }
     }
     // The overview spans 20 seconds at 400 pixels.
-    await drag("Image clip start", 60);
-    await drag("Image clip end", -40);
+    await drag("Background clip start", 60);
+    await drag("Background clip end", -40);
     await drag("Text clip start", 60);
     await drag("Text clip end", -120);
     await drag("Sound clip start", 120);
@@ -830,6 +830,52 @@ it("previews and saves text ink, outline, strip and position for just the select
     expect(played?.querySelector<HTMLElement>(".orn-nameplate > span")?.style.color).toBe(
       "rgb(255, 204, 0)",
     );
+  } finally {
+    await ui.close();
+  }
+});
+
+it("sets a solid background from the timeline, previews it and saves its fade", async () => {
+  const ui = setup();
+  const saved = vi.fn();
+  const film = CutsceneFilmSchema.parse({
+    id: "colors",
+    title: "Colors",
+    createdAt: "",
+    updatedAt: "",
+    beats: [{ id: "one" }],
+  });
+  try {
+    await act(async () =>
+      ui.root.render(
+        <CutsceneStudio
+          film={film}
+          previewTheme={PRESET_THEMES[0]!}
+          onClose={() => {}}
+          onSave={saved}
+        />,
+      ),
+    );
+    await ui.click("Step 1, Background");
+    await ui.input("Background", "color", ui.dialog());
+    await ui.input("Background color", "#38546a", ui.dialog());
+    await ui.closeDialog();
+    const stage = ui.host.querySelector<HTMLElement>(".cutscene-studio__poster-stage");
+    expect(stage?.style.backgroundColor).toBe("rgb(56, 84, 106)");
+    expect(
+      ui.host.querySelector<HTMLElement>(".cutscene-time__swatch")?.style.backgroundColor,
+    ).toBe("rgb(56, 84, 106)");
+    await ui.click("Background effects");
+    const exit = Array.from(ui.dialog().querySelectorAll("fieldset")).find(
+      (group) => group.querySelector("legend")?.textContent === "Exit",
+    )!;
+    await ui.input("Effect", "fade", exit);
+    await ui.closeDialog();
+    await ui.file("Save");
+    expect(saved.mock.lastCall?.[0].beats[0].image).toMatchObject({
+      source: { kind: "color", color: "#38546a" },
+      out: { effect: "fade" },
+    });
   } finally {
     await ui.close();
   }

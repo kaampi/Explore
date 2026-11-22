@@ -9,7 +9,9 @@ import {
 } from "./schema";
 import { revealWords } from "./textReveal";
 
-type ImageLayer = { step: number; imageId: string; cell: ImageCell };
+type ImageLayer = { step: number; cell: ImageCell } & (
+  { imageId: string; color?: never } | { color: string; imageId?: never }
+);
 type TextLayer = { step: number; cell: TextCell; clipId?: string };
 type TextTiming = {
   delay: number;
@@ -36,7 +38,7 @@ export type PlaybackStep = {
     delay: number;
     enter: number;
     leave: number;
-    melt: number;
+    onAdvance?: { duration: number; reveal?: ImageLayer | undefined };
     exit: number;
     end?: number;
   };
@@ -96,39 +98,60 @@ function textTiming(cell: TextCell, simple: boolean, span?: number): TextTiming 
   };
 }
 
+function backgroundLayer(cell: ImageCell, step: number): ImageLayer | undefined {
+  const { source } = cell;
+  if (source.kind === "set") return { step, cell, imageId: source.imageId };
+  if (source.kind === "color") return { step, cell, color: source.color };
+  return undefined;
+}
+
 /** Delays and durations are relative to the start of each step, in milliseconds. */
 export function planPlayback(film: CutsceneFilm, simple = false): PlaybackPlan {
   let activeImage: ImageLayer | undefined;
   let heldText: TextLayer | undefined;
   let music: SoundCue | undefined;
+  let changedAtBoundary = false;
+  const backgrounds = film.beats.map(({ image }, step) => backgroundLayer(image, step));
 
   const steps = film.beats.map((beat, step): PlaybackStep => {
-    const previousImage = activeImage;
-    const changingImage = beat.image.source.kind !== "keep";
-    if (beat.image.source.kind === "set")
-      activeImage = { step, imageId: beat.image.source.imageId, cell: beat.image };
-    else if (beat.image.source.kind === "clear") activeImage = undefined;
-    const imageDelay = changingImage && !simple ? ms(beat.image.in.delay) : 0;
-    const imageEnter =
-      changingImage && activeImage
-        ? length(activeImage.cell.in.effect, activeImage.cell.in.seconds, simple)
-        : 0;
+    const incoming = backgrounds[step];
+    const replacing = beat.image.source.kind !== "keep";
+    const previousImage = changedAtBoundary ? undefined : activeImage;
+    const changingOnEntry = replacing && !changedAtBoundary;
+    if (replacing) activeImage = incoming;
+    const imageDelay = changingOnEntry && !simple ? ms(beat.image.in.delay) : 0;
     const imageLeave =
-      changingImage && previousImage
+      changingOnEntry && previousImage
         ? length(previousImage.cell.out.effect, previousImage.cell.out.seconds, simple)
+        : 0;
+    const imageEnter =
+      changingOnEntry && incoming && imageLeave === 0
+        ? length(incoming.cell.in.effect, incoming.cell.in.seconds, simple)
         : 0;
     const imageExit = activeImage
       ? length(activeImage.cell.out.effect, activeImage.cell.out.seconds, simple)
       : 0;
     const imageEnd =
-      activeImage && changingImage && activeImage.cell.endAt !== undefined
+      incoming?.cell.endAt !== undefined
         ? Math.max(
-            ms(activeImage.cell.endAt),
+            ms(incoming.cell.endAt),
             imageDelay + Math.max(imageEnter, imageLeave) + imageExit + MIN_CLIP_MS,
           )
         : undefined;
-    const meltsOnAdvance =
-      changingImage && activeImage?.cell.out.effect === "melt" && imageEnd === undefined;
+    const next = film.beats[step + 1];
+    const effect = next ? beat.transition.effect : "cut";
+    const duration = effect === "cut" ? 0 : length("fade", beat.transition.seconds, simple);
+    const nextChangesNow =
+      next !== undefined &&
+      next.image.source.kind !== "keep" &&
+      (simple || next.image.in.delay === 0);
+    // A whole-step transition owns the visual handoff when one is configured.
+    const revealNext = duration === 0 && nextChangesNow && imageEnd === undefined && imageExit > 0;
+    const meltsOnAdvance = incoming?.cell.out.effect === "melt" && imageEnd === undefined;
+    const onAdvance =
+      revealNext || (meltsOnAdvance && !(nextChangesNow && duration > 0))
+        ? { duration: imageExit, reveal: revealNext ? backgrounds[step + 1] : undefined }
+        : undefined;
     const image = {
       previous: previousImage,
       current: activeImage,
@@ -136,10 +159,11 @@ export function planPlayback(film: CutsceneFilm, simple = false): PlaybackPlan {
       enter: imageEnter,
       leave: imageLeave,
       exit: imageExit,
-      melt: meltsOnAdvance ? imageExit : 0,
+      ...(onAdvance ? { onAdvance } : {}),
       ...(imageEnd !== undefined ? { end: imageEnd } : {}),
     };
-    if (meltsOnAdvance || imageEnd !== undefined) activeImage = undefined;
+    changedAtBoundary = nextChangesNow && (duration > 0 || Boolean(revealNext));
+    if (onAdvance || imageEnd !== undefined) activeImage = undefined;
 
     const previousText = heldText;
     const textClips: ScheduledText[] = (beat.textClips ?? []).map((cell) => ({
@@ -183,8 +207,6 @@ export function planPlayback(film: CutsceneFilm, simple = false): PlaybackPlan {
     if (cue?.cell.action === "music") music = soundEnd === undefined ? cue : undefined;
     else if (cue?.cell.action === "stop-music") music = undefined;
 
-    const effect = step < film.beats.length - 1 ? (beat.transition?.effect ?? "cut") : "cut";
-    const duration = effect === "cut" ? 0 : length("fade", beat.transition.seconds, simple);
     return {
       transition: { effect, duration },
       image,
@@ -206,6 +228,7 @@ export function planPlayback(film: CutsceneFilm, simple = false): PlaybackPlan {
       (step) =>
         step.advanceAt !== undefined ||
         step.image.end !== undefined ||
+        (step.image.onAdvance?.duration ?? 0) > 0 ||
         step.text.end !== undefined ||
         step.textClips.length > 0 ||
         step.sound.end !== undefined,
@@ -240,7 +263,10 @@ function transitionOrNext(plan: PlaybackPlan, state: Playing, step: PlaybackStep
 }
 
 function exitLength(step: PlaybackStep) {
-  return Math.max(step.text.end === undefined ? step.text.leave : 0, step.image.melt);
+  return Math.max(
+    step.text.end === undefined ? step.text.leave : 0,
+    step.image.onAdvance?.duration ?? 0,
+  );
 }
 
 function leaveStep(plan: PlaybackPlan, state: Playing, step: PlaybackStep): PlaybackState {
@@ -263,7 +289,9 @@ export function advancePlayback(
   if (event.type === "continue") {
     if (state.phase === "transition") return nextStep(plan, state);
     if (state.phase === "exit")
-      return state.elapsed < step.image.melt ? state : transitionOrNext(plan, state, step);
+      return state.elapsed < (step.image.onAdvance?.duration ?? 0)
+        ? state
+        : transitionOrNext(plan, state, step);
     if (state.elapsed < (step.textClips.at(-1)?.end ?? 0)) return state;
     if (!state.channelsDone && state.elapsed < step.readyAt)
       return { ...state, channelsDone: true };
@@ -297,7 +325,8 @@ export function playbackFrame(plan: PlaybackPlan, state: Playing) {
   const elapsed = state.channelsDone ? step.readyAt : state.elapsed;
   const imageTime = elapsed - step.image.delay;
   const image = step.image;
-  const melting = image.melt > 0 && state.phase === "exit" && state.elapsed < image.melt;
+  const boundary = state.phase === "step" ? undefined : image.onAdvance;
+  const leavingBackground = boundary && state.phase === "exit" && state.elapsed < boundary.duration;
   const timedImageExit =
     image.end !== undefined &&
     image.exit > 0 &&
@@ -305,8 +334,7 @@ export function playbackFrame(plan: PlaybackPlan, state: Playing) {
     elapsed < image.end
       ? fraction(elapsed - (image.end - image.exit), image.exit)
       : undefined;
-  const imageGone =
-    (image.melt > 0 && state.phase !== "step") || (image.end !== undefined && elapsed >= image.end);
+  const imageGone = image.end !== undefined && elapsed >= image.end;
   const text: TextPlayback =
     step.textClips.find((clip) => elapsed >= clip.delay && elapsed < clip.end) ?? step.text;
   const textTime = elapsed - text.delay;
@@ -321,25 +349,29 @@ export function playbackFrame(plan: PlaybackPlan, state: Playing) {
   const music =
     action === "music" ? cue : action === "stop-music" ? undefined : step.sound.previousMusic;
   return {
-    image:
-      imageGone || timedImageExit !== undefined
+    image: boundary
+      ? boundary.reveal
+      : imageGone || timedImageExit !== undefined
         ? undefined
         : imageTime < 0
           ? image.previous
           : image.current,
     previousImage:
-      melting || timedImageExit !== undefined
+      leavingBackground || timedImageExit !== undefined
         ? image.current
-        : !imageGone &&
+        : !boundary &&
+            !imageGone &&
             imageTime >= 0 &&
             image.previous !== image.current &&
             imageTime < image.leave
           ? image.previous
           : undefined,
-    imageIn: imageTime < 0 ? 1 : fraction(imageTime, image.enter),
+    imageIn: boundary || imageTime < 0 ? 1 : fraction(imageTime, image.enter),
     imageOut:
       timedImageExit ??
-      (melting ? fraction(state.elapsed, image.melt) : fraction(imageTime, image.leave)),
+      (leavingBackground
+        ? fraction(state.elapsed, boundary.duration)
+        : fraction(imageTime, image.leave)),
     text:
       text.end !== undefined && elapsed >= text.end
         ? undefined

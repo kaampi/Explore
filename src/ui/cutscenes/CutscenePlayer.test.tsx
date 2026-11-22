@@ -506,6 +506,59 @@ describe("the independent cut-scene player", () => {
     }
   });
 
+  it.each(["color", "image"] as const)(
+    "composites the next %s under the fading picture without replaying the entrance",
+    async (kind) => {
+      const film = model([
+        {
+          id: "first",
+          image: {
+            source: { kind: "set", imageId: "room" },
+            in: { effect: "none" },
+            out: { effect: "fade", seconds: 2 },
+          },
+        },
+        {
+          id: "second",
+          image: {
+            source:
+              kind === "color"
+                ? { kind: "color", color: "#38546a" }
+                : { kind: "set", imageId: "garden" },
+            in: { effect: "fade", seconds: 2 },
+            out: { effect: "none" },
+          },
+        },
+      ]);
+      film.images.push({ ...film.images[0]!, id: "garden", alt: "A garden" });
+      const ui = await mount(film);
+      try {
+        const old = ui.host.querySelector<HTMLElement>('[data-background="image"]')!;
+        const newer = () =>
+          kind === "color"
+            ? ui.host.querySelector<HTMLElement>('[data-background="color"]')
+            : (ui.host.querySelector<HTMLElement>('img[alt="A garden"]')?.parentElement ?? null);
+        expect(old).toBeTruthy();
+        expect(newer()).toBeNull();
+        await ui.press("Enter");
+        const incoming = newer()!;
+        if (kind === "color") expect(incoming.style.backgroundColor).toBe("rgb(56, 84, 106)");
+        expect(Number(incoming.style.opacity)).toBe(1);
+        expect(old.style.zIndex).toBe("2");
+        expect(incoming.style.zIndex).toBe("");
+        await settle(1000);
+        expect(Number(old.style.opacity)).toBeCloseTo(0.5, 1);
+        expect(newer()).toBe(incoming);
+        await settle(1100);
+        expect(old.isConnected).toBe(false);
+        expect(newer()).toBe(incoming);
+        expect(Number(incoming.style.opacity)).toBe(1);
+      } finally {
+        await ui.close();
+      }
+    },
+  );
+
   it("announces missing audio, loops available music and releases it at the end", async () => {
     const pause = vi.fn();
     const revoke = vi.fn();

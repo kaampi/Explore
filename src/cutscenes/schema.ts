@@ -2,6 +2,7 @@ import { z } from "zod";
 import { StoryboardPositionSchema } from "../library/storyboardPosition";
 
 const Seconds = z.number().min(0).max(30);
+const HexColor = z.string().regex(/^#[\da-f]{6}$/i);
 export const SIGNAL_DEFAULTS = { strength: 70, density: 50, seconds: 6 } as const;
 const Percentage = z.number().min(0).max(100);
 export const IMAGE_MOTION_SECONDS = {
@@ -37,6 +38,7 @@ export const ImageCellSchema = z.object({
   source: z.discriminatedUnion("kind", [
     z.object({ kind: z.literal("keep") }),
     z.object({ kind: z.literal("set"), imageId: z.string().min(1) }),
+    z.object({ kind: z.literal("color"), color: HexColor }),
     z.object({ kind: z.literal("clear") }),
   ]),
   in: z.object({
@@ -69,7 +71,6 @@ export const SoundCellSchema = z.object({
   caption: z.string().max(120).default(""),
 });
 
-const HexColor = z.string().regex(/^#[\da-f]{6}$/i);
 export const TEXT_STRIP_STYLES = ["square", "rounded", "pill", "soft-edges"] as const;
 export const TEXT_OUTLINE_MAX = 8;
 export const TEXT_STRIP_PADDING_MAX = 96;
