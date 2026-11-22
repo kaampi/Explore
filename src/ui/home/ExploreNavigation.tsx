@@ -53,7 +53,11 @@ export function ExploreNavigation({
 }) {
   const t = useTranslate();
   const file: MenuItem[] = [
-    { label: t("navImportLore"), onSelect: () => openStudio("import-lore") },
+    {
+      label: t("navImportLore"),
+      current: view === "import-lore",
+      onSelect: () => openStudio("import-lore"),
+    },
     { kind: "separator" },
     {
       label: t("navExportLibrary"),
@@ -62,24 +66,42 @@ export function ExploreNavigation({
     },
     { label: t("navImportBackup"), disabled: backup.busy, onSelect: backup.chooseBackup },
   ];
-  const build: MenuItem[] = [{ label: t("adventures"), onSelect: () => openStudio("campaigns") }];
+  const inAdventures = view === "campaigns" || view === "adventure";
+  const build: MenuItem[] = [
+    { label: t("adventures"), current: inAdventures, onSelect: () => openStudio("campaigns") },
+  ];
   for (const { title, entries } of buildGroups) {
     build.push({ kind: "separator" }, { kind: "heading", label: t(title) });
     for (const [destination, label] of entries)
-      build.push({ label: t(label), onSelect: () => openStudio(destination) });
+      build.push({
+        label: t(label),
+        current: view === destination,
+        onSelect: () => openStudio(destination),
+      });
   }
   const inBuild =
-    view === "campaigns" ||
-    view === "adventure" ||
+    inAdventures ||
     buildGroups.some(({ entries }) => entries.some(([destination]) => destination === view));
 
   return (
     <nav className="sb-main-nav" aria-label={t("navExplore")}>
-      <MenuButton bare label={t("navFile")} items={file} current={view === "import-lore"}>
-        {t("navFile")} <span aria-hidden="true">⌄</span>
+      <MenuButton
+        bare
+        label={t("navFile")}
+        items={file}
+        current={view === "import-lore"}
+        menuClassName="ui-menu--top-nav"
+      >
+        {t("navFile")} <span className="sb-main-nav__chevron" aria-hidden="true" />
       </MenuButton>
-      <MenuButton bare label={t("navBuild")} items={build} current={inBuild}>
-        {t("navBuild")} <span aria-hidden="true">⌄</span>
+      <MenuButton
+        bare
+        label={t("navBuild")}
+        items={build}
+        current={inBuild}
+        menuClassName="ui-menu--top-nav"
+      >
+        {t("navBuild")} <span className="sb-main-nav__chevron" aria-hidden="true" />
       </MenuButton>
       <button type="button" aria-current={view === "ideas" ? "page" : undefined} onClick={onIdeas}>
         {t("ideas")}
