@@ -5,6 +5,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
@@ -17,6 +18,7 @@ export type MenuItem =
       kind?: "item";
       label: string;
       onSelect: () => void;
+      current?: boolean;
       shortcut?: string;
       /** A row that cannot be chosen is shown, not hidden, so the menu looks the same every time. */
       disabled?: boolean;
@@ -83,6 +85,7 @@ export function Menu({
   scope,
   opener,
   portalTarget,
+  className,
 }: {
   label: string;
   at: { x: number; y: number };
@@ -96,6 +99,7 @@ export function Menu({
    */
   opener?: Element | null;
   portalTarget?: Element | undefined;
+  className?: string | undefined;
 }) {
   const id = useId(),
     menu = useRef<HTMLDivElement>(null),
@@ -222,8 +226,14 @@ export function Menu({
       ref={menu}
       role="menu"
       aria-label={label}
-      className="ui-menu"
-      style={{ left: position.x, top: position.y }}
+      className={className ? `ui-menu ${className}` : "ui-menu"}
+      style={
+        {
+          left: position.x,
+          top: position.y,
+          "--ui-menu-anchor-y": `${at.y}px`,
+        } as CSSProperties
+      }
       onContextMenu={(event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -295,6 +305,7 @@ export function Menu({
             type="button"
             role="menuitem"
             aria-disabled={row.disabled ? true : undefined}
+            aria-current={row.current ? "page" : undefined}
             title={row.disabled ? row.reason : undefined}
             className={`ui-menu__item${row.danger ? " ui-menu__item--danger" : ""}`}
             onClick={() => {
@@ -320,6 +331,7 @@ export function MenuButton({
   bare,
   children,
   current,
+  menuClassName,
 }: {
   label: string;
   items: readonly MenuItem[];
@@ -329,6 +341,7 @@ export function MenuButton({
   bare?: boolean;
   children?: ReactNode;
   current?: boolean;
+  menuClassName?: string;
 }) {
   const [at, setAt] = useState<{ x: number; y: number } | null>(null);
   const button = useRef<HTMLButtonElement>(null);
@@ -373,6 +386,7 @@ export function MenuButton({
           label={label}
           at={at}
           items={items}
+          className={menuClassName}
           scope={button.current}
           opener={button.current}
           onClose={() => {

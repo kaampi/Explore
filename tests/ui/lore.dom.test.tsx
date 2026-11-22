@@ -204,6 +204,7 @@ describe("lorebook import journeys", () => {
     expect(container.querySelector('[aria-label="Anatomy library"]')).not.toBeNull();
     expect(named("Build").getAttribute("aria-current")).toBe("page");
     await click(named("Build"));
+    expect(menuItem("Anatomy").getAttribute("aria-current")).toBe("page");
     await click(menuItem("Characters"));
     await waitFor(() => container.textContent?.includes("Import SillyTavern") ?? false);
     const description =
