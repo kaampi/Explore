@@ -88,7 +88,13 @@ function SceneVisual({
   silent?: boolean;
 }) {
   const picture = images.find(({ id }) => id === frame?.image?.imageId);
-  const oldPicture = images.find(({ id }) => id === frame?.previousImage?.imageId);
+  const previousImage = frame?.previousImage;
+  const currentImage = frame?.image;
+  const progress = frame?.imageOut ?? 0;
+  const out = previousImage?.cell.out.effect;
+  const wash = out === "fade-black" || out === "fade-white";
+  const hasBackdrop = Boolean(picture || currentImage?.color);
+  const leavingOpacity = 1 - Math.min(1, wash && hasBackdrop ? progress * 2 : progress);
   const text = frame?.text?.cell;
   const textProgress = frame?.textIn ?? 1;
   const words = text && (
@@ -104,31 +110,36 @@ function SceneVisual({
     ...(text ? enterText(text.in.effect, textProgress) : {}),
     ...(text ? exitText(text.out.effect, frame?.textOut ?? 0) : {}),
   };
-  const out = frame?.previousImage?.cell.out.effect;
   return (
     <>
-      {oldPicture && (
+      {wash && (
         <div
           className={`cutscene-reel__exit-color cutscene-reel__exit--${out}`}
+          style={{ opacity: hasBackdrop ? Math.min(1, (1 - progress) * 2) : 1 }}
           aria-hidden="true"
         />
       )}
       {[
-        ...(oldPicture && frame?.previousImage
-          ? [
-              {
-                layer: frame.previousImage,
-                asset: oldPicture,
-                outgoing: true,
-              },
-            ]
-          : []),
-        ...(picture && frame?.image
-          ? [{ layer: frame.image, asset: picture, outgoing: false }]
-          : []),
-      ].map(({ layer, asset, outgoing }) => {
+        ...(previousImage ? [{ layer: previousImage, outgoing: true }] : []),
+        ...(currentImage ? [{ layer: currentImage, outgoing: false }] : []),
+      ].map(({ layer, outgoing }) => {
         const { cell } = layer;
-        const progress = frame?.imageOut ?? 0;
+        const asset = outgoing ? images.find(({ id }) => id === layer.imageId) : picture;
+        const style = outgoing
+          ? { opacity: leavingOpacity, zIndex: 2 }
+          : enterImage(cell.in.effect, frame?.imageIn ?? 1);
+        if (layer.color) {
+          return (
+            <div
+              key={layer.step}
+              className="cutscene-reel__image"
+              data-background="color"
+              style={{ ...style, backgroundColor: layer.color }}
+              aria-hidden="true"
+            />
+          );
+        }
+        if (!asset) return null;
         const strength = (cell.out.strength ?? SIGNAL_DEFAULTS.strength) / 100;
         const canMelt = !reduced && cell.out.effect === "melt" && strength > 0;
         const melt = outgoing && canMelt;
@@ -153,12 +164,9 @@ function SceneVisual({
           <div
             key={layer.step}
             className="cutscene-reel__image"
+            data-background="image"
             aria-hidden={outgoing || silent || undefined}
-            style={
-              outgoing
-                ? { opacity: melt ? 1 : 1 - progress, zIndex: 1 }
-                : enterImage(cell.in.effect, frame?.imageIn ?? 1)
-            }
+            style={melt ? { ...style, opacity: 1 } : style}
           >
             {canMelt ? (
               <MeltImage
@@ -196,7 +204,7 @@ function SceneVisual({
       {text && (
         <CutsceneTextLayout
           text={text}
-          overImage={Boolean(picture || oldPicture)}
+          overImage={hasBackdrop || Boolean(previousImage)}
           style={textStyle}
           hidden
         >

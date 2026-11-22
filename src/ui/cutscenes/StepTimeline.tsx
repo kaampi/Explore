@@ -63,7 +63,7 @@ type EdgeDrag = {
   msPerPixel: number;
   moved: boolean;
 };
-type ClipContent = { label: string; thumb?: string };
+type ClipContent = { label: string; thumb?: string; color?: string };
 
 export function StepTimeline({
   step,
@@ -238,6 +238,13 @@ export function StepTimeline({
           onClick={() => onOpenChannelDialog(clip.lane, "content", clip.textClipId)}
         >
           {content.thumb && <img src={content.thumb} alt="" draggable={false} />}
+          {content.color && (
+            <span
+              className="cutscene-time__swatch"
+              style={{ backgroundColor: content.color }}
+              aria-hidden="true"
+            />
+          )}
           <span className="cutscene-time__clip-title">{content.label}</span>
           {width > 0 && !!clip.enter && (
             <i

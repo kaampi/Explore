@@ -27,7 +27,7 @@ export type Channel = (typeof channels)[number];
 export type MediaChannel = Exclude<Channel, "advance">;
 export type ChannelDialog = "content" | "effects" | "timing";
 export const channelLabels = {
-  image: "csImage",
+  image: "csBackground",
   sound: "csSound",
   text: "csText",
   advance: "csAdvance",
@@ -284,6 +284,7 @@ export function CutsceneFields({
   textStart,
   textThemeColor,
   overImage,
+  backgroundColor,
   onTextChange,
 }: {
   film: CutsceneFilm;
@@ -299,6 +300,7 @@ export function CutsceneFields({
   textStart?: { min: number; max: number } | undefined;
   textThemeColor: string;
   overImage: boolean;
+  backgroundColor: string;
   onTextChange: (update: (cell: TextCell | undefined) => TextCell | undefined) => void;
 }) {
   const t = useTranslate();
@@ -307,6 +309,7 @@ export function CutsceneFields({
 
   if (channel === "image") {
     const { image } = beat;
+    const color = image.source.kind === "color" ? image.source.color : undefined;
     const signal = image.signal ?? SIGNAL_DEFAULTS;
     function updateEntrance(patch: Partial<typeof image.in>) {
       onChange((step) => ({
@@ -326,11 +329,20 @@ export function CutsceneFields({
       return (
         <>
           <label className="cutscene-field">
-            <span>{t("csImage")}</span>
+            <span>{t("csBackground")}</span>
             <select
               value={active ? `asset:${active}` : image.source.kind}
               onChange={(event) => {
                 const source = event.target.value;
+                if (source === "color") {
+                  field("image", {
+                    source: { kind: "color", color: backgroundColor },
+                    ...(image.out.effect === "melt" || image.out.effect === "signal-glitch"
+                      ? { out: { ...image.out, effect: "fade" } }
+                      : {}),
+                  });
+                  return;
+                }
                 field("image", {
                   source:
                     source === "keep" || source === "clear"
@@ -339,8 +351,9 @@ export function CutsceneFields({
                 });
               }}
             >
-              <option value="keep">{t("csValue_keep")}</option>
-              <option value="clear">{t("csValue_clear")}</option>
+              <option value="keep">{t("csBackgroundKeep")}</option>
+              <option value="clear">{t("csBackgroundTheme")}</option>
+              <option value="color">{t("csBackgroundSolid")}</option>
               {active && !picture && (
                 <option value={`asset:${active}`}>{t("csMissingImage")}</option>
               )}
@@ -351,6 +364,13 @@ export function CutsceneFields({
               ))}
             </select>
           </label>
+          {color && (
+            <ColorField
+              label={t("csBackgroundColor")}
+              value={color}
+              onChange={(color) => field("image", { source: { kind: "color", color } })}
+            />
+          )}
           <label className="cutscene-field">
             <span>{t("csImageUpload")}</span>
             <input
@@ -380,7 +400,7 @@ export function CutsceneFields({
       );
     return (
       <>
-        {section === "effects" && (
+        {section === "effects" && !color && (
           <>
             <Pick
               label={t("csDuring")}
@@ -413,7 +433,7 @@ export function CutsceneFields({
             />
           </>
         )}
-        {image.during === "signal-glitch" && (
+        {!color && image.during === "signal-glitch" && (
           <Group label={t("csValue_signal_glitch")}>
             <SignalFields
               section={section}
@@ -454,11 +474,18 @@ export function CutsceneFields({
                 <Pick
                   label={t("csTextEffect")}
                   value={image.out.effect}
-                  options={["none", "fade", "fade-black", "fade-white", "melt", "signal-glitch"]}
+                  options={
+                    color
+                      ? ["none", "fade", "fade-black", "fade-white"]
+                      : ["none", "fade", "fade-black", "fade-white", "melt", "signal-glitch"]
+                  }
                   onChange={(effect) => updateExit({ effect })}
                 />
                 {image.out.effect === "melt" && (
                   <small className="cutscene-field__hint">{t("csImageMeltHint")}</small>
+                )}
+                {image.out.effect === "fade" && (
+                  <small className="cutscene-field__hint">{t("csBackgroundFadeHint")}</small>
                 )}
                 {(image.out.effect === "melt" || image.out.effect === "signal-glitch") && (
                   <Num

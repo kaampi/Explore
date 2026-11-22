@@ -187,7 +187,6 @@ function oneStep(
           ? {
               image: {
                 ...image.cell,
-                source: { kind: "set", imageId: image.imageId },
                 in: { effect: "none", delay: 0, seconds: 0 },
               },
             }
@@ -285,6 +284,8 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
     previewSource.kind === "set"
       ? draft.images.find(({ id }) => id === previewSource.imageId)
       : undefined;
+  const posterColor = previewSource.kind === "color" ? previewSource.color : undefined;
+  const overBackdrop = Boolean(poster || posterColor);
   const trackNames = new Map(tracks.map(({ id, name }) => [id, name]));
 
   useEffect(() => {
@@ -583,6 +584,7 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
   function timelineContent({ lane, source, textClipId }: TimelineClip) {
     if (lane === "image") {
       const layer = timing.image[source];
+      if (layer?.color) return { label: layer.color, color: layer.color };
       const picture = draft.images.find(({ id }) => id === layer?.imageId);
       return picture
         ? { label: picture.alt || t("csImage"), thumb: picture.thumbDataUrl }
@@ -644,26 +646,29 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
         advance: { kind: "after", seconds: 1 },
       },
     ];
-    if (image.cell.out.effect !== "melt") {
-      const clear = newBeat();
-      beats.push({
-        ...clear,
-        image: { ...clear.image, source: { kind: "clear" } },
-        advance: { kind: "after", seconds: Math.max(1, image.cell.out.seconds) },
-      });
-    }
+    const next = newBeat();
+    const successor = draft.beats[beatIndex + 1]?.image;
+    const reveal =
+      image.cell.endAt === undefined && successor?.source.kind !== "keep" ? successor : undefined;
+    const nextBackground = reveal ?? { ...next.image, source: { kind: "clear" as const } };
+    beats.push({
+      ...next,
+      image: { ...nextBackground, in: { ...nextBackground.in, delay: 0 } },
+      advance: { kind: "after", seconds: 1 },
+    });
     setPanelOpen(false);
     setPlaying({ ...draft, skippable: true, beats });
   }
 
-  const hasPicture = beat.image.source.kind === "set" && Boolean(poster);
+  const hasBackground = beat.image.source.kind !== "keep" && overBackdrop;
   const textContentOpen = channelDialog?.channel === "text" && channelDialog.section === "content";
   const posterStyle = {
     ...playThemeStyle(theme),
     ...ornamentVars(theme, { simple: simpleFrames }),
+    ...(posterColor ? { backgroundColor: posterColor } : {}),
   };
   const canPreviewExit =
-    hasPicture && beat.image.out.effect !== "none" && beat.image.out.seconds > 0;
+    hasBackground && beat.image.out.effect !== "none" && beat.image.out.seconds > 0;
   const channelDialogTitle = channelDialog
     ? channelDialog.section === "content"
       ? newText
@@ -692,8 +697,9 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
         section={section}
         tracks={tracks}
         text={text}
-        textThemeColor={poster ? "#ffffff" : theme.text}
-        overImage={Boolean(poster)}
+        textThemeColor={overBackdrop ? "#ffffff" : theme.text}
+        overImage={overBackdrop}
+        backgroundColor={theme.background}
         textStart={
           textClip && bounds
             ? { min: bounds.minStart / 1000, max: bounds.maxStart / 1000 }
@@ -725,7 +731,7 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
         )}
         {text && (
           <OrnamentProvider theme={theme} simple={simpleFrames}>
-            <CutsceneTextLayout text={text} overImage={Boolean(poster)}>
+            <CutsceneTextLayout text={text} overImage={overBackdrop}>
               {text.text}
             </CutsceneTextLayout>
           </OrnamentProvider>
@@ -930,7 +936,7 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
         canEditChannel={(channel, section) => {
           if (channel === "image") {
             return (
-              hasPicture ||
+              hasBackground ||
               (section === "timing" &&
                 beat.image.source.kind === "clear" &&
                 Boolean(timing.image.previous))

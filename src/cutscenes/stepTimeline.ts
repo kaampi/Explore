@@ -63,7 +63,8 @@ export function stepTimeline(step: PlaybackStep) {
   const advance = advanceAt === undefined ? undefined : Math.max(advanceAt, readyAt);
   const holdUntil = advance ?? readyAt;
   const waits = advance === undefined;
-  const exit = Math.max(image.melt, text.end === undefined ? text.leave : 0);
+  const backgroundExit = image.onAdvance?.duration ?? 0;
+  const exit = Math.max(backgroundExit, text.end === undefined ? text.leave : 0);
   const clips: TimelineClip[] = [];
 
   if (image.previous && image.previous !== image.current && image.delay + image.leave > 0) {
@@ -81,9 +82,9 @@ export function stepTimeline(step: PlaybackStep) {
       lane: "image",
       source: "current",
       start: image.delay,
-      end: image.end ?? holdUntil + (waits ? 0 : image.melt),
+      end: image.end ?? holdUntil + (waits ? 0 : backgroundExit),
       enter: image.enter,
-      leave: image.end !== undefined ? image.exit : waits ? 0 : image.melt,
+      leave: image.end !== undefined ? image.exit : waits ? 0 : backgroundExit,
       waits: waits && image.end === undefined,
       ...(bounds ? { bounds } : {}),
     });

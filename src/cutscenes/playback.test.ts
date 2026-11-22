@@ -284,3 +284,76 @@ it("finishes each bounded clip on its own clock and separates an image exit from
     advancePlayback(plan, { ...startPlayback(), elapsed: 8000 }, { type: "continue" }),
   ).toEqual(startPlayback(1));
 });
+
+it("reveals the next background during the old background's exit and keeps other channels on their own steps", () => {
+  const source = film([
+    {
+      id: "first",
+      image: {
+        source: { kind: "set", imageId: "room" },
+        in: { effect: "none" },
+        out: { effect: "fade", seconds: 2 },
+      },
+    },
+    { id: "same-background" },
+    {
+      id: "color",
+      image: {
+        source: { kind: "color", color: "#38546a" },
+        in: { effect: "fade", seconds: 3 },
+        out: { effect: "none" },
+      },
+      text: { text: "Outside", in: { effect: "none" }, out: { effect: "stay" } },
+      sound: { action: "music", trackId: "wind" },
+    },
+  ]);
+  const plan = planPlayback(source);
+  const next = advancePlayback(plan, startPlayback(), { type: "continue" });
+  expect(next).toEqual(startPlayback(1));
+  const exit = advancePlayback(plan, startPlayback(1), { type: "continue" });
+  expect(exit).toMatchObject({ phase: "exit", step: 1 });
+  expect(stepTimeline(plan.steps[1]!).exit).toBe(2000);
+  const half = advancePlayback(plan, exit, { type: "tick", elapsed: 1000 });
+  if (half.phase === "ended") throw new Error("Expected an active background transition");
+  expect(playbackFrame(plan, half)).toMatchObject({
+    previousImage: { imageId: "room" },
+    image: { color: "#38546a" },
+    imageOut: 0.5,
+    imageIn: 1,
+    text: undefined,
+    music: undefined,
+  });
+
+  expect(advancePlayback(plan, half, { type: "tick", elapsed: 1000 })).toEqual(startPlayback(2));
+  expect(playbackFrame(plan, startPlayback(2))).toMatchObject({
+    previousImage: undefined,
+    image: { color: "#38546a" },
+    imageIn: 1,
+    text: { cell: { text: "Outside" } },
+    music: { cell: { trackId: "wind" } },
+  });
+
+  const delayed = structuredClone(source);
+  delayed.beats[2]!.image.in.delay = 1;
+  const later = planPlayback(delayed);
+  expect(advancePlayback(later, startPlayback(1), { type: "continue" })).toEqual(startPlayback(2));
+  expect(playbackFrame(later, startPlayback(2)).image?.imageId).toBe("room");
+  expect(playbackFrame(later, { ...startPlayback(2), elapsed: 2000 })).toMatchObject({
+    previousImage: { imageId: "room" },
+    image: { color: "#38546a" },
+    imageIn: 1,
+    imageOut: 0.5,
+  });
+
+  source.beats[1]!.transition = { effect: "crossfade", seconds: 1 };
+  const wholeStep = planPlayback(source);
+  expect(advancePlayback(wholeStep, startPlayback(1), { type: "continue" })).toMatchObject({
+    phase: "transition",
+    step: 1,
+  });
+  expect(playbackFrame(wholeStep, startPlayback(2))).toMatchObject({
+    image: { color: "#38546a" },
+    imageIn: 1,
+    previousImage: undefined,
+  });
+});
