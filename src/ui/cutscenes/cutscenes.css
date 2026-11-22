@@ -34,10 +34,10 @@
   object-fit: cover;
 }
 .cutscene-reel__exit--fade-black {
-  background: #000;
+  background: var(--scrim);
 }
 .cutscene-reel__exit--fade-white {
-  background: #fff;
+  background: var(--photo-text);
 }
 .cutscene-reel__exit-color {
   z-index: 1;
