@@ -42,7 +42,8 @@ it.skipIf(!chromium)(
     try {
       await page.goto(url);
       await page.waitForTimeout(1500);
-      await page.locator(".sb-sidebar nav button", { hasText: "Adventures" }).first().click();
+      await page.getByRole("button", { name: "Build", exact: true }).click();
+      await page.getByRole("menuitem", { name: "Adventures", exact: true }).click();
       await page.getByText("Connected adventure example").first().click();
       await page.locator(".storyboard-card").first().click({ button: "right" });
       await page.locator('[role="menuitem"]', { hasText: "Test this scene" }).click();

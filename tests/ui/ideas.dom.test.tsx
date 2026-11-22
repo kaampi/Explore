@@ -209,7 +209,7 @@ describe("idea capture journeys", () => {
     });
     root = createRoot(container);
     await mount();
-    await click(button("✧ My ideas"));
+    await click(button("My ideas"));
     await waitFor(() => !!container.querySelector(".sb-idea-card"));
     expect(container.textContent).toContain("A new possibility.");
     const writeText = vi.fn().mockResolvedValue(undefined);

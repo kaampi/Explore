@@ -9,6 +9,14 @@ import { createSessionFromSetup } from "@session/createSession";
 import { newCampaignTemplate } from "@library/LibrarySchema";
 import { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 let root: Root, container: HTMLDivElement, reply: string;
+function menuItem(label: string) {
+  const item = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')).find(
+    (option) => option.textContent?.trim() === label,
+  );
+  if (!item) throw new Error(`Missing menu item: ${label}`);
+  return item;
+}
+
 function button(label: string): HTMLButtonElement {
   const element = Array.from(container.querySelectorAll("button")).find(
     (element) => (element.getAttribute("aria-label") || element.textContent?.trim()) === label,
@@ -188,16 +196,15 @@ const supportedEntry = {
 describe("lorebook import journeys", () => {
   it("shows and saves parenthesized character fields separately while retaining original text in review", async () => {
     await mount();
-    await click(button("▤ My library"));
-    expect(container.querySelector('[aria-label="Characters & creatures"]')).not.toBeNull();
-    expect(container.querySelector('[aria-label="World"]')).not.toBeNull();
-    expect(container.querySelector('[aria-label="Story & play"]')).not.toBeNull();
-    await click(button("Anatomy"));
-    expect(container.querySelector('[aria-label="Anatomy library"]')).not.toBeNull();
-    expect(container.querySelector(".sb-sidebar nav button.is-active")?.textContent).toContain(
-      "My library",
+    await click(named("Build"));
+    expect(container.querySelector('[role="menu"][aria-label="Build"]')?.textContent).toContain(
+      "Characters & creatures",
     );
-    await click(button("Characters"));
+    await click(menuItem("Anatomy"));
+    expect(container.querySelector('[aria-label="Anatomy library"]')).not.toBeNull();
+    expect(named("Build").getAttribute("aria-current")).toBe("page");
+    await click(named("Build"));
+    await click(menuItem("Characters"));
     await waitFor(() => container.textContent?.includes("Import SillyTavern") ?? false);
     const description =
       "[Character(Alice)\n{\nAge(18)\nSex(Female)\nAppearance(Black hair + red eyes)\nOutfit(Black vest)\nPersonality(Shy (when alone) and compassionate.)\nDescription(Her parents left when she was 4 years old.)\nScenario(A school hallway.)\n}]";
@@ -234,8 +241,8 @@ describe("lorebook import journeys", () => {
     await mount();
     await create("Ari");
     await home();
-    await click(button("▤ My library"));
-    await click(button("Lorebooks"));
+    await click(named("File"));
+    await click(menuItem("Import lore and worlds…"));
     await waitFor(() => container.textContent?.includes("Import lorebook") ?? false);
     await upload(
       jsonFile({
@@ -270,7 +277,22 @@ describe("lorebook import journeys", () => {
     });
     const oldId = (await repo.listSessionIds())[0]!;
     expect((await repo.loadSession(oldId)).layers.some((l) => l.loreSource)).toBe(false);
+    await click(named("Build"));
+    await click(menuItem("Lorebooks"));
+    await waitFor(() => container.textContent?.includes("Review & link") ?? false);
+    expect(container.textContent).not.toContain("Import lorebook");
+    await click(button("Review & link"));
+    await waitFor(() => !!container.querySelector(".sb-lore-review"));
+
+    const discard = vi
+      .spyOn(window, "confirm")
+      .mockReturnValueOnce(false)
+      .mockReturnValueOnce(true);
     await click(named("kaampi Explore home"));
+    expect(discard).toHaveBeenCalledOnce();
+    expect(container.querySelector(".sb-lore-review")).not.toBeNull();
+    await click(named("kaampi Explore home"));
+    discard.mockRestore();
     await waitFor(() => !!container.querySelector(".sb-home-connection"));
     await create("Bea");
     await send("Tell me about the gate.", "It opens at dawn.");
@@ -283,8 +305,8 @@ describe("lorebook import journeys", () => {
 
   it("retains a failed import review for retry and cancelling never saves", async () => {
     await mount();
-    await click(button("▤ My library"));
-    await click(button("Lorebooks"));
+    await click(named("File"));
+    await click(menuItem("Import lore and worlds…"));
     await waitFor(() => container.textContent?.includes("Import lorebook") ?? false);
     await upload(jsonFile({ entries: [supportedEntry] }));
     await waitFor(() => !!container.querySelector(".sb-lore-review"));
@@ -307,7 +329,8 @@ describe("lorebook import journeys", () => {
 
   it("offers embedded character lore and saves character and approvals together", async () => {
     await mount();
-    await click(button("▤ My library"));
+    await click(named("Build"));
+    await click(menuItem("Characters"));
     await waitFor(() => container.textContent?.includes("Import SillyTavern") ?? false);
     const raw = {
       spec: "chara_card_v2",

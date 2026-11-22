@@ -37,7 +37,7 @@ export const mapTopics = [
     steps: [
       {
         title: "1. Open World Maps",
-        body: "Open My library → World Maps. The list on the left contains your worlds and their places. Select a world or place to edit its information, or choose Open Map Studio to work on its map.",
+        body: "Open Build → World Maps. The list on the left contains your worlds and their places. Select a world or place to edit its information, or choose Open Map Studio to work on its map.",
       },
       {
         title: "2. Create an overview",
@@ -140,7 +140,7 @@ export const mapTopics = [
       },
       {
         title: "2. Reuse a location template",
-        body: "Location templates in My library stores reusable starting definitions, such as Ruin or Inn. You can edit their descriptions, symbols and genre tags. On empty map ground, choose Add from template… and use a template to place an independent location. Changing that location does not change the template or its other copies.",
+        body: "Build → Location templates stores reusable starting definitions, such as Ruin or Inn. You can edit their descriptions, symbols and genre tags. On empty map ground, choose Add from template… and use a template to place an independent location. Changing that location does not change the template or its other copies.",
       },
       {
         title: "3. Put a place inside another place",

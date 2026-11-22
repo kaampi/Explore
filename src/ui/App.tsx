@@ -13,7 +13,8 @@ import { EngineProvider, useEngine, type ChatPhase } from "./EngineStore";
 import { StudioShell } from "./studio/StudioShell";
 import { ConnectionProvider } from "./connection/ConnectionProvider";
 import { HomeScreen } from "./home/HomeScreen";
-import { AppSwitcher } from "./home/AppSwitcher";
+import { ExploreNavigation } from "./home/ExploreNavigation";
+import { useLibraryBackup } from "./studio/useLibraryBackup";
 import { PlayWorkspace } from "./home/PlayWorkspace";
 import { ConversationLibrary } from "./conversations/ConversationLibrary";
 import { ThemeProvider, useAppearance } from "./themes/ThemeProvider";
@@ -138,8 +139,9 @@ function SandboxApp() {
   const [view, setView] = useState<
     "home" | "studio" | "play" | "conversations" | "ideas" | "guide"
   >("home");
-  const [lastLibraryView, setLastLibraryView] = useState<StudioView>("characters");
   const [studioView, setStudioView] = useState<StudioView>("characters");
+  const [studioDirty, setStudioDirty] = useState(false);
+  const [catalogRevision, setCatalogRevision] = useState(0);
   const [generation, setGeneration] = useState(0);
   const [phase, setPhase] = useState<ChatPhase>("idle");
   const currentPhase = useRef<ChatPhase>("idle");
@@ -261,10 +263,12 @@ function SandboxApp() {
       setLive(fresh);
       setGeneration((value) => value + 1);
       await refreshCatalog();
+      setStudioDirty(false);
       setView("play");
     });
   }
   async function openConversation(id: string) {
+    if (!canLeaveStudio()) return;
     await action(async () => {
       await persistCurrent();
       const next = live.current?.id === id ? live.current : await repo.loadSession(id);
@@ -274,6 +278,7 @@ function SandboxApp() {
         setLive(next);
         setGeneration((value) => value + 1);
       }
+      setStudioDirty(false);
       setView("play");
       await refreshCatalog();
     });
@@ -335,10 +340,29 @@ function SandboxApp() {
       await refreshCatalog();
     });
   }
+  function canLeaveStudio() {
+    return (
+      view !== "studio" ||
+      !studioDirty ||
+      confirm(studioView === "cutscenes" ? t("csDiscardQuestion") : t("navDiscard"))
+    );
+  }
+
+  const backup = useLibraryBackup({
+    repo,
+    canRestore: canLeaveStudio,
+    onRestored: () => {
+      setStudioDirty(false);
+      setCatalogRevision((revision) => revision + 1);
+    },
+  });
+
   function navigate(destination: "home" | "conversations" | "ideas" | "guide") {
+    if (destination === view || !canLeaveStudio()) return;
     report(
       action(async () => {
         await persistCurrent();
+        setStudioDirty(false);
         setView(destination);
         await refreshCatalog();
       }),
@@ -349,8 +373,10 @@ function SandboxApp() {
       setOperationError("Wait for the current reply to finish before opening the studio.");
       return;
     }
-    if (!["campaigns", "adventure"].includes(next)) setLastLibraryView(next);
-    setStudioView(next);
+    const destination = next === "places" ? "maps" : next;
+    if ((view === "studio" && destination === studioView) || !canLeaveStudio()) return;
+    setStudioDirty(false);
+    setStudioView(destination);
     setView("studio");
     setOperationError(null);
   }
@@ -362,6 +388,7 @@ function SandboxApp() {
       setLive(current);
       setResume(nextResume);
       setStudioView(current.campaignId ? "campaigns" : "adventure");
+      setStudioDirty(false);
       setView("studio");
       await refreshCatalog();
     });
@@ -388,7 +415,7 @@ function SandboxApp() {
         id={view === "play" ? (session?.id ?? null) : null}
         authorTheme={view === "play" ? session?.authorTheme : undefined}
       />
-      <header className="sb-header">
+      <header className="sb-header" data-play={view === "play" || undefined}>
         <div className="sb-header-start">
           <button
             type="button"
@@ -418,13 +445,29 @@ function SandboxApp() {
             </nav>
           )}
         </div>
-        <AppSwitcher onHome={() => navigate("home")} />
+        {view !== "play" && (
+          <ExploreNavigation
+            view={view === "studio" ? studioView : view}
+            openStudio={openStudio}
+            onIdeas={() => navigate("ideas")}
+            onConversations={() => navigate("conversations")}
+            onContinue={session ? () => report(openConversation(session.id)) : undefined}
+            resumeDisabled={working}
+            backup={backup}
+          />
+        )}
         <div className="sb-header-preferences">
           <CodexConnection />
           <HeaderLanguagePicker />
           <HeaderAppearanceToggle />
         </div>
       </header>
+      {backup.input}
+      {backup.notice && (
+        <p className="sb-backup-notice" role="status">
+          {backup.notice}
+        </p>
+      )}
       {operationError && (
         <div className="sb-operation-error" role="alert">
           <span>{operationError}</span>
@@ -456,76 +499,13 @@ function SandboxApp() {
         />
       ) : (
         <div className={`sb-workspace${view === "studio" ? " sb-workspace--studio" : ""}`}>
-          <aside className="sb-sidebar">
-            <span className="sb-eyebrow">{t("eyebrow")}</span>
-            <nav aria-label="kaampi Explore navigation">
-              <button
-                type="button"
-                className={view === "home" ? "is-active" : ""}
-                onClick={() => navigate("home")}
-              >
-                ◈ <span>{t("space")}</span>
-              </button>
-              <button
-                type="button"
-                className={view === "conversations" ? "is-active" : ""}
-                onClick={() => navigate("conversations")}
-              >
-                ◷ <span>{t("conversations")}</span>
-              </button>
-              <button
-                type="button"
-                className={view === "ideas" ? "is-active" : ""}
-                onClick={() => navigate("ideas")}
-              >
-                ✧ <span>{t("ideas")}</span>
-              </button>
-              <button
-                type="button"
-                className={
-                  view === "studio" && !["campaigns", "adventure"].includes(studioView)
-                    ? "is-active"
-                    : ""
-                }
-                onClick={() => openStudio(lastLibraryView)}
-              >
-                ▤ <span>{t("library")}</span>
-              </button>
-              <button
-                type="button"
-                className={
-                  view === "studio" && ["campaigns", "adventure"].includes(studioView)
-                    ? "is-active"
-                    : ""
-                }
-                onClick={() => openStudio("campaigns")}
-              >
-                ◇ <span>{t("adventures")}</span>
-              </button>
-              {session && (
-                <button
-                  type="button"
-                  disabled={working}
-                  onClick={() => report(openConversation(session.id))}
-                >
-                  ↗ <span>{t("continue")}</span>
-                </button>
-              )}
-            </nav>
-            <div className="sb-sidebar__quote">
-              <span aria-hidden="true">❧</span>
-              {t("tagline")}
-            </div>
-          </aside>
           {view === "studio" ? (
             <div className="sb-studio-wrap">
               <StudioShell
-                key={studioView}
-                initialView={studioView}
-                onViewChange={(next) => {
-                  setStudioView(next);
-                  if (!["campaigns", "adventure"].includes(next)) setLastLibraryView(next);
-                }}
+                key={catalogRevision}
+                view={studioView}
+                onViewChange={openStudio}
+                onDirtyChange={setStudioDirty}
                 sessionId={UI_SESSION_ID}
                 repo={repo}
                 resume={resume}
@@ -553,7 +533,7 @@ function SandboxApp() {
             />
           ) : (
             <HomeScreen
-              key={generation}
+              key={`${generation}-${catalogRevision}`}
               repo={repo}
               session={session}
               sessionId={UI_SESSION_ID}

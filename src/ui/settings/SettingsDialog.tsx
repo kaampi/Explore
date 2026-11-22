@@ -1,3 +1,4 @@
+import { CompanionAppSettings } from "../home/CompanionAppSettings";
 import { Modal } from "../components/Modal";
 import { AppearanceSettingsContent } from "../themes/AppearanceDialog";
 import { ConnectionHelp } from "../connection/ConnectionHelp";
@@ -23,6 +24,12 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
           <ConnectionHelp model={preferredModel} onModelChange={chooseModel} />
         </section>
       </div>
+      <section className="sb-companion-section" aria-labelledby="companion-settings-title">
+        <h3 className="sb-settings-column__title" id="companion-settings-title">
+          {t("navCompanions")}
+        </h3>
+        <CompanionAppSettings />
+      </section>
     </Modal>
   );
 }
