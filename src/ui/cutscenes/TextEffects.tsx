@@ -10,12 +10,14 @@ export function CutsceneTextLayout({
   overImage,
   style,
   hidden,
+  editControls,
   children,
 }: {
   text: TextCell;
   overImage: boolean;
   style?: CSSProperties;
   hidden?: boolean;
+  editControls?: ReactNode;
   children: ReactNode;
 }) {
   const { outline, strip } = text;
@@ -43,10 +45,21 @@ export function CutsceneTextLayout({
     <div
       className={`cutscene-reel__text cutscene-reel__text--${text.position}`}
       data-horizontal={text.horizontal}
+      data-positioned={text.box ? true : undefined}
+      style={
+        text.box
+          ? ({
+              "--cutscene-text-x": `${text.box.x}%`,
+              "--cutscene-text-y": `${text.box.y}%`,
+              "--cutscene-text-width": `${text.box.width}%`,
+            } as CSSProperties)
+          : undefined
+      }
     >
       <div
         className={`cutscene-reel__copy cutscene-reel__copy--${text.style} cutscene-reel__copy--size-${text.size} cutscene-reel__copy--font-${text.font}${overImage ? " cutscene-reel__copy--over-image" : ""}`}
         data-strip={strip ? (strip.enabled ? strip.style : "off") : undefined}
+        data-editable={editControls ? true : undefined}
         style={copyStyle}
         aria-hidden={hidden}
       >
@@ -59,6 +72,7 @@ export function CutsceneTextLayout({
         ) : (
           <p>{content}</p>
         )}
+        {editControls}
       </div>
     </div>
   );

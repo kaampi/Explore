@@ -880,3 +880,108 @@ it("sets a solid background from the timeline, previews it and saves its fade", 
     await ui.close();
   }
 });
+
+it("drags and resizes one text clip in the previews and restores the saved box during playback", async () => {
+  const ui = setup();
+  const saved = vi.fn();
+  const clip = (id: string, delay: number, endAt: number) => ({
+    id,
+    text: id === "first" ? "First line\nSecond line" : "Next clip",
+    in: { effect: "none", delay },
+    out: { effect: "stay" },
+    endAt,
+  });
+  const film = CutsceneFilmSchema.parse({
+    id: "test",
+    title: "Text layouts",
+    createdAt: "",
+    updatedAt: "",
+    beats: [{ id: "step", textClips: [clip("first", 0, 10), clip("next", 10, 12)] }],
+  });
+  try {
+    await act(async () =>
+      ui.root.render(
+        <CutsceneStudio
+          film={film}
+          previewTheme={PRESET_THEMES[0]!}
+          onClose={() => {}}
+          onSave={saved}
+        />,
+      ),
+    );
+    function textBox(scope: ParentNode = ui.host) {
+      return scope.querySelector<HTMLElement>(".cutscene-reel__text")!;
+    }
+    function geometry(scope: ParentNode = ui.host) {
+      const box = textBox(scope);
+      return ["x", "y", "width"].map((key) => box.style.getPropertyValue(`--cutscene-text-${key}`));
+    }
+    function setRects(scope: ParentNode) {
+      const box = textBox(scope);
+      box.closest(".cutscene-studio__poster-stage")!.getBoundingClientRect = () =>
+        ({ left: 100, top: 200, width: 800, height: 400 }) as DOMRect;
+      box.querySelector<HTMLElement>(".cutscene-reel__copy")!.getBoundingClientRect = () =>
+        ({ left: 140, top: 280, width: 240, height: 80 }) as DOMRect;
+    }
+    async function drag(
+      label: string,
+      dx: number,
+      dy: number,
+      scope = ui.host as ParentNode,
+      cancel = false,
+    ) {
+      setRects(scope);
+      const knob = ui.findButton(label, scope)!;
+      knob.setPointerCapture = vi.fn();
+      for (const [type, x, y] of [
+        ["pointerdown", 300, 320],
+        ["pointermove", 300 + dx / 2, 320 + dy / 2],
+        ["pointermove", 300 + dx, 320 + dy],
+        [cancel ? "pointercancel" : "pointerup", 300 + dx, 320 + dy],
+      ] as const) {
+        const event = new MouseEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          clientX: x,
+          clientY: y,
+        });
+        Object.assign(event, { pointerId: 1, isPrimary: true });
+        await act(async () => knob.dispatchEvent(event));
+        if (type === "pointermove") expect(textBox(scope).dataset.positioned).toBe("true");
+      }
+    }
+
+    expect(geometry()).toEqual(["", "", ""]);
+    await drag("Move text", 80, -32);
+    expect(geometry()).toEqual(["15%", "15%", "30%"]);
+    await drag("Resize text from the right", 80, 0);
+    expect(geometry()).toEqual(["15%", "15%", "40%"]);
+    await drag("Resize text from the left", -40, 0, ui.host, true);
+    expect(geometry()).toEqual(["15%", "15%", "40%"]);
+    await drag("Resize text from the left", -40, 0);
+    expect(geometry()).toEqual(["10%", "15%", "45%"]);
+    await ui.click("Undo");
+    expect(geometry()).toEqual(["15%", "15%", "40%"]);
+    await ui.click("Redo");
+    expect(geometry()).toEqual(["10%", "15%", "45%"]);
+
+    await ui.click("Text · First line\nSecond line · 0 sec to 10 sec");
+    const dialog = ui.dialog();
+    expect(geometry(dialog)).toEqual(["10%", "15%", "45%"]);
+    await drag("Move text", 0, 32, dialog);
+    expect(geometry(dialog)).toEqual(["10%", "25%", "45%"]);
+    await ui.closeDialog();
+    expect(geometry()).toEqual(["10%", "25%", "45%"]);
+    await ui.file("Save");
+    const restored = CutsceneFilmSchema.parse(saved.mock.lastCall?.[0]);
+    expect(restored.beats[0]?.textClips?.map(({ box }) => box)).toEqual([
+      { x: 10, y: 25, width: 45 },
+      undefined,
+    ]);
+    await ui.click("Play from the start");
+    expect(geometry()).toEqual(["10%", "25%", "45%"]);
+    expect(ui.findButton("Move text")).toBeUndefined();
+  } finally {
+    await ui.close();
+  }
+});

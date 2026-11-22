@@ -13,6 +13,7 @@ import {
   MIN_CLIP_MS,
   type CutsceneBeat,
   type CutsceneFilm,
+  type TextBox,
   type TextCell,
   type TextClip,
 } from "../../cutscenes/schema";
@@ -34,6 +35,7 @@ import { sceneImagesFromFile } from "../studio/portrait";
 import { PRESET_THEMES, type PlayTheme } from "../themes/theme";
 import { CutsceneFileMenu, CutsceneLibraryMenu } from "./CutsceneFileMenu";
 import { CutscenePlayer } from "./CutscenePlayer";
+import { EditableCutsceneText } from "./EditableCutsceneText";
 import {
   channelLabels,
   CutsceneFields,
@@ -719,7 +721,19 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
     );
   }
 
-  function posterContents(text?: TextCell) {
+  function posterContents(
+    text: TextCell | undefined,
+    editor?: {
+      clipId?: string | undefined;
+      pending?: NewText | undefined;
+      workspace?: boolean;
+    },
+  ) {
+    function placeText(box: TextBox) {
+      setSelection({ beatId: beat.id, channel: "text", textClipId: editor?.clipId });
+      setTransitionId(undefined);
+      updateText(editor?.clipId, editor?.pending, (cell) => cell && { ...cell, box });
+    }
     return (
       <>
         {poster && (
@@ -731,9 +745,23 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
         )}
         {text && (
           <OrnamentProvider theme={theme} simple={simpleFrames}>
-            <CutsceneTextLayout text={text} overImage={overBackdrop}>
-              {text.text}
-            </CutsceneTextLayout>
+            {editor ? (
+              <EditableCutsceneText
+                key={editor.clipId ?? beat.id}
+                text={text}
+                overBackdrop={overBackdrop}
+                onChange={placeText}
+                workspaceGesture={
+                  editor.workspace
+                    ? (event) => Boolean(previewWorkspace.pointerMode(event))
+                    : undefined
+                }
+              />
+            ) : (
+              <CutsceneTextLayout text={text} overImage={overBackdrop}>
+                {text.text}
+              </CutsceneTextLayout>
+            )}
           </OrnamentProvider>
         )}
       </>
@@ -887,7 +915,12 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
                     transform: `translate(${previewWorkspace.view.x}px, ${previewWorkspace.view.y}px) scale(${previewWorkspace.view.zoom})`,
                   }}
                 >
-                  {posterContents(posterText)}
+                  {posterContents(
+                    posterText,
+                    selectedTextClip || beat.text
+                      ? { clipId: selectedTextClip?.id, workspace: true }
+                      : undefined,
+                  )}
                 </div>
               </div>
             )}
@@ -995,6 +1028,7 @@ export function CutsceneStudio({ film, previewTheme, onSave, onClose }: Cutscene
               >
                 {posterContents(
                   dialogTextClip ?? (newText || beat.textClips ? undefined : beat.text),
+                  { clipId: dialogTextClip?.id, pending: newText },
                 )}
               </div>
             )}

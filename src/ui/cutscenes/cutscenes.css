@@ -129,6 +129,20 @@
 .cutscene-reel__text[data-horizontal="right"] > .cutscene-reel__copy {
   margin-inline-end: 0;
 }
+.cutscene-reel__text[data-positioned] {
+  position: absolute;
+  left: var(--cutscene-text-x);
+  top: var(--cutscene-text-y);
+  width: var(--cutscene-text-width);
+  transform: translateY(calc(-1 * var(--cutscene-text-y)));
+  margin: 0;
+  padding: 0;
+}
+.cutscene-reel__text[data-positioned] > .cutscene-reel__copy {
+  box-sizing: border-box;
+  width: 100%;
+  padding-inline: min(var(--space-4), 35%);
+}
 .cutscene-reel__copy[data-strip] > .cutscene-reel__ornament[data-orn-set] {
   padding: 0;
   border: 0;
@@ -145,9 +159,16 @@
   background: none;
   padding-inline: 0;
 }
+.cutscene-reel__text[data-positioned] > .cutscene-reel__copy[data-strip="off"] {
+  padding-inline: 0;
+}
 .cutscene-reel__copy[data-strip]:where(:not([data-strip="off"])) {
   background: var(--cutscene-strip-color);
   padding-inline: var(--cutscene-strip-padding);
+}
+.cutscene-reel__text[data-positioned]
+  > .cutscene-reel__copy[data-strip]:where(:not([data-strip="off"])) {
+  padding-inline: min(var(--cutscene-strip-padding), 35%);
 }
 .cutscene-reel__copy[data-strip="square"],
 .cutscene-reel__copy[data-strip="soft-edges"] {

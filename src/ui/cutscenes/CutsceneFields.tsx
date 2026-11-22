@@ -686,18 +686,26 @@ export function CutsceneFields({
               options={["small", "normal", "large"]}
               onChange={(size) => updateText({ size })}
             />
-            <Pick
-              label={t("csPosition")}
-              value={text.position}
-              options={["top", "middle", "bottom"]}
-              onChange={(position) => updateText({ position })}
-            />
-            <Pick
-              label={t("csTextHorizontalPosition")}
-              value={text.horizontal ?? "center"}
-              options={["left", "center", "right"]}
-              onChange={(horizontal) => updateText({ horizontal })}
-            />
+            {text.box ? (
+              <Button variant="quiet" onClick={() => updateText({ box: undefined })}>
+                {t("csResetTextBox")}
+              </Button>
+            ) : (
+              <>
+                <Pick
+                  label={t("csPosition")}
+                  value={text.position}
+                  options={["top", "middle", "bottom"]}
+                  onChange={(position) => updateText({ position })}
+                />
+                <Pick
+                  label={t("csTextHorizontalPosition")}
+                  value={text.horizontal ?? "center"}
+                  options={["left", "center", "right"]}
+                  onChange={(horizontal) => updateText({ horizontal })}
+                />
+              </>
+            )}
             <Pick
               label={t("csAlignment")}
               value={text.align}

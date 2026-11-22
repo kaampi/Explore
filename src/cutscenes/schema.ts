@@ -82,6 +82,15 @@ export const DEFAULT_TEXT_STRIP = {
   style: "rounded",
 } as const;
 
+export const MIN_TEXT_BOX_WIDTH = 5;
+const TextBoxSchema = z
+  .object({
+    x: Percentage,
+    y: Percentage,
+    width: z.number().min(MIN_TEXT_BOX_WIDTH).max(100),
+  })
+  .refine(({ x, width }) => x + width <= 100 + 1e-6);
+
 export const TextCellSchema = z.object({
   text: z.string().trim().min(1).max(1200),
   style: z.enum(["narrator", "title", "whisper", "shout", "letter"]).default("narrator"),
@@ -90,6 +99,7 @@ export const TextCellSchema = z.object({
   align: z.enum(["left", "center", "right"]).default("left"),
   font: z.enum(["reading", "heading"]).default("reading"),
   horizontal: z.enum(["left", "center", "right"]).optional(),
+  box: TextBoxSchema.optional(),
   color: HexColor.optional(),
   outline: z
     .object({
@@ -225,6 +235,7 @@ export type CutsceneBeat = z.infer<typeof BeatSchema>;
 export type ImageCell = z.infer<typeof ImageCellSchema>;
 export type SoundCell = z.infer<typeof SoundCellSchema>;
 export type TextCell = z.infer<typeof TextCellSchema>;
+export type TextBox = z.infer<typeof TextBoxSchema>;
 export type TextClip = z.infer<typeof TextClipSchema>;
 
 const unknownDate = "1970-01-01T00:00:00.000Z";
