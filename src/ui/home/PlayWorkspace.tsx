@@ -262,14 +262,16 @@ export function PlayWorkspace({
           />
         )}
         {settingsOpen && <StatusBar />}
-        {!canSend && !session.gateEncounter && !session.encounter && (
+        {!canSend && !session.gateEncounter && (
           <div className="sb-play-connection" role="status">
             <span>
-              {readiness === "checking"
-                ? "Checking your local AI…"
-                : readiness === "missing-model"
-                  ? "Choose an installed model to hear a reply."
-                  : "Your conversation is ready. Connect local AI to hear a reply."}
+              {t(
+                readiness === "checking"
+                  ? "pwAiChecking"
+                  : readiness === "empty" || readiness === "missing-model"
+                    ? "pwAiChooseModel"
+                    : "pwAiUnavailable",
+              )}
             </span>
             <button type="button" className="sb-link" onClick={() => setConnectionOpen(true)}>
               {t("pwSetUpAi")}
@@ -303,6 +305,7 @@ export function PlayWorkspace({
               <EncounterPanel
                 mapView={mapView}
                 backdrop={encounterBackdrop}
+                aiReady={canSend}
                 onSaveIdea={saveIdea}
                 onJournal={() => setJournalOpen(true)}
               />

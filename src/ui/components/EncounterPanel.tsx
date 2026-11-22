@@ -70,11 +70,13 @@ function lastTurnOf(session: Session): number {
 export function EncounterPanel({
   mapView,
   backdrop,
+  aiReady = true,
   onSaveIdea,
   onJournal,
 }: {
   mapView?: ReactNode;
   backdrop?: ReactNode;
+  aiReady?: boolean;
   /** Keeps a line of the story as an idea. Without it the lines have no "Save idea". */
   onSaveIdea?: (turns: number[]) => void;
   /** Opens the journal. */
@@ -172,6 +174,7 @@ export function EncounterPanel({
   useArrivalResidents(
     arrivedAt,
     !showingCutscene &&
+      aiReady &&
       !!session.adventure?.openWorld?.generateResidents &&
       !!arrivedAt &&
       !session.adventure.settled.includes(arrivedAt),

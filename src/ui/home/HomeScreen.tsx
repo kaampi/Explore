@@ -126,6 +126,11 @@ export function HomeScreen({
       cancelled = true;
     };
   }, [repo]);
+  async function startModel() {
+    const connection = discovery.state === "checking" ? await refresh() : discovery;
+    return initialModel(preferredModel, connection.models) || session?.runtime.model;
+  }
+
   async function startCharacter(
     character: CharacterTemplate,
     place?: PlaceTemplate,
@@ -134,8 +139,7 @@ export function HomeScreen({
     setBusy(true);
     setError(null);
     try {
-      const connection = discovery.state === "checking" ? await refresh() : discovery;
-      const model = initialModel(preferredModel, connection.models) || session?.runtime.model;
+      const model = await startModel();
       const voice = chatVoices.find((item) => item.id === voiceId);
       const ruleset = chatRulesets.find((item) => item.id === rulesetId);
       await onStart(
@@ -515,10 +519,7 @@ export function HomeScreen({
                     setBusy(true);
                     setError(null);
                     try {
-                      const connection =
-                        discovery.state === "checking" ? await refresh() : discovery;
-                      const model =
-                        initialModel(preferredModel, connection.models) || session?.runtime.model;
+                      const model = await startModel();
                       await onStart(await scenario.create(sessionId, model));
                       setRulesTest(false);
                     } catch (e) {
@@ -769,7 +770,7 @@ export function HomeScreen({
           places={places}
           rulesets={rulesets}
           sessionId={sessionId}
-          model={initialModel(preferredModel, discovery.models) || session?.runtime.model}
+          getModel={startModel}
           onStart={onStart}
           onClose={() => setExploring(null)}
         />

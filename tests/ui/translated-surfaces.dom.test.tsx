@@ -94,6 +94,7 @@ it("translates the dialog for exploring a world, name and all", async () => {
         places={places}
         rulesets={[]}
         sessionId="s"
+        getModel={async () => undefined}
         onStart={vi.fn(async () => {})}
         onClose={() => {}}
       />
