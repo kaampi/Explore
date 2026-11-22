@@ -5,6 +5,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { PlayWorkspace } from "../../src/ui/home/PlayWorkspace";
+import type { Discovery } from "../../src/ui/connection/connection";
 import { LanguageProvider } from "../../src/ui/i18n/LanguageProvider";
 import { connectedAdventureExample } from "../../src/library/playableCampaign";
 import { startPlayableCampaign } from "../../src/session/adventureStart";
@@ -13,6 +14,8 @@ import { INITIAL_GAME_MINUTES } from "../../src/state/gameClock";
 import type { Session } from "../../src/state/StateSchema";
 
 let session: Session;
+let discovery: Discovery;
+const populateResidents = vi.fn(async () => "skipped");
 let phase = "idle";
 let saveFails = false;
 const saveEncounter = vi.fn(() =>
@@ -24,15 +27,15 @@ vi.mock("../../src/ui/EngineStore", () => ({
     phase,
     setOllamaModel: () => {},
     saveEncounter,
+    populateResidents,
   }),
 }));
 vi.mock("../../src/ui/components/ChatPanel", () => ({
   ChatPanel: () => <div data-chat="true">Conversation</div>,
 }));
 vi.mock("../../src/ui/connection/ConnectionProvider", () => ({
-  useConnection: () => ({ discovery: {}, refresh: () => {}, chooseModel: () => {} }),
+  useConnection: () => ({ discovery, backend: "ollama", refresh: () => {}, chooseModel: () => {} }),
 }));
-vi.mock("../../src/ui/connection/connection", () => ({ modelReadiness: () => "ready" }));
 let activeTheme: Record<string, unknown> = { backgroundMode: "none", background: "#f4efe3" };
 let simpleFrames = false;
 vi.mock("../../src/ui/themes/ThemeProvider", () => ({
@@ -57,6 +60,7 @@ beforeEach(() => {
   phase = "idle";
   saveFails = false;
   saveEncounter.mockClear();
+  populateResidents.mockClear();
   const built = connectedAdventureExample();
   session = startPlayableCampaign(
     built.campaign,
@@ -66,6 +70,7 @@ beforeEach(() => {
     [built.realm],
     { characters: built.characters },
   );
+  discovery = { state: "available", models: [session.runtime.model] };
 });
 afterEach(() => vi.restoreAllMocks());
 
@@ -91,23 +96,26 @@ async function mount(options: { onHome?: (s: Session) => void; onAppearance?: ()
   const host = document.createElement("div");
   document.body.append(host);
   const root = createRoot(host);
-  await act(async () => {
-    root.render(
-      <LanguageProvider>
-        <PlayWorkspace
-          repo={repo}
-          onHome={options.onHome ?? (() => {})}
-          onAppearance={options.onAppearance ?? (() => {})}
-          onIdeas={() => {}}
-        />
-      </LanguageProvider>,
-    );
-  });
+  const render = () =>
+    act(async () => {
+      root.render(
+        <LanguageProvider>
+          <PlayWorkspace
+            repo={repo}
+            onHome={options.onHome ?? (() => {})}
+            onAppearance={options.onAppearance ?? (() => {})}
+            onIdeas={() => {}}
+          />
+        </LanguageProvider>,
+      );
+    });
+  await render();
   await act(async () => {
     await new Promise((resolve) => setTimeout(resolve, 40));
   });
   return {
     host,
+    render,
     close: async () => {
       await act(async () => root.unmount());
       host.remove();
@@ -505,3 +513,30 @@ for (const [name, query] of [
       await ui.close();
     }
   });
+
+it("offers AI setup in an adventure and waits for an available model before populating the current location", async () => {
+  session.adventure!.openWorld = { generateResidents: true };
+  discovery = { state: "checking", models: [] };
+  const ui = await mount();
+  try {
+    const notice = () => ui.host.querySelector(".sb-play-connection");
+    expect(notice()?.textContent).toContain("Checking the AI connection");
+    expect(populateResidents).not.toHaveBeenCalled();
+
+    discovery = { state: "available", models: ["another-model:latest"] };
+    await ui.render();
+    expect(notice()?.textContent).toContain("Choose an installed model");
+    expect(populateResidents).not.toHaveBeenCalled();
+    await act(async () => notice()?.querySelector("button")?.click());
+    expect(ui.host.querySelector('dialog[aria-label="Your local AI"]')).not.toBeNull();
+
+    discovery = { state: "available", models: [session.runtime.model] };
+    await ui.render();
+    expect(notice()).toBeNull();
+    expect(populateResidents).toHaveBeenCalledOnce();
+    await ui.render();
+    expect(populateResidents).toHaveBeenCalledOnce();
+  } finally {
+    await ui.close();
+  }
+});

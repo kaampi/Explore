@@ -16,7 +16,8 @@ HTMLDialogElement.prototype.close = function () {
   this.removeAttribute("open");
 };
 
-async function mount(onStart = vi.fn(async (_session: Session) => {})) {
+async function mount(getModel: () => Promise<string> = async () => "mock") {
+  const onStart = vi.fn(async (_session: Session) => {});
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   const repo = new IndexedDBRepository(new IDBFactory(), "explore-world");
   const inn = innVisitExample();
@@ -33,7 +34,7 @@ async function mount(onStart = vi.fn(async (_session: Session) => {})) {
         places={places}
         rulesets={[]}
         sessionId="free-play"
-        model="mock"
+        getModel={getModel}
         onStart={onStart}
         onClose={() => {}}
       />,
@@ -102,6 +103,29 @@ it("lists the places of the world to begin in, including the rooms of a building
     expect(options.some((text) => text?.includes("Brookmere / The Copper Lantern / Kitchen"))).toBe(
       true,
     );
+  } finally {
+    await ui.close();
+  }
+});
+
+it("waits for model discovery before it creates a world session", async () => {
+  let modelReady!: (value: string) => void;
+  const discovery = new Promise<string>((resolve) => {
+    modelReady = resolve;
+  });
+  const ui = await mount(() => discovery);
+  try {
+    const start = Array.from(ui.host.querySelectorAll("button")).find((button) =>
+      button.textContent?.startsWith("Explore this world"),
+    )!;
+    await act(async () => start.click());
+    expect(start.disabled).toBe(true);
+    expect(ui.onStart).not.toHaveBeenCalled();
+    await act(async () => {
+      modelReady("installed-model:latest");
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    });
+    expect(ui.onStart.mock.calls[0]?.[0].runtime.model).toBe("installed-model:latest");
   } finally {
     await ui.close();
   }

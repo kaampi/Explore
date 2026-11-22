@@ -17,7 +17,7 @@ export function ExploreWorldDialog({
   places,
   rulesets,
   sessionId,
-  model,
+  getModel,
   onStart,
   onClose,
 }: {
@@ -26,7 +26,7 @@ export function ExploreWorldDialog({
   places: PlaceTemplate[];
   rulesets: RulesetTemplate[];
   sessionId: string;
-  model?: string | undefined;
+  getModel: () => Promise<string | undefined>;
   onStart: (session: Session) => Promise<void>;
   onClose: () => void;
 }) {
@@ -45,11 +45,12 @@ export function ExploreWorldDialog({
     setBusy(true);
     setError(null);
     try {
-      const [characters, objects, anatomyTemplates, factions] = await Promise.all([
+      const [characters, objects, anatomyTemplates, factions, model] = await Promise.all([
         repo.listCharacters(),
         repo.listObjects(),
         repo.listAnatomyTemplates(),
         repo.listFactions(),
+        getModel(),
       ]);
       const { session } = startWorldExploration(
         world,
