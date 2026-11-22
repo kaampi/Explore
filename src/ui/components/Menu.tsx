@@ -318,6 +318,8 @@ export function MenuButton({
   size,
   className,
   bare,
+  children,
+  current,
 }: {
   label: string;
   items: readonly MenuItem[];
@@ -325,6 +327,8 @@ export function MenuButton({
   className?: string;
   /** Only the class given here, for a place that has its own look for the button. */
   bare?: boolean;
+  children?: ReactNode;
+  current?: boolean;
 }) {
   const [at, setAt] = useState<{ x: number; y: number } | null>(null);
   const button = useRef<HTMLButtonElement>(null);
@@ -351,6 +355,7 @@ export function MenuButton({
         title={label}
         aria-haspopup="menu"
         aria-expanded={at !== null}
+        aria-current={current ? "page" : undefined}
         onClick={(event) => {
           event.stopPropagation();
           if (at) {
@@ -361,7 +366,7 @@ export function MenuButton({
           setAt({ x: rect.left, y: rect.bottom + 4 });
         }}
       >
-        ⋯
+        {children ?? "⋯"}
       </button>
       {at && (
         <Menu

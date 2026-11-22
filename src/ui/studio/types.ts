@@ -2,6 +2,7 @@ export type StudioView =
   | "campaigns"
   | "adventure"
   | "lorebooks"
+  | "import-lore"
   | "characters"
   | "anatomy"
   | "places"

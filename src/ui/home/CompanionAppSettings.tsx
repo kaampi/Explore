@@ -28,22 +28,6 @@ const APPS = {
     repository: "https://github.com/kaampi/Comic",
   },
 };
-function AppLogo({ app, name }: { app: "write" | "explore" | "comic"; name: string }) {
-  return (
-    <>
-      <img
-        className="sb-switch-logo sb-switch-logo--light"
-        src={`/brand/kaampi-${app}.svg`}
-        alt={name}
-      />
-      <img
-        className="sb-switch-logo sb-switch-logo--dark"
-        src={`/brand/kaampi-${app}-dark.svg`}
-        alt={name}
-      />
-    </>
-  );
-}
 function readAddress(key: CompanionAppId): string {
   try {
     return (
@@ -65,7 +49,7 @@ const STATUS_COPY: Record<AppStatus["state"], string> = {
     "Automatic checks are available when kaampi Explore runs locally. You can still open the address yourself.",
 };
 
-export function AppSwitcher({ onHome }: { onHome: () => void }) {
+export function CompanionAppSettings() {
   const desktop = isTauri();
   const [opening, setOpening] = useState<CompanionAppId | null>(null);
   const [addresses, setAddresses] = useState(() => ({
@@ -145,71 +129,6 @@ export function AppSwitcher({ onHome }: { onHome: () => void }) {
       setOpening(null);
     }
   }
-  function savedStatus(key: CompanionAppId) {
-    const status = statuses[key];
-    return status?.address === addresses[key] ? status : undefined;
-  }
-  function appLink(key: CompanionAppId) {
-    const app = APPS[key],
-      status = savedStatus(key);
-    if (desktop)
-      return (
-        <span className="sb-companion-link">
-          <button
-            type="button"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "12px 10px",
-              minHeight: 44,
-            }}
-            disabled={opening !== null}
-            onClick={() => void launch(key, addresses[key])}
-            title={opening === key ? `Opening ${app.name}…` : `Open installed ${app.name}`}
-          >
-            <AppLogo app={key === "storybook" ? "write" : "comic"} name={app.name} />
-          </button>
-          <button
-            type="button"
-            className="sb-app-config"
-            aria-label={`${app.name} information`}
-            onClick={() => open(key)}
-          >
-            ⌄
-          </button>
-        </span>
-      );
-    return status?.state === "available" ? (
-      <span className="sb-companion-link">
-        <a
-          href={status.address}
-          target={`kaampi-${key}`}
-          rel="noreferrer"
-          onClick={(event) => {
-            event.preventDefault();
-            void launch(key, status.address);
-          }}
-          title={`Open ${app.name}`}
-        >
-          <AppLogo app={key === "storybook" ? "write" : "comic"} name={app.name} />
-          <i className="sb-app-online" aria-label="Available" />
-        </a>
-        <button
-          type="button"
-          className="sb-app-config"
-          aria-label={`${app.name} information and address`}
-          onClick={() => open(key)}
-        >
-          ⌄
-        </button>
-      </span>
-    ) : (
-      <button type="button" onClick={() => open(key)} title={`About ${app.name}`}>
-        <AppLogo app={key === "storybook" ? "write" : "comic"} name={app.name} />
-      </button>
-    );
-  }
   let validAddress = "";
   try {
     validAddress = selected ? safeAppAddress(address) || DEFAULT_APP_ADDRESSES[selected] : "";
@@ -220,13 +139,13 @@ export function AppSwitcher({ onHome }: { onHome: () => void }) {
     selected && statuses[selected]?.address === validAddress ? statuses[selected] : undefined;
   return (
     <>
-      <nav className="sb-apps" aria-label="Your creative apps">
-        {appLink("storybook")}
-        <button type="button" className="is-active" aria-current="page" onClick={onHome}>
-          <AppLogo app="explore" name="kaampi Explore" />
-        </button>
-        {appLink("comicbook")}
-      </nav>
+      <div className="sb-companion-settings">
+        {(Object.keys(APPS) as CompanionAppId[]).map((key) => (
+          <button key={key} type="button" className="sb-button" onClick={() => open(key)}>
+            {APPS[key].name}
+          </button>
+        ))}
+      </div>
       {selected && (
         <Modal title={APPS[selected].name} onClose={() => setSelected(null)}>
           <span className="sb-app-symbol" aria-hidden="true">

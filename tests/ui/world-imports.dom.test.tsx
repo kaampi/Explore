@@ -10,6 +10,14 @@ import { createSessionFromSetup } from "@session/createSession";
 import { newCampaignTemplate } from "@library/LibrarySchema";
 import { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 let root: Root, container: HTMLDivElement, reply: string;
+function menuItem(label: string) {
+  const item = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')).find(
+    (option) => option.textContent?.trim() === label,
+  );
+  if (!item) throw new Error(`Missing menu item: ${label}`);
+  return item;
+}
+
 function button(label: string): HTMLButtonElement {
   const element = Array.from(container.querySelectorAll("button")).find(
     (element) => (element.getAttribute("aria-label") || element.textContent?.trim()) === label,
@@ -186,8 +194,8 @@ async function selectValue(element: HTMLSelectElement, value: string) {
   });
 }
 async function openImports() {
-  await click(button("▤ My library"));
-  await click(button("Lorebooks"));
+  await click(named("File"));
+  await click(menuItem("Import lore and worlds…"));
   await waitFor(() => !!container.querySelector(".sb-lore-studio"));
 }
 const cards = [

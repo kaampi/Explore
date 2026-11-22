@@ -212,7 +212,7 @@ describe("conversation library journeys", () => {
       "Unsent private draft",
     );
     await home();
-    await click(button("◷ My conversations"));
+    await click(button("My conversations"));
     await waitFor(() => !!container.querySelector(".sb-conversation-library"));
     const repo = new IndexedDBRepository();
     const id = (await repo.listSessionIds())[0]!;
@@ -276,7 +276,7 @@ describe("conversation library journeys", () => {
     await repo.saveIdea(idea);
     await create("Elara");
     await home();
-    await click(button("◷ My conversations"));
+    await click(button("My conversations"));
     await waitFor(() => !!container.querySelector(".sb-conversation-library"));
     await click(named("Archive Conversation with Ari"));
     await waitFor(() => container.textContent?.includes("Archived (1)") === true);
@@ -311,7 +311,7 @@ describe("conversation library journeys", () => {
     await repo.close();
     await click(named("kaampi Explore home"));
     await waitFor(() => !!container.querySelector(".sb-home-connection"));
-    await click(button("↗ Continue exploring"));
+    await click(button("Continue exploring"));
     await waitFor(() => !!container.querySelector('[aria-label="Your message"]'));
     expect(container.querySelector(".chat-log")?.textContent).toContain("Ari closes the map case.");
   }, 15000);
@@ -351,7 +351,7 @@ describe("conversation library journeys", () => {
     });
     await repo.createConversation(saved);
     await mount();
-    await click(button("↗ Continue exploring"));
+    await click(button("Continue exploring"));
     await waitFor(() => !!container.querySelector('[aria-label="Your message"]'));
     await send("What did you find?", "Ari holds up a key.");
     await home();
@@ -374,7 +374,7 @@ describe("conversation library journeys", () => {
     await send("A second meeting.", "Elara talks about the sea.");
     await theme("Neon city");
     await home();
-    await click(button("◷ My conversations"));
+    await click(button("My conversations"));
     await waitFor(() => !!container.querySelector(".sb-conversation-library"));
     expect(container.querySelectorAll(".sb-conversation-card")).toHaveLength(2);
     await click(named("Rename Conversation with Ari"));
@@ -400,7 +400,7 @@ describe("conversation library journeys", () => {
         ?.style.getPropertyValue("--play-background"),
     ).toBe("#172e29");
     await home();
-    await click(button("◷ My conversations"));
+    await click(button("My conversations"));
     await waitFor(() => !!container.querySelector(".sb-conversation-library"));
     await click(button("Archived (1)"));
     await click(named("Restore Conversation with Elara"));
@@ -433,7 +433,7 @@ describe("conversation library journeys", () => {
     await home();
     expect(container.textContent).not.toContain("Pick up a conversation");
     expect(container.querySelectorAll(".sb-conversation-card")).toHaveLength(0);
-    await click(button("◷ My conversations"));
+    await click(button("My conversations"));
     await waitFor(() => !!container.querySelector(".sb-conversation-library"));
     await click(named("Continue Conversation with Ari"));
     await waitFor(() => !!container.querySelector('[aria-label="Your message"]'));
@@ -446,7 +446,7 @@ describe("conversation library journeys", () => {
     });
     root = createRoot(container);
     await mount();
-    await click(button("↗ Continue exploring"));
+    await click(button("Continue exploring"));
     await waitFor(() => !!container.querySelector('[aria-label="Your message"]'));
     expect(container.querySelector(".chat-log")?.textContent).toContain(
       "The map remains on the table.",
@@ -478,7 +478,7 @@ describe("conversation library journeys", () => {
     const repo = new IndexedDBRepository();
     expect(await repo.listSessionIds()).toHaveLength(1);
     await repo.close();
-    await click(button("↗ Continue exploring"));
+    await click(button("Continue exploring"));
     await waitFor(() => !!container.querySelector('[aria-label="Your message"]'));
     expect(container.querySelector(".chat-log")?.textContent).toContain("Ari keeps the note.");
   }, 15000);

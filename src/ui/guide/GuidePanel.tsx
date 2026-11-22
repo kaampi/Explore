@@ -199,7 +199,7 @@ export const GUIDE_TOPICS: Topic[] = [
     steps: [
       {
         title: "Worlds and places",
-        body: "Open My library → World Maps to create a world and its actual locations. Map Studio lets you paint terrain, place entities and connect routes. The Map Studio chapters below walk through these steps. Location templates are reusable starting definitions; placed locations belong to a particular world.",
+        body: "Open Build → World Maps to create a world and its actual locations. Map Studio lets you paint terrain, place entities and connect routes. The Map Studio chapters below walk through these steps. Location templates are reusable starting definitions; placed locations belong to a particular world.",
       },
       {
         title: "Lorebooks",
@@ -220,7 +220,7 @@ export const GUIDE_TOPICS: Topic[] = [
     steps: [
       {
         title: "Start small",
-        body: "Open Adventures and create or select an adventure. Connected adventure example provides a small working adventure: ask Edda about a missing messenger, visit the watchtower, read the note and report back. Test this scene starts a new saved playthrough. My conversations resumes an existing run.",
+        body: "Open Build → Adventures and create or select an adventure. Connected adventure example provides a small working adventure: ask Edda about a missing messenger, visit the watchtower, read the note and report back. Test this scene starts a new saved playthrough. My conversations resumes an existing run.",
       },
       {
         title: "A place and a scene are different",
@@ -476,7 +476,7 @@ const anatomyTopics: Topic[] = [
     steps: [
       {
         title: "1. Open Anatomy",
-        body: "In My library, open Anatomy under Characters & creatures. The Anatomy Library shows built-in and custom body plans. Open a plan to inspect its parts.",
+        body: "Open Build → Anatomy under Characters & creatures. The Anatomy Library shows built-in and custom body plans. Open a plan to inspect its parts.",
       },
       {
         title: "2. Explore the regions",

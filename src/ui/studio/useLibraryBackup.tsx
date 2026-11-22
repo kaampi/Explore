@@ -9,12 +9,14 @@ import {
 } from "@library/libraryBackup";
 import { downloadJson } from "./studioShared";
 
-export function LibraryBackupBar({
+export function useLibraryBackup({
   repo,
   onRestored,
+  canRestore,
 }: {
   repo: IndexedDBRepository;
   onRestored: () => void;
+  canRestore: () => boolean;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -48,7 +50,7 @@ export function LibraryBackupBar({
   async function importLibrary(files: FileList | null) {
     const file = files?.[0];
     if (fileRef.current) fileRef.current.value = "";
-    if (!file) return;
+    if (!file || busy || !canRestore()) return;
     if (
       !confirm(
         "Restore this backup? Cards with the same id are replaced. Cards only on this machine are kept.",
@@ -75,33 +77,19 @@ export function LibraryBackupBar({
     }
   }
 
-  return (
-    <div className="studio-nav__backup">
+  return {
+    busy,
+    notice,
+    exportLibrary,
+    chooseBackup: () => fileRef.current?.click(),
+    input: (
       <input
         ref={fileRef}
-        className="setup-file"
         type="file"
         accept="application/json,.json"
-        tabIndex={-1}
-        onChange={(e) => void importLibrary(e.target.files)}
+        hidden
+        onChange={(event) => void importLibrary(event.target.files)}
       />
-      <button
-        type="button"
-        className="studio-nav__tab"
-        disabled={busy}
-        onClick={() => void exportLibrary()}
-      >
-        Export library
-      </button>
-      <button
-        type="button"
-        className="studio-nav__tab"
-        disabled={busy}
-        onClick={() => fileRef.current?.click()}
-      >
-        Import backup
-      </button>
-      {notice ? <span className="studio-nav__backup-note">{notice}</span> : null}
-    </div>
-  );
+    ),
+  };
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslate } from "../i18n/LanguageProvider";
 import type { IndexedDBRepository } from "@persistence/IndexedDBRepository";
 import type { CharacterTemplate, CampaignTemplate, RealmTemplate } from "@library/LibrarySchema";
 import type { Lorebook } from "../../lore/LorebookSchema";
@@ -12,7 +13,16 @@ import { reviewAvtMigration, type AvtMigrationReview } from "../../lore/avtMigra
 import { buildAvtPlayableSession, type AvtSelection } from "../../lore/avtPlayableSession";
 import { downloadJson } from "../studio/studioShared";
 
-export function LoreStudio({ repo }: { repo: IndexedDBRepository }) {
+export function LoreStudio({
+  repo,
+  importing = false,
+  onDirtyChange,
+}: {
+  repo: IndexedDBRepository;
+  importing?: boolean;
+  onDirtyChange: (dirty: boolean) => void;
+}) {
+  const t = useTranslate();
   const [books, setBooks] = useState<Lorebook[]>([]);
   const [draft, setDraft] = useState<Lorebook | null>(null);
   const [characters, setCharacters] = useState<CharacterTemplate[]>([]);
@@ -184,6 +194,8 @@ export function LoreStudio({ repo }: { repo: IndexedDBRepository }) {
       setBusy(false);
     }
   }
+  const reviewing = Boolean(draft || avtPreview);
+  useEffect(() => onDirtyChange(reviewing || busy), [reviewing, busy, onDirtyChange]);
   const selected = draft ? selectedWorldEntries(draft) : [];
   const characterCount = selected.filter((e) => e.entity!.kind === "character").length;
   const placeCount = selected.filter((e) => e.entity!.kind === "location").length;
@@ -195,24 +207,25 @@ export function LoreStudio({ repo }: { repo: IndexedDBRepository }) {
     !draft.binding.targetId;
   return (
     <section className="sb-lore-studio">
-      <h1>Lorebooks</h1>
-      <p>
-        Import SillyTavern lore, AI Dungeon, OnlyWorlds, Azgaar, or Aventuras character, lorebook
-        and scenario JSON. Each import creates a separate copy with its original retained.
-      </p>
-      <input
-        ref={file}
-        type="file"
-        accept=".json,.png,application/json,image/png"
-        hidden
-        onChange={(event) => {
-          const picked = event.target.files?.[0];
-          event.target.value = "";
-          void importFile(picked);
-        }}
-      />
-      {!draft && !avtPreview && (
+      <h1>{t(importing ? "navImportLore" : "lorebooks")}</h1>
+      {importing && !draft && !avtPreview && (
         <>
+          <p>
+            Import SillyTavern lore, AI Dungeon, OnlyWorlds, Azgaar, or Aventuras character,
+            lorebook and scenario JSON. Each import creates a separate copy with its original
+            retained.
+          </p>
+          <input
+            ref={file}
+            type="file"
+            accept=".json,.png,application/json,image/png"
+            hidden
+            onChange={(event) => {
+              const picked = event.target.files?.[0];
+              event.target.value = "";
+              void importFile(picked);
+            }}
+          />
           <label className="sb-field">
             Import format
             <select
@@ -514,8 +527,9 @@ export function LoreStudio({ repo }: { repo: IndexedDBRepository }) {
             </button>
           </div>
         </>
-      ) : (
+      ) : !importing ? (
         <div className="sb-conversation-grid">
+          {!books.length && <p>{t("navLoreEmpty")}</p>}
           {books.map((book) => (
             <article className="sb-conversation-card" key={book.id}>
               <h2>{book.name}</h2>
@@ -554,7 +568,7 @@ export function LoreStudio({ repo }: { repo: IndexedDBRepository }) {
             </article>
           ))}
         </div>
-      )}
+      ) : null}
     </section>
   );
 }
