@@ -105,10 +105,13 @@ export function useWorkspaceView(horizontal = false, maxZoom = previewMaxZoom) {
     gesture.current = undefined;
     setMode(undefined);
   };
+  const pointerMode = (event: { ctrlKey: boolean }) =>
+    event.ctrlKey ? "zoom" : space.current && view.zoom > 1 ? "pan" : undefined;
   return {
     view,
     maxZoom,
     mode,
+    pointerMode,
     reset: () => setView(origin),
     zoomBy: (factor: number) => {
       const surface = viewport.current;
@@ -153,11 +156,7 @@ export function useWorkspaceView(horizontal = false, maxZoom = previewMaxZoom) {
       },
       onPointerDown: (event: PointerEvent<HTMLDivElement>) => {
         if (event.button !== 0 || !event.isPrimary || gesture.current) return;
-        const nextMode = event.ctrlKey
-          ? "zoom"
-          : space.current && view.zoom > 1
-            ? "pan"
-            : undefined;
+        const nextMode = pointerMode(event);
         if (!nextMode) return;
         const surface = event.currentTarget;
         const rect = surface.getBoundingClientRect();

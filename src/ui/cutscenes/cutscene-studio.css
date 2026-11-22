@@ -266,6 +266,52 @@
   height: 100%;
   object-fit: cover;
 }
+.cutscene-studio__poster-stage .cutscene-reel__copy[data-editable] {
+  position: relative;
+  outline: 1px solid var(--photo-text);
+  outline-offset: -1px;
+}
+.cutscene-studio__text-control {
+  position: absolute;
+  inset-block: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  pointer-events: auto;
+  touch-action: none;
+}
+.cutscene-studio__text-control:focus-visible {
+  outline: 2px solid var(--photo-text);
+  outline-offset: -2px;
+}
+.cutscene-studio__text-control[data-edge="move"] {
+  inset-inline: 0;
+  cursor: grab;
+}
+.cutscene-studio__text-control[data-edge="move"][data-dragging="true"] {
+  cursor: grabbing;
+}
+.cutscene-studio__text-control[data-edge="left"],
+.cutscene-studio__text-control[data-edge="right"] {
+  width: min(1.25rem, 32%);
+  cursor: ew-resize;
+}
+.cutscene-studio__text-control[data-edge="left"] {
+  left: 0;
+}
+.cutscene-studio__text-control[data-edge="right"] {
+  right: 0;
+}
+.cutscene-studio__text-control:not([data-edge="move"])::after {
+  content: "";
+  display: block;
+  width: 0.35rem;
+  height: 0.9rem;
+  margin-inline: auto;
+  border-radius: var(--radius-sm);
+  background: var(--photo-text);
+  box-shadow: 0 0 0 1px var(--scrim);
+}
 .cutscene-studio__zoom {
   display: flex;
   align-items: center;
