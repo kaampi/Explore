@@ -125,8 +125,12 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
     </Context.Provider>
   );
 }
+export function useOptionalConnection() {
+  return useContext(Context);
+}
+
 export function useConnection(): Connection {
-  const connection = useContext(Context);
+  const connection = useOptionalConnection();
   if (!connection) throw new Error("AI connection requires ConnectionProvider.");
   return connection;
 }

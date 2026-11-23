@@ -35,6 +35,7 @@ import {
   type InterviewLibrary,
   type WorldPart,
 } from "./GuidePlanEditor";
+import { GuideAssistant } from "./GuideAssistant";
 import "./adventure-guide.css";
 
 type Props = {
@@ -424,6 +425,8 @@ function GuideWorkspace({
     ?.worldMap?.nodes.find(({ id }) => id === draft.opening.place.nodeId);
   const arrivalSuggestion = node?.intro || selectedPlace?.note || node?.description;
   const future = draft.later[0];
+  const assistantChoice =
+    question === "action" ? currentChoice : question === "outcome" ? outcome : undefined;
   const questionBody =
     question &&
     {
@@ -724,6 +727,24 @@ function GuideWorkspace({
                 <fieldset disabled={busy || conflict} className="guide-answer">
                   {questionBody}
                 </fieldset>
+                <GuideAssistant
+                  key={JSON.stringify([
+                    draft.id,
+                    question,
+                    assistantChoice?.id,
+                    question === "outcome" ? assistantChoice?.label : undefined,
+                    question === "world" ? worldPart : undefined,
+                  ])}
+                  draft={draft}
+                  question={question}
+                  choice={assistantChoice}
+                  worldPart={question === "world" ? worldPart : undefined}
+                  disabled={busy || conflict}
+                  edit={(change) => {
+                    if (question === "outcome") setOutcomeId(assistantChoice?.id);
+                    edit(change);
+                  }}
+                />
                 <div className="guide-buttons">
                   <button
                     type="button"

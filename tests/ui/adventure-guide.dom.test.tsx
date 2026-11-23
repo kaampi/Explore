@@ -14,6 +14,7 @@ import type { Session } from "../../src/state/StateSchema";
 import { StateEngine } from "../../src/state/StateEngine";
 import { AdventureGuide } from "../../src/ui/studio/AdventureGuide";
 import { CampaignStudio } from "../../src/ui/studio/CampaignStudio";
+import { ConnectionProvider } from "../../src/ui/connection/ConnectionProvider";
 import { LanguageProvider } from "../../src/ui/i18n/LanguageProvider";
 
 beforeAll(() => {
@@ -25,7 +26,7 @@ beforeAll(() => {
   };
 });
 
-function mountGuide(repo: IndexedDBRepository, language: "sv" | "en" = "sv") {
+function mountGuide(repo: IndexedDBRepository, language: "sv" | "en" = "sv", connected = false) {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   const host = document.body.appendChild(document.createElement("div"));
   const root = createRoot(host);
@@ -116,7 +117,13 @@ function mountGuide(repo: IndexedDBRepository, language: "sv" | "en" = "sv") {
       await act(async () =>
         root.render(
           <LanguageProvider>
-            <Harness />
+            {connected ? (
+              <ConnectionProvider>
+                <Harness />
+              </ConnectionProvider>
+            ) : (
+              <Harness />
+            )}
           </LanguageProvider>,
         ),
       );
@@ -174,6 +181,10 @@ it("creates a writer's own playable opening with local help and keeps the respon
     await view.click("Nästa");
     await view.click("Be någon om hjälp");
     await view.click("Nästa");
+    await view.click("Bolla med Assistenten");
+    await view.click("Skicka till Assistenten");
+    expect(view.host.textContent).toContain("Assistenten är inte tillgänglig just nu.");
+    await view.click("Bolla med Assistenten");
     await view.click("Hjälp mig hitta på");
     await view.click("Personen vill ha något i gengäld.");
     await view.fill("Följd", "Perrongvärden ber Sam hålla upp dörren.");
@@ -223,6 +234,195 @@ it("creates a writer's own playable opening with local help and keeps the respon
     expect(fetcher).not.toHaveBeenCalled();
   } finally {
     await view.cleanup();
+    vi.unstubAllGlobals();
+  }
+});
+
+function ollamaAnswer(answer: object | string) {
+  return new Response(
+    [
+      JSON.stringify({
+        message: { content: typeof answer === "string" ? answer : JSON.stringify(answer) },
+      }),
+      JSON.stringify({ done: true }),
+      "",
+    ].join("\n"),
+  );
+}
+
+function mockGuideModel(complete: (init?: RequestInit) => Response | Promise<Response>) {
+  const chat = vi.fn(complete);
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith("/api/tags")) return Response.json({ models: [{ name: "guide:latest" }] });
+      if (url.endsWith("/api/show")) return Response.json({ capabilities: ["completion"] });
+      if (url.endsWith("/api/chat")) return chat(init);
+      throw new Error(`Unexpected request to ${url}`);
+    }),
+  );
+  return chat;
+}
+
+it("uses AI only on request, applies synopsis answers one by one, and plays the opening", async () => {
+  const repo = new IndexedDBRepository(new IDBFactory(), "guide-synopsis");
+  const draft = newGuideInterview();
+  draft.premise =
+    "Budcyklisten Sam kommer till stationen. En väska står vid bänken. Sam öppnar väskan och hittar ett brev.";
+  draft.secrets = "Text som aldrig skickas till Assistenten";
+  await repo.saveGuideInterview(draft, undefined);
+  const chat = mockGuideModel(() =>
+    ollamaAnswer({
+      role: "Sam",
+      place: "Stationen",
+      arrival: "En väska står ensam vid bänken.",
+      action: "Öppna väskan",
+      outcome: "I väskan ligger ett brev.",
+    }),
+  );
+  const view = mountGuide(repo, "sv", true);
+  try {
+    await view.open();
+    await view.click("Tolka synopsis med AI");
+    expect(chat).not.toHaveBeenCalled();
+    await view.click("Tolka synopsis");
+    await view.until(() => expect(view.host.textContent).toContain("I väskan ligger ett brev."));
+    const request = JSON.parse(chat.mock.calls[0]?.[0]?.body as string);
+    expect(request.model).toBe("guide:latest");
+    expect(JSON.parse(request.messages[1].content)).toEqual({ synopsis: draft.premise });
+    expect(await repo.loadGuideInterview()).toEqual(draft);
+    const cards = Array.from(view.host.querySelectorAll(".guide-assistant-suggestion"));
+    const apply = (index: number) => cards[index]!.querySelector("button")!;
+    expect(apply(4).disabled).toBe(true);
+    await act(async () => apply(0).click());
+    await act(async () => {
+      await vi.waitFor(async () => {
+        const saved = await repo.loadGuideInterview();
+        expect(saved?.role.name).toBe("Sam");
+        expect(saved?.opening.place.name).toBe("");
+      });
+    });
+    for (const index of [1, 2, 3, 4]) {
+      expect(apply(index).disabled).toBe(false);
+      await act(async () => apply(index).click());
+    }
+    await act(async () => {
+      await vi.waitFor(async () => {
+        const saved = await repo.loadGuideInterview();
+        expect(saved?.choices[0]?.outcome).toBe("I väskan ligger ett brev.");
+        expect(saved?.premise).toBe(draft.premise);
+      });
+    });
+    await view.click("Nästa");
+    await view.click("Granska och skapa äventyr");
+    await view.click("Godkänn och skapa");
+    await view.until(() => expect(view.host.textContent).toContain("Äventyret är sparat"));
+    await view.click("Provspela från början");
+    await view.until(() => expect(view.onStart).toHaveBeenCalledTimes(1));
+    const [session] = view.onStart.mock.calls[0]!;
+    const engine = new StateEngine(session, new EventLog());
+    const game = session.encounter!;
+    engine.executeEncounterAction({
+      id: "ai-opening-choice",
+      expectedRevision: game.state.revision,
+      expectedSceneId: game.definition.id,
+      action: { kind: "interaction", interactionId: game.definition.interactions[0]!.id },
+    });
+    expect(engine.getSession().encounter?.history[0]?.events).toContainEqual(
+      expect.objectContaining({ kind: "interaction", text: "I väskan ligger ett brev." }),
+    );
+    expect(chat).toHaveBeenCalledTimes(1);
+  } finally {
+    await view.cleanup();
+    localStorage.removeItem("sandboxai-preferred-model");
+    vi.unstubAllGlobals();
+  }
+});
+
+it("keeps discussion separate, recovers from invalid AI output, and cancels on leaving a question", async () => {
+  const repo = new IndexedDBRepository(new IDBFactory(), "guide-discussion");
+  const draft = newGuideInterview();
+  draft.premise = "Ett tåg står still på en bro.";
+  draft.question = "direction";
+  draft.subject = "direction";
+  await repo.saveGuideInterview(draft, undefined);
+  let inFlight: AbortSignal | null | undefined;
+  const chat = mockGuideModel(() => ollamaAnswer({}));
+  chat
+    .mockImplementationOnce(() => ollamaAnswer("Fel format"))
+    .mockImplementationOnce(() =>
+      ollamaAnswer({
+        reply: "Bygg spänningen kring instängdheten.",
+        suggestion: "Samarbeta under tidspress.",
+      }),
+    )
+    .mockImplementationOnce(() =>
+      ollamaAnswer({
+        reply: "Nyfikenhet passar också.",
+        suggestion: "Undersök varför tåget stannade.",
+      }),
+    )
+    .mockImplementationOnce((init) => {
+      inFlight = init?.signal;
+      return new Promise((_, reject) => {
+        inFlight?.addEventListener(
+          "abort",
+          () => reject(new DOMException("Aborted", "AbortError")),
+          { once: true },
+        );
+      });
+    });
+  const view = mountGuide(repo, "sv", true);
+  try {
+    await view.open();
+    await view.click("Bolla med Assistenten");
+    await view.fill("Fråga eller idé att bolla", "Kan vi göra det spännande?");
+    await view.click("Skicka till Assistenten");
+    await view.until(() =>
+      expect(view.host.textContent).toContain("Assistenten kunde inte ge ett svar."),
+    );
+    expect((await repo.loadGuideInterview())?.intention).toBe("");
+    await view.click("Skicka till Assistenten");
+    await view.until(() => expect(view.host.textContent).toContain("Samarbeta under tidspress."));
+    expect(view.field("Vad spelaren ska uppleva", ".guide-question").value).toBe("");
+    await view.fill("Vad spelaren ska uppleva", "Jag tänker mig nyfikenhet.", ".guide-question");
+    const useSuggestion = view.host.querySelector<HTMLButtonElement>(
+      ".guide-assistant-suggestion button",
+    )!;
+    expect(useSuggestion.disabled).toBe(true);
+    await view.fill("Fråga eller idé att bolla", "Kan vi göra det mindre stressigt?");
+    await view.click("Skicka till Assistenten");
+    await view.until(() =>
+      expect(view.host.textContent).toContain("Undersök varför tåget stannade."),
+    );
+    const body = JSON.parse(chat.mock.calls[2]?.[0]?.body as string);
+    expect(JSON.parse(body.messages[1].content).history).toEqual([
+      {
+        message: "Kan vi göra det spännande?",
+        reply: "Bygg spänningen kring instängdheten.",
+        suggestion: "Samarbeta under tidspress.",
+      },
+    ]);
+    await view.click("Använd som svar");
+    await view.until(() =>
+      expect(view.field("Vad spelaren ska uppleva", ".guide-question").value).toBe(
+        "Undersök varför tåget stannade.",
+      ),
+    );
+    await view.click("Skicka till Assistenten");
+    await view.until(() => expect(inFlight).toBeDefined());
+    await view.click("Nästa");
+    expect(inFlight?.aborted).toBe(true);
+    await act(async () => {
+      await vi.waitFor(async () => {
+        const saved = await repo.loadGuideInterview();
+        expect(saved?.question).toBeNull();
+        expect(saved?.intention).toBe("Undersök varför tåget stannade.");
+      });
+    });
+  } finally {
+    await view.cleanup();
+    localStorage.removeItem("sandboxai-preferred-model");
     vi.unstubAllGlobals();
   }
 });
