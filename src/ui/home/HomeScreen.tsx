@@ -28,7 +28,7 @@ import {
 import { formatPersonName } from "@library/personName";
 import type { Session } from "@state/StateSchema";
 import { primaryCharacter } from "@session/createSession";
-import { sessionFromCampaignScene } from "@session/campaignStart";
+import { sessionFromAdventureStart } from "@session/campaignStart";
 import type { StudioView } from "../studio/types";
 import { portraitSrc } from "../studio/portrait";
 import { MorphPortrait } from "../studio/MorphPortrait";
@@ -42,6 +42,7 @@ import { HomeConnection } from "../connection/ConnectionHelp";
 import { WorldArtwork } from "./WorldArtwork";
 import { CoreManuscripts } from "./CoreManuscripts";
 import { ExploreWorldDialog } from "./ExploreWorldDialog";
+import { AdventureGuide } from "../studio/AdventureGuide";
 
 export function HomeScreen({
   repo,
@@ -50,6 +51,7 @@ export function HomeScreen({
   onResume,
   onStart,
   onStudio,
+  onGuideStoryboard,
   conversations = [],
   navigationBusy = false,
 }: {
@@ -61,6 +63,7 @@ export function HomeScreen({
   onResume: () => void;
   onStart: (session: Session) => Promise<void>;
   onStudio: (view: StudioView) => void;
+  onGuideStoryboard?: (campaignId: string) => void;
 }) {
   const t = useTranslate();
   const [characters, setCharacters] = useState<CharacterTemplate[]>([]);
@@ -90,6 +93,7 @@ export function HomeScreen({
   const [world, setWorld] = useState<RealmTemplate | null>(null);
   const [exploring, setExploring] = useState<RealmTemplate | null>(null);
   const [campaign, setCampaign] = useState<CampaignTemplate | null>(null);
+  const [guideOpen, setGuideOpen] = useState(false);
   const [placeId, setPlaceId] = useState("");
   const [characterId, setCharacterId] = useState("");
   useEffect(() => {
@@ -160,30 +164,33 @@ export function HomeScreen({
       setBusy(false);
     }
   }
-  async function startCampaign(sceneId: string) {
+  async function startCampaign(sceneId?: string) {
     if (!campaign) return;
-    const scene = campaign.scenes.find((item) => item.id === sceneId);
-    if (!scene) return;
     setBusy(true);
     setError(null);
     try {
-      const [objects, voices, rulesets] = await Promise.all([
-        repo.listObjects(),
-        repo.listVoices(),
-        repo.listRulesets(),
-      ]);
-      const built = sessionFromCampaignScene(
+      const guided = campaign.startSceneId !== undefined;
+      const [savedCampaign, startPlaces, startRealms, objects, voices, rulesets] =
+        await Promise.all([
+          guided ? repo.loadCampaign(campaign.id) : campaign,
+          guided ? repo.listPlaces() : places,
+          guided ? repo.listRealms() : realms,
+          repo.listObjects(),
+          repo.listVoices(),
+          repo.listRulesets(),
+        ]);
+      const built = sessionFromAdventureStart(
         {
-          campaign,
-          scene,
-          places,
-          realms,
+          campaign: savedCampaign,
+          places: startPlaces,
+          realms: startRealms,
           characters,
           objects,
           voices,
           rulesets,
         },
         sessionId,
+        sceneId,
       );
       if (!built.ok) throw new Error(built.reason);
       await onStart(built.session);
@@ -267,6 +274,19 @@ export function HomeScreen({
       disabled={busy}
     />
   );
+  if (guideOpen) {
+    return (
+      <AdventureGuide
+        repo={repo}
+        sessionId={sessionId}
+        close={() => setGuideOpen(false)}
+        onStart={onStart}
+        openStoryboard={onGuideStoryboard}
+        onCreated={async () => setCampaigns(await repo.listCampaigns())}
+      />
+    );
+  }
+
   return (
     <main className="sb-home sb-home--welcome">
       <section className="sb-hero sb-hero--welcome" aria-label="Welcome to Explore">
@@ -288,6 +308,7 @@ export function HomeScreen({
         </div>
       </section>
       <PlayStartPaths
+        onGuide={() => setGuideOpen(true)}
         onFree={() => setFreePicker(true)}
         onStudio={(view) => {
           if (view === "rulesets") setRulesTest(true);
@@ -777,28 +798,43 @@ export function HomeScreen({
       )}
       {campaign && (
         <Modal title={campaign.name} onClose={() => setCampaign(null)}>
-          <p className="sb-muted">
-            {campaign.playerIntro || "Choose where to enter the adventure."}
-          </p>
+          {(campaign.playerIntro || campaign.startSceneId === undefined) && (
+            <p className="sb-muted">
+              {campaign.playerIntro || "Choose where to enter the adventure."}
+            </p>
+          )}
           <div className="sb-scene-list">
-            {campaign.scenes.map((scene) => (
+            {campaign.startSceneId !== undefined ? (
               <button
                 type="button"
                 className="sb-scene-choice"
-                key={scene.id}
                 disabled={busy}
-                onClick={() => void startCampaign(scene.id)}
+                onClick={() => void startCampaign()}
               >
-                <strong>
-                  {scene.name ||
-                    places.find((place) => place.id === scene.placeId)?.name ||
-                    "Untitled scene"}
-                </strong>
-                <span>{t("hsEnterScene")}</span>
+                <strong>{t("hsPlayAdventure")}</strong>
               </button>
-            ))}
+            ) : (
+              campaign.scenes.map((scene) => (
+                <button
+                  type="button"
+                  className="sb-scene-choice"
+                  key={scene.id}
+                  disabled={busy}
+                  onClick={() => void startCampaign(scene.id)}
+                >
+                  <strong>
+                    {scene.name ||
+                      places.find((place) => place.id === scene.placeId)?.name ||
+                      "Untitled scene"}
+                  </strong>
+                  <span>{t("hsEnterScene")}</span>
+                </button>
+              ))
+            )}
           </div>
-          {campaign.scenes.length === 0 && <p className="sb-muted">{t("hsThisAdventureHasNo")}</p>}
+          {campaign.startSceneId === undefined && campaign.scenes.length === 0 && (
+            <p className="sb-muted">{t("hsThisAdventureHasNo")}</p>
+          )}
           {error && (
             <p role="alert" className="sb-error">
               {error}

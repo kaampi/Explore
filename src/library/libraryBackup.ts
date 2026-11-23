@@ -66,6 +66,7 @@ export type LibraryBackupStore = {
   saveRuleset(template: RulesetTemplate): Promise<void>;
   saveObject(template: ObjectTemplate): Promise<void>;
   saveCampaign(template: CampaignTemplate): Promise<void>;
+  restoreCampaign?(template: CampaignTemplate): Promise<void>;
 };
 
 export type RestoreReport = {
@@ -258,7 +259,10 @@ export async function restoreLibraryBackup(
         throw new LibraryBackupError("Cut-scene storage is not available.");
       await store.saveCutsceneFilm(film);
     });
-  for (const item of backup.campaigns) await write(() => store.saveCampaign(item));
+  for (const item of backup.campaigns)
+    await write(() =>
+      store.restoreCampaign ? store.restoreCampaign(item) : store.saveCampaign(item),
+    );
   for (const item of backup.lorebooks ?? [])
     await write(async () => {
       if (!store.saveLorebook) throw new Error("Lorebook storage is not available.");

@@ -1,4 +1,8 @@
-import type { CampaignScene } from "./LibrarySchema";
+import type { CampaignScene, CampaignTemplate } from "./LibrarySchema";
+
+export function savedAdventureStart(campaign: CampaignTemplate): CampaignScene | undefined {
+  return campaign.scenes.find((scene) => scene.id === campaign.startSceneId && scene.encounter);
+}
 
 /**
  * - playable: built in Storyboard, with prepared actions the engine decides.
@@ -18,10 +22,10 @@ export function sceneFormat(scene: CampaignScene): SceneFormat {
 }
 
 /**
- * A scene made from a manuscript event that nothing has been built in yet. It is a note to work
+ * A manuscript or guide scene that nothing has been built in yet. It is a note to work
  * from, not a part of the adventure: it never stops the adventure from being tested, and it is
  * left out when a game starts, until it is made playable.
  */
 export function isOpenDraft(scene: CampaignScene): boolean {
-  return !!scene.draft && !scene.encounter;
+  return !!(scene.draft || scene.guideDraftNote) && !scene.encounter;
 }

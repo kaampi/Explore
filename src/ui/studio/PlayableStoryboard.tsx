@@ -52,7 +52,7 @@ import {
   type SceneField,
   type StoryboardIssue,
 } from "./storyboardReadiness";
-import { isOpenDraft, sceneFormat } from "../../library/sceneFormat";
+import { isOpenDraft, savedAdventureStart, sceneFormat } from "../../library/sceneFormat";
 import { checkPreview, statName } from "../../game/narration";
 import { SceneParts } from "./SceneParts";
 import { ScenePositions } from "./ScenePositions";
@@ -95,6 +95,7 @@ export function PlayableStoryboard({
   openWorldNote,
   library,
   initialStep = "scenes",
+  initialSceneId,
 }: {
   campaign: CampaignTemplate;
   places: PlaceTemplate[];
@@ -116,6 +117,7 @@ export function PlayableStoryboard({
   onOpenLibrary?: ((what: "people" | "things") => void) | undefined;
   /** Which step to show first. */
   initialStep?: "scenes" | "connections" | "test";
+  initialSceneId?: string | undefined;
   /** Makes a place (and a world if there is none). Returns the place and the adventure to continue with. */
   onCreatePlace?: (
     name: string,
@@ -153,7 +155,9 @@ export function PlayableStoryboard({
       active = false;
     };
   }, [filmRepo]);
-  const [sceneId, setSceneId] = useState(campaign.scenes[0]?.id ?? ""),
+  const [sceneId, setSceneId] = useState(
+      campaign.scenes.find(({ id }) => id === initialSceneId)?.id ?? campaign.scenes[0]?.id ?? "",
+    ),
     [linkId, setLinkId] = useState("");
   const [newActionId, setNewActionId] = useState("");
   const [newPlaceName, setNewPlaceName] = useState("");
@@ -164,7 +168,8 @@ export function PlayableStoryboard({
   const [sectionId, setSectionId] = useState("");
   const [markedScenes, setMarkedScenes] = useState<ReadonlySet<string>>(new Set());
   const [step, setStep] = useState<"scenes" | "connections" | "test">(initialStep);
-  const [testSceneId, setTestSceneId] = useState(campaign.scenes[0]?.id ?? "");
+  const savedStart = savedAdventureStart(campaign);
+  const [testSceneId, setTestSceneId] = useState(savedStart?.id ?? campaign.scenes[0]?.id ?? "");
   const [focus, setFocus] = useState<SceneField | "objective" | null>(null);
   const inspector = useRef<HTMLElement>(null);
   const layout = useRef<HTMLDivElement>(null);
@@ -227,7 +232,7 @@ export function PlayableStoryboard({
   const buildable = campaign.scenes.filter(
     (item) => sceneFormat(item) !== "earlier" && !isOpenDraft(item),
   );
-  const testScene = buildable.find((item) => item.id === testSceneId) ?? buildable[0];
+  const testScene = buildable.find((item) => item.id === testSceneId) ?? savedStart ?? buildable[0];
   const connectionSource =
     campaign.scenes.find((item) => item.id === connectionSourceId) ?? scene ?? testScene;
   const linkedScenes = new Set(
@@ -518,7 +523,12 @@ export function PlayableStoryboard({
   function removeScene(id: string) {
     if (campaign.scenes.length < 2) return;
     const scenes = campaign.scenes.filter((item) => item.id !== id);
-    onChange({ ...campaign, scenes, sceneLinks: removeLinksForScene(campaign.sceneLinks, id) });
+    onChange({
+      ...campaign,
+      scenes,
+      sceneLinks: removeLinksForScene(campaign.sceneLinks, id),
+      ...(campaign.startSceneId === id ? { startSceneId: null } : {}),
+    });
     selectScene(scenes[0]!.id);
     if (connectionFromId === id) setConnectionFromId(null);
   }
@@ -881,6 +891,7 @@ export function PlayableStoryboard({
           }}
         />
       )}
+      {scene.guideDraftNote && <p className="storyboard-next">{scene.guideDraftNote}</p>}
       <div className="storyboard-form-block">
         <label>
           {t("psSceneName")}
@@ -1253,6 +1264,29 @@ export function PlayableStoryboard({
             ))}
           </ul>
         </div>
+      )}
+      {campaign.startSceneId !== undefined && (
+        <label>
+          {t("psAdventureStart")}
+          <select
+            value={savedStart?.id ?? ""}
+            disabled={busy}
+            onChange={(event) =>
+              onChange({ ...campaign, startSceneId: event.target.value || null })
+            }
+          >
+            <option value="" disabled>
+              {t("psChooseAdventureStart")}
+            </option>
+            {buildable
+              .filter((item) => item.encounter)
+              .map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name || t("psUntitledScene")}
+                </option>
+              ))}
+          </select>
+        </label>
       )}
       {testScene && (
         <label>

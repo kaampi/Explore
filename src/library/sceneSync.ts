@@ -1,4 +1,5 @@
 import { itemExtras } from "./itemIcons";
+import { syncAdventureItemText } from "./adventureItemText";
 import type {
   CampaignScene,
   CampaignTemplate,
@@ -324,6 +325,7 @@ export function syncScene(
   syncItems(game, library);
   syncStartItems(campaign, scene.id, game, library);
   syncWeapons(game, library, rules, campaign.skillAliases);
+  if (campaign.guideItemText) syncAdventureItemText(campaign, game, library.objects);
   resetPlayState(game);
   validateEncounter(game);
   return { ...scene, encounter: game };

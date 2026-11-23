@@ -14,6 +14,7 @@ import {
   VoiceTemplate,
 } from "@library/LibrarySchema";
 import { characterDraftFromTemplate } from "@library/fromForm";
+import { savedAdventureStart } from "@library/sceneFormat";
 import {
   EXAMPLE_AURORA_BRIEF,
   EXAMPLE_AURORA_LORE,
@@ -269,6 +270,25 @@ export function setupFromCampaignScene(args: {
       })(),
     },
   };
+}
+
+/** Used by player-facing starts. Storyboard tests can still enter a specific scene directly. */
+export function sessionFromAdventureStart(
+  args: Omit<Parameters<typeof sessionFromCampaignScene>[0], "scene">,
+  sessionId: string,
+  legacySceneId?: string,
+): ReturnType<typeof sessionFromCampaignScene> {
+  const scene =
+    args.campaign.startSceneId === undefined
+      ? args.campaign.scenes.find(({ id }) => id === legacySceneId)
+      : savedAdventureStart(args.campaign);
+  if (!scene) {
+    return {
+      ok: false,
+      reason: "Choose a playable starting scene for this adventure in Storyboard.",
+    };
+  }
+  return sessionFromCampaignScene({ ...args, scene }, sessionId);
 }
 
 export function sessionFromCampaignScene(

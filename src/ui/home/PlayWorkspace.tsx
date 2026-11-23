@@ -35,6 +35,8 @@ import { OrnamentProvider, ornamentVars, useSimpleFrames } from "../play/ornamen
 import { captureIdea, type Idea } from "../../ideas/IdeaSchema";
 import { IdeaEditor } from "../ideas/IdeaEditor";
 import { formatGameTime } from "../../state/gameClock";
+import type { GuideSceneTarget } from "../../library/guideSceneRevision";
+import { GuideSceneEditor } from "../studio/GuideSceneEditor";
 
 export function PlayWorkspace({
   onHome,
@@ -43,11 +45,15 @@ export function PlayWorkspace({
   repo,
   onIdeas,
   onStartGatehouse,
+  onStartGuidePlaytest,
+  onOpenGuideStoryboard,
 }: {
   repo: IndexedDBRepository;
   onIdeas: () => void;
   /** Starts the new gatehouse adventure, offered on a conversation from the old test. */
   onStartGatehouse?: (() => void | Promise<void>) | undefined;
+  onStartGuidePlaytest?: ((session: Session) => Promise<void>) | undefined;
+  onOpenGuideStoryboard?: ((target: GuideSceneTarget) => void) | undefined;
   title?: string | undefined;
   onHome: (session: Session) => void;
   onAppearance: () => void;
@@ -109,6 +115,29 @@ export function PlayWorkspace({
   // An engine scene has its own frame: a top row and three columns.
   const framed = !!session.encounter;
   const run = session.adventure;
+  const campaignId = run?.campaignId;
+  const currentSceneId = run?.currentSceneId;
+  const [guidedScene, setGuidedScene] = useState<GuideSceneTarget>();
+  const [editGuideScene, setEditGuideScene] = useState<GuideSceneTarget>();
+  useEffect(() => {
+    if (!campaignId || !currentSceneId) {
+      setGuidedScene(undefined);
+      return;
+    }
+    let active = true;
+    const target = { campaignId, sceneId: currentSceneId };
+    void repo.hasGuideScene(target).then(
+      (found) => {
+        if (active) setGuidedScene(found ? target : undefined);
+      },
+      () => {
+        if (active) setGuidedScene(undefined);
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [repo, campaignId, currentSceneId]);
   const placeName =
     run?.scenes.find((scene) => scene.id === run.currentSceneId)?.name ||
     session.encounter?.definition.title ||
@@ -141,6 +170,14 @@ export function PlayWorkspace({
             }}
             homeDisabled={streaming}
             onSaveIdea={saveRecentIdea}
+            onEditGuideScene={
+              !streaming &&
+              guidedScene?.campaignId === campaignId &&
+              guidedScene?.sceneId === currentSceneId &&
+              guidedScene
+                ? () => setEditGuideScene(guidedScene)
+                : undefined
+            }
             onJournal={() => setJournalOpen(true)}
             sound={<GameAudio key={session.id} conversationId={session.id} />}
             onAppearance={onAppearance}
@@ -225,6 +262,15 @@ export function PlayWorkspace({
               </button>
             </div>
           </div>
+        )}
+        {editGuideScene && (
+          <GuideSceneEditor
+            repo={repo}
+            target={editGuideScene}
+            close={() => setEditGuideScene(undefined)}
+            onPlay={onStartGuidePlaytest}
+            openStoryboard={onOpenGuideStoryboard}
+          />
         )}
         {backgroundMenu && (
           <Menu

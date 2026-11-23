@@ -449,6 +449,8 @@ export const CampaignSceneSchema = z.preprocess(
     chapterId: z.string().min(1).optional(),
     /** Notes from a manuscript event this scene was started from. Never played. */
     draft: SceneDraftSchema.optional(),
+    /** Author-only notes from the adventure guide. */
+    guideDraftNote: z.string().min(1).optional(),
   }),
 );
 export type CampaignScene = z.infer<typeof CampaignSceneSchema>;
@@ -493,6 +495,11 @@ export const CampaignTemplateSchema = z.object({
   player: CampaignPlayerSchema.optional(),
   objectIds: z.array(z.string()).default([]),
   scenes: z.array(CampaignSceneSchema).default([]),
+  /** Player entry. Null means a new start is needed; absent keeps the older scene picker. */
+  startSceneId: z.string().min(1).nullable().optional(),
+  /** Author-approved text for a library item in this adventure. Shared cards keep their own text. */
+  guideItemText: z.record(z.string(), z.string()).optional(),
+  guideEditRevision: z.number().int().nonnegative().optional(),
   /** The Storyboard: how this campaign's scenes connect. */
   sceneLinks: z.array(StoryboardLinkSchema).default(() => []),
   cutscenes: z.array(CutscenePlacementSchema).default([]),

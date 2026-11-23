@@ -380,6 +380,10 @@ function SandboxApp() {
     setView("studio");
     setOperationError(null);
   }
+  function openGuideStoryboard(campaignId: string, sceneId?: string) {
+    setResume({ campaignId, openStoryboard: true, ...(sceneId ? { sceneId } : {}) });
+    openStudio("campaigns");
+  }
   async function newConversation(current: Session, nextResume: StudioResume | null) {
     await action(async () => {
       await repo.saveSession(current);
@@ -485,6 +489,10 @@ function SandboxApp() {
         <PlayWorkspace
           repo={repo}
           onIdeas={() => navigate("ideas")}
+          onStartGuidePlaytest={startScene}
+          onOpenGuideStoryboard={({ campaignId, sceneId }) =>
+            openGuideStoryboard(campaignId, sceneId)
+          }
           onStartGatehouse={async () => {
             report(
               startScene(await startGatehouseExample(repo, UI_SESSION_ID, session.runtime.model)),
@@ -542,6 +550,7 @@ function SandboxApp() {
               }}
               onStart={startScene}
               onStudio={openStudio}
+              onGuideStoryboard={openGuideStoryboard}
               conversations={catalog.entries}
               navigationBusy={working}
             />

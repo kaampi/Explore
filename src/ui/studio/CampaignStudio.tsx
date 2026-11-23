@@ -16,7 +16,13 @@ import { adventureSteps, type AdventureStepId } from "./adventureSteps";
 import { storyboardIssues, storyboardWarnings } from "./storyboardReadiness";
 import { pinSessionAnatomy, pinSessionFactions } from "@state/anatomy";
 import { useEffect, useRef, useState } from "react";
-import type { IndexedDBRepository, StudioResume } from "@persistence/IndexedDBRepository";
+import {
+  CampaignEditConflictError,
+  type IndexedDBRepository,
+  type StudioResume,
+} from "@persistence/IndexedDBRepository";
+import type { EditDecision } from "../../library/guideConcurrentEdit";
+import { Modal } from "../components/Modal";
 import type { Session } from "@state/StateSchema";
 import type { AttributeDef } from "@state/StateSchema";
 import { applyTraitTokens, traitVoice } from "@state/traitBands";
@@ -239,6 +245,9 @@ export function CampaignStudio({
   const [busy, setBusy] = useState(false);
   const [ageBand, setAgeBand] = useState<AgeBand | null>(null);
   const resumeApplied = useRef(false);
+  const editBaseline = useRef<CampaignTemplate>();
+  const [saveConflict, setSaveConflict] = useState<CampaignEditConflictError>();
+  const [saveChoices, setSaveChoices] = useState<Record<string, EditDecision>>({});
   const youPortraitRef = useRef<HTMLInputElement>(null);
 
   async function refresh(): Promise<CampaignTemplate[]> {
@@ -287,8 +296,10 @@ export function CampaignStudio({
           return;
         }
         resumeApplied.current = true;
+        editBaseline.current = found;
         setDraft(found);
         setTab(found.scenes.some((scene) => scene.encounter) ? "storyboard" : "scenes");
+        if (resume.openStoryboard) setStoryboardOpen(true);
         setFreshNight(true);
         setHandoffDraft(resume.handoff ?? "");
       })
@@ -323,6 +334,7 @@ export function CampaignStudio({
   function open(id: string) {
     const found = campaigns.find((item) => item.id === id);
     if (!found) return;
+    editBaseline.current = found;
     setDraft(withCampaignRealm(found, visiblePlaces));
     setTab(found.scenes.some((scene) => scene.encounter) ? "storyboard" : "general");
     setStoryboardOpen(found.scenes.some((scene) => scene.encounter));
@@ -333,6 +345,7 @@ export function CampaignStudio({
   }
 
   function createNew() {
+    editBaseline.current = undefined;
     setDraft({
       ...newCampaignTemplate({
         name: "New adventure",
@@ -454,7 +467,15 @@ export function CampaignStudio({
     });
   }
 
-  async function save() {
+  function showSaveError(err: unknown, fallback: string) {
+    if (err instanceof CampaignEditConflictError && err.conflicts.length) {
+      setSaveConflict(err);
+      setSaveChoices({});
+    }
+    setError(err instanceof Error ? err.message : fallback);
+  }
+
+  async function save(resolution?: { revision: number; choices: Record<string, EditDecision> }) {
     if (!draft) return;
     const name = draft.name.trim();
     if (!name) {
@@ -471,14 +492,16 @@ export function CampaignStudio({
       const previous = campaigns.find((item) => item.id === built.id);
       const saved = withOriginalTimestamps(built, previous);
       await persistExamplesUsed(saved);
-      await repo.saveCampaign(saved);
+      const committed = await repo.saveEditedCampaign(saved, editBaseline.current, resolution);
       await refresh();
       setPendingPlaces([]);
       setPendingRealms([]);
-      setDraft(saved);
+      editBaseline.current = committed;
+      setDraft(committed);
+      setSaveConflict(undefined);
       setNotice("Saved.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save.");
+      showSaveError(err, "Could not save.");
     } finally {
       setBusy(false);
     }
@@ -566,7 +589,11 @@ export function CampaignStudio({
         newCampaignTemplate(named),
         campaigns.find((item) => item.id === draft.id),
       );
-      await repo.saveCampaign(saved);
+      const committed = await repo.saveEditedCampaign(saved, editBaseline.current);
+      editBaseline.current = committed;
+      setDraft(committed);
+      const startScene = committed.scenes.find(({ id }) => id === scene.id);
+      if (!startScene) throw new Error("The scene was removed in another tab.");
       const [startPlaces, startRealms, anatomyLibrary, factionLibrary] = await Promise.all([
         repo.listPlaces(),
         repo.listRealms(),
@@ -575,8 +602,8 @@ export function CampaignStudio({
       ]);
       const result = sessionFromCampaignScene(
         {
-          campaign: saved,
-          scene,
+          campaign: committed,
+          scene: startScene,
           places: startPlaces,
           realms: startRealms,
           characters: visibleCharacters,
@@ -598,7 +625,7 @@ export function CampaignStudio({
         pinSessionFactions(pinSessionAnatomy(result.session, anatomyLibrary), factionLibrary),
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not start this scene.");
+      showSaveError(err, "Could not start this scene.");
       setBusy(false);
     }
   }
@@ -898,6 +925,56 @@ export function CampaignStudio({
         </button>
       </nav>
       <section className="studio-sheet studio-sheet--form campaign-workspace__sheet">
+        {saveConflict && (
+          <Modal
+            title={t("cgConcurrentChanges")}
+            wide
+            onClose={() => {
+              if (!busy) setSaveConflict(undefined);
+            }}
+          >
+            {saveConflict.conflicts.map((conflict) => (
+              <fieldset key={conflict.key} disabled={busy}>
+                <legend>{conflict.path.join(" / ")}</legend>
+                <label>
+                  <input
+                    type="radio"
+                    name={conflict.key}
+                    checked={saveChoices[conflict.key] === "latest"}
+                    onChange={() => setSaveChoices({ ...saveChoices, [conflict.key]: "latest" })}
+                  />
+                  {t("cgLatestText")}
+                </label>
+                <pre>
+                  {typeof conflict.latest === "string"
+                    ? conflict.latest
+                    : (JSON.stringify(conflict.latest, null, 2) ?? "—")}
+                </pre>
+                <label>
+                  <input
+                    type="radio"
+                    name={conflict.key}
+                    checked={saveChoices[conflict.key] === "local"}
+                    onChange={() => setSaveChoices({ ...saveChoices, [conflict.key]: "local" })}
+                  />
+                  {t("cgMyText")}
+                </label>
+                <pre>
+                  {typeof conflict.local === "string"
+                    ? conflict.local
+                    : (JSON.stringify(conflict.local, null, 2) ?? "—")}
+                </pre>
+              </fieldset>
+            ))}
+            <button
+              type="button"
+              disabled={busy || saveConflict.conflicts.some(({ key }) => !saveChoices[key])}
+              onClick={() => void save({ revision: saveConflict.revision!, choices: saveChoices })}
+            >
+              {t("cgSaveChoices")}
+            </button>
+          </Modal>
+        )}
         <SheetNameField
           ariaLabel="Adventure name"
           value={draft.name}
@@ -1642,6 +1719,11 @@ export function CampaignStudio({
                   if (what === "things") setTab("objects");
                 }}
                 initialStep={storyboardStep}
+                initialSceneId={
+                  resume?.openStoryboard && resume.campaignId === draft.id
+                    ? resume.sceneId
+                    : undefined
+                }
                 characters={campaignPeople}
                 objects={campaignObjects}
                 busy={busy}

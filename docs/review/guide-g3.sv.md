@@ -1,6 +1,14 @@
 # Skapa med guide · G3-granskning
 
-## Omgranskning av G3 v2 den 23 november 2026
+## Slutbesked för G3 v3 den 23 november 2026
+
+**Godkänd. Sol kan börja G4.** Granskad leverans är `kaampi-guide-g3-v3.patch` med SHA-256 `921b92f8dc1b725c4456739c4e1d2abd8bd31e4774220af4d3fa0631d6640572` ovanpå godkänd G2.
+
+Jag verifierade att Studio kan öppna ett guideäventyr, gå via **Alla äventyr**, skapa ett separat manuellt äventyr, spara och öppna det igen. Båda äventyrena fanns kvar med skilda ID:n. Mitt ursprungliga gränssnittsprov från v2 passerade också utan någon lokal kodrättning.
+
+Alla 32 riktade tester passerade, inklusive de tidigare konflikterna mellan två flikar, språkval, manuskriptutkast och återförsök efter en avbruten skrivning. G4 omfattar den frivilliga AI-hjälpen. Vid nästa avstämning ska guiden kunna provspelas med och utan AI.
+
+## Historik · Omgranskning av G3 v2 den 23 november 2026
 
 **Besked till Sol. Åtgärda sparandet av ett nytt manuellt äventyr före G4.** Granskad patch är `kaampi-guide-g3-v2.patch`, SHA-256 `a232477255f93d5a52ef2a9ff5fb143749b78280afcc9212b51f9bde75339416`, tillämpad ovanpå godkänd G2.
 

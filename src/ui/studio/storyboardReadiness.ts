@@ -1,7 +1,7 @@
 import type { CampaignScene, CampaignTemplate, PlaceTemplate } from "../../library/LibrarySchema";
 import { mapPlaceForScene, type AdventureMapPlace } from "../../library/adventureMap";
 import { adventureFacts } from "../../library/playableCampaign";
-import { isOpenDraft, sceneFormat } from "../../library/sceneFormat";
+import { isOpenDraft, savedAdventureStart, sceneFormat } from "../../library/sceneFormat";
 import { isHostile, reachablePositions } from "../../library/sceneParts";
 
 export type SceneField = "name" | "place" | "playable" | "arrival" | "action" | "reach" | "parts";
@@ -429,16 +429,14 @@ type Reach = {
   doors: Set<string>;
 };
 
-/**
- * What a player can reach from the first scene, step by step. A route works once its
- * discoveries can be made, an action works once its own conditions can be met, and a
- * scene counts once a working route leads to it. A failure outcome only exists for an
- * action that rolls. This follows the same rules as play, but does not run the engine.
- */
+function openingScene(campaign: CampaignTemplate) {
+  if (campaign.startSceneId !== undefined) return savedAdventureStart(campaign);
+  return campaign.scenes.find((scene) => sceneFormat(scene) !== "earlier" && !isOpenDraft(scene));
+}
+
+/** Estimate which scenes and discoveries a player can reach from the adventure's start. */
 export function reachableFromStart(campaign: CampaignTemplate): Reach {
-  const first = campaign.scenes.find(
-    (scene) => sceneFormat(scene) !== "earlier" && !isOpenDraft(scene),
-  );
+  const first = openingScene(campaign);
   const scenes = new Set<string>();
   const flags = new Set<string>(campaign.storyFlags);
   const items = new Set<string>();
@@ -548,7 +546,7 @@ function draftWarning(scene: CampaignScene): StoryboardIssue {
     kind: "scene",
     id: scene.id,
     field: "playable",
-    message: `“${scene.name.trim() || "Untitled event"}” is a draft from the manuscript with nothing built yet, so it is left out of the test. Choose a place and make it playable when you are ready.`,
+    message: `“${scene.name.trim() || "Untitled event"}” is a draft${scene.draft ? " from the manuscript" : " from the guide"} with nothing built yet, so it is left out of the test. Choose a place and make it playable when you are ready.`,
   };
 }
 
@@ -560,9 +558,7 @@ export function storyboardWarnings(
     objects: { id: string; portable?: boolean | undefined; weight?: number | undefined }[];
   },
 ): StoryboardIssue[] {
-  const first = campaign.scenes.find(
-    (scene) => sceneFormat(scene) !== "earlier" && !isOpenDraft(scene),
-  );
+  const first = openingScene(campaign);
   const drafts = campaign.scenes.filter(isOpenDraft);
   if (!first) return drafts.map(draftWarning);
   const issues: StoryboardIssue[] = [

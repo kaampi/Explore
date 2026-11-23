@@ -9,12 +9,14 @@ export function PlayStartPaths({
   onFree,
   onStudio,
   onPlayAdventure,
+  onGuide,
   adventures,
   disabled,
 }: {
   onFree: () => void;
   onStudio: (view: StudioView) => void;
   onPlayAdventure: (id: string) => void;
+  onGuide?: () => void;
   /** Saved adventures, newest first. */
   adventures: StartAdventure[];
   disabled: boolean;
@@ -110,6 +112,11 @@ export function PlayStartPaths({
         )}
         {hidden > 0 && (
           <p className="sb-start-path__more">{t("moreInBuilder", { count: hidden })}</p>
+        )}
+        {onGuide && (
+          <button type="button" className="sb-button" disabled={disabled} onClick={onGuide}>
+            {t("cgTitle")}
+          </button>
         )}
         <button
           type="button"

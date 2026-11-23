@@ -5,6 +5,28 @@ import {
   type CutsceneFilm,
 } from "../cutscenes/schema";
 import { FactionSchema, type Faction } from "../library/factions";
+import { buildGuideAdventure } from "../library/buildGuideAdventure";
+import { AdventureGuideDraftSchema, type AdventureGuideDraft } from "../library/adventureGuidePlan";
+import {
+  guideApprovalDraft,
+  GuideInterviewSchema,
+  type GuideInterview,
+} from "../library/guideInterview";
+import {
+  mergeGuideEdits,
+  type EditConflict,
+  type EditDecision,
+} from "../library/guideConcurrentEdit";
+import {
+  applyGuideSceneRevision,
+  authoredGuideScene,
+  GuideSceneConflictError,
+  GuideSceneRevisionSchema,
+  sceneRevisionSnapshot,
+  type GuideSceneDecision,
+  type GuideSceneSnapshot,
+  type GuideSceneTarget,
+} from "../library/guideSceneRevision";
 import {
   PlaceBlueprintSchema,
   starterBlueprints,
@@ -91,12 +113,50 @@ const CONVERSATION_INDEX_ID = "conversation-index-v1";
 const IDEAS_STORE = "ideas";
 const LOREBOOKS_STORE = "lorebooks";
 const CUTSCENES_STORE = "cutscenes";
-const DB_VERSION = 15;
+const DB_VERSION = 16;
 const ANATOMY_STORE = "anatomy-templates";
+const GUIDE_DRAFTS_STORE = "guideDrafts";
+const GUIDE_INTERVIEW_ID = "active-guide-interview";
+
+type GuideInterviewVersion = Pick<GuideInterview, "id" | "revision">;
+
+function readGuideInterview(row: unknown): GuideInterview | undefined {
+  return row === undefined
+    ? undefined
+    : GuideInterviewSchema.parse((row as { interview: unknown }).interview);
+}
+
+function matchesGuideVersion(
+  current: GuideInterviewVersion | undefined,
+  expected: GuideInterviewVersion | undefined,
+): boolean {
+  return current?.id === expected?.id && current?.revision === expected?.revision;
+}
+
+export class GuideInterviewConflictError extends Error {
+  constructor() {
+    super(
+      "Guiden har ändrats i en annan flik. Öppna det senaste utkastet och granska den nya versionen.",
+    );
+    this.name = "GuideInterviewConflictError";
+  }
+}
+
+export class CampaignEditConflictError extends Error {
+  constructor(
+    readonly revision?: number,
+    readonly conflicts: EditConflict[] = [],
+  ) {
+    super("This adventure changed in another tab. Review the latest version before saving.");
+    this.name = "CampaignEditConflictError";
+  }
+}
 
 export type StudioResume = {
   conversationId?: string;
   campaignId: string;
+  /** An explicit request to open the editor when entering Studio. */
+  openStoryboard?: boolean;
   sceneId?: string;
   /** Agreement from the last session. Survives new scene. Not the chat log. */
   handoff?: string;
@@ -142,6 +202,8 @@ export class TemplateValidationError extends Error {
 }
 
 function ensureStores(db: IDBDatabase): void {
+  if (!db.objectStoreNames.contains(GUIDE_DRAFTS_STORE))
+    db.createObjectStore(GUIDE_DRAFTS_STORE, { keyPath: "id" });
   if (!db.objectStoreNames.contains(CUTSCENES_STORE))
     db.createObjectStore(CUTSCENES_STORE, { keyPath: "id" });
   if (!db.objectStoreNames.contains(FACTIONS_STORE))
@@ -881,26 +943,520 @@ export class IndexedDBRepository {
     await this.deleteRecord(CUTSCENES_STORE, id);
   }
 
-  async saveCampaign(template: CampaignTemplate): Promise<void> {
-    const { cutsceneFilms, ...parsed } = parseLibraryTemplate(
-      "campaign",
-      template,
-      parseCampaignTemplate,
+  async loadGuideInterview(): Promise<GuideInterview | undefined> {
+    return readGuideInterview(await this.getRecord(PREFS_STORE, GUIDE_INTERVIEW_ID));
+  }
+
+  async saveGuideInterview(
+    interview: GuideInterview,
+    expected: GuideInterviewVersion | undefined,
+  ): Promise<void> {
+    const updated = GuideInterviewSchema.parse(interview);
+    return this.withDb(
+      (db) =>
+        new Promise<void>((resolve, reject) => {
+          const tx = db.transaction(PREFS_STORE, "readwrite");
+          const store = tx.objectStore(PREFS_STORE);
+          const request = store.get(GUIDE_INTERVIEW_ID);
+          let failure: unknown;
+          tx.oncomplete = () => resolve();
+          tx.onabort = () => reject(failure ?? writeError(PREFS_STORE, tx.error));
+          request.onsuccess = () => {
+            try {
+              const current = readGuideInterview(request.result);
+              if (!matchesGuideVersion(current, expected)) throw new GuideInterviewConflictError();
+              if (
+                updated.appliedCampaignId ||
+                (current?.id === updated.id &&
+                  (current.appliedCampaignId || updated.revision <= current.revision))
+              )
+                throw new GuideInterviewConflictError();
+              store.put({ id: GUIDE_INTERVIEW_ID, interview: updated });
+            } catch (error) {
+              failure = error;
+              tx.abort();
+            }
+          };
+        }),
     );
-    const migrated = cutsceneFilms?.filter(({ id }) => id.startsWith("cutscene-v1:")) ?? [];
-    if (!migrated.length) {
-      await this.putRecord(CAMPAIGNS_STORE, parsed);
-      return;
-    }
-    const db = await this.open();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction([CAMPAIGNS_STORE, CUTSCENES_STORE], "readwrite");
-      saveMigratedFilms(tx.objectStore(CUTSCENES_STORE), migrated);
-      tx.objectStore(CAMPAIGNS_STORE).put(parsed);
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error ?? new Error("Could not save this adventure."));
-      tx.onabort = () => reject(tx.error ?? new Error("Adventure save was cancelled."));
+  }
+
+  async createGuideDraft(draft: AdventureGuideDraft): Promise<void> {
+    const record = AdventureGuideDraftSchema.parse(draft);
+    if (record.applied) throw new Error("A new guide draft cannot already be approved.");
+    return this.withDb(
+      (db) =>
+        new Promise<void>((resolve, reject) => {
+          const tx = db.transaction(GUIDE_DRAFTS_STORE, "readwrite");
+          tx.oncomplete = () => resolve();
+          tx.onabort = () => reject(writeError(GUIDE_DRAFTS_STORE, tx.error));
+          tx.objectStore(GUIDE_DRAFTS_STORE).add(record);
+        }),
+    );
+  }
+
+  async loadGuideDraft(id: string): Promise<AdventureGuideDraft> {
+    return AdventureGuideDraftSchema.parse(await this.getRecord(GUIDE_DRAFTS_STORE, id));
+  }
+
+  /** Approve the saved revision and its selected map references in the same transaction. */
+  async approveGuideDraft(id: string, revision: number): Promise<CampaignTemplate> {
+    return this.commitGuideAdventure({ draftId: id, revision });
+  }
+
+  async approveGuideInterview(expected: GuideInterviewVersion): Promise<CampaignTemplate> {
+    return this.commitGuideAdventure({ interviewId: expected.id, revision: expected.revision });
+  }
+
+  async hasGuideScene(target: GuideSceneTarget): Promise<boolean> {
+    const rows = await this.getAllRecords(GUIDE_DRAFTS_STORE);
+    return rows.some((row) => {
+      const draft = AdventureGuideDraftSchema.safeParse(row);
+      return (
+        draft.success &&
+        draft.data.applied?.campaignId === target.campaignId &&
+        !!authoredGuideScene(draft.data, target.sceneId)
+      );
     });
+  }
+
+  loadGuideSceneRevision(target: GuideSceneTarget): Promise<GuideSceneSnapshot> {
+    return this.withGuideSceneRevision(target, "readonly", (snapshot) => snapshot);
+  }
+
+  saveGuideSceneRevision(
+    target: GuideSceneTarget,
+    expectedRevision: number,
+    changes: Record<string, string>,
+  ): Promise<GuideSceneSnapshot> {
+    return this.withGuideSceneRevision(target, "readwrite", (snapshot, _campaign, write) => {
+      if (snapshot.revision.revision !== expectedRevision) throw new GuideSceneConflictError();
+      const revision = GuideSceneRevisionSchema.parse({
+        ...snapshot.revision,
+        revision: expectedRevision + 1,
+        changes,
+      });
+      write(revision);
+      return { ...snapshot, revision };
+    });
+  }
+
+  applyGuideSceneRevision(
+    reviewed: GuideSceneSnapshot,
+    decisions: Record<string, GuideSceneDecision>,
+  ): Promise<CampaignTemplate> {
+    return this.withGuideSceneRevision(reviewed, "readwrite", (snapshot, campaign, write) => {
+      const applied = applyGuideSceneRevision(campaign, snapshot, reviewed, decisions);
+      write(applied.revision, applied.campaign);
+      return applied.campaign;
+    });
+  }
+
+  /** Read the live editor values and the revision together, and update both atomically. */
+  private withGuideSceneRevision<T>(
+    target: GuideSceneTarget,
+    mode: "readonly" | "readwrite",
+    handleSnapshot: (
+      snapshot: GuideSceneSnapshot,
+      campaign: CampaignTemplate,
+      write: (revision: GuideSceneSnapshot["revision"], campaign?: CampaignTemplate) => void,
+    ) => T,
+  ): Promise<T> {
+    return this.withDb(
+      (db) =>
+        new Promise<T>((resolve, reject) => {
+          const stores = [
+            GUIDE_DRAFTS_STORE,
+            CAMPAIGNS_STORE,
+            PREFS_STORE,
+            OBJECTS_STORE,
+            REALMS_STORE,
+            PLACES_STORE,
+          ];
+          const tx = db.transaction(stores, mode);
+          const prefId = `guide-scene-revision:${JSON.stringify([target.campaignId, target.sceneId])}`;
+          let result: T;
+          let failure: unknown;
+          tx.oncomplete = () => resolve(result);
+          tx.onabort = () => reject(failure ?? writeError(CAMPAIGNS_STORE, tx.error));
+
+          function accept<Row>(request: IDBRequest<Row>, handler: (row: Row) => void) {
+            request.onsuccess = () => {
+              try {
+                handler(request.result);
+              } catch (error) {
+                failure = error;
+                tx.abort();
+              }
+            };
+          }
+
+          function read(store: string, id: string, handler: (row: unknown) => void) {
+            accept(tx.objectStore(store).get(id), handler);
+          }
+
+          accept(tx.objectStore(GUIDE_DRAFTS_STORE).getAll(), (rows) => {
+            const guide = rows
+              .map((row) => AdventureGuideDraftSchema.safeParse(row))
+              .find(
+                (draft) => draft.success && draft.data.applied?.campaignId === target.campaignId,
+              );
+            if (!guide?.success)
+              throw new Error("Äventyret har inget sparat underlag från guiden.");
+            read(CAMPAIGNS_STORE, target.campaignId, (row) => {
+              if (row === undefined)
+                throw new GuideSceneConflictError("Äventyret finns inte kvar i biblioteket.");
+              const campaign = parseCampaignTemplate(row);
+              const scene = campaign.scenes.find(({ id }) => id === target.sceneId);
+              if (!scene?.encounter)
+                throw new GuideSceneConflictError(
+                  "Scenen finns inte kvar som spelbar scen i äventyret.",
+                );
+              const input: Parameters<typeof sceneRevisionSnapshot>[0] = {
+                campaign,
+                sceneId: target.sceneId,
+                guide: guide.data,
+                revision: GuideSceneRevisionSchema.parse({ revision: 0 }),
+                objects: [],
+                places: [],
+              };
+              const reads: { store: string; id: string; handle: (row: unknown) => void }[] = [
+                {
+                  store: PREFS_STORE,
+                  id: prefId,
+                  handle: (row) => {
+                    if (row !== undefined)
+                      input.revision = GuideSceneRevisionSchema.parse(
+                        (row as { revision: unknown }).revision,
+                      );
+                  },
+                },
+              ];
+              for (const { id } of scene.encounter.definition.items)
+                reads.push({
+                  store: OBJECTS_STORE,
+                  id,
+                  handle: (row) => {
+                    if (row !== undefined) input.objects.push(parseObjectTemplate(row));
+                  },
+                });
+              if (scene.usePlaceIntro && campaign.mapWorldId) {
+                reads.push({
+                  store: REALMS_STORE,
+                  id: campaign.mapWorldId,
+                  handle: (row) => {
+                    if (row !== undefined) input.world = parseRealmTemplate(row);
+                  },
+                });
+                reads.push({
+                  store: PLACES_STORE,
+                  id: scene.placeId,
+                  handle: (row) => {
+                    if (row !== undefined) input.places.push(parsePlaceTemplate(row));
+                  },
+                });
+              }
+
+              function readNext(index: number) {
+                const next = reads[index];
+                if (next) {
+                  read(next.store, next.id, (row) => {
+                    next.handle(row);
+                    readNext(index + 1);
+                  });
+                  return;
+                }
+                result = handleSnapshot(
+                  sceneRevisionSnapshot(input),
+                  campaign,
+                  (revision, nextCampaign) => {
+                    if (nextCampaign)
+                      tx.objectStore(CAMPAIGNS_STORE).put(parseCampaignTemplate(nextCampaign));
+                    tx.objectStore(PREFS_STORE).put({ id: prefId, revision });
+                  },
+                );
+              }
+              readNext(0);
+            });
+          });
+        }),
+    );
+  }
+
+  private async commitGuideAdventure(
+    source: { draftId: string; revision: number } | { interviewId: string; revision: number },
+  ): Promise<CampaignTemplate> {
+    return this.withDb(
+      (db) =>
+        new Promise<CampaignTemplate>((resolve, reject) => {
+          const { revision } = source;
+          const tx = db.transaction(
+            [
+              GUIDE_DRAFTS_STORE,
+              CAMPAIGNS_STORE,
+              REALMS_STORE,
+              PLACES_STORE,
+              OBJECTS_STORE,
+              CHARACTERS_STORE,
+              FACTIONS_STORE,
+              ...("interviewId" in source ? [PREFS_STORE] : []),
+            ],
+            "readwrite",
+          );
+          let result: CampaignTemplate;
+          let failure: unknown;
+          tx.oncomplete = () => resolve(result);
+          tx.onabort = () => reject(failure ?? writeError(GUIDE_DRAFTS_STORE, tx.error));
+
+          // Schedule dependent requests inside request events so the transaction stays active.
+          function read(store: string, key: string, onRecord: (row: unknown) => void) {
+            const request = tx.objectStore(store).get(key);
+            request.onsuccess = () => {
+              try {
+                onRecord(request.result);
+              } catch (error) {
+                failure = error;
+                tx.abort();
+              }
+            };
+          }
+
+          function readCampaign(id: string) {
+            read(CAMPAIGNS_STORE, id, (campaign) => {
+              if (campaign === undefined) throw new LibraryItemNotFoundError("campaign", id);
+              result = parseCampaignTemplate(campaign);
+            });
+          }
+
+          function build(draft: AdventureGuideDraft, interview?: GuideInterview) {
+            if (draft.revision !== revision)
+              throw new Error("Planen har ändrats. Öppna förhandsvisningen igen.");
+            const { applied } = draft;
+            if (applied) {
+              readCampaign(applied.campaignId);
+              return;
+            }
+
+            const library: Parameters<typeof buildGuideAdventure>[1] & {
+              characters: CharacterTemplate[];
+              factions: Faction[];
+              objects: ObjectTemplate[];
+            } = { places: [], characters: [], factions: [], objects: [] };
+            function writeAdventure() {
+              const built = buildGuideAdventure(draft, library);
+              result = parseCampaignTemplate(built.campaign);
+              const startSceneId = result.startSceneId;
+              if (
+                !startSceneId ||
+                !result.scenes.some((scene) => scene.id === startSceneId && scene.encounter)
+              )
+                throw new Error("Välj en spelbar startscen.");
+              if (built.realm) tx.objectStore(REALMS_STORE).add(built.realm);
+              for (const place of built.places) tx.objectStore(PLACES_STORE).add(place);
+              for (const object of built.objects) tx.objectStore(OBJECTS_STORE).add(object);
+              for (const character of built.characters)
+                tx.objectStore(CHARACTERS_STORE).add(character);
+              for (const faction of built.factions) tx.objectStore(FACTIONS_STORE).add(faction);
+              tx.objectStore(CAMPAIGNS_STORE).add(result);
+              tx.objectStore(GUIDE_DRAFTS_STORE).put({
+                ...draft,
+                applied: { revision, campaignId: result.id, startSceneId },
+              });
+              if (interview)
+                tx.objectStore(PREFS_STORE).put({
+                  id: GUIDE_INTERVIEW_ID,
+                  interview: { ...interview, revision: revision + 1, appliedCampaignId: result.id },
+                });
+            }
+
+            const reads: { store: string; id: string; accept: (row: unknown) => void }[] = [];
+            if (draft.map.kind !== "new") {
+              const map = draft.map;
+              reads.push({
+                store: REALMS_STORE,
+                id: map.realmId,
+                accept: (row) => {
+                  library.realm = row === undefined ? undefined : parseRealmTemplate(row);
+                },
+              });
+              const cardIds = draft.plan.places.flatMap(({ id }) => {
+                const cardId = map.kind === "existing" ? map.sites[id]?.placeCardId : map.sites[id];
+                return cardId ? [cardId] : [];
+              });
+              for (const id of new Set(cardIds))
+                reads.push({
+                  store: PLACES_STORE,
+                  id,
+                  accept: (row) => {
+                    if (row !== undefined) library.places.push(parsePlaceTemplate(row));
+                  },
+                });
+            }
+            function queueRecords<T>(
+              store: string,
+              ids: (string | undefined)[],
+              target: T[],
+              parse: (value: unknown) => T,
+            ) {
+              for (const id of new Set(ids))
+                if (id)
+                  reads.push({
+                    store,
+                    id,
+                    accept: (row) => {
+                      if (row !== undefined) target.push(parse(row));
+                    },
+                  });
+            }
+            queueRecords(
+              CHARACTERS_STORE,
+              [
+                draft.plan.playerCharacterId,
+                ...draft.plan.world.characters.map(({ existingId }) => existingId),
+              ],
+              library.characters,
+              parseCharacterTemplate,
+            );
+            queueRecords(
+              FACTIONS_STORE,
+              draft.plan.world.factions.map(({ existingId }) => existingId),
+              library.factions,
+              (row) => FactionSchema.parse(row),
+            );
+            queueRecords(
+              OBJECTS_STORE,
+              draft.plan.items.map(({ existingId }) => existingId),
+              library.objects,
+              parseObjectTemplate,
+            );
+            function readNext(index: number) {
+              const request = reads[index];
+              if (!request) return writeAdventure();
+              read(request.store, request.id, (row) => {
+                request.accept(row);
+                readNext(index + 1);
+              });
+            }
+            readNext(0);
+          }
+
+          if ("interviewId" in source) {
+            read(PREFS_STORE, GUIDE_INTERVIEW_ID, (row) => {
+              const interview = readGuideInterview(row);
+              if (interview?.id !== source.interviewId) throw new GuideInterviewConflictError();
+              if (interview.appliedCampaignId && interview.revision === revision + 1) {
+                readCampaign(interview.appliedCampaignId);
+                return;
+              }
+              if (interview.appliedCampaignId || interview.revision !== revision)
+                throw new GuideInterviewConflictError();
+              const candidate = guideApprovalDraft(interview);
+              if (!candidate.ok) throw new Error(candidate.message);
+              build(candidate.draft, interview);
+            });
+          } else {
+            read(GUIDE_DRAFTS_STORE, source.draftId, (row) =>
+              build(AdventureGuideDraftSchema.parse(row)),
+            );
+          }
+        }),
+    );
+  }
+
+  async saveCampaign(template: CampaignTemplate): Promise<void> {
+    await this.saveEditedCampaign(template);
+  }
+
+  async saveEditedCampaign(
+    template: CampaignTemplate,
+    baseline?: CampaignTemplate,
+    resolution?: { revision: number; choices: Record<string, EditDecision> },
+  ): Promise<CampaignTemplate> {
+    return this.writeCampaign(template, { baseline, resolution });
+  }
+
+  /** An explicitly restored backup replaces the saved adventure and invalidates older editors. */
+  async restoreCampaign(template: CampaignTemplate): Promise<void> {
+    await this.writeCampaign(template, { restore: true });
+  }
+
+  private writeCampaign(
+    template: CampaignTemplate,
+    options: {
+      baseline?: CampaignTemplate | undefined;
+      resolution?: { revision: number; choices: Record<string, EditDecision> } | undefined;
+      restore?: boolean;
+    },
+  ): Promise<CampaignTemplate> {
+    const { baseline, resolution, restore } = options;
+    const edited = parseLibraryTemplate("campaign", template, parseCampaignTemplate);
+    function comparable(campaign: CampaignTemplate) {
+      return {
+        ...campaign,
+        updatedAt: "",
+        createdAt: "",
+        guideEditRevision: undefined,
+        cutsceneFilms: undefined,
+      };
+    }
+    return this.withDb(
+      (db) =>
+        new Promise<CampaignTemplate>((resolve, reject) => {
+          const tx = db.transaction([CAMPAIGNS_STORE, CUTSCENES_STORE], "readwrite");
+          const store = tx.objectStore(CAMPAIGNS_STORE);
+          const request = store.get(edited.id);
+          let saved = edited;
+          let failure: unknown;
+          tx.oncomplete = () => resolve(saved);
+          tx.onabort = () => reject(failure ?? writeError(CAMPAIGNS_STORE, tx.error));
+          request.onsuccess = () => {
+            try {
+              const current =
+                request.result === undefined ? undefined : parseCampaignTemplate(request.result);
+              if (
+                !current &&
+                (baseline?.guideItemText || baseline?.guideEditRevision !== undefined)
+              )
+                throw new CampaignEditConflictError();
+              if (current && (current.guideItemText || current.guideEditRevision !== undefined)) {
+                const revision = current.guideEditRevision ?? 0;
+                if (!restore && (edited.guideEditRevision ?? 0) !== revision) {
+                  if (
+                    baseline?.id !== current.id ||
+                    (baseline.guideEditRevision ?? 0) !== (edited.guideEditRevision ?? 0)
+                  )
+                    throw new CampaignEditConflictError();
+                  const choices =
+                    resolution?.revision === revision ? resolution.choices : undefined;
+                  const merged = mergeGuideEdits(
+                    comparable(baseline),
+                    comparable(current),
+                    comparable(edited),
+                    choices,
+                  );
+                  if (merged.conflicts.length)
+                    throw new CampaignEditConflictError(revision, merged.conflicts);
+                  saved = {
+                    ...merged.value,
+                    createdAt: current.createdAt,
+                    updatedAt: edited.updatedAt,
+                    ...(edited.cutsceneFilms ? { cutsceneFilms: edited.cutsceneFilms } : {}),
+                  };
+                }
+                saved = { ...saved, guideEditRevision: revision + 1 };
+              }
+              const { cutsceneFilms, ...parsed } = saved;
+              const migrated =
+                cutsceneFilms?.filter(({ id }) => id.startsWith("cutscene-v1:")) ?? [];
+              if (migrated.length) saveMigratedFilms(tx.objectStore(CUTSCENES_STORE), migrated);
+              store.put(parseCampaignTemplate(parsed));
+            } catch (error) {
+              failure = error;
+              tx.abort();
+            }
+          };
+        }),
+    );
   }
 
   async loadCampaign(id: string): Promise<CampaignTemplate> {

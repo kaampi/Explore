@@ -11,6 +11,7 @@ export function PlayTopBar({
   homeDisabled,
   homeTitle,
   onSaveIdea,
+  onEditGuideScene,
   onJournal,
   sound,
   onAppearance,
@@ -29,6 +30,7 @@ export function PlayTopBar({
   homeTitle?: string | undefined;
   /** Keeps the last lines of the story as an idea. Without it there is no button. */
   onSaveIdea?: (() => void) | undefined;
+  onEditGuideScene?: (() => void) | undefined;
   /** Opens the journal. */
   onJournal: () => void;
   /** The sound control. It stays mounted, so that what is playing keeps playing. */
@@ -44,6 +46,7 @@ export function PlayTopBar({
   const t = useTranslate();
   const language = useLanguageControls();
   const items: MenuItem[] = [
+    ...(onEditGuideScene ? [{ label: t("pvEditGuideScene"), onSelect: onEditGuideScene }] : []),
     { label: t("pvAppearance"), onSelect: onAppearance },
     { kind: "check", label: t("pvAiModel"), checked: aiOpen, onToggle: onToggleAi },
     { kind: "check", label: t("pwInspector"), checked: inspectorOpen, onToggle: onToggleInspector },

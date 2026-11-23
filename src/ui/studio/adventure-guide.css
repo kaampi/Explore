@@ -1,0 +1,147 @@
+.adventure-guide {
+  margin-inline: auto;
+  max-width: 86rem;
+  padding: clamp(1rem, 3vw, 2.5rem);
+}
+
+.guide-heading,
+.guide-toolbar,
+.guide-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.guide-toolbar {
+  justify-content: space-between;
+  margin-block: 1rem;
+}
+
+.guide-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  align-items: start;
+  gap: clamp(1rem, 3vw, 2rem);
+}
+
+.guide-question,
+.guide-plan {
+  min-width: 0;
+  padding: clamp(1rem, 2vw, 1.5rem);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.guide-question {
+  position: sticky;
+  top: 1rem;
+}
+
+.adventure-guide button:not(.sb-button) {
+  color: var(--text);
+  background: var(--panel-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.7rem;
+}
+
+.adventure-guide button[aria-pressed="true"] {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.guide-answer > button,
+.guide-question > section button {
+  margin: 0.25rem 0.35rem 0.25rem 0;
+}
+
+.guide-field {
+  display: grid;
+  gap: 0.35rem;
+  margin-block: 0.75rem;
+}
+
+.guide-field textarea,
+.guide-field input,
+.guide-field select {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.guide-field textarea {
+  min-height: 5rem;
+  resize: vertical;
+}
+
+.guide-plan-section {
+  border-top: 1px solid var(--border-soft);
+  margin-top: 1rem;
+  padding-top: 0.5rem;
+}
+
+.guide-plan-section h3 button {
+  font: inherit;
+}
+
+.guide-editor,
+.guide-answer {
+  padding: 0;
+  margin: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.guide-plan-section fieldset {
+  min-inline-size: 0;
+}
+
+.guide-original {
+  white-space: pre-wrap;
+}
+
+.guide-scene-revision fieldset {
+  min-inline-size: 0;
+}
+
+.guide-scene-revision dl {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1fr) minmax(0, 2fr);
+  gap: 0.5rem 1rem;
+}
+
+.guide-scene-revision dd {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.guide-mobile-tabs {
+  display: none;
+}
+
+@media (max-width: 48rem) {
+  .guide-mobile-tabs {
+    display: flex;
+    gap: 0.4rem;
+  }
+
+  .guide-columns {
+    display: block;
+  }
+
+  .guide-question {
+    position: static;
+  }
+
+  .guide-scene-revision dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .guide-columns[data-pane="guide"] > .guide-plan,
+  .guide-columns[data-pane="plan"] > .guide-question {
+    display: none;
+  }
+}

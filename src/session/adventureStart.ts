@@ -15,6 +15,7 @@ import type {
   VoiceTemplate,
 } from "../library/LibrarySchema";
 import { adventureMapPlaces, bindSceneMapPlace, mapPlaceForScene } from "../library/adventureMap";
+import { syncAdventureItemText } from "../library/adventureItemText";
 import { AdventureRunSchema, type AdventureNarration, type Persona } from "../game/AdventureSchema";
 import { referencedFilms } from "../cutscenes/schema";
 import { dueCutscenes, queueCutscenes } from "../game/cutscenes";
@@ -178,13 +179,15 @@ export function startPlayableCampaign(
       throw Error(
         `Add an arrival introduction for “${s.name || "Untitled scene"}” in the scene or its map place.`,
       );
+    const game = structuredClone(bound.encounter);
+    if (campaign.guideItemText) syncAdventureItemText(campaign, game, sources.objects ?? []);
     return {
       id: s.id,
       name: s.name,
       placeId: place.id,
       location: place.name,
       ...(entry ? { mapNodeId: entry.node.id } : {}),
-      game: structuredClone(bound.encounter),
+      game,
     };
   });
   const run = unifyAdventureEquipment(
