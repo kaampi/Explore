@@ -101,8 +101,7 @@
 .ui-menu--top-nav .ui-menu__item {
   min-height: var(--control);
   padding: var(--space-2) var(--space-3);
-  font-size: 1.167rem;
-  font-weight: 500;
+  font-size: 0.9375rem;
 }
 .ui-menu--top-nav .ui-menu__heading {
   color: var(--text-dim);
@@ -119,7 +118,6 @@
 .ui-menu--top-nav .ui-menu__item[aria-current="page"] {
   color: var(--accent);
   background: var(--panel-raised);
-  font-weight: 650;
 }
 .ui-menu--top-nav .ui-menu__item[aria-current="page"]::after {
   content: "";
