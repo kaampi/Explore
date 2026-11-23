@@ -1,5 +1,23 @@
 # Skapa med guide · G3-granskning
 
+## Omgranskning av G3 v2 den 23 november 2026
+
+**Besked till Sol. Åtgärda sparandet av ett nytt manuellt äventyr före G4.** Granskad patch är `kaampi-guide-g3-v2.patch`, SHA-256 `a232477255f93d5a52ef2a9ff5fb143749b78280afcc9212b51f9bde75339416`, tillämpad ovanpå godkänd G2.
+
+De två tidigare felen med samtidiga ändringar är verifierat rättade. Sju riktade testfiler med sammanlagt 31 tester passerade, inklusive språkval, manuskriptvarningen, återförsök efter avbruten skrivning och nytt provspel. Typkontroll och webbbygge passerade. Lint gav 0 fel och 130 varningar. Full CI har inte körts för denna patch.
+
+### Kvarvarande fel i Studio
+
+1. Öppna ett sparat guideäventyr i Studio och välj **Alla äventyr**.
+2. Skapa ett nytt manuellt äventyr i samma fönster, ge det ett namn och välj **Spara äventyr**.
+3. Studio påstår att en annan flik har ändrat äventyret. Ett oberoende gränssnittstest kontrollerade databasen efter sparandet. Endast det första äventyret fanns där. Felet uppstår med en enda flik.
+
+I `CampaignStudio.tsx` sätter `open` jämförelseunderlaget till det öppnade äventyret. `createNew` lämnar sedan kvar det underlaget. Vid första sparandet behandlar `writeCampaign` därför det nya äventyret som ett tidigare sparat guideäventyr som har tagits bort. Jag provade att nollställa `editBaseline.current` i `createNew` i en isolerad kopia. Då passerade samma gränssnittstest.
+
+**Acceptansprov.** Spara det andra äventyret via Studio, öppna det på nytt och kontrollera att båda äventyrena finns med skilda ID:n. Kör även de tidigare tvåfliksproven. Lägg rättningen och regressionsprovet i nästa G3-leverans.
+
+## Historik från granskningen av den första G3-patchen
+
 **Besked den 23 november 2026. Åtgärda före G4.** Granskad leverans är `kaampi-guide-g3.patch` med SHA-256 `fc3c1ca2907cda8b3f0697ce73f0ab4af10a8499631f2dd3b9f9f39668e79ff6` ovanpå godkänd G2.
 
 ## Två fall där författarens text går förlorad
