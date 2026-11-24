@@ -52,6 +52,20 @@ export function StoryLog({
   const log = useRef<HTMLDivElement>(null);
   const [away, setAway] = useState(false);
   const atBottom = useRef(true);
+  // While the log is moving itself to the newest line, the scrolling passes through places far from
+  // the end. That is not the player leaving, so it must not bring "To latest" back.
+  const followingUntil = useRef(0);
+  const scrollToEnd = () => {
+    const el = log.current;
+    if (!el) return;
+    // Only a move that has somewhere to go is a move to wait for.
+    if (el.scrollHeight - el.scrollTop - el.clientHeight > 1)
+      followingUntil.current = Date.now() + 1500;
+    el.scrollTo?.({ top: el.scrollHeight, behavior: "smooth" });
+  };
+  const stopFollowing = () => {
+    followingUntil.current = 0;
+  };
   const count = rows.length + (draftReply ? 1 : 0);
   // One tab stop for the whole story: the row that is current. The arrow keys move between rows,
   // and only the current row's buttons can be tabbed to. Before any move it is the newest row.
@@ -88,8 +102,7 @@ export function StoryLog({
     element?.scrollIntoView?.({ block: "nearest" });
   };
   useEffect(() => {
-    if (atBottom.current)
-      log.current?.scrollTo?.({ top: log.current.scrollHeight, behavior: "smooth" });
+    if (atBottom.current) scrollToEnd();
   }, [count]);
   const degree = {
     exceptional: t("pvDegreeExceptional"),
@@ -152,10 +165,21 @@ export function StoryLog({
         role="log"
         aria-live="polite"
         aria-relevant="additions"
-        onKeyDown={moveRow}
+        onKeyDown={(event) => {
+          stopFollowing();
+          moveRow(event);
+        }}
+        onWheel={stopFollowing}
+        onTouchStart={stopFollowing}
+        onPointerDown={stopFollowing}
         onScroll={(event) => {
           const el = event.currentTarget;
           const near = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+          if (followingUntil.current > Date.now()) {
+            // On its way down. Arriving ends it; passing through changes nothing.
+            if (near) stopFollowing();
+            else return;
+          }
           atBottom.current = near;
           setAway(!near);
         }}
@@ -274,7 +298,7 @@ export function StoryLog({
           onClick={() => {
             atBottom.current = true;
             setAway(false);
-            log.current?.scrollTo?.({ top: log.current.scrollHeight, behavior: "smooth" });
+            scrollToEnd();
           }}
         >
           ↓ {t("pvToLatest")}
