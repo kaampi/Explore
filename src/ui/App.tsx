@@ -136,6 +136,7 @@ function SandboxApp() {
     unreadable: 0,
   });
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [guideOpen, setGuideOpen] = useState(false);
   const [view, setView] = useState<
     "home" | "studio" | "play" | "conversations" | "ideas" | "guide"
   >("home");
@@ -359,6 +360,7 @@ function SandboxApp() {
 
   function navigate(destination: "home" | "conversations" | "ideas" | "guide") {
     if (destination === view || !canLeaveStudio()) return;
+    setGuideOpen(false);
     report(
       action(async () => {
         await persistCurrent();
@@ -376,9 +378,27 @@ function SandboxApp() {
     const destination = next === "places" ? "maps" : next;
     if ((view === "studio" && destination === studioView) || !canLeaveStudio()) return;
     setStudioDirty(false);
+    setGuideOpen(false);
     setStudioView(destination);
     setView("studio");
     setOperationError(null);
+  }
+  /** Opens the guide that builds an adventure, from wherever the player is. */
+  function openAdventureGuide() {
+    if (view === "home") {
+      setGuideOpen(true);
+      return;
+    }
+    if (!canLeaveStudio()) return;
+    report(
+      action(async () => {
+        await persistCurrent();
+        setStudioDirty(false);
+        setGuideOpen(true);
+        setView("home");
+        await refreshCatalog();
+      }),
+    );
   }
   function openGuideStoryboard(campaignId: string, sceneId?: string) {
     setResume({ campaignId, openStoryboard: true, ...(sceneId ? { sceneId } : {}) });
@@ -441,7 +461,7 @@ function SandboxApp() {
           {view !== "play" && (
             <nav className="sb-header-utilities" aria-label="Help and settings">
               <button type="button" onClick={() => openGuide()}>
-                {t("guide")}
+                {t("navHelp")}
               </button>
               <button type="button" onClick={() => setAppearanceOpen(true)}>
                 {t("settings")}
@@ -458,6 +478,8 @@ function SandboxApp() {
             onContinue={session ? () => report(openConversation(session.id)) : undefined}
             resumeDisabled={working}
             backup={backup}
+            onAdventureGuide={openAdventureGuide}
+            guideOpen={view === "home" && guideOpen}
           />
         )}
         <div className="sb-header-preferences">
@@ -551,6 +573,8 @@ function SandboxApp() {
               onStart={startScene}
               onStudio={openStudio}
               onGuideStoryboard={openGuideStoryboard}
+              guideOpen={guideOpen}
+              onGuideOpenChange={setGuideOpen}
               conversations={catalog.entries}
               navigationBusy={working}
             />

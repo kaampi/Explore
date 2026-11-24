@@ -42,6 +42,8 @@ export function ExploreNavigation({
   onContinue,
   resumeDisabled,
   backup,
+  onAdventureGuide,
+  guideOpen,
 }: {
   view: StudioView | "home" | "ideas" | "conversations" | "guide";
   openStudio: (view: StudioView) => void;
@@ -50,6 +52,10 @@ export function ExploreNavigation({
   onContinue: (() => void) | undefined;
   resumeDisabled: boolean;
   backup: { busy: boolean; exportLibrary: () => Promise<void>; chooseBackup: () => void };
+  /** Opens the guide that builds an adventure step by step. */
+  onAdventureGuide: () => void;
+  /** The adventure guide is open now. */
+  guideOpen: boolean;
 }) {
   const t = useTranslate();
   const file: MenuItem[] = [
@@ -68,7 +74,16 @@ export function ExploreNavigation({
   ];
   const inAdventures = view === "campaigns" || view === "adventure";
   const build: MenuItem[] = [
-    { label: t("adventures"), current: inAdventures, onSelect: () => openStudio("campaigns") },
+    {
+      label: t("adventures"),
+      current: inAdventures && !guideOpen,
+      onSelect: () => openStudio("campaigns"),
+    },
+    {
+      label: t("navAdventureGuide"),
+      current: guideOpen,
+      onSelect: onAdventureGuide,
+    },
   ];
   for (const { title, entries } of buildGroups) {
     build.push({ kind: "separator" }, { kind: "heading", label: t(title) });
@@ -81,6 +96,7 @@ export function ExploreNavigation({
   }
   const inBuild =
     inAdventures ||
+    guideOpen ||
     buildGroups.some(({ entries }) => entries.some(([destination]) => destination === view));
 
   return (

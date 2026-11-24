@@ -52,6 +52,8 @@ export function HomeScreen({
   onStart,
   onStudio,
   onGuideStoryboard,
+  guideOpen: guideOpenFromApp,
+  onGuideOpenChange,
   conversations = [],
   navigationBusy = false,
 }: {
@@ -64,8 +66,14 @@ export function HomeScreen({
   onStart: (session: Session) => Promise<void>;
   onStudio: (view: StudioView) => void;
   onGuideStoryboard?: (campaignId: string) => void;
+  /** Whether the adventure guide is open. The app holds it, so that a menu can open it. */
+  guideOpen?: boolean | undefined;
+  onGuideOpenChange?: ((open: boolean) => void) | undefined;
 }) {
   const t = useTranslate();
+  const [guideOpenHere, setGuideOpenHere] = useState(false);
+  const guideOpen = guideOpenFromApp ?? guideOpenHere;
+  const setGuideOpen = onGuideOpenChange ?? setGuideOpenHere;
   const [characters, setCharacters] = useState<CharacterTemplate[]>([]);
   const [realms, setRealms] = useState<RealmTemplate[]>([]);
   const [places, setPlaces] = useState<PlaceTemplate[]>([]);
@@ -93,7 +101,6 @@ export function HomeScreen({
   const [world, setWorld] = useState<RealmTemplate | null>(null);
   const [exploring, setExploring] = useState<RealmTemplate | null>(null);
   const [campaign, setCampaign] = useState<CampaignTemplate | null>(null);
-  const [guideOpen, setGuideOpen] = useState(false);
   const [placeId, setPlaceId] = useState("");
   const [characterId, setCharacterId] = useState("");
   useEffect(() => {

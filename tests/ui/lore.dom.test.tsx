@@ -194,6 +194,22 @@ const supportedEntry = {
 };
 
 describe("lorebook import journeys", () => {
+  it("opens the adventure guide from the Build menu on any page, and the top button says Help", async () => {
+    await mount();
+    expect(button("Help")).not.toBeNull();
+    await click(named("Build"));
+    await click(menuItem("Create with the guide…"));
+    await waitFor(() => !!container.querySelector(".adventure-guide"));
+    expect(named("Build").getAttribute("aria-current")).toBe("page");
+    await click(named("Build"));
+    expect(menuItem("Create with the guide…").getAttribute("aria-current")).toBe("page");
+    await click(menuItem("Anatomy"));
+    expect(container.querySelector(".adventure-guide")).toBeNull();
+    await click(named("Build"));
+    await click(menuItem("Create with the guide…"));
+    await waitFor(() => !!container.querySelector(".adventure-guide"));
+  });
+
   it("shows and saves parenthesized character fields separately while retaining original text in review", async () => {
     await mount();
     await click(named("Build"));
