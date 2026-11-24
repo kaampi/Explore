@@ -30,6 +30,7 @@ import { usePlayMap } from "../components/usePlayMap";
 import { isGateTestSession } from "../../session/gateTest";
 import { adventureHasClock } from "../../game/AdventureEngine";
 import { PlayTopBar } from "../play/PlayTopBar";
+import { usePlayLayout } from "../play/usePlayLayout";
 import { Journal } from "../play/Journal";
 import { OrnamentProvider, ornamentVars, useSimpleFrames } from "../play/ornament";
 import { captureIdea, type Idea } from "../../ideas/IdeaSchema";
@@ -59,6 +60,7 @@ export function PlayWorkspace({
   onAppearance: () => void;
 }) {
   const t = useTranslate();
+  const layout = usePlayLayout();
   const { useSession, phase, setOllamaModel, saveEncounter, forgetPlaceNote } = useEngine();
   const { discovery, refresh, chooseModel } = useConnection();
   const [connectionOpen, setConnectionOpen] = useState(false);
@@ -309,14 +311,19 @@ export function PlayWorkspace({
         )}
         {settingsOpen && <StatusBar />}
         {!canSend && !session.gateEncounter && (
-          <div className="sb-play-connection" role="status">
+          <div
+            className={`sb-play-connection${layout === "narrow" ? " sb-play-connection--compact" : ""}`}
+            role="status"
+          >
             <span>
               {t(
                 readiness === "checking"
                   ? "pwAiChecking"
-                  : readiness === "empty" || readiness === "missing-model"
-                    ? "pwAiChooseModel"
-                    : "pwAiUnavailable",
+                  : layout === "narrow"
+                    ? "pwAiOffShort"
+                    : readiness === "empty" || readiness === "missing-model"
+                      ? "pwAiChooseModel"
+                      : "pwAiUnavailable",
               )}
             </span>
             <button type="button" className="sb-link" onClick={() => setConnectionOpen(true)}>
