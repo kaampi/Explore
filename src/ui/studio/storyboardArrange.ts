@@ -227,7 +227,6 @@ export function placeNewScenes(
         sides.find((side) => shift(side) <= step) ??
         [...sides].sort((a, b) => shift(a) - shift(b))[0]!;
     }
-    spot = { x: spot.x + 0, y: spot.y + 0 };
     placed.set(id, spot);
     taken.push({ ...spot, width: CARD_WIDTH, height: CARD_HEIGHT });
   });

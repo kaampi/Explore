@@ -29,11 +29,20 @@ export type TextRef =
   | { sceneId: string; field: "arrival" }
   | { sceneId: string; actionId: string; field: "label" | "outcome" };
 
-export type Gives = { itemTempId?: TempId; itemId?: string; fact?: string };
+/** What an action gives. `learned` is the discovery in a sentence for the player; `fact` is its name. */
+export type Gives = { itemTempId?: TempId; itemId?: string; fact?: string; learned?: string };
 
 export type AuthoringOp =
   | { op: "addScene"; tempId: TempId; name: string; placeId?: string; arrival: string }
-  | { op: "addLink"; from: SceneRef; to: SceneRef; label: string; requires?: Requirement[] }
+  | {
+      op: "addLink";
+      from: SceneRef;
+      to: SceneRef;
+      label: string;
+      requires?: Requirement[];
+      /** What the player sees the door called when a route needs a thing, in the author's language. Missing: the route's label. */
+      lockName?: string;
+    }
   | {
       op: "addAction";
       sceneId: SceneRef;
@@ -226,7 +235,7 @@ export function applyPatch<L extends PatchLibrary>(
         const { scene } = addDoor(
           ensureItemIn(source, keyId),
           {
-            name: `Needs the ${object(keyId).name}`,
+            name: op.lockName?.trim() || op.label,
             position: playerPosition(source),
             locked: true,
             keyId,
@@ -244,6 +253,7 @@ export function applyPatch<L extends PatchLibrary>(
       const need = split(op.requires);
       const effects: ({ kind: "take-item"; itemId: string } | { kind: "flag"; flag: string })[] =
         [];
+      let learned: string | undefined;
       for (const gift of op.gives ?? []) {
         const giftId = gift.itemTempId ?? gift.itemId;
         if (giftId) {
@@ -252,6 +262,7 @@ export function applyPatch<L extends PatchLibrary>(
           effects.push({ kind: "take-item", itemId: resolved });
         }
         if (gift.fact) effects.push({ kind: "flag", flag: gift.fact });
+        if (gift.fact && gift.learned && !learned) learned = gift.learned;
       }
       const game = structuredClone(gameOf(scene));
       const actionId = freshId(
@@ -265,8 +276,9 @@ export function applyPatch<L extends PatchLibrary>(
           description: "",
           requiresFlags: need.flags,
           requiresItems: need.items,
-          success: { text: op.outcome, effects },
-          failure: { text: "That does not work right now." },
+          success: { text: op.outcome, effects, ...(learned ? { learned } : {}) },
+          // Until an action has a roll, a failure has nothing of its own to say: it reads as the outcome.
+          failure: { text: op.outcome },
         }),
       );
       validateEncounter(game);

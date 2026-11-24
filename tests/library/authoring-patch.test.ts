@@ -40,6 +40,7 @@ export const sketch: AuthoringPatch = {
       from: "new:hall",
       to: "new:crypt",
       label: "Down to the crypt",
+      lockName: "Needs the seal",
       requires: [{ kind: "item", itemId: "new:seal" }],
     },
     { op: "addLink", from: "new:crypt", to: "new:hall", label: "Back up" },
@@ -223,11 +224,16 @@ describe("checkPatch", () => {
     };
     const findings = checkPatch(campaign, library, hatch);
     expect(findings.map((finding) => finding.kind)).toEqual(["bypassesLock"]);
-    expect(findings[0]!.message).toBe("This route goes past the lock “Needs the Seal”.");
-    expect(findings[0]!.fixes.map((fix) => fix.label)).toEqual([
-      "Make this route need “Needs the Seal” too",
-      "Shortcut on purpose",
+    expect(findings[0]).toMatchObject({
+      kind: "bypassesLock",
+      params: { locks: ["Needs the seal"] },
+      message: "This route goes past the lock “Needs the seal”.",
+    });
+    expect(findings[0]!.fixes.map(({ key, params }) => [key, params])).toEqual([
+      ["requireLockToo", { locks: ["Needs the seal"] }],
+      ["shortcutOnPurpose", {}],
     ]);
+    expect(findings[0]!.fixes[0]!.label).toBe("Make this route need “Needs the seal” too");
     // Taking the first fix clears the finding; the second leaves the patch as it is.
     const fixed = findings[0]!.fixes[0]!.patch!;
     expect(checkPatch(campaign, library, fixed)).toEqual([]);
@@ -269,6 +275,12 @@ describe("checkPatch", () => {
     const unreachable = findings.filter((finding) => finding.kind === "unreachable");
     expect(unreachable).toHaveLength(1);
     expect(unreachable[0]!.message).toContain("“Vault” cannot be reached from the start");
+    expect(unreachable[0]!.params).toMatchObject({
+      what: "scene",
+      name: "Vault",
+      why: "unobtainable",
+      thing: "knows-the-word",
+    });
     expect(unreachable[0]!.message).toContain("“knows-the-word” cannot be had anywhere");
   });
 
@@ -359,21 +371,145 @@ describe("checkPatch", () => {
 });
 
 describe("checkMentions", () => {
-  it("finds a thing the text mentions that the scene does not have", () => {
-    const { campaign, library, hall } = sketchAdventure();
-    const findings = checkMentions(campaign, library, hall, "The guildmaster holds a lantern.", [
-      "lantern",
-      "Seal",
+  const withPeople = () => {
+    const { campaign, library, hall, tower } = sketchAdventure();
+    const patched = applyPatch(campaign, library, {
+      ops: [
+        {
+          op: "addItem",
+          tempId: "new:lantern",
+          name: "Lantern",
+          description: ".",
+          inSceneId: tower,
+        },
+      ],
+    });
+    return { campaign: patched.campaign, library: patched.library, hall, tower };
+  };
+
+  it("offers to add a missing thing, and only a thing", () => {
+    const { campaign, library, hall } = withPeople();
+    const findings = checkMentions(campaign, library, hall, "The councillor holds a key.", [
+      { name: "brass key", kind: "item" },
+      { name: "The councillor", kind: "person" },
+      { name: "The market", kind: "place" },
+      { name: "Seal", kind: "item" },
     ]);
-    expect(findings).toHaveLength(1);
-    expect(findings[0]).toMatchObject({ kind: "missingThing", sceneId: hall });
-    expect(findings[0]!.message).toContain("“lantern”");
-    expect(findings[0]!.fixes[0]!.patch!.ops[0]).toMatchObject({ op: "addItem", name: "lantern" });
+    expect(findings.map((f) => [f.params.name, f.params.where])).toEqual([
+      ["brass key", "nowhere"],
+      ["The councillor", "nowhere"],
+      ["The market", "nowhere"],
+    ]);
+    expect(findings[0]!.fixes.map((fix) => fix.key)).toEqual(["addAsItem", "rewriteWithout"]);
+    expect(findings[0]!.fixes[0]!.patch!.ops[0]).toMatchObject({
+      op: "addItem",
+      name: "brass key",
+    });
+    // A person or a place is never turned into an item.
+    expect(findings[1]!.fixes.map((fix) => fix.key)).toEqual(["rewriteWithout"]);
+    expect(findings[2]!.fixes.map((fix) => fix.key)).toEqual(["rewriteWithout"]);
+  });
+
+  it("tells apart a thing that is elsewhere from one that is nowhere", () => {
+    const { campaign, library, hall } = withPeople();
+    const [there] = checkMentions(campaign, library, hall, "She lifts the lantern.", [
+      { name: "Lantern", kind: "item" },
+    ]);
+    expect(there).toMatchObject({
+      kind: "missingThing",
+      params: { where: "elsewhere", scenes: ["Watchtower"], scene: "Guildhall" },
+    });
+    expect(there!.message).toBe("“Lantern” is in “Watchtower”, but not in “Guildhall”.");
+    // Not offered to add something that already exists.
+    expect(there!.fixes.map((fix) => fix.key)).toEqual(["rewriteWithout"]);
+    const [shelved] = checkMentions(
+      campaign,
+      { ...library, characters: [{ name: "Alderman Voss" }] },
+      hall,
+      "Voss waits.",
+      [{ name: "Voss", kind: "person" }],
+    );
+    expect(shelved).toMatchObject({ params: { where: "elsewhere", inLibrary: "yes" } });
+    expect(shelved!.message).toBe("“Voss” is in the library, but not in “Guildhall”.");
+  });
+
+  it("looks for a person among the people, not among the things", () => {
+    const { campaign, library, hall } = withPeople();
+    const found = checkMentions(campaign, library, hall, "The seal speaks.", [
+      { name: "Seal", kind: "person" },
+    ]);
+    expect(found).toHaveLength(1);
   });
 
   it("copes with an empty list, which is what no model gives", () => {
     const { campaign, library, hall } = sketchAdventure();
     expect(checkMentions(campaign, library, hall, "Anything at all.", [])).toEqual([]);
-    expect(checkMentions(campaign, library, "no-such-scene", "x", ["y"])).toEqual([]);
+    expect(
+      checkMentions(campaign, library, "no-such-scene", "x", [{ name: "y", kind: "item" }]),
+    ).toEqual([]);
+  });
+});
+
+describe("what the player and the author read", () => {
+  it("names the door after the lock name, else the route, and fails with the outcome", () => {
+    const { campaign, library, hall, crypt } = sketchAdventure();
+    const door = Object.values(
+      campaign.scenes.find((scene) => scene.id === hall)!.encounter!.state.barriers,
+    )[0]!;
+    expect(door.name).toBe("Needs the seal");
+    const plain = applyPatch(campaign, library, {
+      ops: [
+        {
+          op: "addLink",
+          from: hall,
+          to: crypt,
+          label: "Rusty gate",
+          requires: [{ kind: "item", itemId: library.objects[0]!.id }],
+        },
+      ],
+    });
+    const names = Object.values(
+      plain.campaign.scenes.find((scene) => scene.id === hall)!.encounter!.state.barriers,
+    ).map((barrier) => barrier.name);
+    expect(names).toContain("Rusty gate");
+    const action = applyPatch(campaign, library, {
+      ops: [{ op: "addAction", sceneId: hall, label: "Sniff", outcome: "Smoke and wax." }],
+    });
+    const added = action.campaign.scenes
+      .find((scene) => scene.id === hall)!
+      .encounter!.definition.interactions.at(-1)!;
+    expect(added.failure.text).toBe("Smoke and wax.");
+  });
+
+  it("speaks of a discovery in the author's words, not by its internal name", () => {
+    const { campaign, library, hall, tower } = sketchAdventure();
+    const findings = checkPatch(campaign, library, {
+      ops: [
+        {
+          op: "addAction",
+          sceneId: hall,
+          label: "Read the plaque",
+          outcome: "It names the founder.",
+          gives: [{ fact: "vet-var-sigillet-ar", learned: "The seal is kept in the tower." }],
+        },
+      ],
+    });
+    expect(findings).toMatchObject([
+      { kind: "unusedFact", params: { fact: "The seal is kept in the tower." } },
+    ]);
+    expect(findings[0]!.message).not.toContain("vet-var");
+    const unmet = checkPatch(campaign, library, {
+      ops: [
+        {
+          op: "addAction",
+          sceneId: tower,
+          label: "Ask the guard",
+          outcome: "He nods.",
+          requires: [{ kind: "fact", fact: "vet-var-sigillet-ar" }],
+        },
+      ],
+    });
+    // With no text for it, the name is all there is.
+    expect(unmet[0]!.params.thing).toBe("vet-var-sigillet-ar");
   });
 });
