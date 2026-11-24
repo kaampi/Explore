@@ -30,6 +30,12 @@ Questions to revisit:
 
 Track this separately from the adventure creation guide.
 
+### Continue an existing adventure with the guide
+
+- [ ] After the current guide project, add **Bygg vidare…** to a selected Storyboard scene and **Bygg vidare härifrån** to the author's playtest. Both open the same guide at that scene in the saved adventure, including manual Storyboard edits.
+- Offer **Fortsätt härifrån**, **Lägg till ett vägval** and **Fördjupa scenen**. For a selected link, use [Elaborate in Storyboard](#elaborate-in-storyboard) to develop the stretch between its endpoints.
+- Preview added choices, scenes and changes to existing routes before applying them. Let the author test the addition from the selected scene and replay the whole adventure from its original start.
+
 ### Elaborate in Storyboard
 
 - [ ] **Expand selected text.** Let the author mark a passage, describe what to develop, then edit, accept or discard the proposed wording before it changes the adventure.
