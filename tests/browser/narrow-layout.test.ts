@@ -1,23 +1,14 @@
-import { existsSync } from "node:fs";
-import { createRequire } from "node:module";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { createServer, type ViteDevServer } from "vite";
+import { chromium, launchOptions } from "./chromium";
 
 /**
  * The play view in a real browser at the size of a phone. jsdom has no layout, so what has to be
  * seen in pixels is checked here. Needs Playwright with a Chromium; where there is none (a plain
  * install, the build server) the test is skipped, not failed.
  */
-/* eslint-disable @typescript-eslint/no-explicit-any -- Playwright is not a dependency of the project, so it has no types here. */
+/* eslint-disable @typescript-eslint/no-explicit-any -- the browser is driven through the untyped launcher in ./chromium. */
 type Browser = any;
-let chromium: any;
-try {
-  // Loaded the way Node finds installed tools, so that a Playwright outside the project is found too.
-  const playwright = createRequire(import.meta.url)("playwright") as any;
-  if (existsSync(playwright.chromium.executablePath())) chromium = playwright.chromium;
-} catch {
-  chromium = undefined;
-}
 
 let server: ViteDevServer | undefined;
 let browser: Browser | undefined;
@@ -28,7 +19,7 @@ beforeAll(async () => {
   await server.listen();
   const address = server.httpServer!.address();
   url = `http://127.0.0.1:${typeof address === "object" && address ? address.port : 5173}/`;
-  browser = await chromium.launch({ args: ["--no-sandbox"] });
+  browser = await chromium.launch(launchOptions);
 }, 60_000);
 afterAll(async () => {
   await browser?.close();

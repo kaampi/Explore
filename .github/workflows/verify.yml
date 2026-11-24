@@ -14,11 +14,30 @@ jobs:
           node-version: "22"
           cache: npm
       - run: npm ci
+      # The browser tests in tests/browser/ need Chromium. They run here, on Linux, and nowhere else.
+      - name: Read the Playwright version
+        id: playwright
+        run: echo "version=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Cache Chromium
+        id: chromium-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: chromium-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      - name: Install Chromium and its system libraries
+        if: steps.chromium-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+      - name: Install the system libraries for the cached Chromium
+        if: steps.chromium-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
       - run: npm run format:check
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run build
+      # With REQUIRE_BROWSER_TESTS the browser tests fail, instead of skipping, when Chromium is missing.
       - run: npm test
+        env:
+          REQUIRE_BROWSER_TESTS: "1"
 
   test-windows:
     if: github.event_name == 'pull_request'
@@ -33,4 +52,6 @@ jobs:
           node-version: "22"
           cache: npm
       - run: npm ci
+      # No Chromium here: the browser tests in tests/browser/ skip themselves. The Linux job
+      # (verify) runs them, with REQUIRE_BROWSER_TESTS=1 so that they cannot be skipped there.
       - run: npm test
