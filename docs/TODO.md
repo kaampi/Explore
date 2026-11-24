@@ -23,6 +23,13 @@ Questions to revisit:
 - [ ] Terrain effects by travel mode, including explicit impassability for particular vehicles.
 - [ ] Grid-based house plans, irregular rooms, connected stairs/floors and keyed doors, as discussed.
 
+## Optional AI help for building a Storyboard scene
+
+- [ ] Explore a future Storyboard feature for first-time authors. Let the author describe what the player should be able to do in one scene. Use the surrounding adventure to propose editable Storyboard actions, conditions, outcomes and links. For example, a key and a conversation might both open a door, but only the conversation establishes that someone saw the player.
+- Show which existing characters, items and scenes the proposal would use. Ask a follow-up question when the answer changes how the scene plays. Let the author adjust the preview, apply it, playtest each route and request a focused revision.
+
+Track this separately from the adventure creation guide.
+
 ## Game time and journeys
 
 - [ ] Design narrative time, journey stages, overnight stops, encounters, simple rest and injury effects when developing gameplay. See [game-time-and-journeys-ideas.md](game-time-and-journeys-ideas.md) for agreed directions and open questions. These are future design notes, not implemented gameplay.
