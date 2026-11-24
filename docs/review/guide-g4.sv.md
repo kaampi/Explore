@@ -11,6 +11,8 @@
 
 Alla 43 riktade tester och de två kompletterande proven passerade lokalt. Typkontroll och webbbygge passerade. AI-svaren var simulerade. Svarskvalitet med en verklig modell och visuell kontroll i Windows/Tauri vid 1280 × 800 återstår. Vid layoutkontrollen bör författaren särskilt prova första frågan. **Nästa** och den lokala idéhjälpen ligger i olika knapprader i den granskade koden, medan frågeguidens specifikation anger samma rad på dator.
 
+Vid integrationen fick ett Windows-prov för kartkopplingar en revisionskonflikt. Provet läste databasen innan den sista autosparningen var klar. Astra ändrade provet så att det väntar på att det länkade resmålets plats har tömts i databasen innan det prövar godkännandet. Spelets och guidens kod är densamma som i leveransen.
+
 ## Historik · Första G4-granskningen
 
 **Astras besked den 24 november 2026. Åtgärda före godkännande och bildspåret.** Granskningen gäller PR #67 på revision `9729d223ec2ebe7329686bd29d9e4dc9e72d1909`.

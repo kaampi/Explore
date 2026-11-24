@@ -519,8 +519,13 @@ it("previews and saves a mapped opening with a person, group, item and a linked 
     await view.until(() =>
       expect(view.host.querySelector(".guide-columns")?.getAttribute("data-pane")).toBe("plan"),
     );
-    const incomplete = await repo.loadGuideInterview();
-    await expect(repo.approveGuideInterview(incomplete!)).rejects.toThrow("saknar plats");
+    const incomplete = await vi.waitFor(async () => {
+      const saved = await repo.loadGuideInterview();
+      expect(saved?.choices[0]?.targetSceneId).toBe(destinationId);
+      expect(saved?.later.find(({ id }) => id === destinationId)?.place).toEqual({ name: "" });
+      return saved!;
+    });
+    await expect(repo.approveGuideInterview(incomplete)).rejects.toThrow("saknar plats");
     expect(await repo.listCampaigns()).toEqual([]);
     expect(await repo.listObjects()).toEqual([]);
     await view.click("Ta bort kopplingen", ".guide-plan");
