@@ -44,6 +44,15 @@ Track this separately from the adventure creation guide.
 - Let Explore, Comic and Write refer to the same versioned character reference card. An author could use Emma’s photographic card in Write and pair it with a drawn style in Explore or Comic.
 - Record the selected style and reference-card versions in the project. Let the author decide when to adopt a newer version. Include the approved game images with the adventure so it plays offline.
 
+## Mature content and player-selected alternatives
+
+Revisit after the adventure creation guide is complete.
+
+- [ ] In Storyboard, let authors mark an image or a whole scene for nudity, combat or graphic violence. For a marked image, offer an alternate image. For a marked scene, let the author write a toned-down scene or an alternate route that preserves essential clues and player choices.
+- [ ] Give the finished game a **Show mature content** switch, off by default and changeable during play. Use the authored alternatives offline.
+- [ ] For each combat outcome, support a standard message and an optional more detailed description. Both describe the same resolved event, with the same hit location, damage and turn order. For example, both versions can tell the player that Mara was hit in the shoulder. Use the standard message when a detailed version is absent.
+- [ ] Apply the current setting to the combat log, including after loading a saved game. Let authors playtest both settings in Storyboard and identify missing alternatives before export.
+
 ## Game time and journeys
 
 - [ ] Design narrative time, journey stages, overnight stops, encounters, simple rest and injury effects when developing gameplay. See [game-time-and-journeys-ideas.md](game-time-and-journeys-ideas.md) for agreed directions and open questions. These are future design notes, not implemented gameplay.
