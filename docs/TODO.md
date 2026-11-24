@@ -95,6 +95,8 @@ Not designed yet. The pack in the play view (see [ornaments.sv.md](ornaments.sv.
 
 ## Outcomes that change values (next after the play view)
 
+**Designed:** see [outcome-values.sv.md](outcome-values.sv.md). The format proposal goes to the ChatGPT track for review before building.
+
 Needed for genres other than fighting: horror (Sanity that drops), romance (closeness that grows), everyday persuasion. Checked in the engine on main: a check can already roll against any value in the rule-set (`check: { stat, modifier }`), and outcomes can set facts, take or give items, unlock or open doors, start a fight and move resources. Bribing a bus driver or flirting to open new choices can be built today. What is missing:
 
 - [ ] **An effect that changes a value**, on the player or on a person: "Sanity −10", "Trust +5". With the rule-set's limits, and something that happens at the limit (Sanity at 0: an outcome, a scene, or the game ends). Today only combat changes health.
