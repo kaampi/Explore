@@ -194,38 +194,45 @@ export function placeNewScenes(
         y + CARD_HEIGHT + gap > card.y,
     );
   /** The nearest free spot in a column, trying the anchor's own height first, then down and up. */
-  function inColumn(x: number, top: number): StoryboardPosition {
+  function inColumn(x: number, top: number): StoryboardPosition | undefined {
     const step = ceilStoryboardCoordinate(CARD_HEIGHT + CARD_GAP);
     for (let n = 0; n < 200; n++) {
       const offset = Math.ceil(n / 2) * step * (n % 2 === 1 ? 1 : -1);
       const y = top + offset;
       if (free(x, y)) return { x, y };
     }
-    return { x, y: top + 200 * step };
+    return undefined;
+  }
+  /** A column beyond every card there is, which is always free. */
+  function newColumn(top: number): StoryboardPosition {
+    const right = Math.max(0, ...taken.map((card) => card.x + card.width));
+    const x = ceilStoryboardCoordinate(right + COLUMN_GAP);
+    return inColumn(x, top) ?? { x, y: top };
   }
   newIds.forEach((id) => {
     let spot: StoryboardPosition;
     if (!anchor) {
-      const right = Math.max(0, ...taken.map((card) => card.x + card.width));
-      spot = inColumn(ceilStoryboardCoordinate(right + COLUMN_GAP), 0);
+      spot = newColumn(0);
     } else {
       const top = ceilStoryboardCoordinate(anchor.pos.y);
       // Right side first, then left, then below. A side is good when its column has room within a
-      // card's height of the anchor; otherwise the side that needs the smallest move is used.
+      // card's height of the anchor; otherwise the side that needs the smallest move is used. If
+      // no side has room at all, the scene goes in a new column beyond the last card.
       const step = ceilStoryboardCoordinate(CARD_HEIGHT + CARD_GAP);
-      const sides: StoryboardPosition[] = [
-        inColumn(ceilStoryboardCoordinate(anchor.pos.x + anchor.width + COLUMN_GAP), top),
-        inColumn(floorToGrid(anchor.pos.x - COLUMN_GAP - CARD_WIDTH), top),
-      ];
       const below = {
         x: ceilStoryboardCoordinate(anchor.pos.x),
         y: ceilStoryboardCoordinate(anchor.pos.y + anchor.height + CARD_GAP),
       };
+      const sides: StoryboardPosition[] = [
+        inColumn(ceilStoryboardCoordinate(anchor.pos.x + anchor.width + COLUMN_GAP), top),
+        inColumn(floorToGrid(anchor.pos.x - COLUMN_GAP - CARD_WIDTH), top),
+      ].filter((side): side is StoryboardPosition => side !== undefined);
       if (free(below.x, below.y)) sides.push(below);
       const shift = (side: StoryboardPosition) => (side === below ? 0 : Math.abs(side.y - top));
       spot =
         sides.find((side) => shift(side) <= step) ??
-        [...sides].sort((a, b) => shift(a) - shift(b))[0]!;
+        [...sides].sort((a, b) => shift(a) - shift(b))[0] ??
+        newColumn(top);
     }
     placed.set(id, spot);
     taken.push({ ...spot, width: CARD_WIDTH, height: CARD_HEIGHT });
