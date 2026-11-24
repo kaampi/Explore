@@ -23,7 +23,11 @@ export type SceneRef = string | TempId;
 export type ItemRef = string | TempId;
 
 /** Something a route or an action asks for: a discovery, or a thing the player holds. */
-export type Requirement = { kind: "fact"; fact: string } | { kind: "item"; itemId: ItemRef };
+export type Requirement =
+  | { kind: "fact"; fact: string }
+  /** The discovery must NOT have been made yet ("the alarm has not gone"). */
+  | { kind: "noFact"; fact: string }
+  | { kind: "item"; itemId: ItemRef };
 
 export type TextRef =
   | { sceneId: string; field: "arrival" }
@@ -33,7 +37,16 @@ export type TextRef =
 export type Gives = { itemTempId?: TempId; itemId?: string; fact?: string; learned?: string };
 
 export type AuthoringOp =
-  | { op: "addScene"; tempId: TempId; name: string; placeId?: string; arrival: string }
+  | {
+      op: "addScene";
+      tempId: TempId;
+      name: string;
+      /** The place the scene is at. A patch never makes one up: without it the scene cannot be played. */
+      placeId?: string;
+      /** The node on the adventure's map, for an adventure that is bound to a map. */
+      mapNodeId?: string;
+      arrival: string;
+    }
   | {
       op: "addLink";
       from: SceneRef;
@@ -103,6 +116,34 @@ function playerPosition(scene: CampaignScene): string {
   return game.state.actors[game.definition.playerId]!.position;
 }
 
+/** Where an item is in the adventure: placed in which scenes, and whether the player carries it. */
+export function itemPlaces(
+  campaign: CampaignTemplate,
+  itemId: string,
+): { placedIn: string[]; carried: boolean } {
+  const placedIn: string[] = [];
+  let carried = false;
+  for (const scene of campaign.scenes) {
+    const game = scene.encounter;
+    if (!game) continue;
+    if (game.state.itemLocations[itemId] !== undefined) placedIn.push(scene.id);
+    for (const actor of Object.values(game.state.actors))
+      if (actor.inventory.includes(itemId) || actor.weapons.includes(itemId)) {
+        if (actor.id === game.definition.playerId) carried = true;
+        else placedIn.push(scene.id);
+      }
+  }
+  return { placedIn: [...new Set(placedIn)], carried };
+}
+
+/** Why an operation can never be applied, whatever it is applied to. */
+export function patchOpProblem(op: AuthoringOp): "selfLink" | "oneDiscoveryPerAction" | undefined {
+  if (op.op === "addLink" && op.from === op.to) return "selfLink";
+  if (op.op === "addAction" && (op.gives ?? []).filter((gift) => gift.learned).length > 1)
+    return "oneDiscoveryPerAction";
+  return undefined;
+}
+
 /** Turn a patch into new records. Throws, and changes nothing, when the patch cannot be applied. */
 export function applyPatch<L extends PatchLibrary>(
   campaign: CampaignTemplate,
@@ -126,6 +167,12 @@ export function applyPatch<L extends PatchLibrary>(
   ]);
   const sceneIds = new Map<string, string>();
   const itemIds = new Map<string, string>();
+
+  patch.ops.forEach((op) => {
+    const problem = patchOpProblem(op);
+    if (problem === "selfLink") throw new Error("A route cannot lead from a scene to itself.");
+    if (problem) throw new Error("An action can teach the player only one discovery.");
+  });
 
   // Every new scene and item gets its id first, so an operation can name one that comes later.
   patch.ops.forEach((op) => {
@@ -163,10 +210,26 @@ export function applyPatch<L extends PatchLibrary>(
   const replaceScene = (scene: CampaignScene) => {
     next = { ...next, scenes: next.scenes.map((item) => (item.id === scene.id ? scene : item)) };
   };
-  const ensureItemIn = (scene: CampaignScene, id: string): CampaignScene =>
-    gameOf(scene).definition.items.some((item) => item.id === id)
-      ? scene
-      : placeItem(scene, object(id), { position: playerPosition(scene) });
+  /**
+   * The item's description in a scene, so that a door there can name it as its key. The item
+   * itself is not put in the scene: it is found where it lies, and carried here.
+   */
+  const describeItemIn = (scene: CampaignScene, id: string): CampaignScene => {
+    if (gameOf(scene).definition.items.some((item) => item.id === id)) return scene;
+    const placed = placeItem(scene, object(id), { position: playerPosition(scene) });
+    const game = structuredClone(gameOf(placed));
+    delete game.state.itemLocations[id];
+    return { ...placed, objectIds: scene.objectIds, encounter: game };
+  };
+  /** A thing an action gives must lie in the scene. One that lies nowhere yet is put here. */
+  const placeForGiving = (scene: CampaignScene, id: string): CampaignScene => {
+    const known = itemPlaces(next, id);
+    if (known.placedIn.length > 0 || known.carried) return scene;
+    return placeItem(scene, object(id), { position: playerPosition(scene) });
+  };
+  const doorIds = new Set(
+    next.scenes.flatMap((scene) => Object.keys(scene.encounter?.state.barriers ?? {})),
+  );
 
   // Pass 1: scenes.
   patch.ops.forEach((op, opIndex) => {
@@ -177,6 +240,7 @@ export function applyPatch<L extends PatchLibrary>(
       id,
       name: op.name,
       ...(op.placeId ? { placeId: op.placeId } : {}),
+      ...(op.mapNodeId ? { mapNodeId: op.mapNodeId } : {}),
     };
     const built = makePlayableScene(next, base, [], [], lib.objects);
     gameOf(built).definition.description = op.arrival;
@@ -206,6 +270,7 @@ export function applyPatch<L extends PatchLibrary>(
   /** A requirement, split into what the engine reads on an action or a route. */
   const split = (requires: Requirement[] | undefined) => ({
     flags: (requires ?? []).flatMap((r) => (r.kind === "fact" ? [r.fact] : [])),
+    absent: (requires ?? []).flatMap((r) => (r.kind === "noFact" ? [r.fact] : [])),
     items: (requires ?? []).flatMap((r) => (r.kind === "item" ? [itemId(r.itemId)] : [])),
   });
 
@@ -221,7 +286,7 @@ export function applyPatch<L extends PatchLibrary>(
         fromSceneId: from,
         toSceneId: to,
         requiresFlags: need.flags,
-        requiresAbsentFlags: [],
+        requiresAbsentFlags: need.absent,
         setsFlags: [],
         label: op.label,
       };
@@ -231,9 +296,9 @@ export function applyPatch<L extends PatchLibrary>(
       // door in the scene the route leaves, shared with the scene it leads to.
       need.items.forEach((keyId, index) => {
         const source = sceneNow(from);
-        const doorId = `${id}:door-${index + 1}`;
+        const doorId = freshId(`${id}:door-${index + 1}`, doorIds);
         const { scene } = addDoor(
-          ensureItemIn(source, keyId),
+          describeItemIn(source, keyId),
           {
             name: op.lockName?.trim() || op.label,
             position: playerPosition(source),
@@ -251,6 +316,8 @@ export function applyPatch<L extends PatchLibrary>(
       const id = sceneId(op.sceneId);
       let scene = sceneNow(id);
       const need = split(op.requires);
+      // What the action asks for may lie in another scene: it is described here, not moved here.
+      for (const required of need.items) scene = describeItemIn(scene, required);
       const effects: ({ kind: "take-item"; itemId: string } | { kind: "flag"; flag: string })[] =
         [];
       let learned: string | undefined;
@@ -258,7 +325,7 @@ export function applyPatch<L extends PatchLibrary>(
         const giftId = gift.itemTempId ?? gift.itemId;
         if (giftId) {
           const resolved = itemId(giftId);
-          scene = ensureItemIn(scene, resolved);
+          scene = placeForGiving(scene, resolved);
           effects.push({ kind: "take-item", itemId: resolved });
         }
         if (gift.fact) effects.push({ kind: "flag", flag: gift.fact });
@@ -276,6 +343,7 @@ export function applyPatch<L extends PatchLibrary>(
           description: "",
           requiresFlags: need.flags,
           requiresItems: need.items,
+          excludesFlags: need.absent,
           success: { text: op.outcome, effects, ...(learned ? { learned } : {}) },
           // Until an action has a roll, a failure has nothing of its own to say: it reads as the outcome.
           failure: { text: op.outcome },
@@ -298,7 +366,10 @@ export function applyPatch<L extends PatchLibrary>(
         else action.success.text = op.text;
       }
       validateEncounter(game);
-      replaceScene({ ...scene, encounter: game });
+      // A scene that shows its map place's introduction would show that again, and not the new
+      // text, the next time it is played.
+      const ownText = op.target.field === "arrival" && scene.usePlaceIntro === true;
+      replaceScene({ ...scene, ...(ownText ? { usePlaceIntro: false } : {}), encounter: game });
     }
   });
 
