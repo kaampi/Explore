@@ -5,7 +5,11 @@ import {
   type StoryboardLink,
   type StoryboardSection,
 } from "@library/LibrarySchema";
-import { arrangeStoryboard } from "../../src/ui/studio/storyboardArrange";
+import {
+  arrangeStoryboard,
+  placeNewScenes,
+  type PlacedCard,
+} from "../../src/ui/studio/storyboardArrange";
 import { layoutStoryboard } from "../../src/ui/studio/storyboardLayout";
 
 function scene(id: string, x = 813, y = 517): CampaignScene {
@@ -130,5 +134,62 @@ describe("arrangeStoryboard", () => {
     );
     expect(result.scenes.get("d")?.y).toBe(result.scenes.get("b")?.y);
     expect(result.scenes.get("e")?.y).toBe(result.scenes.get("c")?.y);
+  });
+});
+
+describe("placeNewScenes", () => {
+  const card = (id: string, x: number, y: number): PlacedCard => ({
+    id,
+    pos: { x, y },
+    width: 200,
+    height: 124,
+  });
+  const overlap = (a: PlacedCard, b: PlacedCard) =>
+    a.pos.x < b.pos.x + b.width &&
+    a.pos.x + a.width > b.pos.x &&
+    a.pos.y < b.pos.y + b.height &&
+    a.pos.y + a.height > b.pos.y;
+
+  it("puts a new scene to the right of its anchor, on the grid", () => {
+    const placed = placeNewScenes([card("a", 100, 60)], "a", ["n1"]);
+    expect(placed.get("n1")).toEqual({ x: 420, y: 60 });
+  });
+
+  it("is the same for the same input, and never moves or covers an existing card", () => {
+    const cards = [card("a", 100, 60), card("b", 420, 60), card("c", 420, 240), card("d", 33, 207)];
+    const first = placeNewScenes(cards, "a", ["n1", "n2", "n3"]);
+    expect(placeNewScenes(cards, "a", ["n1", "n2", "n3"])).toEqual(first);
+    const all = [
+      ...cards,
+      ...[...first].map(([id, pos]) => ({ id, pos, width: 200, height: 124 })),
+    ];
+    for (const [id, pos] of first) {
+      expect(Math.abs(pos.x % 20)).toBe(0);
+      expect(Math.abs(pos.y % 20)).toBe(0);
+      expect(id.startsWith("n")).toBe(true);
+    }
+    for (let i = 0; i < all.length; i++)
+      for (let j = i + 1; j < all.length; j++) expect(overlap(all[i]!, all[j]!)).toBe(false);
+    // The cards that were there have not moved.
+    expect(cards.map(({ pos }) => pos)).toEqual([
+      { x: 100, y: 60 },
+      { x: 420, y: 60 },
+      { x: 420, y: 240 },
+      { x: 33, y: 207 },
+    ]);
+  });
+
+  it("uses the left side when the right has no room, and copes with a missing anchor", () => {
+    const blocked = [
+      card("a", 500, 60),
+      card("r1", 820, 60),
+      card("r2", 820, 240),
+      card("r3", 820, -120),
+    ];
+    const left = placeNewScenes(blocked, "a", ["n"]).get("n")!;
+    expect(left.x).toBeLessThan(500);
+    const lone = placeNewScenes([card("a", 0, 0)], "gone", ["n"]).get("n")!;
+    expect(lone.x).toBeGreaterThanOrEqual(200);
+    expect(placeNewScenes([], "gone", ["n"]).get("n")).toEqual({ x: 120, y: 0 });
   });
 });
