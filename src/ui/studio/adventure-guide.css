@@ -145,3 +145,36 @@
     display: none;
   }
 }
+
+.guide-assistant {
+  min-width: 0;
+  margin: 1rem 0;
+  padding: 0;
+  border: 0;
+}
+
+.guide-assistant-panel {
+  margin-top: 0.65rem;
+  padding: 0.75rem;
+  background: var(--panel-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow-wrap: anywhere;
+}
+
+.guide-assistant-panel > p:first-child,
+.guide-assistant-turn p,
+.guide-assistant-suggestion p {
+  margin: 0 0 0.65rem;
+}
+
+.guide-assistant-turn,
+.guide-assistant-suggestion {
+  padding-block: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.guide-assistant-turn p,
+.guide-assistant-suggestion p {
+  white-space: pre-wrap;
+}
