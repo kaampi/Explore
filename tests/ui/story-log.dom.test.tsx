@@ -279,6 +279,53 @@ it("shows 'To latest' once the player has scrolled up, and takes them down again
   expect(host.querySelector(".play-story__latest")).toBeNull();
 });
 
+it("does not bring 'To latest' back while the story is moving down by itself", async () => {
+  const { host } = await render();
+  const log = host.querySelector<HTMLElement>(".play-story__log")!;
+  Object.assign(log, { scrollTo: vi.fn() });
+  Object.defineProperty(log, "scrollHeight", { configurable: true, value: 2000 });
+  Object.defineProperty(log, "clientHeight", { configurable: true, value: 400 });
+  const scrollTo = async (top: number) => {
+    Object.defineProperty(log, "scrollTop", { configurable: true, value: top });
+    await act(async () => {
+      log.dispatchEvent(new Event("scroll", { bubbles: true }));
+    });
+  };
+  await scrollTo(100);
+  await act(async () => host.querySelector<HTMLButtonElement>(".play-story__latest")!.click());
+  // On the way down it passes places far from the end: no button.
+  await scrollTo(400);
+  expect(host.querySelector(".play-story__latest")).toBeNull();
+  await scrollTo(900);
+  expect(host.querySelector(".play-story__latest")).toBeNull();
+  await scrollTo(1600);
+  expect(host.querySelector(".play-story__latest")).toBeNull();
+  // Arrived. A later move away is the player's own, and shows the button again.
+  await scrollTo(300);
+  expect(host.querySelector(".play-story__latest")).not.toBeNull();
+});
+
+it("lets the player leave the story while it is moving down", async () => {
+  const { host } = await render();
+  const log = host.querySelector<HTMLElement>(".play-story__log")!;
+  Object.assign(log, { scrollTo: vi.fn() });
+  Object.defineProperty(log, "scrollHeight", { configurable: true, value: 2000 });
+  Object.defineProperty(log, "clientHeight", { configurable: true, value: 400 });
+  const scrollTo = async (top: number) => {
+    Object.defineProperty(log, "scrollTop", { configurable: true, value: top });
+    await act(async () => {
+      log.dispatchEvent(new Event("scroll", { bubbles: true }));
+    });
+  };
+  await scrollTo(100);
+  await act(async () => host.querySelector<HTMLButtonElement>(".play-story__latest")!.click());
+  await act(async () => {
+    log.dispatchEvent(new WheelEvent("wheel", { bubbles: true, deltaY: -120 }));
+  });
+  await scrollTo(200);
+  expect(host.querySelector(".play-story__latest")).not.toBeNull();
+});
+
 it("shows a reply that is being written as a line that is not settled yet", async () => {
   const { host } = await render({ draftReply: "Edda squints at the" });
 
