@@ -10,6 +10,7 @@ import { IndexedDBRepository } from "../../src/persistence/IndexedDBRepository";
 
 let session: ReturnType<typeof playMapFixture>["session"];
 let layout: "wide" | "narrow" = "wide";
+let readiness = "unavailable";
 vi.mock("../../src/ui/EngineStore", () => ({
   useEngine: () => ({ useSession: () => session, phase: "idle", setOllamaModel: () => {} }),
 }));
@@ -22,7 +23,7 @@ vi.mock("../../src/ui/components/EncounterPanel", () => ({
 vi.mock("../../src/ui/connection/ConnectionProvider", () => ({
   useConnection: () => ({ discovery: {}, refresh: () => {}, chooseModel: () => {} }),
 }));
-vi.mock("../../src/ui/connection/connection", () => ({ modelReadiness: () => "unavailable" }));
+vi.mock("../../src/ui/connection/connection", () => ({ modelReadiness: () => readiness }));
 vi.mock("../../src/ui/connection/ConnectionHelp", () => ({
   ConnectionHelp: () => <p data-help="true">Connection settings</p>,
 }));
@@ -33,7 +34,8 @@ vi.mock("../../src/ui/themes/ThemeProvider", () => ({
 }));
 vi.mock("../../src/ui/audio/GameAudio", () => ({ GameAudio: () => null }));
 
-async function inEncounter(size: typeof layout) {
+async function inEncounter(size: typeof layout, ready = "unavailable") {
+  readiness = ready;
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   if (!HTMLDialogElement.prototype.showModal) {
     HTMLDialogElement.prototype.showModal = function (this: HTMLDialogElement) {
@@ -93,5 +95,24 @@ it("keeps the notice to one short row in a narrow window, with the button still 
     expect(notice.querySelector("button")?.textContent).toBe("Set up AI");
   } finally {
     await ui.close();
+  }
+});
+
+it("says to choose a model, not that AI is off, when it is connected but has no model", async () => {
+  const narrow = await inEncounter("narrow", "missing-model");
+  try {
+    expect(narrow.host.querySelector(".sb-play-connection")?.textContent).toContain(
+      "Choose an AI model.",
+    );
+  } finally {
+    await narrow.close();
+  }
+  const wide = await inEncounter("wide", "empty");
+  try {
+    expect(wide.host.querySelector(".sb-play-connection")?.textContent).toContain(
+      "Choose an installed model",
+    );
+  } finally {
+    await wide.close();
   }
 });

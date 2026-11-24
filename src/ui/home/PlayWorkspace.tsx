@@ -319,10 +319,12 @@ export function PlayWorkspace({
               {t(
                 readiness === "checking"
                   ? "pwAiChecking"
-                  : layout === "narrow"
-                    ? "pwAiOffShort"
-                    : readiness === "empty" || readiness === "missing-model"
-                      ? "pwAiChooseModel"
+                  : readiness === "empty" || readiness === "missing-model"
+                    ? layout === "narrow"
+                      ? "pwAiChooseModelShort"
+                      : "pwAiChooseModel"
+                    : layout === "narrow"
+                      ? "pwAiOffShort"
                       : "pwAiUnavailable",
               )}
             </span>
