@@ -30,6 +30,13 @@ Questions to revisit:
 
 Track this separately from the adventure creation guide.
 
+### Elaborate in Storyboard
+
+- [ ] **Expand selected text.** Let the author mark a passage, describe what to develop, then edit, accept or discard the proposed wording before it changes the adventure.
+- [ ] **Develop part of the adventure.** Let the author select a scene or a link and say what the player should experience along the way. Keep the selected route’s start and destination unless the author chooses to change them. For example, expand the lighthouse-to-boathouse link into a visit to the pier, a conversation with a fisherman, and a photograph in a locked room that reveals the boathouse.
+- Read the current saved scenes, actions, items, conditions and consequences, including hand-built adventures and later manual edits. Ask when the author's intent affects the design. Show the existing and proposed routes side by side, including whether the old link would be replaced or kept as an intentional shortcut.
+- Check the proposed route for broken dependencies, such as a key only reachable behind its own locked door. Let the author playtest the selected stretch before applying it. Save accepted changes as ordinary, manually editable Storyboard content that plays without AI.
+
 ## Game time and journeys
 
 - [ ] Design narrative time, journey stages, overnight stops, encounters, simple rest and injury effects when developing gameplay. See [game-time-and-journeys-ideas.md](game-time-and-journeys-ideas.md) for agreed directions and open questions. These are future design notes, not implemented gameplay.
