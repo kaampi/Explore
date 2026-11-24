@@ -1,59 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { applyPatch, type AuthoringPatch } from "../../src/library/authoringPatch";
-import {
-  newCampaignTemplate,
-  type CampaignTemplate,
-  type ObjectTemplate,
-} from "../../src/library/LibrarySchema";
+import { type CampaignTemplate } from "../../src/library/LibrarySchema";
 import { checkMentions, checkPatch } from "../../src/game/authoringChecks";
-
-const emptyLibrary: { objects: ObjectTemplate[] } = { objects: [] };
-
-/** The sketch: a watchtower, a guildhall, and a crypt that needs the seal. */
-export const sketch: AuthoringPatch = {
-  ops: [
-    {
-      op: "addScene",
-      tempId: "new:tower",
-      name: "Watchtower",
-      arrival: "Wind sings in the arrows.",
-    },
-    { op: "addScene", tempId: "new:hall", name: "Guildhall", arrival: "Long tables, cold hearth." },
-    { op: "addScene", tempId: "new:crypt", name: "Crypt", arrival: "Dust and old stone." },
-    {
-      op: "addItem",
-      tempId: "new:seal",
-      name: "Seal",
-      description: "A wax seal.",
-      inSceneId: "new:hall",
-    },
-    {
-      op: "addAction",
-      sceneId: "new:hall",
-      label: "Take the seal",
-      outcome: "You pocket the seal.",
-      gives: [{ itemTempId: "new:seal" }],
-    },
-    { op: "addLink", from: "new:tower", to: "new:hall", label: "Down the stairs" },
-    {
-      op: "addLink",
-      from: "new:hall",
-      to: "new:crypt",
-      label: "Down to the crypt",
-      lockName: "Needs the seal",
-      requires: [{ kind: "item", itemId: "new:seal" }],
-    },
-    { op: "addLink", from: "new:crypt", to: "new:hall", label: "Back up" },
-  ],
-};
-
-export function sketchAdventure() {
-  const base = newCampaignTemplate({ id: "adv", name: "Sketch" });
-  const built = applyPatch(base, emptyLibrary, sketch);
-  const [tower, hall, crypt] = built.newSceneIds as [string, string, string];
-  const campaign: CampaignTemplate = { ...built.campaign, startSceneId: tower };
-  return { campaign, library: built.library, tower, hall, crypt };
-}
+import { emptyLibrary, sketch, sketchAdventure } from "../fixtures/authoring-sketch";
 
 describe("applyPatch", () => {
   it("adds every kind of change in the right place", () => {
@@ -163,7 +112,13 @@ describe("applyPatch", () => {
     const before = structuredClone(marked);
     const result = applyPatch(marked, library, {
       ops: [
-        { op: "addScene", tempId: "new:attic", name: "Attic", arrival: "Cobwebs." },
+        {
+          op: "addScene",
+          tempId: "new:attic",
+          name: "Attic",
+          placeId: "p-cellar",
+          arrival: "Cobwebs.",
+        },
         { op: "addLink", from: hall, to: "new:attic", label: "Ladder" },
         { op: "addAction", sceneId: hall, label: "Look up", outcome: "A hatch." },
         { op: "setText", target: { sceneId: hall, field: "arrival" }, text: "Changed." },
@@ -208,7 +163,7 @@ describe("applyPatch", () => {
     expect(() =>
       applyPatch(campaign, library, {
         ops: [
-          { op: "addScene", tempId: "new:a", name: "A", arrival: "." },
+          { op: "addScene", tempId: "new:a", name: "A", placeId: "p-cellar", arrival: "." },
           { op: "addScene", tempId: "new:a", name: "A again", arrival: "." },
         ],
       }),
@@ -230,14 +185,16 @@ describe("checkPatch", () => {
       message: "This route goes past the lock “Needs the seal”.",
     });
     expect(findings[0]!.fixes.map(({ key, params }) => [key, params])).toEqual([
-      ["requireLockToo", { locks: ["Needs the seal"] }],
+      ["requireLockToo", { locks: ["Needs the seal"], notYet: [] }],
       ["shortcutOnPurpose", {}],
     ]);
     expect(findings[0]!.fixes[0]!.label).toBe("Make this route need “Needs the seal” too");
     // Taking the first fix clears the finding; the second leaves the patch as it is.
-    const fixed = findings[0]!.fixes[0]!.patch!;
-    expect(checkPatch(campaign, library, fixed)).toEqual([]);
-    expect(findings[0]!.fixes[1]!.patch).toBeUndefined();
+    const [first, second] = findings[0]!.fixes;
+    expect(first).toMatchObject({ key: "requireLockToo", apply: "replace" });
+    expect(second).toMatchObject({ key: "shortcutOnPurpose", apply: "none" });
+    if (first!.apply !== "replace") throw new Error("expected a replacement");
+    expect(checkPatch(campaign, library, first!.patch)).toEqual([]);
   });
 
   it("is quiet about a route that keeps the lock", () => {
@@ -261,7 +218,13 @@ describe("checkPatch", () => {
     const { campaign, library, hall } = sketchAdventure();
     const findings = checkPatch(campaign, library, {
       ops: [
-        { op: "addScene", tempId: "new:vault", name: "Vault", arrival: "Gold." },
+        {
+          op: "addScene",
+          tempId: "new:vault",
+          name: "Vault",
+          placeId: "p-cellar",
+          arrival: "Gold.",
+        },
         {
           op: "addLink",
           from: hall,
@@ -305,7 +268,7 @@ describe("checkPatch", () => {
     const { campaign, library, hall } = sketchAdventure();
     const room: AuthoringPatch = {
       ops: [
-        { op: "addScene", tempId: "new:cell", name: "Cell", arrival: "Bars." },
+        { op: "addScene", tempId: "new:cell", name: "Cell", placeId: "p-cellar", arrival: "Bars." },
         { op: "addLink", from: hall, to: "new:cell", label: "To the cell" },
       ],
     };
@@ -365,8 +328,10 @@ describe("checkPatch", () => {
   });
 
   it("finds nothing wrong with the sketch itself", () => {
-    const base = newCampaignTemplate({ id: "adv", name: "Sketch" });
-    expect(checkPatch(base, emptyLibrary, sketch).map((finding) => finding.kind)).toEqual([]);
+    const base = sketchAdventure().campaign;
+    const empty: CampaignTemplate = { ...base, scenes: [], sceneLinks: [], objectIds: [] };
+    delete (empty as { startSceneId?: unknown }).startSceneId;
+    expect(checkPatch(empty, emptyLibrary, sketch).map((finding) => finding.kind)).toEqual([]);
   });
 });
 
@@ -395,15 +360,18 @@ describe("checkMentions", () => {
       { name: "The market", kind: "place" },
       { name: "Seal", kind: "item" },
     ]);
-    expect(findings.map((f) => [f.params.name, f.params.where])).toEqual([
+    expect(
+      findings.map((f) => (f.kind === "missingThing" ? [f.params.name, f.params.where] : [])),
+    ).toEqual([
       ["brass key", "nowhere"],
       ["The councillor", "nowhere"],
       ["The market", "nowhere"],
     ]);
     expect(findings[0]!.fixes.map((fix) => fix.key)).toEqual(["addAsItem", "rewriteWithout"]);
-    expect(findings[0]!.fixes[0]!.patch!.ops[0]).toMatchObject({
-      op: "addItem",
-      name: "brass key",
+    expect(findings[0]!.fixes[0]).toMatchObject({
+      key: "addAsItem",
+      apply: "append",
+      ops: [{ op: "addItem", name: "brass key" }],
     });
     // A person or a place is never turned into an item.
     expect(findings[1]!.fixes.map((fix) => fix.key)).toEqual(["rewriteWithout"]);
@@ -429,7 +397,7 @@ describe("checkMentions", () => {
       "Voss waits.",
       [{ name: "Voss", kind: "person" }],
     );
-    expect(shelved).toMatchObject({ params: { where: "elsewhere", inLibrary: "yes" } });
+    expect(shelved).toMatchObject({ params: { where: "library" } });
     expect(shelved!.message).toBe("“Voss” is in the library, but not in “Guildhall”.");
   });
 
@@ -510,6 +478,6 @@ describe("what the player and the author read", () => {
       ],
     });
     // With no text for it, the name is all there is.
-    expect(unmet[0]!.params.thing).toBe("vet-var-sigillet-ar");
+    expect(unmet[0]).toMatchObject({ params: { thing: "vet-var-sigillet-ar" } });
   });
 });
