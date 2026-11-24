@@ -41,6 +41,7 @@
     "fast-check": "^3.19.0",
     "globals": "^17.14.0",
     "jsdom": "^26.1.0",
+    "playwright": "1.65.0",
     "prettier": "^3.10.1",
     "tsx": "^4.19.1",
     "typescript": "^5.5.4",

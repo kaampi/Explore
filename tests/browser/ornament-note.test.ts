@@ -1,25 +1,18 @@
-import { existsSync, readFileSync } from "node:fs";
-import { createRequire } from "node:module";
+import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { NOTE_COLORS, ornamentVars } from "../../src/ui/play/ornament/vars";
 import { PRESET_THEMES, contrastRatio } from "../../src/ui/themes/theme";
+import { chromium, launchOptions } from "./chromium";
 
 /**
  * The note in the pack, drawn by a real browser with the real stylesheets: the words must lie on
  * the parchment in the note's colour, not in the old dark box of the pack. Skipped where there is
  * no Playwright with a Chromium.
  */
-/* eslint-disable @typescript-eslint/no-explicit-any -- Playwright is not a dependency of the project, so it has no types here. */
-let chromium: any;
-try {
-  const playwright = createRequire(import.meta.url)("playwright") as any;
-  if (existsSync(playwright.chromium.executablePath())) chromium = playwright.chromium;
-} catch {
-  chromium = undefined;
-}
+/* eslint-disable @typescript-eslint/no-explicit-any -- the browser is driven through the untyped launcher in ./chromium. */
 let browser: any;
 beforeAll(async () => {
-  if (chromium) browser = await chromium.launch({ args: ["--no-sandbox"] });
+  if (chromium) browser = await chromium.launch(launchOptions);
 }, 60_000);
 afterAll(async () => {
   await browser?.close();
