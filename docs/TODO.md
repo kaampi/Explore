@@ -37,6 +37,13 @@ Track this separately from the adventure creation guide.
 - Read the current saved scenes, actions, items, conditions and consequences, including hand-built adventures and later manual edits. Ask when the author's intent affects the design. Show the existing and proposed routes side by side, including whether the old link would be replaced or kept as an intentional shortcut.
 - Check the proposed route for broken dependencies, such as a key only reachable behind its own locked door. Let the author playtest the selected stretch before applying it. Save accepted changes as ordinary, manually editable Storyboard content that plays without AI.
 
+## Shared image styles and character reference cards via Kaampi Codex
+
+- [ ] Revisit after the adventure creation guide is complete. Start by checking how Codex already shares records and image attachments between apps.
+- Let authors share a custom style from Comic via Codex and select it in Explore with its name, prompt and optional preview image.
+- Let Explore, Comic and Write refer to the same versioned character reference card. An author could use Emma’s photographic card in Write and pair it with a drawn style in Explore or Comic.
+- Record the selected style and reference-card versions in the project. Let the author decide when to adopt a newer version. Include the approved game images with the adventure so it plays offline.
+
 ## Game time and journeys
 
 - [ ] Design narrative time, journey stages, overnight stops, encounters, simple rest and injury effects when developing gameplay. See [game-time-and-journeys-ideas.md](game-time-and-journeys-ideas.md) for agreed directions and open questions. These are future design notes, not implemented gameplay.
