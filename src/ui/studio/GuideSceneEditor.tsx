@@ -11,6 +11,7 @@ import {
 import type { IndexedDBRepository } from "../../persistence/IndexedDBRepository";
 import type { Session } from "../../state/StateSchema";
 import { Modal } from "../components/Modal";
+import { GuideSceneAssistant } from "./GuideAssistant";
 import { GuideText } from "./GuidePlanEditor";
 import { startSavedGuideAdventure } from "./guidePlaytest";
 import { mergeGuideEdits, type EditConflict } from "../../library/guideConcurrentEdit";
@@ -293,6 +294,23 @@ export function GuideSceneEditor({
                               {t("cgSuggestText")}
                             </button>
                           )}
+                          {(field.kind === "arrival" || field.kind === "outcome") &&
+                            !draftConflicts.length &&
+                            !error && (
+                              <GuideSceneAssistant
+                                key={JSON.stringify([
+                                  campaignId,
+                                  sceneId,
+                                  field.id,
+                                  snapshot.revision.revision,
+                                  changes[field.id],
+                                ])}
+                                scene={snapshot.title}
+                                field={fieldLabel(field)}
+                                value={changes[field.id]!}
+                                change={(value) => change(field.id, value)}
+                              />
+                            )}
                           <button type="button" onClick={() => change(field.id)}>
                             {t("cgRemoveProposal")}
                           </button>

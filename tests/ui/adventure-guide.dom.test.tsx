@@ -5,6 +5,10 @@ import { createRoot } from "react-dom/client";
 import { beforeAll, expect, it, vi } from "vitest";
 import { EventLog } from "../../src/events/EventLog";
 import { newPlaceTemplate, newRealmTemplate } from "../../src/library/LibrarySchema";
+import { newAdventureGuideDraft } from "../../src/library/adventureGuidePlan";
+import { lighthouseExample } from "../../src/library/examples/guidePlans";
+import type { GuideSceneTarget } from "../../src/library/guideSceneRevision";
+import { GuideSceneEditor } from "../../src/ui/studio/GuideSceneEditor";
 import { newGuideChoice, newGuideInterview } from "../../src/library/guideInterview";
 import {
   GuideInterviewConflictError,
@@ -26,7 +30,12 @@ beforeAll(() => {
   };
 });
 
-function mountGuide(repo: IndexedDBRepository, language: "sv" | "en" = "sv", connected = false) {
+function mountGuide(
+  repo: IndexedDBRepository,
+  language: "sv" | "en" = "sv",
+  connected = false,
+  sceneTarget?: GuideSceneTarget,
+) {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   const host = document.body.appendChild(document.createElement("div"));
   const root = createRoot(host);
@@ -35,6 +44,10 @@ function mountGuide(repo: IndexedDBRepository, language: "sv" | "en" = "sv", con
   function Harness() {
     const [open, setOpen] = useState(true);
     const [campaignId, setCampaignId] = useState<string>();
+    if (sceneTarget)
+      return (
+        <GuideSceneEditor repo={repo} target={sceneTarget} close={() => {}} onPlay={onStart} />
+      );
     if (campaignId)
       return (
         <CampaignStudio
@@ -127,7 +140,13 @@ function mountGuide(repo: IndexedDBRepository, language: "sv" | "en" = "sv", con
           </LanguageProvider>,
         ),
       );
-      await until(() => expect(host.querySelector(".guide-columns")).not.toBeNull());
+      await until(() =>
+        expect(
+          host.querySelector(
+            sceneTarget ? ".guide-scene-revision .guide-plan-section" : ".guide-columns",
+          ),
+        ).not.toBeNull(),
+      );
     },
     cleanup: async () => {
       await act(async () => root.unmount());
@@ -704,3 +723,218 @@ it("rejects autosave from an old tab even if its local revision is higher", asyn
     await view.cleanup();
   }
 });
+
+it.each([
+  ["Person", "people", "Namn på en ny person"],
+  ["Plats", "place", "Namn på en ny plats"],
+  ["Grupp", "factions", "Namn på en ny grupp"],
+  ["Föremål", "items", "Namn på ett nytt föremål"],
+  ["Värld eller karta", "mapName", "Världens namn"],
+] as const)("routes a %s suggestion only to its selected field", async (part, target, field) => {
+  const repo = new IndexedDBRepository(new IDBFactory(), "guide-world-target");
+  const draft = newGuideInterview();
+  draft.premise = "En kustby behöver hjälp.";
+  draft.question = "world";
+  draft.subject = "world";
+  draft.world = { name: "Min karta", note: "Författarens beskrivning av världen." };
+  draft.people = [{ name: "Tidigare person", note: "Befintlig persontext" }];
+  await repo.saveGuideInterview(draft, undefined);
+  const view = mountGuide(repo, "sv", true);
+  const chat = mockGuideModel(() =>
+    ollamaAnswer({ reply: "Ett kort namn passar.", suggestion: "Månvik" }),
+  );
+  try {
+    await view.open();
+    await view.click(part, ".guide-answer");
+    await view.click("Bolla med Assistenten");
+    await view.click("Skicka till Assistenten");
+    await view.until(() => expect(view.host.textContent).toContain("Ett kort namn passar."));
+    expect(view.host.querySelector(".guide-assistant-suggestion")).toBeNull();
+    expect(JSON.parse(chat.mock.calls[0]?.[0]?.body as string).messages[0].content).toContain(
+      "Give advice only",
+    );
+    expect(await repo.loadGuideInterview()).toEqual(draft);
+    await view.fill("Fält som förslaget gäller", target);
+    await view.click("Skicka till Assistenten");
+    await view.until(() =>
+      expect(view.host.querySelector(".guide-assistant-suggestion")).not.toBeNull(),
+    );
+    expect(view.field("Redigera förslag för " + field).value).toBe("Månvik");
+    await view.click("Använd som svar");
+    await view.click("Stäng guiden");
+    await view.until(() => expect(view.host.textContent).toContain("Öppna guiden igen"));
+    await view.click("Öppna guiden igen");
+    await view.until(() => expect(view.host.querySelector(".guide-columns")).not.toBeNull());
+    const saved = (await repo.loadGuideInterview())!;
+    const material = { name: "Månvik", note: "" };
+    const expected = { ...draft, revision: draft.revision + 1 };
+    if (target === "mapName") expected.world = { ...draft.world, name: "Månvik" };
+    else if (target === "place") {
+      expect(saved.later[0]?.id).toBeTruthy();
+      expected.later = [
+        { id: saved.later[0]!.id, name: "", arrival: "", place: { name: "Månvik" } },
+      ];
+    } else expected[target] = [...draft[target], material];
+    expect(saved).toEqual(expected);
+  } finally {
+    await view.cleanup();
+    localStorage.removeItem("sandboxai-preferred-model");
+    vi.unstubAllGlobals();
+  }
+});
+
+it.each(["synopsis", "discussion"] as const)(
+  "edits and discards %s proposals before saving",
+  async (mode) => {
+    const repo = new IndexedDBRepository(new IDBFactory(), "guide-preview-edit");
+    const draft = newGuideInterview();
+    draft.premise = "Min egen synopsis.";
+    draft.question = mode === "synopsis" ? "idea" : "direction";
+    await repo.saveGuideInterview(draft, undefined);
+    const view = mountGuide(repo, "sv", true);
+    mockGuideModel(() =>
+      mode === "synopsis"
+        ? ollamaAnswer({ direction: "Ofärdig riktning", role: "Förslag till roll" })
+        : ollamaAnswer({ reply: "Här finns en riktning.", suggestion: "Ofärdig riktning" }),
+    );
+    const panel = mode === "synopsis" ? "Tolka synopsis med AI" : "Bolla med Assistenten";
+    const ask = mode === "synopsis" ? "Tolka synopsis" : "Skicka till Assistenten";
+    const preview = () => view.host.querySelectorAll(".guide-assistant-suggestion");
+    try {
+      await view.open();
+      await view.click(panel);
+      await view.click(ask);
+      await view.until(() => expect(preview()).toHaveLength(mode === "synopsis" ? 2 : 1));
+      await view.click(panel);
+      await view.click(panel);
+      expect(preview()).toHaveLength(0);
+      expect(await repo.loadGuideInterview()).toEqual(draft);
+      await view.click(ask);
+      await view.until(() => expect(preview()).toHaveLength(mode === "synopsis" ? 2 : 1));
+      const label = "Redigera förslag för Vad spelaren ska uppleva";
+      await view.fill(label, "Författarens redigerade förslag.");
+      if (mode === "synopsis") {
+        const role = preview()[1]!.querySelectorAll("button")[1]!;
+        await act(async () => role.click());
+        expect(preview()).toHaveLength(1);
+      } else {
+        await view.click("Avvisa förslaget");
+        expect(preview()).toHaveLength(0);
+        await view.click(ask);
+        await view.until(() => expect(preview()).toHaveLength(1));
+        await view.fill(label, "Författarens redigerade förslag.");
+      }
+      expect(await repo.loadGuideInterview()).toEqual(draft);
+      await view.click("Använd som svar");
+      await act(async () => {
+        await vi.waitFor(async () => {
+          const saved = await repo.loadGuideInterview();
+          expect(saved?.intention).toBe("Författarens redigerade förslag.");
+          expect(saved?.role).toEqual(draft.role);
+        });
+      });
+    } finally {
+      await view.cleanup();
+      localStorage.removeItem("sandboxai-preferred-model");
+      vi.unstubAllGlobals();
+    }
+  },
+);
+
+it.each(["arrival", "outcome"] as const)(
+  "reviews a model's %s in a saved scene and then playtests the author's text",
+  async (kind) => {
+    const repo = new IndexedDBRepository(new IDBFactory(), "guide-scene-model");
+    const draft = newAdventureGuideDraft(lighthouseExample.plan, lighthouseExample.answers);
+    await repo.createGuideDraft(draft);
+    const campaign = await repo.approveGuideDraft(draft.id, draft.revision);
+    const target = { campaignId: campaign.id, sceneId: campaign.startSceneId! };
+    const snapshot = await repo.loadGuideSceneRevision(target);
+    const field = snapshot.fields.find((entry) => entry.kind === kind)!;
+    const view = mountGuide(repo, "sv", true, target);
+    const chat = mockGuideModel(() => ollamaAnswer({ suggestion: "Modellens första text." }));
+    const authored = "Författarens godkända text.";
+    try {
+      await view.open();
+      await view.click("Ändra " + field.label.toLocaleLowerCase());
+      await view.click("Bolla med Assistenten");
+      await view.fill("Fråga eller idé att bolla", "Ge texten mer stämning.");
+      await view.click("Skicka till Assistenten");
+      await view.until(() =>
+        expect(view.host.querySelector(".guide-assistant-suggestion")).not.toBeNull(),
+      );
+      const request = JSON.parse(chat.mock.calls[0]?.[0]?.body as string);
+      expect(request.model).toBe("guide:latest");
+      expect(JSON.parse(request.messages[1].content)).toMatchObject({
+        field: field.label,
+        currentText: field.current,
+      });
+      await view.click("Avvisa förslaget");
+      expect(view.field(field.label).value).toBe(field.current);
+      await view.click("Skicka till Assistenten");
+      await view.until(() =>
+        expect(view.host.querySelector(".guide-assistant-suggestion")).not.toBeNull(),
+      );
+      await view.fill("Redigera förslag för " + field.label, authored);
+      expect(view.field(field.label).value).toBe(field.current);
+      expect((await repo.loadGuideSceneRevision(target)).revision.changes).toEqual({});
+      await view.click("Använd som svar");
+      expect(view.field(field.label).value).toBe(authored);
+      if (kind === "arrival") {
+        await repo.saveEditedCampaign(
+          {
+            ...campaign,
+            scenes: campaign.scenes.map((scene) =>
+              scene.id !== target.sceneId || !scene.encounter
+                ? scene
+                : {
+                    ...scene,
+                    encounter: {
+                      ...scene.encounter,
+                      definition: {
+                        ...scene.encounter.definition,
+                        description: "En samtidig ändring från Studio.",
+                      },
+                    },
+                  },
+            ),
+          },
+          campaign,
+        );
+      }
+      await view.click("Granska ändringar");
+      await view.until(() =>
+        expect(view.host.querySelector('[aria-label="Jämför ändringar"]')).not.toBeNull(),
+      );
+      const apply = Array.from(view.host.querySelectorAll("button")).find(
+        (button) => button.textContent === "Tillämpa valda ändringar",
+      )!;
+      if (kind === "arrival") {
+        expect(view.host.textContent).toContain("En samtidig ändring från Studio.");
+        expect(apply.disabled).toBe(true);
+        const guide = Array.from(view.host.querySelectorAll("label"))
+          .find((label) => label.textContent?.trim() === "Använd guidens ändring")!
+          .querySelector("input")!;
+        await act(async () => guide.click());
+      }
+      expect(apply.disabled).toBe(false);
+      await act(async () => apply.click());
+      await view.until(() => expect(view.host.textContent).toContain("Scenen är uppdaterad"));
+      await view.click("Provspela från början");
+      await view.until(() => expect(view.onStart).toHaveBeenCalledTimes(1));
+      const session = view.onStart.mock.calls[0]![0];
+      if (kind === "arrival") expect(session.encounter?.definition.description).toBe(authored);
+      else {
+        const game = session.encounter!;
+        const action = game.definition.interactions.find(
+          (entry) => field.kind === "outcome" && entry.id === field.recordId,
+        )!;
+        expect(action.success.text).toBe(authored);
+      }
+    } finally {
+      await view.cleanup();
+      localStorage.removeItem("sandboxai-preferred-model");
+      vi.unstubAllGlobals();
+    }
+  },
+);
