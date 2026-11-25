@@ -5,6 +5,7 @@ import {
   type CutsceneFilm,
 } from "../cutscenes/schema";
 import { FactionSchema, type Faction } from "../library/factions";
+import type { GuideImageTarget } from "../library/guideImages";
 import { buildGuideAdventure } from "../library/buildGuideAdventure";
 import { AdventureGuideDraftSchema, type AdventureGuideDraft } from "../library/adventureGuidePlan";
 import {
@@ -1359,6 +1360,113 @@ export class IndexedDBRepository {
               build(AdventureGuideDraftSchema.parse(row)),
             );
           }
+        }),
+    );
+  }
+
+  /** Fill a missing image without replacing any concurrent edits to the library card. */
+  async saveGuideImage(
+    target: GuideImageTarget,
+    image: { imageDataUrl: string; thumbDataUrl: string },
+  ): Promise<void> {
+    const updatedAt = new Date().toISOString();
+    const { kind, id } = target;
+    if (kind === "player") {
+      const campaign = await this.loadCampaign(id);
+      if (!campaign.player || campaign.player.portraitDataUrl)
+        throw new Error("Portrait unavailable");
+      await this.saveEditedCampaign(
+        {
+          ...campaign,
+          player: { ...campaign.player, portraitDataUrl: image.imageDataUrl },
+          updatedAt,
+        },
+        campaign,
+      );
+      return;
+    }
+    if (kind === "character") {
+      await this.updateImageRecord(CHARACTERS_STORE, id, (row) => {
+        const card = parseCharacterTemplate(row);
+        if (card.portraitDataUrl) throw new Error("Portrait already exists");
+        return parseCharacterTemplate(
+          dropOversizedPortrait({
+            ...card,
+            portraitDataUrl: image.imageDataUrl,
+            updatedAt,
+          }),
+        );
+      });
+      return;
+    }
+    if (kind === "object") {
+      await this.updateImageRecord(OBJECTS_STORE, id, (row) => {
+        const card = parseObjectTemplate(row);
+        if (card.imageDataUrl) throw new Error("Image already exists");
+        return parseObjectTemplate({ ...card, imageDataUrl: image.imageDataUrl, updatedAt });
+      });
+      return;
+    }
+    if (kind === "place") {
+      await this.updateImageRecord(PLACES_STORE, id, (row) => {
+        const card = parsePlaceTemplate(row);
+        if (card.realmId !== target.realmId || card.imageDataUrl || card.gallery?.length)
+          throw new Error("Location image unavailable");
+        return parsePlaceTemplate({ ...card, ...image, updatedAt });
+      });
+      return;
+    }
+    await this.updateImageRecord(REALMS_STORE, kind === "realm" ? id : target.realmId, (row) => {
+      const world = parseRealmTemplate(row);
+      if (kind === "realm") {
+        if (world.imageDataUrl || world.gallery?.length) throw new Error("Image already exists");
+        return parseRealmTemplate({ ...world, ...image, updatedAt });
+      }
+      const map = world.worldMap;
+      const node = map?.nodes.find((entry) => entry.id === id);
+      if (
+        !map ||
+        !node ||
+        node.isJunction ||
+        node.kind === "Furniture" ||
+        node.imageDataUrl ||
+        node.images?.some(Boolean)
+      )
+        throw new Error("Map image unavailable");
+      return parseRealmTemplate({
+        ...world,
+        updatedAt,
+        worldMap: {
+          ...map,
+          nodes: map.nodes.map((entry) =>
+            entry.id === id
+              ? { ...entry, imageDataUrl: image.imageDataUrl, images: [image.imageDataUrl] }
+              : entry,
+          ),
+        },
+      });
+    });
+  }
+
+  private updateImageRecord(storeName: string, id: string, update: (row: unknown) => unknown) {
+    return this.withDb(
+      (db) =>
+        new Promise<void>((resolve, reject) => {
+          const tx = db.transaction(storeName, "readwrite");
+          const store = tx.objectStore(storeName);
+          const request = store.get(id);
+          let failure: unknown;
+          tx.oncomplete = () => resolve();
+          tx.onabort = () => reject(failure ?? writeError(storeName, tx.error));
+          request.onsuccess = () => {
+            try {
+              if (request.result === undefined) throw new Error("Image card no longer exists");
+              store.put(update(request.result));
+            } catch (error) {
+              failure = error;
+              tx.abort();
+            }
+          };
         }),
     );
   }

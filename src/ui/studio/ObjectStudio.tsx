@@ -1,3 +1,4 @@
+import { objectImageFileAllowed, objectImageFromFile } from "./objectImage";
 import { useTranslate } from "../i18n/LanguageProvider";
 import { CHECK_LEVELS, suggestLevel, type CheckLevel } from "../../game/rules";
 import { validateObjectNesting, objectContents } from "@library/objectLocation";
@@ -389,23 +390,18 @@ export function ObjectStudio({ repo }: { repo: IndexedDBRepository }) {
                   const file = event.target.files?.[0];
                   event.target.value = "";
                   if (!file) return;
-                  if (
-                    !["image/png", "image/jpeg", "image/webp"].includes(file.type) ||
-                    file.size > 4 * 1024 * 1024
-                  ) {
+                  if (!objectImageFileAllowed(file)) {
                     setError("Choose a PNG, JPEG or WebP image under 4 MB.");
                     return;
                   }
-                  const reader = new FileReader();
                   const id = draft.id;
-                  reader.onload = () =>
-                    setDraft((current) =>
-                      current && current.id === id
-                        ? { ...current, imageDataUrl: String(reader.result) }
-                        : current,
-                    );
-                  reader.onerror = () => setError("Could not read the picture.");
-                  reader.readAsDataURL(file);
+                  void objectImageFromFile(file).then(
+                    (imageDataUrl) =>
+                      setDraft((current) =>
+                        current && current.id === id ? { ...current, imageDataUrl } : current,
+                      ),
+                    () => setError("Could not read the picture."),
+                  );
                 }}
               />
             </FormSection>
