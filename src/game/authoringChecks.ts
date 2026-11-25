@@ -1,4 +1,4 @@
-import { openingScene, reachableFromStart } from "../library/adventureReach";
+import { openingScene, playthroughFlags, reachableFromStart } from "../library/adventureReach";
 import { adventureMapPlaces, mapPlaceForScene } from "../library/adventureMap";
 import {
   applyPatch,
@@ -42,11 +42,13 @@ export type FindingParams = {
     name: string;
     why: "noRoute" | "unobtainable" | "happened" | "none";
     thing?: string;
+    /** A discovery with no readable name: the panel shows its own words for "a discovery". */
+    unnamed?: true;
   };
   /** A route that gets past what locks a scene. `notYet` are discoveries that must not be made. */
-  bypassesLock: { locks: string[]; notYet: string[] };
+  bypassesLock: { locks: string[]; notYet: string[]; unnamed?: true };
   deadEnd: { name: string };
-  unusedFact: { fact: string; action: string };
+  unusedFact: { fact: string; action: string; unnamed?: true };
   /** A text mentions something that is not in the scene. */
   missingThing: {
     name: string;
@@ -162,6 +164,13 @@ function itemName(campaign: CampaignTemplate, library: PatchLibrary, id: string)
  * A discovery as the author knows it: the sentence an action gives it, else the name of the action
  * or the route that makes it, else the name the proposal gave it.
  */
+/**
+ * A discovery's id is for the engine. An id that is clearly generated (a namespace, a digit run)
+ * is never shown: a discovery like that is named by the action or the route that makes it, and
+ * when none does it is "a discovery" in the words of the panel.
+ */
+const looksInternal = (flag: string) => /[:_#]|\d{2,}/.test(flag);
+/** What a discovery is called for the author, or "" when nothing readable says so. */
 function factText(campaign: CampaignTemplate, flag: string): string {
   let byAction: string | undefined;
   for (const scene of campaign.scenes)
@@ -173,7 +182,8 @@ function factText(campaign: CampaignTemplate, flag: string): string {
         }
   if (byAction) return byAction;
   const route = campaign.sceneLinks.find((link) => link.setsFlags.includes(flag));
-  return route?.label.trim() || flag;
+  if (route?.label.trim()) return route.label.trim();
+  return looksInternal(flag) ? "" : flag;
 }
 
 const named = (name: string, fallback: string) => name.trim() || fallback;
@@ -465,24 +475,33 @@ export function checkPatch(
     const lacking = unobtainable(incoming.flatMap((link) => lockOf(after, link)));
     const done = incoming.flatMap((link) => happenedNeeds(link)).at(0);
     const thing = lacking ?? done;
-    const why = lacking
-      ? "unobtainable"
-      : done
-        ? "happened"
-        : incoming.length === 0
-          ? "noRoute"
-          : "none";
+    const why =
+      lacking !== undefined
+        ? "unobtainable"
+        : done !== undefined
+          ? "happened"
+          : incoming.length === 0
+            ? "noRoute"
+            : "none";
+    const unnamed = thing === "";
+    const shown = unnamed ? "a discovery" : thing;
     const name = sceneOf(id)!.name.trim();
     const reason = {
-      unobtainable: `, because “${thing}” cannot be had anywhere`,
-      happened: `, because “${thing}” has always happened by then, and the way in asks for it not to have`,
+      unobtainable: `, because “${shown}” cannot be had anywhere`,
+      happened: `, because “${shown}” has always happened by then, and the way in asks for it not to have`,
       noRoute: ", because no route leads to it",
       none: "",
     }[why];
     findings.push({
       kind: "unreachable",
       severity: "problem",
-      params: { what: "scene", name, why, ...(thing ? { thing } : {}) },
+      params: {
+        what: "scene",
+        name,
+        why,
+        ...(thing ? { thing } : {}),
+        ...(unnamed && why !== "noRoute" && why !== "none" ? { unnamed: true } : {}),
+      },
       message: `“${named(name, "Untitled scene")}” cannot be reached from the start${reason}.`,
       opIndex,
       sceneId: id,
@@ -507,8 +526,13 @@ export function checkPatch(
         findings.push({
           kind: "unreachable",
           severity: "problem",
-          params: { what: "route", name, why: "happened", thing: done },
-          message: `The route “${named(name, "Untitled route")}” asks for “${done}” not to have happened, but it has always happened by then.`,
+          params: {
+            what: "route",
+            name,
+            why: "happened",
+            ...(done ? { thing: done } : { unnamed: true }),
+          },
+          message: `The route “${named(name, "Untitled route")}” asks for “${done || "a discovery"}” not to have happened, but it has always happened by then.`,
           opIndex,
           linkId: id,
           fixes: [],
@@ -519,8 +543,13 @@ export function checkPatch(
     findings.push({
       kind: "unreachable",
       severity: "problem",
-      params: { what: "route", name, why: "unobtainable", thing },
-      message: `The route “${named(name, "Untitled route")}” asks for “${thing}”, which cannot be had anywhere.`,
+      params: {
+        what: "route",
+        name,
+        why: "unobtainable",
+        ...(thing ? { thing } : { unnamed: true }),
+      },
+      message: `The route “${named(name, "Untitled route")}” asks for “${thing || "a discovery"}”, which cannot be had anywhere.`,
       opIndex,
       linkId: id,
       fixes: [],
@@ -534,14 +563,18 @@ export function checkPatch(
     if (!action) continue;
     const missingFlag = action.requiresFlags.find((flag) => !reach.flags.has(flag));
     const missingItem = action.requiresItems.find((item) => !reach.items.has(item));
-    const thing = missingFlag
-      ? factText(after, missingFlag)
-      : missingItem && itemName(after, afterLibrary, missingItem);
-    if (!thing) {
+    const thing =
+      missingFlag !== undefined
+        ? factText(after, missingFlag)
+        : missingItem !== undefined
+          ? itemName(after, afterLibrary, missingItem)
+          : undefined;
+    if (thing === undefined) {
       const happened = action.excludesFlags.find((flag) =>
         reach.guaranteed.get(sceneId)?.has(flag),
       );
-      if (happened)
+      if (happened !== undefined) {
+        const text = factText(after, happened);
         findings.push({
           kind: "unreachable",
           severity: "problem",
@@ -549,20 +582,26 @@ export function checkPatch(
             what: "action",
             name: action.label,
             why: "happened",
-            thing: factText(after, happened),
+            ...(text ? { thing: text } : { unnamed: true }),
           },
-          message: `The action “${action.label}” asks for “${factText(after, happened)}” not to have happened, but it has always happened by then.`,
+          message: `The action “${action.label}” asks for “${text || "a discovery"}” not to have happened, but it has always happened by then.`,
           opIndex,
           sceneId,
           fixes: [],
         });
+      }
       continue;
     }
     findings.push({
       kind: "unreachable",
       severity: "problem",
-      params: { what: "action", name: action.label, why: "unobtainable", thing },
-      message: `The action “${action.label}” asks for “${thing}”, which cannot be had anywhere.`,
+      params: {
+        what: "action",
+        name: action.label,
+        why: "unobtainable",
+        ...(thing ? { thing } : { unnamed: true }),
+      },
+      message: `The action “${action.label}” asks for “${thing || "a discovery"}”, which cannot be had anywhere.`,
       opIndex,
       sceneId,
       fixes: [],
@@ -613,7 +652,11 @@ export function checkPatch(
     if (!without.scenes.has(link.fromSceneId)) continue;
     const lock = locks[0]!;
     const names = lock.filter(({ absent }) => !absent).map(({ label }) => label);
-    const notYet = lock.filter(({ absent }) => absent).map(({ label }) => label);
+    const notYetAll = lock.filter(({ absent }) => absent).map(({ label }) => label);
+    // A discovery with no readable name is not shown by its id; the panel says "a discovery".
+    const notYet = notYetAll.filter(Boolean);
+    const unnamedNotYet = notYet.length < notYetAll.length;
+    const notYetShown = [...notYet, ...(unnamedNotYet ? ["a discovery"] : [])];
     const op = patch.ops[opIndex];
     const requirements = lock.flatMap(({ requirement }) => (requirement ? [requirement] : []));
     const fixes: Fix[] = [];
@@ -621,7 +664,7 @@ export function checkPatch(
       fixes.push({
         key: "requireLockToo",
         params: { locks: names, notYet },
-        label: `Make this route need ${quoted([...names, ...notYet])} too`,
+        label: `Make this route need ${quoted([...names, ...notYetShown])} too`,
         apply: "replace",
         patch: {
           ops: patch.ops.map((item, index) =>
@@ -640,10 +683,12 @@ export function checkPatch(
     findings.push({
       kind: "bypassesLock",
       severity: "problem",
-      params: { locks: names, notYet },
+      params: { locks: names, notYet, ...(unnamedNotYet ? { unnamed: true as const } : {}) },
       message: `This route goes past ${[
         ...(names.length ? [`the lock ${quoted(names)}`] : []),
-        ...(notYet.length ? [`the condition that ${quoted(notYet)} has not happened`] : []),
+        ...(notYetShown.length
+          ? [`the condition that ${quoted(notYetShown)} has not happened`]
+          : []),
       ].join(" and ")}.`,
       opIndex,
       linkId: id,
@@ -657,9 +702,7 @@ export function checkPatch(
   // asks for on the way there. A player who has ended up in another scene with no way on cannot
   // go and make the rest, so that scene's discoveries do not count.
   const goal = new Set(after.goal?.requiresFlags ?? []);
-  const noWayOn = after.scenes
-    .filter((scene) => !after.sceneLinks.some((link) => link.fromSceneId === scene.id))
-    .map(({ id }) => id);
+  const plays = playthroughFlags(after);
   const endsGoal = (sceneId: string): boolean => {
     if (goal.size === 0) return false;
     const sets = (sceneOf(sceneId)?.encounter?.definition.interactions ?? []).some((action) =>
@@ -668,12 +711,8 @@ export function checkPatch(
       ),
     );
     if (!sets) return false;
-    const others = new Set(noWayOn.filter((id) => id !== sceneId));
-    const here = reachableFromStart({
-      ...after,
-      sceneLinks: after.sceneLinks.filter((link) => !others.has(link.toSceneId)),
-    });
-    return [...goal].every((flag) => here.flags.has(flag));
+    // One playthrough must have every discovery the goal asks for when it stands here.
+    return (plays.get(sceneId) ?? []).some((flags) => [...goal].every((flag) => flags.has(flag)));
   };
   for (const { id, opIndex } of created.scenes) {
     if (after.sceneLinks.some((link) => link.fromSceneId === id)) continue;
@@ -702,8 +741,8 @@ export function checkPatch(
         findings.push({
           kind: "unusedFact",
           severity: "note",
-          params: { fact, action: action!.label },
-          message: `The discovery “${fact}” is set by “${action!.label}”, but nothing asks for it.`,
+          params: { fact, action: action!.label, ...(fact ? {} : { unnamed: true }) },
+          message: `The discovery “${fact || "a discovery"}” is set by “${action!.label}”, but nothing asks for it.`,
           opIndex,
           sceneId,
           fixes: [],

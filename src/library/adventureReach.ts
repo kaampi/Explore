@@ -21,37 +21,128 @@ export type Reach = {
  */
 export function guaranteedFlags(campaign: CampaignTemplate): Map<string, Set<string>> {
   const first = openingScene(campaign);
-  const known = new Map<string, Set<string>>();
-  if (!first) return known;
   const initial = (sceneId: string) =>
     campaign.scenes.find((scene) => scene.id === sceneId)?.encounter?.state.flags ?? [];
-  known.set(first.id, new Set([...campaign.storyFlags, ...initial(first.id)]));
-  let changed = true;
-  while (changed) {
-    changed = false;
+  const start = new Map<string, Set<string>>();
+  if (!first) return start;
+  start.set(first.id, new Set([...campaign.storyFlags, ...initial(first.id)]));
+  /**
+   * One pass: what each scene certainly has on arrival, given what the scenes before it certainly
+   * have. Only a way that can be taken counts: its scene is reached, and what it requires is had
+   * there, and nothing it requires absent has happened. A way that can never be taken brings no
+   * discovery, and so cannot take one away from the ways that can.
+   */
+  /** What a player can have in a scene, given what they certainly have: the actions there add. */
+  const possible = (sceneId: string, base: Set<string>) => {
+    const here = new Set(base);
+    const game = campaign.scenes.find((scene) => scene.id === sceneId)?.encounter;
+    for (let grew = true; grew;) {
+      grew = false;
+      for (const action of game?.definition.interactions ?? []) {
+        if (!action.requiresFlags.every((flag) => here.has(flag))) continue;
+        if (action.excludesFlags.some((flag) => here.has(flag))) continue;
+        for (const effect of action.success.effects)
+          if (effect.kind === "flag" && !here.has(effect.flag)) {
+            here.add(effect.flag);
+            grew = true;
+          }
+      }
+    }
+    return here;
+  };
+  const pass = (known: Map<string, Set<string>>) => {
+    const next = new Map<string, Set<string>>([[first.id, start.get(first.id)!]]);
     for (const link of campaign.sceneLinks) {
       const from = known.get(link.fromSceneId);
       if (!from || link.toSceneId === first.id) continue;
+      // The way can be taken when the player can have what it requires in the scene it leaves.
+      const can = possible(link.fromSceneId, from);
+      if (!link.requiresFlags.every((flag) => can.has(flag))) continue;
+      if (link.requiresAbsentFlags.some((flag) => can.has(flag))) continue;
+      // Crossing it, the player has what it requires: that is certain on arrival.
       const arrival = new Set([
         ...from,
         ...link.requiresFlags,
         ...link.setsFlags,
         ...initial(link.toSceneId),
       ]);
-      const before = known.get(link.toSceneId);
-      if (!before) {
-        known.set(link.toSceneId, arrival);
-        changed = true;
-      } else {
-        const kept = new Set([...before].filter((flag) => arrival.has(flag)));
-        if (kept.size !== before.size) {
-          known.set(link.toSceneId, kept);
-          changed = true;
-        }
+      const before = next.get(link.toSceneId);
+      next.set(
+        link.toSceneId,
+        before ? new Set([...before].filter((flag) => arrival.has(flag))) : arrival,
+      );
+    }
+    return next;
+  };
+  let known = start;
+  for (let round = 0; round < 100; round++) {
+    const next = pass(known);
+    const same =
+      next.size === known.size &&
+      [...next].every(([id, flags]) => {
+        const old = known.get(id);
+        return !!old && old.size === flags.size && [...flags].every((flag) => old.has(flag));
+      });
+    if (same) return next;
+    known = next;
+  }
+  // The ways depend on each other in a loop that does not settle: claim nothing.
+  return new Map([[first.id, start.get(first.id)!]]);
+}
+
+/**
+ * The discoveries a single playthrough can have when it stands in each scene, after the actions
+ * there have been done. A player never has the discoveries of two different playthroughs: a way
+ * that a branch takes and the other branch does not is not in the same play. Enumerates every
+ * playthrough of the adventure, as far as it is small; a larger one is cut short, which claims
+ * less rather than more.
+ */
+export function playthroughFlags(campaign: CampaignTemplate): Map<string, Set<string>[]> {
+  const first = openingScene(campaign);
+  const reached = new Map<string, Set<string>[]>();
+  if (!first) return reached;
+  const seen = new Set<string>();
+  const queue: { scene: string; flags: Set<string> }[] = [
+    {
+      scene: first.id,
+      flags: new Set([...campaign.storyFlags, ...(first.encounter?.state.flags ?? [])]),
+    },
+  ];
+  const sceneOf = (id: string) => campaign.scenes.find((scene) => scene.id === id);
+  while (queue.length && seen.size < 5000) {
+    const { scene: sceneId, flags } = queue.shift()!;
+    const key = `${sceneId}|${[...flags].sort().join(",")}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    // The actions this scene allows, done as often as they add something.
+    const here = new Set(flags);
+    const game = sceneOf(sceneId)?.encounter;
+    for (let grew = true; grew;) {
+      grew = false;
+      for (const action of game?.definition.interactions ?? []) {
+        if (!action.requiresFlags.every((flag) => here.has(flag))) continue;
+        if (action.excludesFlags.some((flag) => here.has(flag))) continue;
+        for (const effect of action.success.effects)
+          if (effect.kind === "flag" && !here.has(effect.flag)) {
+            here.add(effect.flag);
+            grew = true;
+          }
       }
     }
+    const list = reached.get(sceneId) ?? [];
+    list.push(here);
+    reached.set(sceneId, list);
+    for (const link of campaign.sceneLinks) {
+      if (link.fromSceneId !== sceneId) continue;
+      if (!link.requiresFlags.every((flag) => here.has(flag))) continue;
+      if (link.requiresAbsentFlags.some((flag) => here.has(flag))) continue;
+      const next = new Set([...here, ...link.setsFlags]);
+      const target = sceneOf(link.toSceneId);
+      for (const flag of target?.encounter?.state.flags ?? []) next.add(flag);
+      queue.push({ scene: link.toSceneId, flags: next });
+    }
   }
-  return known;
+  return reached;
 }
 
 export function openingScene(campaign: CampaignTemplate) {
