@@ -475,19 +475,26 @@ export function CampaignStudio({
     setError(err instanceof Error ? err.message : fallback);
   }
 
-  async function save(resolution?: { revision: number; choices: Record<string, EditDecision> }) {
-    if (!draft) return;
-    const name = draft.name.trim();
+  /**
+   * Saves the adventure. `from` is what to save; by default the draft. Returns what was saved, or
+   * null when it was not saved (the reason is shown in the studio).
+   */
+  async function save(
+    resolution?: { revision: number; choices: Record<string, EditDecision> },
+    from: CampaignTemplate | undefined = draft ?? undefined,
+  ): Promise<CampaignTemplate | null> {
+    if (!from) return null;
+    const name = from.name.trim();
     if (!name) {
       setError("Name the adventure.");
-      return;
+      return null;
     }
     setBusy(true);
     setError(null);
     try {
-      const realmId = inferCampaignRealmId(draft, visiblePlaces);
+      const realmId = inferCampaignRealmId(from, visiblePlaces);
       const built = newCampaignTemplate(
-        sanitizeCampaign({ ...syncedDraft(draft), name, ...(realmId ? { realmId } : {}) }),
+        sanitizeCampaign({ ...syncedDraft(from), name, ...(realmId ? { realmId } : {}) }),
       );
       const previous = campaigns.find((item) => item.id === built.id);
       const saved = withOriginalTimestamps(built, previous);
@@ -500,8 +507,10 @@ export function CampaignStudio({
       setDraft(committed);
       setSaveConflict(undefined);
       setNotice("Saved.");
+      return committed;
     } catch (err) {
       showSaveError(err, "Could not save.");
+      return null;
     } finally {
       setBusy(false);
     }
@@ -1735,6 +1744,7 @@ export function CampaignStudio({
                 }}
                 onPlay={(scene) => void startScene(scene)}
                 onSave={() => void save()}
+                saveFirst={(next) => save(undefined, next)}
                 onClose={() => {
                   setStoryboardOpen(false);
                   setStoryboardStep("scenes");
