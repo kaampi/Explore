@@ -29,6 +29,7 @@ import {
 import { Button } from "../components/Button";
 import { useTranslate } from "../i18n/LanguageProvider";
 import { arrangeStoryboard } from "./storyboardArrange";
+import type { PreviewLink, PreviewModel, PreviewScene } from "./assistPreview";
 import { downloadJson } from "./studioShared";
 import {
   ceilStoryboardCoordinate,
@@ -70,6 +71,8 @@ const ARROW_TONES = ["default", "locked", "blocks", "focused"] as const;
 const EMPTY_SECTIONS: StoryboardSection[] = [];
 const EMPTY_PLACEMENTS: CutscenePlacement[] = [];
 const EMPTY_FILMS: CutsceneFilm[] = [];
+const EMPTY_PREVIEW_SCENES: PreviewScene[] = [];
+const EMPTY_PREVIEW_LINKS: PreviewLink[] = [];
 
 type LinkEndpoints = { from: StoryboardCard; to: StoryboardCard };
 type LabelBox = { x: number; y: number; width: number; height: number };
@@ -166,7 +169,16 @@ export function StoryboardCanvas({
   activeLinkId,
   connectionFromSceneId,
   onConnectionEnd,
+  assistPreview = null,
+  assistLocked = false,
+  highlightSceneIds,
 }: {
+  /** What the help panel proposes, drawn dashed. Nothing in it is saved. */
+  assistPreview?: PreviewModel | null | undefined;
+  /** The help panel is open: scenes cannot be dragged, and routes cannot be drawn. */
+  assistLocked?: boolean | undefined;
+  /** Scenes the help has just added: lit up for a few seconds. */
+  highlightSceneIds?: ReadonlySet<string> | undefined;
   onCanvasContext?: (target: StoryboardContextTarget) => void;
   selectedSceneId?: string | undefined;
   activeLinkId?: string | undefined;
@@ -244,9 +256,49 @@ export function StoryboardCanvas({
     onSelectLink?.(id);
   }
 
+  const previewScenes = assistPreview?.scenes ?? EMPTY_PREVIEW_SCENES;
+  const previewLinks = assistPreview?.links ?? EMPTY_PREVIEW_LINKS;
+  // The proposals take part in the layout and the routing like the rest, but nothing else sees them.
+  const shownScenes = useMemo(
+    () => (previewScenes.length ? [...scenes, ...previewScenes.map((item) => item.scene)] : scenes),
+    [scenes, previewScenes],
+  );
+  const shownLinks = useMemo(
+    () => (previewLinks.length ? [...links, ...previewLinks.map((item) => item.link)] : links),
+    [links, previewLinks],
+  );
+  const previewSceneById = useMemo(
+    () => new Map(previewScenes.map((item) => [item.scene.id, item])),
+    [previewScenes],
+  );
+  const previewLinkById = useMemo(
+    () => new Map(previewLinks.map((item) => [item.link.id, item])),
+    [previewLinks],
+  );
+  const marksByScene = useMemo(() => {
+    const byScene = new Map<
+      string,
+      { actions: number; items: number; selected: boolean; hovered: boolean }
+    >();
+    for (const mark of assistPreview?.marks ?? []) {
+      const sum = byScene.get(mark.sceneId) ?? {
+        actions: 0,
+        items: 0,
+        selected: false,
+        hovered: false,
+      };
+      sum.actions += mark.actions;
+      sum.items += mark.items;
+      sum.selected ||= mark.selected;
+      sum.hovered ||= mark.hovered;
+      byScene.set(mark.sceneId, sum);
+    }
+    return byScene;
+  }, [assistPreview]);
+  const assistShown = assistPreview !== null && assistPreview.shown > 0;
   const { visibleScenes, frames, folded, endpoints, sceneCards } = useMemo(
-    () => layoutStoryboard(scenes, sections),
-    [scenes, sections],
+    () => layoutStoryboard(shownScenes, sections),
+    [shownScenes, sections],
   );
   const sectionCards = useMemo(() => [...frames, ...folded], [frames, folded]);
   const cards = useMemo(() => [...visibleScenes, ...sectionCards], [visibleScenes, sectionCards]);
@@ -254,7 +306,7 @@ export function StoryboardCanvas({
   const { projectedLinks, incoming, outgoing } = useMemo(() => {
     const outgoing = new Map<StoryboardCard, number>();
     const incoming = new Map<StoryboardCard, number>();
-    const projectedLinks = links.flatMap((link) => {
+    const projectedLinks = shownLinks.flatMap((link) => {
       const from = endpoints.get(link.fromSceneId);
       const to = endpoints.get(link.toSceneId);
       if (!from || !to || (from === to && "section" in from)) return [];
@@ -263,7 +315,7 @@ export function StoryboardCanvas({
       return [{ id: link.id, link, from, to }];
     });
     return { projectedLinks, incoming, outgoing };
-  }, [endpoints, links]);
+  }, [endpoints, shownLinks]);
   const routes = useMemo(() => {
     const previous = previousRouting.current;
     if (!drag || !previous) return routeStoryboardLinks(cards, projectedLinks);
@@ -324,7 +376,8 @@ export function StoryboardCanvas({
     const focused = focusedLink
       ? id === focusedLink
       : focusedScene === link.fromSceneId || focusedScene === link.toSceneId;
-    const dimmed = hasFocus && !focused;
+    const proposal = previewLinkById.get(id);
+    const dimmed = proposal ? false : (hasFocus && !focused) || assistShown;
     let point = route.label;
     if (box) {
       const candidates = LABEL_POSITIONS.map((parameter) => {
@@ -348,7 +401,7 @@ export function StoryboardCanvas({
       }
       placedBoxes.push({ id, bounds: best.bounds });
     }
-    return { link, route, label, point, box, endpointNames, locked, focused, dimmed };
+    return { link, route, label, point, box, endpointNames, locked, focused, dimmed, proposal };
   });
 
   useLayoutEffect(() => {
@@ -376,7 +429,7 @@ export function StoryboardCanvas({
     measureLabels();
     document.fonts?.addEventListener("loadingdone", measureLabels);
     return () => document.fonts?.removeEventListener("loadingdone", measureLabels);
-  }, [links, sceneCards, t]);
+  }, [shownLinks, sceneCards, t]);
 
   const activeConnectFrom = connectionFromSceneId ?? connectFrom;
   const draftSource = activeConnectFrom ? endpoints.get(activeConnectFrom) : undefined;
@@ -613,7 +666,8 @@ export function StoryboardCanvas({
     if (section) onSelectSection?.(id);
     else onSelectScene?.(id, additive);
     setSelectedLinkId(null);
-    if (additive) return;
+    // While the help panel is open a card can be chosen but not moved: a move would meet the preview.
+    if (additive || assistLocked) return;
     const p = pointFromEvent(event);
     dragOffset.current = { x: p.x - item.pos.x, y: p.y - item.pos.y };
     setDrag({ id, section, origin });
@@ -625,6 +679,7 @@ export function StoryboardCanvas({
     event.stopPropagation();
     onSelectCutscene?.(id);
     setSelectedLinkId(null);
+    if (assistLocked) return;
     const point = pointFromEvent(event);
     dragOffset.current = { x: point.x - pos.x, y: point.y - pos.y };
     setDrag({ id, section: false, cutscene: true, origin });
@@ -632,7 +687,7 @@ export function StoryboardCanvas({
   }
 
   function startConnect(event: React.PointerEvent, sceneId: string) {
-    if (event.button !== 0) return;
+    if (event.button !== 0 || assistLocked) return;
     event.stopPropagation();
     onConnectionEnd?.();
     setConnectFrom(sceneId);
@@ -797,7 +852,7 @@ export function StoryboardCanvas({
             className="storyboard-section__resize"
             aria-label={`Resize ${title}`}
             title="Drag to resize, or use the arrow keys"
-            disabled={!!activeConnectFrom}
+            disabled={!!activeConnectFrom || assistLocked}
             onPointerDown={(event) => {
               if (event.button !== 0 || resizing.current) return;
               event.stopPropagation();
@@ -911,7 +966,7 @@ export function StoryboardCanvas({
           Fit all
         </button>
         {onLayoutChange && (
-          <Button size="compact" disabled={!hasCards} onClick={arrange}>
+          <Button size="compact" disabled={!hasCards || assistLocked} onClick={arrange}>
             {t("psArrangeStoryboard")}
           </Button>
         )}
@@ -1001,39 +1056,51 @@ export function StoryboardCanvas({
                   </marker>
                 ))}
               </defs>
-              {drawnLinks.map(({ link, route, endpointNames, locked, focused, dimmed }) => {
-                const blocks = link.requiresAbsentFlags.length > 0;
-                const path = route.path;
-                const tone = focused
-                  ? "focused"
-                  : blocks
-                    ? "blocks"
-                    : locked
-                      ? "locked"
-                      : "default";
-                return (
-                  <g
-                    key={link.id}
-                    data-link-id={link.id}
-                    onPointerEnter={() => setHoverLink(link.id)}
-                    onPointerLeave={() => setHoverLink((id) => (id === link.id ? null : id))}
-                  >
-                    <title>{endpointNames}</title>
-                    <path
-                      d={path}
-                      className="storyboard-line-hit"
-                      style={{ strokeWidth: Math.max(16, 8 / zoom) }}
-                      onClick={() => setSelectedLinkId(link.id)}
-                    />
-                    <path
-                      d={path}
-                      className={`storyboard-line${blocks ? " storyboard-line--blocks" : ""}${locked ? " storyboard-line--locked" : ""}${focused ? " is-focused" : ""}${dimmed ? " is-dimmed" : ""}`}
-                      markerEnd={`url(#${arrowId}-${tone})`}
-                      style={zoom < 0.5 ? { strokeWidth: (focused ? 1.5 : 1) / zoom } : undefined}
-                    />
-                  </g>
-                );
-              })}
+              {drawnLinks.map(
+                ({ link, route, endpointNames, locked, focused, dimmed, proposal }) => {
+                  if (proposal)
+                    return (
+                      <g key={link.id} aria-hidden="true" data-proposal-link={link.id}>
+                        <path
+                          d={route.path}
+                          className={`storyboard-line storyboard-line--proposal${proposal.selected ? " is-chosen" : " is-unchosen"}${proposal.hovered ? " is-hovered" : ""}`}
+                          markerEnd={`url(#${arrowId}-${proposal.selected ? "focused" : "default"})`}
+                        />
+                      </g>
+                    );
+                  const blocks = link.requiresAbsentFlags.length > 0;
+                  const path = route.path;
+                  const tone = focused
+                    ? "focused"
+                    : blocks
+                      ? "blocks"
+                      : locked
+                        ? "locked"
+                        : "default";
+                  return (
+                    <g
+                      key={link.id}
+                      data-link-id={link.id}
+                      onPointerEnter={() => setHoverLink(link.id)}
+                      onPointerLeave={() => setHoverLink((id) => (id === link.id ? null : id))}
+                    >
+                      <title>{endpointNames}</title>
+                      <path
+                        d={path}
+                        className="storyboard-line-hit"
+                        style={{ strokeWidth: Math.max(16, 8 / zoom) }}
+                        onClick={() => setSelectedLinkId(link.id)}
+                      />
+                      <path
+                        d={path}
+                        className={`storyboard-line${blocks ? " storyboard-line--blocks" : ""}${locked ? " storyboard-line--locked" : ""}${focused ? " is-focused" : ""}${dimmed ? " is-dimmed" : ""}`}
+                        markerEnd={`url(#${arrowId}-${tone})`}
+                        style={zoom < 0.5 ? { strokeWidth: (focused ? 1.5 : 1) / zoom } : undefined}
+                      />
+                    </g>
+                  );
+                },
+              )}
               {cutCards.map(
                 ({ placement, pos, width, height, anchor }) =>
                   anchor && (
@@ -1054,6 +1121,30 @@ export function StoryboardCanvas({
             {folded.map(renderSection)}
             {visibleScenes.map((card) => {
               const { scene, pos } = card;
+              const proposal = previewSceneById.get(scene.id);
+              if (proposal)
+                return (
+                  <div
+                    key={scene.id}
+                    aria-hidden="true"
+                    data-proposal-scene={scene.id}
+                    data-proposal-key={proposal.key}
+                    className={`storyboard-card storyboard-card--proposal${proposal.selected ? " is-chosen" : " is-unchosen"}${proposal.hovered ? " is-hovered" : ""}`}
+                    style={{
+                      boxSizing: "border-box",
+                      left: pos.x - origin.x,
+                      top: pos.y - origin.y,
+                      width: card.width,
+                      height: card.height,
+                    }}
+                  >
+                    <span className="storyboard-card__proposal-key">{proposal.key}</span>
+                    <div className="storyboard-card__name">
+                      {scene.name.trim() || "Untitled scene"}
+                    </div>
+                  </div>
+                );
+              const mark = marksByScene.get(scene.id);
               const chapterIndex = scene.chapterId
                 ? chapters.findIndex((c) => c.id === scene.chapterId)
                 : -1;
@@ -1064,7 +1155,7 @@ export function StoryboardCanvas({
                   key={scene.id}
                   data-scene-id={scene.id}
                   tabIndex={0}
-                  className={`storyboard-card${selectedSceneId === scene.id || markedSceneIds?.has(scene.id) ? " is-selected" : ""}${activeConnectFrom && activeConnectFrom !== scene.id && hoverTarget === scene.id ? " is-drop-target" : ""}`}
+                  className={`storyboard-card${selectedSceneId === scene.id || markedSceneIds?.has(scene.id) ? " is-selected" : ""}${assistShown && !mark && selectedSceneId !== scene.id ? " is-dimmed-by-assist" : ""}${highlightSceneIds?.has(scene.id) ? " is-just-added" : ""}${activeConnectFrom && activeConnectFrom !== scene.id && hoverTarget === scene.id ? " is-drop-target" : ""}`}
                   style={{
                     boxSizing: "border-box",
                     left: pos.x - origin.x,
@@ -1091,9 +1182,32 @@ export function StoryboardCanvas({
                     {linksFromScene(links, scene.id).length} out ·{" "}
                     {linksToScene(links, scene.id).length} in
                   </div>
+                  {mark && (
+                    <div
+                      aria-hidden="true"
+                      data-proposal-mark={scene.id}
+                      className={`storyboard-card__proposal-mark${mark.selected ? " is-chosen" : " is-unchosen"}${mark.hovered ? " is-hovered" : ""}`}
+                    >
+                      {[
+                        mark.actions
+                          ? t(mark.actions === 1 ? "saActionsOne" : "saActionsMany", {
+                              count: mark.actions,
+                            })
+                          : "",
+                        mark.items
+                          ? t(mark.items === 1 ? "saItemsOne" : "saItemsMany", {
+                              count: mark.items,
+                            })
+                          : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </div>
+                  )}
                   <select
                     className="storyboard-card__chapter"
                     value={scene.chapterId ?? ""}
+                    disabled={assistLocked}
                     onPointerDown={(event) => event.stopPropagation()}
                     onChange={(e) =>
                       onScenesChange(setSceneChapter(scenes, scene.id, e.target.value || undefined))
@@ -1110,6 +1224,7 @@ export function StoryboardCanvas({
                     type="button"
                     className="storyboard-card__port"
                     onPointerDown={(event) => startConnect(event, scene.id)}
+                    disabled={assistLocked}
                     aria-label={`Connect ${scene.name.trim() || "this scene"} to another scene`}
                   />
                 </div>
@@ -1162,7 +1277,7 @@ export function StoryboardCanvas({
               className="storyboard-labels"
               viewBox={`${origin.x} ${origin.y} ${width} ${height}`}
             >
-              {drawnLinks.map(({ link, label, point, box, dimmed }) => {
+              {drawnLinks.map(({ link, label, point, box, dimmed, proposal }) => {
                 if (!label) return null;
                 const hidden = crowdedLabels.has(link.id) && revealedLabel !== link.id;
                 return (
@@ -1170,6 +1285,7 @@ export function StoryboardCanvas({
                     key={link.id}
                     data-storyboard-label-link={link.id}
                     className={dimmed ? "is-dimmed" : undefined}
+                    {...(proposal ? { "aria-hidden": true } : {})}
                     visibility={hidden ? "hidden" : undefined}
                     aria-hidden={hidden || undefined}
                     transform={`translate(${point.x} ${point.y})`}

@@ -14,6 +14,7 @@ import {
 } from "../../src/library/LibrarySchema";
 import { startPlayableCampaign } from "../../src/session/adventureStart";
 import type { CheckLibrary } from "../../src/game/authoringChecks";
+import type { AssistProposal } from "../../src/ui/studio/assistContract";
 
 /** The sketch from docs/storyboard-ai.sv.md: a watchtower, a guildhall, and a crypt that needs the seal. */
 export const places: PlaceTemplate[] = [
@@ -207,3 +208,70 @@ export function mappedAdventure() {
 }
 
 export const where = (engine: StateEngine) => engine.getSession().encounter!.definition.title;
+
+/** Fortsätt härifrån from the tower: three ways on, A–C, as in the sketch. */
+export function continueProposals(tower: string) {
+  const way = (
+    key: string,
+    id: string,
+    name: string,
+    up: string,
+    down: string,
+  ): AssistProposal => ({
+    key,
+    selected: false,
+    patch: {
+      ops: [
+        { op: "addScene", tempId: `new:${id}`, name, placeId: "p-cellar", arrival: `${name}.` },
+        { op: "addLink", from: tower, to: `new:${id}`, label: up },
+        { op: "addLink", from: `new:${id}`, to: tower, label: down },
+      ],
+    },
+  });
+  return [
+    way("A", "roof", "The roof", "Climb to the roof", "Back down"),
+    way("B", "cellar", "The cellar", "Down to the cellar", "Back up"),
+    way("C", "well", "The well", "To the well", "Back to the tower"),
+  ];
+}
+
+/** Fördjupa the hall: two proposals that add two actions and one thing. */
+export function deepenProposals(hall: string): AssistProposal[] {
+  return [
+    {
+      key: "1",
+      selected: true,
+      patch: {
+        ops: [
+          {
+            op: "addItem",
+            tempId: "new:lantern",
+            name: "Lantern",
+            description: "Dim.",
+            inSceneId: hall,
+          },
+          {
+            op: "addAction",
+            sceneId: hall,
+            label: "Read the plaque",
+            outcome: "It names the founder.",
+          },
+        ],
+      },
+    },
+    {
+      key: "2",
+      selected: true,
+      patch: {
+        ops: [
+          {
+            op: "addAction",
+            sceneId: hall,
+            label: "Warm your hands",
+            outcome: "The hearth is cold.",
+          },
+        ],
+      },
+    },
+  ];
+}

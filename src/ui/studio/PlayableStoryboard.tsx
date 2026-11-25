@@ -43,6 +43,9 @@ import {
   type AdventureMapPlace,
 } from "../../library/adventureMap";
 import { Menu, type MenuItem } from "../components/Menu";
+import type { RenderAssist } from "./assistContract";
+import { StoryboardAssistBar } from "./StoryboardAssistBar";
+import { useStoryboardAssist } from "./useStoryboardAssist";
 import type { Interaction } from "../../game/EncounterSchema";
 import {
   storyboardIssues,
@@ -96,7 +99,13 @@ export function PlayableStoryboard({
   library,
   initialStep = "scenes",
   initialSceneId,
+  renderAssist,
+  reloadCampaign,
 }: {
+  /** Draws the AI help panel. Without it Storyboard shows no way in to the help (docs/storyboard-ai.sv.md). */
+  renderAssist?: RenderAssist | undefined;
+  /** Reads the adventure again from where it is saved, for when the help panel has saved something. */
+  reloadCampaign?: (() => Promise<CampaignTemplate>) | undefined;
   campaign: CampaignTemplate;
   places: PlaceTemplate[];
   characters: CharacterTemplate[];
@@ -183,6 +192,15 @@ export function PlayableStoryboard({
   const scene = campaign.scenes.find((s) => s.id === sceneId),
     link = campaign.sceneLinks.find((l) => l.id === linkId),
     facts = adventureFacts(campaign);
+  const assist = useStoryboardAssist({
+    campaign,
+    objects: library?.objects ?? objects,
+    renderAssist,
+    reloadCampaign,
+    onChange,
+    onFocusScene: (id) => selectScene(id),
+    onFocusLink: (id) => selectLink(id),
+  });
   const placementFacts = [
     ...new Map(
       [
@@ -699,6 +717,16 @@ export function PlayableStoryboard({
       ]
     : context?.linkId
       ? [
+          ...(renderAssist
+            ? [
+                {
+                  label: `✦ ${t("saContinue")}`,
+                  disabled: assist.isOpen,
+                  onSelect: () => assist.openAssist("continue", { linkId: context.linkId! }),
+                },
+                { kind: "separator" as const },
+              ]
+            : []),
           { label: t("psEditConnection"), onSelect: () => selectLink(context.linkId!) },
           { label: t("csMenuPlacement"), onSelect: () => addPlacement(context) },
           { kind: "separator" as const },
@@ -716,6 +744,21 @@ export function PlayableStoryboard({
         ]
       : context?.sceneId
         ? [
+            ...(renderAssist
+              ? [
+                  {
+                    label: `✦ ${t("saDeepen")}`,
+                    disabled: assist.isOpen,
+                    onSelect: () => assist.openAssist("deepen", { sceneId: context.sceneId! }),
+                  },
+                  {
+                    label: `✦ ${t("saContinue")}`,
+                    disabled: assist.isOpen,
+                    onSelect: () => assist.openAssist("continue", { sceneId: context.sceneId! }),
+                  },
+                  { kind: "separator" as const },
+                ]
+              : []),
             { label: "Edit scene", onSelect: () => selectScene(context.sceneId!) },
             { label: t("csMenuPlacement"), onSelect: () => addPlacement(context) },
             ...(scene?.encounter ? [{ label: "Add action", onSelect: addAction }] : []),
@@ -1416,7 +1459,40 @@ export function PlayableStoryboard({
             {t("psSaveAdventure")}
           </button>
         )}
+        {renderAssist && scene && (
+          <StoryboardAssistBar
+            sceneName={scene.name}
+            disabled={busy || assist.isOpen}
+            onDeepen={() => assist.openAssist("deepen", { sceneId: scene.id })}
+            onContinue={() => assist.openAssist("continue", { sceneId: scene.id })}
+            moreItems={[
+              ...(scene.encounter ? [{ label: "Add action", onSelect: addAction }] : []),
+              ...(campaign.scenes.length > 1
+                ? [{ label: t("psConnectToAnotherScene"), onSelect: () => addLink(scene) }]
+                : []),
+              ...(issues.length === 0
+                ? [{ label: t("psTestThisScene2"), onSelect: () => onPlay(scene) }]
+                : []),
+              ...(campaign.scenes.length > 1
+                ? [
+                    { kind: "separator" as const },
+                    {
+                      label: t("psRemoveScene"),
+                      danger: true,
+                      onSelect: () => removeScene(scene.id),
+                    },
+                  ]
+                : []),
+            ]}
+            model={assist.model}
+          />
+        )}
       </div>
+      {assist.panel && (
+        <section className="storyboard-assist-panel" key={assist.panelKey} data-assist-panel>
+          {assist.panel}
+        </section>
+      )}
       <div
         ref={layout}
         className="playable-storyboard__layout"
@@ -1496,6 +1572,9 @@ export function PlayableStoryboard({
               if (item) changePlacement({ ...item, position });
             }}
             externalInspector
+            assistPreview={assist.model}
+            assistLocked={assist.isOpen}
+            highlightSceneIds={assist.justAdded}
             connectionFromSceneId={connectionFromId}
             onConnectionEnd={() => setConnectionFromId(null)}
             selectedSceneId={sceneId}
