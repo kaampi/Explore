@@ -1024,6 +1024,10 @@ const labels = {
     saItemsOne: "+1 item",
     saItemsMany: "+{count} items",
     saUntitled: "Untitled scene",
+    saReloadFailed: "The panel saved, but the adventure could not be read again.",
+    saReadAgain: "Read again",
+    saConflict:
+      "The panel changed {names} too, and you had changed it as well. Your version is kept.",
     psScenesArranged: "Scenes arranged",
     psUndoArrange: "Undo",
     psDragOrUseThe:
@@ -2179,6 +2183,9 @@ const labels = {
     saItemsOne: "+1 föremål",
     saItemsMany: "+{count} föremål",
     saUntitled: "Scen utan namn",
+    saReloadFailed: "Panelen sparade, men äventyret kunde inte läsas in igen.",
+    saReadAgain: "Läs in igen",
+    saConflict: "Panelen ändrade {names}, och du hade ändrat den också. Din version behålls.",
     psScenesArranged: "Scenerna ordnades",
     psUndoArrange: "Ångra",
     psDragOrUseThe:
@@ -3338,6 +3345,9 @@ const labels = {
     saItemsOne: "+1 gjenstand",
     saItemsMany: "+{count} gjenstander",
     saUntitled: "Scene uten navn",
+    saReloadFailed: "Panelen lagret, men eventyret kunne ikke leses inn igjen.",
+    saReadAgain: "Les inn igjen",
+    saConflict: "Panelen endret {names}, og du hadde endret den også. Din versjon beholdes.",
     psScenesArranged: "Scenene ble ordnet",
     psUndoArrange: "Angre",
     psDragOrUseThe:

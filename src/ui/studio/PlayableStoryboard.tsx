@@ -717,7 +717,7 @@ export function PlayableStoryboard({
       ]
     : context?.linkId
       ? [
-          ...(renderAssist
+          ...(assist.enabled
             ? [
                 {
                   label: `✦ ${t("saContinue")}`,
@@ -744,7 +744,7 @@ export function PlayableStoryboard({
         ]
       : context?.sceneId
         ? [
-            ...(renderAssist
+            ...(assist.enabled
               ? [
                   {
                     label: `✦ ${t("saDeepen")}`,
@@ -1459,7 +1459,7 @@ export function PlayableStoryboard({
             {t("psSaveAdventure")}
           </button>
         )}
-        {renderAssist && scene && (
+        {assist.enabled && scene && (
           <StoryboardAssistBar
             sceneName={scene.name}
             disabled={busy || assist.isOpen}
@@ -1488,6 +1488,20 @@ export function PlayableStoryboard({
           />
         )}
       </div>
+      {assist.unread && (
+        <p role="alert" className="storyboard-assist-notice">
+          <span>{t("saReloadFailed")}</span>{" "}
+          <Button variant="quiet" size="compact" onClick={() => void assist.unread!.readAgain()}>
+            {t("saReadAgain")}
+          </Button>
+          {assist.unread.message && <small> {assist.unread.message}</small>}
+        </p>
+      )}
+      {assist.conflicts.length > 0 && (
+        <p role="status" className="storyboard-assist-notice">
+          {t("saConflict", { names: assist.conflicts.join(", ") })}
+        </p>
+      )}
       {assist.panel && (
         <section className="storyboard-assist-panel" key={assist.panelKey} data-assist-panel>
           {assist.panel}
