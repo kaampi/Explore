@@ -143,7 +143,9 @@ function mountGuide(
       await until(() =>
         expect(
           host.querySelector(
-            sceneTarget ? ".guide-scene-revision .guide-plan-section" : ".guide-columns",
+            sceneTarget
+              ? ".guide-scene-revision .guide-plan-section"
+              : ".guide-columns, .guide-image-plan",
           ),
         ).not.toBeNull(),
       );
@@ -164,7 +166,11 @@ it("shows English guide controls and local suggestions when Explore is set to En
     expect(view.host.textContent).toContain(
       "What do you already know about the game you want to create?",
     );
-    await view.click("Help me find an idea");
+    const actions = view.host.querySelector(".guide-idea-actions");
+    expect(
+      Array.from(actions?.querySelectorAll("button") ?? [], (button) => button.textContent),
+    ).toEqual(["Next", "Help me get started"]);
+    await view.click("Help me get started");
     await view.click("A musician needs a place for tonight’s concert.");
     expect(view.field("Your idea").value).toBe("A musician needs a place for tonight’s concert.");
     await view.click("Next");
@@ -184,7 +190,10 @@ it("creates a writer's own playable opening with local help and keeps the respon
   try {
     await view.open();
     const headings = () =>
-      Array.from(view.host.querySelectorAll(".guide-plan h3"), (element) => element.textContent);
+      Array.from(
+        view.host.querySelectorAll(".guide-plan .guide-editor h3"),
+        (element) => element.textContent,
+      );
     expect(headings()).toEqual(["Din idé"]);
     expect(view.host.querySelector<HTMLDetailsElement>(".guide-plan details")?.open).toBe(false);
     await view.fill("Din idé", "En budcyklist hittar en övergiven väska.");
@@ -943,3 +952,100 @@ it.each(["arrival", "outcome"] as const)(
     }
   },
 );
+
+it("lists and copies a prompt without writing image suggestions to the draft", async () => {
+  const repo = new IndexedDBRepository(new IDBFactory(), "guide-image-plan");
+  const draft = newGuideInterview();
+  draft.premise = "Fyrvaktaren väntar på en båt.";
+  draft.opening.place.name = "Fyren";
+  draft.opening.arrival = "Ett grönt ljus glimmar i dimman.";
+  draft.secrets = "Hemlig text.";
+  await repo.saveGuideInterview(draft, undefined);
+  const view = mountGuide(repo);
+  const originalClipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+  const clipboard = {
+    writeText: vi.fn<(text: string) => Promise<void>>().mockResolvedValue(undefined),
+  };
+  Object.defineProperty(navigator, "clipboard", { configurable: true, value: clipboard });
+  try {
+    await view.open();
+    await act(async () =>
+      view.host.querySelector<HTMLElement>(".guide-image-plan summary")!.click(),
+    );
+    const prompt = view.field("Bildprompt", ".guide-image-plan");
+    expect(prompt.value).toContain("16:9");
+    expect(prompt.value).toContain(draft.opening.arrival);
+    expect(prompt.value).not.toContain(draft.secrets);
+    await view.click("Kopiera bildprompt");
+    await view.until(() => expect(clipboard.writeText).toHaveBeenCalledWith(prompt.value));
+    expect(await repo.loadGuideInterview()).toEqual(draft);
+  } finally {
+    if (originalClipboard) Object.defineProperty(navigator, "clipboard", originalClipboard);
+    else Reflect.deleteProperty(navigator, "clipboard");
+    await view.cleanup();
+  }
+});
+
+it("reopens saved image suggestions using the adventure's current library cards", async () => {
+  const factory = new IDBFactory();
+  const repo = new IndexedDBRepository(factory, "saved-guide-images");
+  const draft = newGuideInterview();
+  draft.premise = "En konsert börjar om en timme.";
+  draft.role.name = "Arrangören";
+  draft.opening.place.name = "Musikhuset";
+  draft.opening.arrival = "Stolarna står i rader.";
+  draft.choices = [{ ...newGuideChoice(), label: "Öppna salongen", outcome: "Publiken går in." }];
+  draft.people = [
+    { name: "Dirigenten", note: "" },
+    { name: "Violinisten", note: "" },
+  ];
+  draft.items = [{ name: "Notstället", note: "" }];
+  await repo.saveGuideInterview(draft, undefined);
+  const view = mountGuide(repo);
+  const watched = ["Musikhuset", "Dirigenten", "Notstället", "Violinisten"];
+  function relevantSuggestions() {
+    return Array.from(view.host.querySelectorAll(".guide-image-card h3"))
+      .map((heading) => heading.textContent?.split(" · ").at(-1))
+      .filter((name) => name && watched.includes(name));
+  }
+  try {
+    await view.open();
+    await view.click("Granska och skapa äventyr");
+    await view.click("Godkänn och skapa");
+    await view.until(() => expect(view.host.textContent).toContain("Äventyret är sparat"));
+    await view.until(() =>
+      expect(relevantSuggestions()).toEqual([
+        "Musikhuset",
+        "Dirigenten",
+        "Violinisten",
+        "Notstället",
+      ]),
+    );
+    await view.click("Stäng guiden");
+    await view.until(() => expect(view.host.textContent).toContain("Öppna guiden igen"));
+
+    const studio = new IndexedDBRepository(factory, "saved-guide-images");
+    const [campaign] = await studio.listCampaigns();
+    const place = (await studio.listPlaces()).find(
+      ({ id }) => id === campaign?.scenes[0]?.placeId,
+    )!;
+    const conductor = (await studio.listCharacters()).find(
+      ({ id, name }) =>
+        name === "Dirigenten" && campaign?.people.some(({ characterId }) => characterId === id),
+    )!;
+    const item = (await studio.listObjects()).find(({ id }) => campaign?.objectIds.includes(id))!;
+    await studio.savePlace({ ...place, imageDataUrl: "musikhuset-image" });
+    await studio.saveCharacter({ ...conductor, portraitDataUrl: "dirigenten-image" });
+    await studio.saveObject({ ...item, imageDataUrl: "notstall-image" });
+    await view.click("Öppna guiden igen");
+    await view.until(() =>
+      expect(view.host.querySelector(".guide-image-plan summary")).not.toBeNull(),
+    );
+    await act(async () =>
+      view.host.querySelector<HTMLElement>(".guide-image-plan summary")!.click(),
+    );
+    expect(relevantSuggestions()).toEqual(["Violinisten"]);
+  } finally {
+    await view.cleanup();
+  }
+});

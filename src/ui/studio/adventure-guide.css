@@ -178,3 +178,17 @@
 .guide-assistant-suggestion p {
   white-space: pre-wrap;
 }
+
+.guide-idea-actions {
+  margin-block-end: 0.65rem;
+}
+
+.guide-image-plan > summary {
+  cursor: pointer;
+}
+
+.guide-image-card + .guide-image-card {
+  border-top: 1px solid var(--border-soft);
+  margin-top: 1rem;
+  padding-top: 0.5rem;
+}

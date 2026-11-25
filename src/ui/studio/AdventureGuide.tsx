@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLanguageControls, useTranslate } from "../i18n/LanguageProvider";
+import { guideImages, savedGuideImages } from "../../library/guideImages";
 import { buildGuideAdventure } from "../../library/buildGuideAdventure";
 import { publicCommands } from "../../game/catalog";
 import {
@@ -36,6 +37,7 @@ import {
   type WorldPart,
 } from "./GuidePlanEditor";
 import { GuideAssistant } from "./GuideAssistant";
+import { GuideImagePlan } from "./GuideImagePlan";
 import "./adventure-guide.css";
 
 type Props = {
@@ -147,6 +149,7 @@ function GuideWorkspace({
   const savedVersion = useRef<GuideInterview | undefined>(persisted ? initial : undefined);
   const saveQueue = useRef(Promise.resolve());
   const [library, setLibrary] = useState(initialLibrary);
+  const savedCampaign = library.campaigns.find(({ id }) => id === draft.appliedCampaignId);
   const [pane, setPane] = useState<"guide" | "plan">("guide");
   const [flow, setFlow] = useState(false);
   const [review, setReview] = useState(false);
@@ -193,6 +196,7 @@ function GuideWorkspace({
       await saveQueue.current.catch(() => {});
       const current = await repo.loadGuideInterview();
       const reloaded = current ?? newGuideInterview(language);
+      if (reloaded.appliedCampaignId) setLibrary(await readLibrary(repo));
       savedVersion.current = current;
       latest.current = reloaded;
       saveQueue.current = Promise.resolve();
@@ -334,6 +338,7 @@ function GuideWorkspace({
       savedVersion.current = applied;
       setDraft(applied);
       setReview(false);
+      setLibrary(await readLibrary(repo));
       await onCreated(campaign.id);
     });
   }
@@ -439,12 +444,17 @@ function GuideWorkspace({
             change={(premise) => edit({ premise })}
             multiline
           />
+          <div className="guide-buttons guide-idea-actions">
+            <button type="button" disabled={!draft.premise.trim()} onClick={() => advance(false)}>
+              {t("cgNext")}
+            </button>
+            <button type="button" aria-expanded={help} onClick={() => setHelp(!help)}>
+              {t("cgFindIdea")}
+            </button>
+          </div>
           <div className="guide-buttons">
             <button type="button" onClick={() => setExisting(!existing)}>
               {t("cgExisting")}
-            </button>
-            <button type="button" onClick={() => setHelp(!help)}>
-              {t("cgFindIdea")}
             </button>
             <button
               type="button"
@@ -662,6 +672,13 @@ function GuideWorkspace({
               {t("cgNewIdea")}
             </button>
           </div>
+          {savedCampaign && (
+            <GuideImagePlan
+              key={savedCampaign.id}
+              saved
+              images={savedGuideImages(savedCampaign, library)}
+            />
+          )}
         </section>
       ) : (
         <div className="guide-columns" data-pane={pane}>
@@ -745,18 +762,18 @@ function GuideWorkspace({
                     edit(change);
                   }}
                 />
-                <div className="guide-buttons">
-                  <button
-                    type="button"
-                    disabled={busy || conflict || (question === "idea" && !draft.premise.trim())}
-                    onClick={() => {
-                      setOutcomeId(undefined);
-                      advance(false);
-                    }}
-                  >
-                    {t("cgNext")}
-                  </button>
-                  {question !== "idea" && (
+                {question !== "idea" && (
+                  <div className="guide-buttons">
+                    <button
+                      type="button"
+                      disabled={busy || conflict}
+                      onClick={() => {
+                        setOutcomeId(undefined);
+                        advance(false);
+                      }}
+                    >
+                      {t("cgNext")}
+                    </button>
                     <button
                       type="button"
                       disabled={busy || conflict}
@@ -767,8 +784,8 @@ function GuideWorkspace({
                     >
                       {t("cgDefer")}
                     </button>
-                  )}
-                </div>
+                  </div>
+                )}
               </>
             ) : (
               <div className="guide-buttons">
@@ -843,6 +860,9 @@ function GuideWorkspace({
                 setFlow={setFlow}
               />
             </fieldset>
+            {draft.premise.trim() && (
+              <GuideImagePlan key={draft.id} images={guideImages(draft, library)} />
+            )}
           </aside>
         </div>
       )}
