@@ -809,26 +809,26 @@
 }
 
 /* AI help (docs/storyboard-ai.sv.md): what a proposal would add, drawn dashed. Nothing here is saved. */
-.storyboard-card--proposal {
+.storyboard-card.storyboard-card--proposal {
   border: 2px dashed var(--accent);
   background: color-mix(in srgb, var(--accent) 8%, var(--panel-raised));
   cursor: default;
   pointer-events: none;
 }
-.storyboard-card--proposal.is-unchosen {
+.storyboard-card.storyboard-card--proposal.is-unchosen {
   border-color: var(--text-faint);
   background: var(--panel-raised);
   opacity: 0.55;
 }
-.storyboard-card--proposal.is-hovered {
+.storyboard-card.storyboard-card--proposal.is-hovered {
   opacity: 1;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 40%, transparent);
 }
 .storyboard-card__proposal-key {
   position: absolute;
-  top: -11px;
-  left: -11px;
+  top: 6px;
+  right: 6px;
   width: 22px;
   height: 22px;
   border-radius: 50%;
@@ -838,11 +838,11 @@
   color: var(--on-accent);
   font: 600 12px/1 var(--font-ui);
 }
-.storyboard-card--proposal.is-unchosen .storyboard-card__proposal-key {
+.storyboard-card.storyboard-card--proposal.is-unchosen .storyboard-card__proposal-key {
   background: var(--text-faint);
   color: var(--bg);
 }
-.storyboard-card--proposal.is-hovered .storyboard-card__proposal-key {
+.storyboard-card.storyboard-card--proposal.is-hovered .storyboard-card__proposal-key {
   background: var(--accent);
   color: var(--on-accent);
 }
