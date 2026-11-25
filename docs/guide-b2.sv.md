@@ -23,3 +23,11 @@ Upprepa med två personkort som har samma namn och olika beskrivningar. Bara det
 ## Överlämning
 
 Sol lämnar testbar revision, testresultat och eventuella kvarstående fel till Astra. Befintlig B2-revision för granskning är [`27ee65f`](https://github.com/kaampi/Explore/commit/27ee65f2bf93a4b80477184f4d8e1282a46be169) i #77.
+
+## Hur referenskort för karaktärer ansluter till guiden
+
+B1 ger författaren en kopierbar porträttprompt. B2 låter författaren spara det färdiga porträttet. Båda flödena ska fungera för en karaktär som saknar referenskort. Även en karaktär som har ett referenskort kan sakna spelporträtt och ska då få B1:s porträttförslag.
+
+Claude föreslås skriva ett separat designbeslut före implementation. Beslutet ska beskriva kortets egen plats på karaktären, dess kroppsvyer, porträtt, uttryck och detaljer, vilka fakta och färger som lagras som data samt hur ett aktivt kort och dess tidigare versioner identifieras. Det ska även beskriva Codex roll som gemensam källa, vilken version Explore behåller offline och hur själva referenskortet hålls utanför spelvyn och exporten.
+
+Guiden och karaktärsbiblioteket bör sedan använda samma funktion för att bygga en karaktärsprompt av motiv, bildstil och den valda versionens fakta och palett. Verktyg som stöder referensbilder kan också få kortbilden. Sol ansluter guiden när produktägaren har tagit ställning till designen. Fram till dess kan Astra granska den befintliga B2-leveransen.
