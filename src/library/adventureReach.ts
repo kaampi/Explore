@@ -58,7 +58,9 @@ export function guaranteedFlags(campaign: CampaignTemplate): Map<string, Set<str
       // The way can be taken when the player can have what it requires in the scene it leaves.
       const can = possible(link.fromSceneId, from);
       if (!link.requiresFlags.every((flag) => can.has(flag))) continue;
-      if (link.requiresAbsentFlags.some((flag) => can.has(flag))) continue;
+      // Only what has certainly happened shuts it. An action the player may do here is a choice:
+      // the player can leave before doing it.
+      if (link.requiresAbsentFlags.some((flag) => from.has(flag))) continue;
       // Crossing it, the player has what it requires: that is certain on arrival.
       const arrival = new Set([
         ...from,
@@ -91,55 +93,98 @@ export function guaranteedFlags(campaign: CampaignTemplate): Map<string, Set<str
 }
 
 /**
- * The discoveries a single playthrough can have when it stands in each scene, after the actions
- * there have been done. A player never has the discoveries of two different playthroughs: a way
- * that a branch takes and the other branch does not is not in the same play. Enumerates every
- * playthrough of the adventure, as far as it is small; a larger one is cut short, which claims
- * less rather than more.
+ * The discoveries a single playthrough can have when it stands in each scene. Each action is a
+ * choice the player may make or leave: the player can walk out of a scene without ringing its bell.
+ * An action needs what it asks for, the things in the pack too, and an action that happens once is
+ * done once. A player never has the discoveries of two different playthroughs. Every playthrough of
+ * the adventure is followed, as far as it is small; a larger one is cut short, which claims less
+ * rather than more.
  */
 export function playthroughFlags(campaign: CampaignTemplate): Map<string, Set<string>[]> {
   const first = openingScene(campaign);
   const reached = new Map<string, Set<string>[]>();
   if (!first) return reached;
-  const seen = new Set<string>();
-  const queue: { scene: string; flags: Set<string> }[] = [
+  const sceneOf = (id: string) => campaign.scenes.find((scene) => scene.id === id);
+  type State = {
+    scene: string;
+    flags: Set<string>;
+    items: Set<string>;
+    done: Set<string>;
+    /** Doors an action has unlocked or opened. */
+    opened: Set<string>;
+  };
+  const player = first.encounter?.state.actors[first.encounter.definition.playerId];
+  const queue: State[] = [
     {
       scene: first.id,
       flags: new Set([...campaign.storyFlags, ...(first.encounter?.state.flags ?? [])]),
+      items: new Set([...(player?.inventory ?? []), ...(player?.weapons ?? [])]),
+      done: new Set(),
+      opened: new Set(),
     },
   ];
-  const sceneOf = (id: string) => campaign.scenes.find((scene) => scene.id === id);
+  const seen = new Set<string>();
+  const sorted = (set: Set<string>) => [...set].sort().join(",");
   while (queue.length && seen.size < 5000) {
-    const { scene: sceneId, flags } = queue.shift()!;
-    const key = `${sceneId}|${[...flags].sort().join(",")}`;
+    const state = queue.shift()!;
+    const key = `${state.scene}|${sorted(state.flags)}|${sorted(state.items)}|${sorted(state.done)}|${sorted(state.opened)}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    // The actions this scene allows, done as often as they add something.
-    const here = new Set(flags);
-    const game = sceneOf(sceneId)?.encounter;
-    for (let grew = true; grew;) {
-      grew = false;
-      for (const action of game?.definition.interactions ?? []) {
-        if (!action.requiresFlags.every((flag) => here.has(flag))) continue;
-        if (action.excludesFlags.some((flag) => here.has(flag))) continue;
-        for (const effect of action.success.effects)
-          if (effect.kind === "flag" && !here.has(effect.flag)) {
-            here.add(effect.flag);
-            grew = true;
-          }
+    const list = reached.get(state.scene) ?? [];
+    list.push(state.flags);
+    reached.set(state.scene, list);
+    const game = sceneOf(state.scene)?.encounter;
+    const playerId = game?.definition.playerId;
+    // Each action the player can do here, as its own next step.
+    for (const action of game?.definition.interactions ?? []) {
+      const doneKey = `${state.scene}:${action.id}`;
+      if (action.once && state.done.has(doneKey)) continue;
+      if (!action.requiresFlags.every((flag) => state.flags.has(flag))) continue;
+      if (action.excludesFlags.some((flag) => state.flags.has(flag))) continue;
+      if (!action.requiresItems.every((id) => state.items.has(id))) continue;
+      const outcomes = action.check ? [action.success, action.failure] : [action.success];
+      for (const outcome of outcomes) {
+        const flags = new Set(state.flags);
+        const items = new Set(state.items);
+        const opened = new Set(state.opened);
+        for (const effect of outcome.effects) {
+          if (effect.kind === "flag") flags.add(effect.flag);
+          if (effect.kind === "take-item") items.add(effect.itemId);
+          if (effect.kind === "transfer-item" && effect.to === playerId) items.add(effect.itemId);
+          if (effect.kind === "transfer-item" && effect.from === playerId)
+            items.delete(effect.itemId);
+          if (effect.kind === "set-barrier" && (effect.locked === false || effect.open === true))
+            opened.add(effect.barrierId);
+        }
+        queue.push({
+          scene: state.scene,
+          flags,
+          items,
+          opened,
+          done: new Set([...state.done, doneKey]),
+        });
       }
     }
-    const list = reached.get(sceneId) ?? [];
-    list.push(here);
-    reached.set(sceneId, list);
+    // Each way on that can be taken now.
     for (const link of campaign.sceneLinks) {
-      if (link.fromSceneId !== sceneId) continue;
-      if (!link.requiresFlags.every((flag) => here.has(flag))) continue;
-      if (link.requiresAbsentFlags.some((flag) => here.has(flag))) continue;
-      const next = new Set([...here, ...link.setsFlags]);
+      if (link.fromSceneId !== state.scene) continue;
+      if (!link.requiresFlags.every((flag) => state.flags.has(flag))) continue;
+      if (link.requiresAbsentFlags.some((flag) => state.flags.has(flag))) continue;
+      const doorsOpen = (link.requiresOpenBarriers ?? []).every((id) => {
+        const door = game?.state.barriers[id];
+        if (!door || door.blocked) return false;
+        if (state.opened.has(id)) return true;
+        return !door.locked || (!!door.keyId && state.items.has(door.keyId));
+      });
+      if (!doorsOpen) continue;
       const target = sceneOf(link.toSceneId);
-      for (const flag of target?.encounter?.state.flags ?? []) next.add(flag);
-      queue.push({ scene: link.toSceneId, flags: next });
+      if (!target) continue;
+      const flags = new Set([
+        ...state.flags,
+        ...link.setsFlags,
+        ...(target.encounter?.state.flags ?? []),
+      ]);
+      queue.push({ ...state, scene: link.toSceneId, flags });
     }
   }
   return reached;
