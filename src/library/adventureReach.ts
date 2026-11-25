@@ -26,8 +26,10 @@ export type Reach = {
 function playthroughs(campaign: CampaignTemplate) {
   const first = openingScene(campaign);
   const reached = new Map<string, Set<string>[]>();
+  /** What each playthrough has when it arrives in a scene, before the scene's actions. */
+  const arrivals = new Map<string, Set<string>[]>();
   const takable = new Set<string>();
-  if (!first) return { reached, takable };
+  if (!first) return { reached, arrivals, takable };
   const sceneOf = (id: string) => campaign.scenes.find((scene) => scene.id === id);
   type State = {
     scene: string;
@@ -40,6 +42,8 @@ function playthroughs(campaign: CampaignTemplate) {
     opened: Set<string>;
   };
   const player = first.encounter?.state.actors[first.encounter.definition.playerId];
+  const startFlags = new Set([...campaign.storyFlags, ...(first.encounter?.state.flags ?? [])]);
+  arrivals.set(first.id, [new Set(startFlags)]);
   const queue: State[] = [
     {
       scene: first.id,
@@ -124,10 +128,13 @@ function playthroughs(campaign: CampaignTemplate) {
         ...link.setsFlags,
         ...(target.encounter?.state.flags ?? []),
       ]);
+      const arrived = arrivals.get(link.toSceneId) ?? [];
+      arrived.push(new Set(flags));
+      arrivals.set(link.toSceneId, arrived);
       queue.push({ ...state, scene: link.toSceneId, flags });
     }
   }
-  return { reached, takable };
+  return { reached, arrivals, takable };
 }
 
 /**
@@ -137,48 +144,16 @@ function playthroughs(campaign: CampaignTemplate) {
  * the ways that can. An action the player may do is a choice, so it never counts as certain.
  */
 export function guaranteedFlags(campaign: CampaignTemplate): Map<string, Set<string>> {
-  const first = openingScene(campaign);
-  const initial = (sceneId: string) =>
-    campaign.scenes.find((scene) => scene.id === sceneId)?.encounter?.state.flags ?? [];
-  const start = new Map<string, Set<string>>();
-  if (!first) return start;
-  start.set(first.id, new Set([...campaign.storyFlags, ...initial(first.id)]));
-  const { takable } = playthroughs(campaign);
-  const pass = (known: Map<string, Set<string>>) => {
-    const next = new Map<string, Set<string>>([[first.id, start.get(first.id)!]]);
-    for (const link of campaign.sceneLinks) {
-      const from = known.get(link.fromSceneId);
-      if (!from || link.toSceneId === first.id) continue;
-      if (!takable.has(link.id)) continue;
-      if (link.requiresAbsentFlags.some((flag) => from.has(flag))) continue;
-      const arrival = new Set([
-        ...from,
-        ...link.requiresFlags,
-        ...link.setsFlags,
-        ...initial(link.toSceneId),
-      ]);
-      const before = next.get(link.toSceneId);
-      next.set(
-        link.toSceneId,
-        before ? new Set([...before].filter((flag) => arrival.has(flag))) : arrival,
-      );
-    }
-    return next;
-  };
-  let known = start;
-  for (let round = 0; round < 100; round++) {
-    const next = pass(known);
-    const same =
-      next.size === known.size &&
-      [...next].every(([id, flags]) => {
-        const old = known.get(id);
-        return !!old && old.size === flags.size && [...flags].every((flag) => old.has(flag));
-      });
-    if (same) return next;
-    known = next;
+  const { arrivals } = playthroughs(campaign);
+  const known = new Map<string, Set<string>>();
+  // What every playthrough that arrives in a scene has: the same discovery on every way in, as the
+  // playthroughs really go. A scene no playthrough reaches is left out, and claims nothing.
+  for (const [sceneId, sets] of arrivals) {
+    const [first, ...rest] = sets;
+    if (!first) continue;
+    known.set(sceneId, new Set([...first].filter((flag) => rest.every((set) => set.has(flag)))));
   }
-  // The ways depend on each other in a loop that does not settle: claim nothing.
-  return new Map([[first.id, start.get(first.id)!]]);
+  return known;
 }
 
 /** The discoveries each playthrough has standing in each scene. See `playthroughs`. */
