@@ -5,9 +5,54 @@ export type Reach = {
   scenes: Set<string>;
   flags: Set<string>;
   items: Set<string>;
+  /** Things the player can hold in the pack. A weapon the player has equipped is in `items`, not here: it cannot unlock a door. */
+  keys: Set<string>;
   /** Doors an action the player can reach unlocks or opens. */
   doors: Set<string>;
+  /** Discoveries that are made on every way to a scene, by what the ways require and set. */
+  guaranteed: Map<string, Set<string>>;
 };
+
+/**
+ * What has certainly happened on arrival in each scene: the discoveries the start already has, and
+ * what every way in requires or sets. A scene no way leads to is left out. It looks at every way,
+ * also those that are shut now, so it is on the careful side: it never claims a discovery that
+ * one way in does not bring.
+ */
+export function guaranteedFlags(campaign: CampaignTemplate): Map<string, Set<string>> {
+  const first = openingScene(campaign);
+  const known = new Map<string, Set<string>>();
+  if (!first) return known;
+  const initial = (sceneId: string) =>
+    campaign.scenes.find((scene) => scene.id === sceneId)?.encounter?.state.flags ?? [];
+  known.set(first.id, new Set([...campaign.storyFlags, ...initial(first.id)]));
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const link of campaign.sceneLinks) {
+      const from = known.get(link.fromSceneId);
+      if (!from || link.toSceneId === first.id) continue;
+      const arrival = new Set([
+        ...from,
+        ...link.requiresFlags,
+        ...link.setsFlags,
+        ...initial(link.toSceneId),
+      ]);
+      const before = known.get(link.toSceneId);
+      if (!before) {
+        known.set(link.toSceneId, arrival);
+        changed = true;
+      } else {
+        const kept = new Set([...before].filter((flag) => arrival.has(flag)));
+        if (kept.size !== before.size) {
+          known.set(link.toSceneId, kept);
+          changed = true;
+        }
+      }
+    }
+  }
+  return known;
+}
 
 export function openingScene(campaign: CampaignTemplate) {
   if (campaign.startSceneId !== undefined) return savedAdventureStart(campaign);
@@ -20,15 +65,19 @@ export function reachableFromStart(campaign: CampaignTemplate): Reach {
   const scenes = new Set<string>();
   const flags = new Set<string>(campaign.storyFlags);
   const items = new Set<string>();
+  const keys = new Set<string>();
   const doors = new Set<string>();
-  if (!first) return { scenes, flags, items, doors };
+  const guaranteed = guaranteedFlags(campaign);
+  if (!first) return { scenes, flags, items, keys, doors, guaranteed };
   const enter = (sceneId: string) => {
     scenes.add(sceneId);
     const scene = campaign.scenes.find((item) => item.id === sceneId);
     for (const flag of scene?.encounter?.state.flags ?? []) flags.add(flag);
     const game = scene?.encounter;
-    for (const itemId of game?.state.actors[game.definition.playerId]?.inventory ?? [])
+    for (const itemId of game?.state.actors[game.definition.playerId]?.inventory ?? []) {
       items.add(itemId);
+      keys.add(itemId);
+    }
     for (const weaponId of game?.state.actors[game.definition.playerId]?.weapons ?? [])
       items.add(weaponId);
   };
@@ -38,7 +87,7 @@ export function reachableFromStart(campaign: CampaignTemplate): Reach {
       doorId
     ];
     if (!door || door.blocked) return false;
-    return !door.locked || doors.has(doorId) || (!!door.keyId && items.has(door.keyId));
+    return !door.locked || doors.has(doorId) || (!!door.keyId && keys.has(door.keyId));
   };
   enter(first.id);
   const has = (needed: readonly string[]) => needed.every((flag) => flags.has(flag));
@@ -51,6 +100,8 @@ export function reachableFromStart(campaign: CampaignTemplate): Reach {
       if (!scenes.has(scene.id)) continue;
       for (const action of scene.encounter?.definition.interactions ?? []) {
         if (!has(action.requiresFlags)) continue;
+        // Something that has certainly happened on the way here shuts an action that needs it not to have.
+        if (action.excludesFlags.some((flag) => guaranteed.get(scene.id)?.has(flag))) continue;
         if (!action.requiresItems.every((id) => items.has(id))) continue;
         const outcomes = action.check ? [action.success, action.failure] : [action.success];
         for (const outcome of outcomes)
@@ -71,8 +122,9 @@ export function reachableFromStart(campaign: CampaignTemplate): Reach {
               effect.kind === "take-item" ||
               (effect.kind === "transfer-item" &&
                 effect.to === scene.encounter?.definition.playerId);
-            if (gets && !items.has(effect.itemId)) {
+            if (gets && !keys.has(effect.itemId)) {
               items.add(effect.itemId);
+              keys.add(effect.itemId);
               changed = true;
             }
           }
@@ -85,6 +137,8 @@ export function reachableFromStart(campaign: CampaignTemplate): Reach {
       if ((link.requiresOpenBarriers ?? []).some((id) => !doorCanOpen(link.fromSceneId, id)))
         continue;
       if (link.requiresAbsentFlags.some((flag) => campaign.storyFlags.includes(flag))) continue;
+      if (link.requiresAbsentFlags.some((flag) => guaranteed.get(link.fromSceneId)?.has(flag)))
+        continue;
       if (!campaign.scenes.some((item) => item.id === link.toSceneId)) continue;
       reachedLinks.add(link.id);
       for (const flag of link.setsFlags)
@@ -113,5 +167,5 @@ export function reachableFromStart(campaign: CampaignTemplate): Reach {
       }
     }
   }
-  return { scenes, flags, items, doors };
+  return { scenes, flags, items, keys, doors, guaranteed };
 }

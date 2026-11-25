@@ -9,7 +9,7 @@ import {
   type StoryboardLink,
 } from "./LibrarySchema";
 import { makePlayableScene } from "./playableCampaign";
-import { addDoor, attachDoorToRoute, placeItem } from "./sceneParts";
+import { addDoor, attachDoorToRoute, describeItem, placeItem } from "./sceneParts";
 
 /**
  * A change an AI helper proposes to an adventure that already exists. It only adds, or replaces a
@@ -214,13 +214,8 @@ export function applyPatch<L extends PatchLibrary>(
    * The item's description in a scene, so that a door there can name it as its key. The item
    * itself is not put in the scene: it is found where it lies, and carried here.
    */
-  const describeItemIn = (scene: CampaignScene, id: string): CampaignScene => {
-    if (gameOf(scene).definition.items.some((item) => item.id === id)) return scene;
-    const placed = placeItem(scene, object(id), { position: playerPosition(scene) });
-    const game = structuredClone(gameOf(placed));
-    delete game.state.itemLocations[id];
-    return { ...placed, objectIds: scene.objectIds, encounter: game };
-  };
+  const describeItemIn = (scene: CampaignScene, id: string, as: "key" | "gift" = "key") =>
+    describeItem(scene, object(id), as);
   /** A thing an action gives must lie in the scene. One that lies nowhere yet is put here. */
   const placeForGiving = (scene: CampaignScene, id: string): CampaignScene => {
     const known = itemPlaces(next, id);
@@ -325,7 +320,7 @@ export function applyPatch<L extends PatchLibrary>(
         const giftId = gift.itemTempId ?? gift.itemId;
         if (giftId) {
           const resolved = itemId(giftId);
-          scene = placeForGiving(scene, resolved);
+          scene = describeItemIn(placeForGiving(scene, resolved), resolved, "gift");
           effects.push({ kind: "take-item", itemId: resolved });
         }
         if (gift.fact) effects.push({ kind: "flag", flag: gift.fact });

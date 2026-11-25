@@ -1,4 +1,5 @@
 import { openingScene, reachableFromStart } from "../library/adventureReach";
+import { adventureMapPlaces, mapPlaceForScene } from "../library/adventureMap";
 import {
   applyPatch,
   itemPlaces,
@@ -39,7 +40,7 @@ export type FindingParams = {
   unreachable: {
     what: "scene" | "route" | "action";
     name: string;
-    why: "noRoute" | "unobtainable" | "none";
+    why: "noRoute" | "unobtainable" | "happened" | "none";
     thing?: string;
   };
   /** A route that gets past what locks a scene. `notYet` are discoveries that must not be made. */
@@ -127,6 +128,25 @@ export type CheckLibrary = PatchLibrary & {
   voices?: VoiceTemplate[];
   rulesets?: RulesetTemplate[];
 };
+
+/**
+ * Is there a place for the scene to be played at? Looked up as the start looks it up: on a map the
+ * places are the nodes of the map, which need no card of their own; otherwise a card in the library.
+ */
+function hasPlace(
+  scene: CampaignScene,
+  campaign: CampaignTemplate,
+  library: CheckLibrary,
+): boolean {
+  if (!scene.placeId) return false;
+  const known = library.places;
+  const world = campaign.mapWorldId
+    ? library.worlds?.find((item) => item.id === campaign.mapWorldId)
+    : undefined;
+  if (world?.worldMap && known)
+    return mapPlaceForScene(scene, adventureMapPlaces(world, known)) !== undefined;
+  return known === undefined || known.some((place) => place.id === scene.placeId);
+}
 
 function itemName(campaign: CampaignTemplate, library: PatchLibrary, id: string): string {
   return (
@@ -353,8 +373,17 @@ export function checkPatch(
     needs.find(
       ({ token }) =>
         (token.startsWith("fact:") && !reach.flags.has(token.slice(5))) ||
-        (token.startsWith("key:") && !reach.items.has(token.slice(4))),
+        (token.startsWith("key:") && !reach.keys.has(token.slice(4))),
     )?.label;
+  /** Routes that ask for a discovery not to have happened, when it certainly has by then. */
+  const happenedNeeds = (link: StoryboardLink): string[] =>
+    lockOf(after, link)
+      .filter(
+        (need) =>
+          need.absent &&
+          reach.guaranteed.get(link.fromSceneId)?.has(need.token.slice("absent:".length)),
+      )
+      .map((need) => need.label);
   const itemLabel = (token: string, label: string) =>
     token.startsWith("key:") ? itemName(after, afterLibrary, token.slice(4)) : label;
 
@@ -362,10 +391,7 @@ export function checkPatch(
   const needPlace = new Set<string>();
   for (const { id, opIndex } of created.scenes) {
     const scene = sceneOf(id)!;
-    const known = library.places;
-    const missing =
-      !scene.placeId || (known !== undefined && !known.some((p) => p.id === scene.placeId));
-    if (!missing) continue;
+    if (hasPlace(scene, after, library)) continue;
     needPlace.add(id);
     const name = scene.name.trim();
     const op = patch.ops[opIndex];
@@ -410,7 +436,7 @@ export function checkPatch(
   const now = startProblem(after, library);
   const sameProblem = was && now && was.why === now.why && was.scene === now.scene;
   const explained =
-    now?.why === "scenePlace" &&
+    (now?.why === "scenePlace" || now?.why === "mapPlace") &&
     created.scenes.some(
       ({ id }) => needPlace.has(id) && sceneOf(id)!.name.trim() === now.scene.trim(),
     );
@@ -436,11 +462,20 @@ export function checkPatch(
   for (const { id, opIndex } of created.scenes) {
     if (reach.scenes.has(id)) continue;
     const incoming = after.sceneLinks.filter((link) => link.toSceneId === id);
-    const thing = unobtainable(incoming.flatMap((link) => lockOf(after, link)));
-    const why = thing ? "unobtainable" : incoming.length === 0 ? "noRoute" : "none";
+    const lacking = unobtainable(incoming.flatMap((link) => lockOf(after, link)));
+    const done = incoming.flatMap((link) => happenedNeeds(link)).at(0);
+    const thing = lacking ?? done;
+    const why = lacking
+      ? "unobtainable"
+      : done
+        ? "happened"
+        : incoming.length === 0
+          ? "noRoute"
+          : "none";
     const name = sceneOf(id)!.name.trim();
     const reason = {
       unobtainable: `, because “${thing}” cannot be had anywhere`,
+      happened: `, because “${thing}” has always happened by then, and the way in asks for it not to have`,
       noRoute: ", because no route leads to it",
       none: "",
     }[why];
@@ -463,11 +498,24 @@ export function checkPatch(
     const lacking = needs.find(
       ({ token }) =>
         (token.startsWith("fact:") && !reach.flags.has(token.slice(5))) ||
-        (token.startsWith("key:") && !reach.items.has(token.slice(4))),
+        (token.startsWith("key:") && !reach.keys.has(token.slice(4))),
     );
-    if (!lacking) continue;
-    const thing = itemLabel(lacking.token, lacking.label);
     const name = link.label.trim();
+    if (!lacking) {
+      const done = happenedNeeds(link)[0];
+      if (done)
+        findings.push({
+          kind: "unreachable",
+          severity: "problem",
+          params: { what: "route", name, why: "happened", thing: done },
+          message: `The route “${named(name, "Untitled route")}” asks for “${done}” not to have happened, but it has always happened by then.`,
+          opIndex,
+          linkId: id,
+          fixes: [],
+        });
+      continue;
+    }
+    const thing = itemLabel(lacking.token, lacking.label);
     findings.push({
       kind: "unreachable",
       severity: "problem",
@@ -489,7 +537,27 @@ export function checkPatch(
     const thing = missingFlag
       ? factText(after, missingFlag)
       : missingItem && itemName(after, afterLibrary, missingItem);
-    if (!thing) continue;
+    if (!thing) {
+      const happened = action.excludesFlags.find((flag) =>
+        reach.guaranteed.get(sceneId)?.has(flag),
+      );
+      if (happened)
+        findings.push({
+          kind: "unreachable",
+          severity: "problem",
+          params: {
+            what: "action",
+            name: action.label,
+            why: "happened",
+            thing: factText(after, happened),
+          },
+          message: `The action “${action.label}” asks for “${factText(after, happened)}” not to have happened, but it has always happened by then.`,
+          opIndex,
+          sceneId,
+          fixes: [],
+        });
+      continue;
+    }
     findings.push({
       kind: "unreachable",
       severity: "problem",
@@ -585,19 +653,31 @@ export function checkPatch(
   }
 
   // A new scene with no way on, which is not an ending. An ending is a scene where the player can
-  // set a discovery the goal asks for, when the player can make every discovery the goal asks for.
+  // set a discovery the goal asks for, and where the player can have made every discovery the goal
+  // asks for on the way there. A player who has ended up in another scene with no way on cannot
+  // go and make the rest, so that scene's discoveries do not count.
   const goal = new Set(after.goal?.requiresFlags ?? []);
-  const goalReachable = goal.size > 0 && [...goal].every((flag) => reach.flags.has(flag));
+  const noWayOn = after.scenes
+    .filter((scene) => !after.sceneLinks.some((link) => link.fromSceneId === scene.id))
+    .map(({ id }) => id);
+  const endsGoal = (sceneId: string): boolean => {
+    if (goal.size === 0) return false;
+    const sets = (sceneOf(sceneId)?.encounter?.definition.interactions ?? []).some((action) =>
+      [...action.success.effects, ...action.failure.effects].some(
+        (effect) => effect.kind === "flag" && goal.has(effect.flag),
+      ),
+    );
+    if (!sets) return false;
+    const others = new Set(noWayOn.filter((id) => id !== sceneId));
+    const here = reachableFromStart({
+      ...after,
+      sceneLinks: after.sceneLinks.filter((link) => !others.has(link.toSceneId)),
+    });
+    return [...goal].every((flag) => here.flags.has(flag));
+  };
   for (const { id, opIndex } of created.scenes) {
     if (after.sceneLinks.some((link) => link.fromSceneId === id)) continue;
-    const ends =
-      goalReachable &&
-      (sceneOf(id)?.encounter?.definition.interactions ?? []).some((action) =>
-        [...action.success.effects, ...action.failure.effects].some(
-          (effect) => effect.kind === "flag" && goal.has(effect.flag),
-        ),
-      );
-    if (ends) continue;
+    if (endsGoal(id)) continue;
     const name = sceneOf(id)!.name.trim();
     findings.push({
       kind: "deadEnd",
@@ -640,7 +720,9 @@ export type Mention = { name: string; kind: MentionKind };
 /** What `checkMentions` can look in besides the adventure. A list that is missing is empty. */
 export type MentionLibrary = PatchLibrary & {
   characters?: { name: string }[];
-  places?: { name: string }[];
+  places?: PlaceTemplate[];
+  /** The adventure's map, when it has one: its places are the nodes on it. */
+  worlds?: RealmTemplate[];
 };
 
 const normal = (text: string) => text.toLowerCase().replace(/\s+/g, " ").trim();
@@ -648,14 +730,42 @@ const sameThing = (name: string, wanted: string) =>
   !!name && (name === wanted || name.includes(wanted) || wanted.includes(name));
 
 /** The names of people or places in a scene. Things are looked at on their own, by where they lie. */
-function namesIn(scene: CampaignScene, kind: "person" | "place"): string[] {
+function namesIn(
+  scene: CampaignScene,
+  kind: "person" | "place",
+  campaign: CampaignTemplate,
+  library: MentionLibrary,
+): string[] {
   const game = scene.encounter;
   if (!game) return [];
   const names =
     kind === "person"
       ? Object.values(game.state.actors).map((actor) => actor.name)
-      : [scene.name, ...game.definition.places.map((place) => place.name)];
+      : [
+          scene.name,
+          ...game.definition.places.map((place) => place.name),
+          ...placeCardNames(scene, campaign, library),
+        ];
   return names.map(normal).filter(Boolean);
+}
+
+/** The scene's own place: the card it is at, and the node on the map when the adventure has one. */
+function placeCardNames(
+  scene: CampaignScene,
+  campaign: CampaignTemplate,
+  library: MentionLibrary,
+): string[] {
+  const names: string[] = [];
+  const card = library.places?.find((place) => place.id === scene.placeId);
+  if (card) names.push(card.name);
+  const world = campaign.mapWorldId
+    ? library.worlds?.find((item) => item.id === campaign.mapWorldId)
+    : undefined;
+  if (world?.worldMap && library.places) {
+    const entry = mapPlaceForScene(scene, adventureMapPlaces(world, library.places));
+    if (entry) names.push(entry.place.name, entry.node.name);
+  }
+  return names;
 }
 
 /**
@@ -725,10 +835,12 @@ export function checkMentions(
       where = found.state;
       scenes = found.scenes;
     } else {
-      if (namesIn(scene, kind).some((here) => sameThing(here, wanted))) continue;
+      if (namesIn(scene, kind, campaign, library).some((here) => sameThing(here, wanted))) continue;
       scenes = campaign.scenes
         .filter((other) => other.id !== sceneId)
-        .filter((other) => namesIn(other, kind).some((there) => sameThing(there, wanted)))
+        .filter((other) =>
+          namesIn(other, kind, campaign, library).some((there) => sameThing(there, wanted)),
+        )
         .map((other) => other.name.trim());
       const catalogue = kind === "person" ? (library.characters ?? []) : (library.places ?? []);
       const inLibrary = catalogue.some((entry) => sameThing(normal(entry.name), wanted));
