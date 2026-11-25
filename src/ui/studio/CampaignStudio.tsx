@@ -1705,6 +1705,7 @@ export function CampaignStudio({
                 worlds={visibleRealms}
                 repo={repo}
                 onRefresh={refresh}
+                reloadCampaign={() => repo.loadCampaign(draft.id)}
                 onCreatePlace={createPlace}
                 rulesets={visibleRulesets}
                 library={{
