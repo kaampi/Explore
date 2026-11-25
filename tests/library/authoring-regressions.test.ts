@@ -85,7 +85,7 @@ describe("a new scene (1–3)", () => {
     ).toEqual(["needsPlace"]);
   });
 
-  it("cannot be started when a map adventure gets a scene at a place that is not on the map", () => {
+  it("asks for a place when a map adventure gets a scene at a place that is not on the map", () => {
     const { campaign, library } = mappedAdventure();
     const stray = newPlaceTemplate({ id: "stray", name: "Off the map", note: "Nowhere." });
     const square = campaign.scenes[0]!;
@@ -100,8 +100,18 @@ describe("a new scene (1–3)", () => {
         ],
       },
     );
+    expect(findings).toMatchObject([{ kind: "needsPlace", params: { map: "yes" } }]);
+  });
+
+  it("cannot be started when a map scene is given an empty arrival text", () => {
+    const { campaign, library } = mappedAdventure();
+    const findings = checkPatch(campaign, library, {
+      ops: [
+        { op: "setText", target: { sceneId: campaign.scenes[0]!.id, field: "arrival" }, text: "" },
+      ],
+    });
     expect(findings).toMatchObject([
-      { kind: "cannotStart", params: { why: "mapPlace", scene: "Far away" } },
+      { kind: "cannotStart", params: { why: "noArrival", scene: campaign.scenes[0]!.name } },
     ]);
   });
 
