@@ -39,11 +39,21 @@ const status = () => host.querySelector(".storyboard-assist__status")?.textConte
 
 type Fake = ReturnType<typeof createFakeAssist>;
 
-async function mount(options: { fake?: Fake | null; saved?: () => CampaignTemplate } = {}) {
+async function mount(
+  options: {
+    fake?: Fake | null;
+    saved?: () => CampaignTemplate;
+    reload?: (() => Promise<CampaignTemplate>) | null;
+  } = {},
+) {
   const sketch = sketchAdventure();
   const fake = options.fake === undefined ? createFakeAssist() : options.fake;
   const changes: CampaignTemplate[] = [];
-  const reload = vi.fn(async () => options.saved?.() ?? sketch.campaign);
+  const reload = vi.fn(
+    options.reload === undefined
+      ? async () => options.saved?.() ?? sketch.campaign
+      : (options.reload ?? (async () => sketch.campaign)),
+  );
   let current = sketch.campaign;
   function Harness() {
     const [campaign, setCampaign] = useState(sketch.campaign);
@@ -61,7 +71,7 @@ async function mount(options: { fake?: Fake | null; saved?: () => CampaignTempla
         }}
         onPlay={() => {}}
         {...(fake ? { renderAssist: fake.renderAssist } : {})}
-        reloadCampaign={reload}
+        {...(options.reload === null ? {} : { reloadCampaign: reload })}
       />
     );
   }
@@ -407,5 +417,158 @@ describe("while the panel is open", () => {
     expect(button("Arrange")!.disabled).toBe(false);
     await drag(realCard(hall)!, 80, 40);
     expect(changes.length).toBeGreaterThan(count);
+  });
+});
+
+describe("review 2 of the contract (#78)", () => {
+  async function dragTo(card: HTMLElement, dx: number, dy: number) {
+    card.setPointerCapture = () => {};
+    const x = parseFloat(card.style.left) + 20;
+    const y = parseFloat(card.style.top) + 20;
+    await act(async () =>
+      card.dispatchEvent(
+        new MouseEvent("pointerdown", { button: 0, bubbles: true, clientX: x, clientY: y }),
+      ),
+    );
+    await act(async () =>
+      board().dispatchEvent(
+        new MouseEvent("pointermove", { bubbles: true, clientX: x + dx, clientY: y + dy }),
+      ),
+    );
+    await act(async () => board().dispatchEvent(new MouseEvent("pointerup", { bubbles: true })));
+  }
+
+  it("keeps the author's unsaved move of a card and the scene the panel saved, together", async () => {
+    const sketch = sketchAdventure();
+    // The saved adventure: the same as the sketch, with the continue scenes added and the hall where it was.
+    const saved = applyPatch(sketch.campaign, sketch.library, {
+      ops: continueProposals(sketch.tower)[0]!.patch.ops,
+    }).campaign;
+    const { fake, hall, tower, campaign } = await mount({ saved: () => saved });
+    const card = realCard(hall)!;
+    await dragTo(card, 120, 80);
+    const moved = campaign().scenes.find((scene) => scene.id === hall)!.position;
+    expect(moved).toBeDefined();
+    expect(moved).not.toEqual(sketch.campaign.scenes.find((scene) => scene.id === hall)!.position);
+
+    await act(async () => button("✦ Continue from here")!.click());
+    await fake!.preview({
+      proposals: continueProposals(tower)
+        .slice(0, 1)
+        .map((p) => ({ ...p, selected: true })),
+    });
+    const added = saved.scenes
+      .map((scene) => scene.id)
+      .filter((id) => !sketch.campaign.scenes.some((item) => item.id === id));
+    await fake!.close({ changed: true, newSceneIds: added });
+    await act(async () => {});
+    // The move stays, and the new scene is there.
+    expect(campaign().scenes.find((scene) => scene.id === hall)!.position).toEqual(moved);
+    expect(campaign().scenes.some((scene) => scene.name === "The roof")).toBe(true);
+  });
+
+  it("does not let an earlier panel change a later one: a late preview or close is ignored", async () => {
+    const { fake, tower, hall } = await mount();
+    await act(async () => button("✦ Continue from here")!.click());
+    const first = fake!.state.props!;
+    await act(async () => first.onClose({ changed: false, newSceneIds: [] }));
+    await act(async () => button("✦ Deepen")!.click());
+    expect(fake!.state.opened.at(-1)).toMatchObject({
+      intent: "deepen",
+      target: { sceneId: tower },
+    });
+    await fake!.preview({ proposals: deepenProposals(hall) });
+    expect(host.querySelector("[data-proposal-mark]")).not.toBeNull();
+    // The earlier panel says it is done, twice, and clears the preview.
+    await act(async () => {
+      first.onPreview(null);
+      first.onClose({ changed: true, newSceneIds: [] });
+      first.onClose({ changed: true, newSceneIds: [] });
+    });
+    expect(host.querySelector("[data-proposal-mark]")).not.toBeNull();
+    expect(host.querySelector("[data-assist-panel]")).not.toBeNull();
+    expect(fake!.state.props!.request.intent).toBe("deepen");
+  });
+
+  it("keeps the saved scenes and asks to read again when the reread fails, and does not save twice", async () => {
+    const sketch = sketchAdventure();
+    const saved = applyPatch(sketch.campaign, sketch.library, {
+      ops: continueProposals(sketch.tower)[0]!.patch.ops,
+    }).campaign;
+    let fail = true;
+    const reload = vi.fn(async () => {
+      if (fail) throw new Error("disk busy");
+      return saved;
+    });
+    const { fake, tower, changes } = await mount({ reload });
+    await act(async () => button("✦ Continue from here")!.click());
+    await fake!.preview({
+      proposals: continueProposals(tower)
+        .slice(0, 1)
+        .map((p) => ({ ...p, selected: true })),
+    });
+    await fake!.close({
+      changed: true,
+      newSceneIds: saved.scenes
+        .map((s) => s.id)
+        .filter((id) => !sketch.campaign.scenes.some((s) => s.id === id)),
+    });
+    await act(async () => {});
+    expect(host.querySelector("[data-assist-panel]")).toBeNull();
+    const alert = host.querySelector('[role="alert"]');
+    expect(alert?.textContent).toContain("disk busy");
+    const retry = button("Read again");
+    expect(retry).toBeDefined();
+    const before = changes.length;
+    fail = false;
+    await act(async () => retry!.click());
+    await act(async () => {});
+    expect(reload).toHaveBeenCalledTimes(2);
+    expect(host.querySelector('[role="alert"]')).toBeNull();
+    expect(changes.length).toBeGreaterThan(before);
+    expect(host.querySelector(`[data-scene-id="${saved.scenes.at(-1)!.id}"]`)).not.toBeNull();
+  });
+
+  it("gives no way in when the panel has no way to read the adventure again", async () => {
+    const fake = createFakeAssist();
+    await mount({ fake, reload: null });
+    expect(host.querySelector(".storyboard-assist")).toBeNull();
+    expect(button("✦ Deepen")).toBeUndefined();
+  });
+});
+
+describe("merging what the panel saved with the author's unsaved work", () => {
+  it("keeps a moved card and adds the panel's scene; a scene changed both ways is reported", async () => {
+    const { mergeSaved } = await import("../../src/ui/studio/useStoryboardAssist");
+    const sketch = sketchAdventure();
+    const base = sketch.campaign;
+    // The author moved the hall and renamed the tower.
+    const local = {
+      ...base,
+      scenes: base.scenes.map((scene) =>
+        scene.id === sketch.hall
+          ? { ...scene, position: { x: 999, y: 111 } }
+          : scene.id === sketch.tower
+            ? { ...scene, name: "Renamed by hand" }
+            : scene,
+      ),
+    };
+    // The panel added a scene to the hall and to the tower.
+    const saved = applyPatch(base, sketch.library, {
+      ops: [
+        { op: "addAction", sceneId: sketch.hall, label: "Warm your hands", outcome: "Cold." },
+        { op: "addAction", sceneId: sketch.tower, label: "Look", outcome: "Wind." },
+      ],
+    }).campaign;
+    const { campaign, conflicts } = mergeSaved(local, base, saved);
+    const newHall = campaign.scenes.find((scene) => scene.id === sketch.hall)!;
+    expect(newHall.position).toEqual({ x: 999, y: 111 });
+    expect(newHall.encounter!.definition.interactions.map((a) => a.label)).toContain(
+      "Warm your hands",
+    );
+    expect(campaign.scenes.find((scene) => scene.id === sketch.tower)!.name).toBe(
+      "Renamed by hand",
+    );
+    expect(conflicts).toEqual(["Renamed by hand"]);
   });
 });
