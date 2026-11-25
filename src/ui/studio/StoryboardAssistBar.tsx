@@ -11,6 +11,8 @@ import type { PreviewModel } from "./assistPreview";
 export function StoryboardAssistBar({
   sceneName,
   disabled,
+  opening,
+  activeIntent,
   onDeepen,
   onContinue,
   moreItems,
@@ -18,6 +20,10 @@ export function StoryboardAssistBar({
 }: {
   sceneName: string;
   disabled: boolean;
+  /** The help is being opened: the save before it is running. */
+  opening: boolean;
+  /** The way the open panel is helping with, which shows as pressed. */
+  activeIntent: "deepen" | "continue" | "rewrite" | null;
   onDeepen: () => void;
   onContinue: () => void;
   moreItems: readonly MenuItem[];
@@ -34,10 +40,20 @@ export function StoryboardAssistBar({
   return (
     <div className="storyboard-assist" role="group" aria-label={t("saGroupLabel", { name })}>
       <span className="storyboard-assist__name">{name}:</span>
-      <Button size="compact" disabled={disabled} onClick={onDeepen}>
+      <Button
+        size="compact"
+        disabled={disabled || (activeIntent !== null && activeIntent !== "deepen") || opening}
+        aria-pressed={activeIntent === "deepen"}
+        onClick={onDeepen}
+      >
         ✦ {t("saDeepen")}
       </Button>
-      <Button size="compact" disabled={disabled} onClick={onContinue}>
+      <Button
+        size="compact"
+        disabled={disabled || (activeIntent !== null && activeIntent !== "continue") || opening}
+        aria-pressed={activeIntent === "continue"}
+        onClick={onContinue}
+      >
         ✦ {t("saContinue")}
       </Button>
       <MenuButton label={t("saMore")} items={moreItems} size="compact" />

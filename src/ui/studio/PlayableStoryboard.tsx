@@ -101,11 +101,14 @@ export function PlayableStoryboard({
   initialSceneId,
   renderAssist,
   reloadCampaign,
+  saveFirst,
 }: {
   /** Draws the AI help panel. Without it Storyboard shows no way in to the help (docs/storyboard-ai.sv.md). */
   renderAssist?: RenderAssist | undefined;
   /** Reads the adventure again from where it is saved, for when the help panel has saved something. */
   reloadCampaign?: (() => Promise<CampaignTemplate>) | undefined;
+  /** Saves the adventure the usual way before the help opens. Returns what was saved, or null. */
+  saveFirst?: ((next?: CampaignTemplate) => Promise<CampaignTemplate | null>) | undefined;
   campaign: CampaignTemplate;
   places: PlaceTemplate[];
   characters: CharacterTemplate[];
@@ -197,6 +200,7 @@ export function PlayableStoryboard({
     objects: library?.objects ?? objects,
     renderAssist,
     reloadCampaign,
+    saveFirst,
     onChange,
     onFocusScene: (id) => selectScene(id),
     onFocusLink: (id) => selectLink(id),
@@ -722,7 +726,7 @@ export function PlayableStoryboard({
                 {
                   label: `✦ ${t("saContinue")}`,
                   disabled: assist.isOpen,
-                  onSelect: () => assist.openAssist("continue", { linkId: context.linkId! }),
+                  onSelect: () => void assist.openAssist("continue", { linkId: context.linkId! }),
                 },
                 { kind: "separator" as const },
               ]
@@ -749,19 +753,20 @@ export function PlayableStoryboard({
                   {
                     label: `✦ ${t("saDeepen")}`,
                     disabled: assist.isOpen,
-                    onSelect: () => assist.openAssist("deepen", { sceneId: context.sceneId! }),
+                    onSelect: () => void assist.openAssist("deepen", { sceneId: context.sceneId! }),
                   },
                   {
                     label: `✦ ${t("saContinue")}`,
                     disabled: assist.isOpen,
-                    onSelect: () => assist.openAssist("continue", { sceneId: context.sceneId! }),
+                    onSelect: () =>
+                      void assist.openAssist("continue", { sceneId: context.sceneId! }),
                   },
                   { kind: "separator" as const },
                 ]
               : []),
-            { label: "Edit scene", onSelect: () => selectScene(context.sceneId!) },
+            { label: t("psEditScene"), onSelect: () => selectScene(context.sceneId!) },
             { label: t("csMenuPlacement"), onSelect: () => addPlacement(context) },
-            ...(scene?.encounter ? [{ label: "Add action", onSelect: addAction }] : []),
+            ...(scene?.encounter ? [{ label: t("psAddAction"), onSelect: addAction }] : []),
             {
               label: markedScenes.size > 1 ? t("psGroupSelectedScenes") : t("psGroupThisScene"),
               onSelect: () =>
@@ -1455,18 +1460,20 @@ export function PlayableStoryboard({
           </button>
         </nav>
         {onSave && (
-          <button type="button" disabled={busy} onClick={onSave}>
+          <button type="button" disabled={busy || assist.unread !== null} onClick={onSave}>
             {t("psSaveAdventure")}
           </button>
         )}
         {assist.enabled && scene && (
           <StoryboardAssistBar
             sceneName={scene.name}
-            disabled={busy || assist.isOpen}
-            onDeepen={() => assist.openAssist("deepen", { sceneId: scene.id })}
-            onContinue={() => assist.openAssist("continue", { sceneId: scene.id })}
+            disabled={busy || assist.unread !== null}
+            opening={assist.opening}
+            activeIntent={assist.openIntent}
+            onDeepen={() => void assist.openAssist("deepen", { sceneId: scene.id })}
+            onContinue={() => void assist.openAssist("continue", { sceneId: scene.id })}
             moreItems={[
-              ...(scene.encounter ? [{ label: "Add action", onSelect: addAction }] : []),
+              ...(scene.encounter ? [{ label: t("psAddAction"), onSelect: addAction }] : []),
               ...(campaign.scenes.length > 1
                 ? [{ label: t("psConnectToAnotherScene"), onSelect: () => addLink(scene) }]
                 : []),
@@ -1488,13 +1495,17 @@ export function PlayableStoryboard({
           />
         )}
       </div>
+      {assist.openBlocked && (
+        <p role="alert" className="storyboard-assist-notice">
+          {t("saOpenBlocked")}
+        </p>
+      )}
       {assist.unread && (
         <p role="alert" className="storyboard-assist-notice">
           <span>{t("saReloadFailed")}</span>{" "}
           <Button variant="quiet" size="compact" onClick={() => void assist.unread!.readAgain()}>
             {t("saReadAgain")}
           </Button>
-          {assist.unread.message && <small> {assist.unread.message}</small>}
         </p>
       )}
       {assist.conflicts.length > 0 && (

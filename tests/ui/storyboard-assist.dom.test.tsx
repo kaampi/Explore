@@ -44,16 +44,25 @@ async function mount(
     fake?: Fake | null;
     saved?: () => CampaignTemplate;
     reload?: (() => Promise<CampaignTemplate>) | null;
+    /** Makes saving fail, as a database that is full or busy would. */
+    failSave?: boolean;
   } = {},
 ) {
   const sketch = sketchAdventure();
   const fake = options.fake === undefined ? createFakeAssist() : options.fake;
   const changes: CampaignTemplate[] = [];
+  /** The database: what is saved. The studio saves into it, and the help reads from it. */
+  const db = { data: structuredClone(sketch.campaign) as CampaignTemplate };
   const reload = vi.fn(
     options.reload === undefined
-      ? async () => options.saved?.() ?? sketch.campaign
-      : (options.reload ?? (async () => sketch.campaign)),
+      ? async () => options.saved?.() ?? structuredClone(db.data)
+      : (options.reload ?? (async () => structuredClone(db.data))),
   );
+  const saveFirst = vi.fn(async (next?: CampaignTemplate) => {
+    if (options.failSave) return null;
+    db.data = structuredClone(next ?? current);
+    return structuredClone(db.data);
+  });
   let current = sketch.campaign;
   function Harness() {
     const [campaign, setCampaign] = useState(sketch.campaign);
@@ -72,12 +81,14 @@ async function mount(
         onPlay={() => {}}
         {...(fake ? { renderAssist: fake.renderAssist } : {})}
         {...(options.reload === null ? {} : { reloadCampaign: reload })}
+        saveFirst={saveFirst}
+        onSave={() => void saveFirst()}
       />
     );
   }
   await act(async () => root.render(<Harness />));
   // Choose the tower, which is the first scene and so already chosen.
-  return { ...sketch, fake, changes, reload, campaign: () => current };
+  return { ...sketch, fake, changes, reload, saveFirst, db, campaign: () => current };
 }
 
 const contextMenu = async (element: Element) =>
@@ -406,9 +417,9 @@ describe("while the panel is open", () => {
     const count = changes.length;
     await drag(card, 80, 40);
     expect(changes.length).toBe(count);
-    // The toolbar buttons that would open a second panel are off, too.
+    // The way that is open shows as pressed; the other way is off.
+    expect(button("✦ Continue from here")!.getAttribute("aria-pressed")).toBe("true");
     expect(button("✦ Deepen")!.disabled).toBe(true);
-    expect(button("✦ Continue from here")!.disabled).toBe(true);
     // After it closes, it all works again.
     await fake!.close({ changed: false, newSceneIds: [] });
     expect(
@@ -420,24 +431,24 @@ describe("while the panel is open", () => {
   });
 });
 
-describe("review 2 of the contract (#78)", () => {
-  async function dragTo(card: HTMLElement, dx: number, dy: number) {
-    card.setPointerCapture = () => {};
-    const x = parseFloat(card.style.left) + 20;
-    const y = parseFloat(card.style.top) + 20;
-    await act(async () =>
-      card.dispatchEvent(
-        new MouseEvent("pointerdown", { button: 0, bubbles: true, clientX: x, clientY: y }),
-      ),
-    );
-    await act(async () =>
-      board().dispatchEvent(
-        new MouseEvent("pointermove", { bubbles: true, clientX: x + dx, clientY: y + dy }),
-      ),
-    );
-    await act(async () => board().dispatchEvent(new MouseEvent("pointerup", { bubbles: true })));
-  }
+async function dragTo(card: HTMLElement, dx: number, dy: number) {
+  card.setPointerCapture = () => {};
+  const x = parseFloat(card.style.left) + 20;
+  const y = parseFloat(card.style.top) + 20;
+  await act(async () =>
+    card.dispatchEvent(
+      new MouseEvent("pointerdown", { button: 0, bubbles: true, clientX: x, clientY: y }),
+    ),
+  );
+  await act(async () =>
+    board().dispatchEvent(
+      new MouseEvent("pointermove", { bubbles: true, clientX: x + dx, clientY: y + dy }),
+    ),
+  );
+  await act(async () => board().dispatchEvent(new MouseEvent("pointerup", { bubbles: true })));
+}
 
+describe("review 2 of the contract (#78)", () => {
   it("keeps the author's unsaved move of a card and the scene the panel saved, together", async () => {
     const sketch = sketchAdventure();
     // The saved adventure: the same as the sketch, with the continue scenes added and the hall where it was.
@@ -516,7 +527,7 @@ describe("review 2 of the contract (#78)", () => {
     await act(async () => {});
     expect(host.querySelector("[data-assist-panel]")).toBeNull();
     const alert = host.querySelector('[role="alert"]');
-    expect(alert?.textContent).toContain("disk busy");
+    expect(alert?.textContent).toContain("The changes were saved but could not be read");
     const retry = button("Read again");
     expect(retry).toBeDefined();
     const before = changes.length;
@@ -570,5 +581,130 @@ describe("merging what the panel saved with the author's unsaved work", () => {
       "Renamed by hand",
     );
     expect(conflicts).toEqual(["Renamed by hand"]);
+  });
+});
+
+describe("saving and the panel (#78 review, points 1–5)", () => {
+  async function setArrival(text: string) {
+    const field = host.querySelector<HTMLTextAreaElement>('[data-storyboard-field="arrival"]')!;
+    const setter = Object.getOwnPropertyDescriptor(
+      window.HTMLTextAreaElement.prototype,
+      "value",
+    )!.set!;
+    await act(async () => {
+      setter.call(field, text);
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  }
+
+  it("saves the author's unsaved move and text before the help opens, and keeps them when the panel saves", async () => {
+    const { fake, hall, tower, db, campaign } = await mount();
+    await dragTo(realCard(hall)!, 120, 80);
+    await setArrival("A bell tolls.");
+    expect(
+      campaign().scenes.find((scene) => scene.id === hall)!.encounter!.definition.description,
+    ).toBe("A bell tolls.");
+    // Not saved yet: the database does not have them.
+    expect(
+      db.data.scenes.find((scene) => scene.id === hall)!.encounter!.definition.description,
+    ).not.toBe("A bell tolls.");
+    await act(async () => button("✦ Continue from here")!.click());
+    await act(async () => {});
+    // Saved before the panel opened.
+    expect(
+      db.data.scenes.find((scene) => scene.id === hall)!.encounter!.definition.description,
+    ).toBe("A bell tolls.");
+    const moved = db.data.scenes.find((scene) => scene.id === hall)!.position;
+    expect(moved).toBeDefined();
+    // The panel saves a new scene into the database.
+    const patch = continueProposals(tower)[0]!.patch;
+    db.data = applyPatch(db.data, sketchAdventure().library, patch).campaign;
+    await fake!.close({ changed: true, newSceneIds: ["adv:scene:roof"] });
+    await act(async () => {});
+    // Both changes are in Storyboard, and in the database.
+    expect(campaign().scenes.find((scene) => scene.id === hall)!.position).toEqual(moved);
+    expect(
+      campaign().scenes.find((scene) => scene.id === hall)!.encounter!.definition.description,
+    ).toBe("A bell tolls.");
+    expect(campaign().scenes.some((scene) => scene.id === "adv:scene:roof")).toBe(true);
+    expect(db.data.scenes.find((scene) => scene.id === hall)!.position).toEqual(moved);
+    expect(
+      db.data.scenes.find((scene) => scene.id === hall)!.encounter!.definition.description,
+    ).toBe("A bell tolls.");
+    expect(db.data.scenes.some((scene) => scene.id === "adv:scene:roof")).toBe(true);
+  });
+
+  it("does not open the help when the adventure cannot be saved, and says why", async () => {
+    const { fake, hall, db } = await mount({ failSave: true });
+    await dragTo(realCard(hall)!, 120, 80);
+    await act(async () => button("✦ Continue from here")!.click());
+    await act(async () => {});
+    expect(fake!.state.opened).toEqual([]);
+    expect(host.querySelector("[data-assist-panel]")).toBeNull();
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain("could not be saved");
+    expect(db.data.scenes.find((scene) => scene.id === hall)!.position).toBeUndefined();
+  });
+
+  it("leaves the placed scenes saved, so the adventure is not changed after the panel closes", async () => {
+    const { fake, tower, db, campaign } = await mount();
+    await act(async () => button("✦ Continue from here")!.click());
+    await act(async () => {});
+    db.data = applyPatch(
+      db.data,
+      sketchAdventure().library,
+      continueProposals(tower)[0]!.patch,
+    ).campaign;
+    await fake!.close({ changed: true, newSceneIds: ["adv:scene:roof"] });
+    await act(async () => {});
+    const shown = campaign().scenes.find((scene) => scene.id === "adv:scene:roof")!.position;
+    expect(shown).toBeDefined();
+    expect(db.data.scenes.find((scene) => scene.id === "adv:scene:roof")!.position).toEqual(shown);
+    expect(button("Save adventure")?.disabled).toBe(false);
+  });
+
+  it("keeps the panel's change when the reread fails: Save adventure does not write the old draft over it", async () => {
+    const { fake, tower, db, saveFirst } = await mount({
+      reload: async () => {
+        throw new Error("busy");
+      },
+    });
+    await act(async () => button("✦ Continue from here")!.click());
+    await act(async () => {});
+    db.data = applyPatch(
+      db.data,
+      sketchAdventure().library,
+      continueProposals(tower)[0]!.patch,
+    ).campaign;
+    const calls = saveFirst.mock.calls.length;
+    await fake!.close({ changed: true, newSceneIds: ["adv:scene:roof"] });
+    await act(async () => {});
+    expect(host.textContent).toContain(
+      "The changes were saved but could not be read. Open the adventure again.",
+    );
+    const save = button("Save adventure")!;
+    expect(save.disabled).toBe(true);
+    await act(async () => save.click());
+    expect(saveFirst.mock.calls.length).toBe(calls);
+    expect(db.data.scenes.some((scene) => scene.id === "adv:scene:roof")).toBe(true);
+  });
+
+  it("shows the way that opened the panel as pressed, and not the other", async () => {
+    const { hall } = await mount();
+    await act(async () => button("✦ Deepen")!.click());
+    await act(async () => {});
+    expect(button("✦ Deepen")!.getAttribute("aria-pressed")).toBe("true");
+    expect(button("✦ Continue from here")!.getAttribute("aria-pressed")).toBe("false");
+    void hall;
+  });
+
+  it("names the two menu rows in the three languages", async () => {
+    const { tower } = await mount();
+    await contextMenu(realCard(tower)!);
+    expect(menuRows().map((row) => row.textContent)).toEqual(
+      expect.arrayContaining(["Edit scene"]),
+    );
+    expect(menuRows().map((row) => row.textContent)).toEqual(
+      expect.arrayContaining(["Add action"]),
+    );
   });
 });

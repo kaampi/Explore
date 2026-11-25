@@ -86,12 +86,18 @@ export function useStoryboardAssist(args: {
   renderAssist: RenderAssist | undefined;
   /** Reads the adventure again from where it is saved. Without it there is no help. */
   reloadCampaign: (() => Promise<CampaignTemplate>) | undefined;
+  /**
+   * Saves the adventure the usual way ("Save adventure"), or the given one, and returns what was
+   * saved, or null when it was not. Without it there is no help: nothing the author has not saved
+   * may be left behind by the panel.
+   */
+  saveFirst: ((next?: CampaignTemplate) => Promise<CampaignTemplate | null>) | undefined;
   onChange: (campaign: CampaignTemplate) => void;
   onFocusScene: (id: string) => void;
   onFocusLink: (id: string) => void;
 }) {
-  const { campaign, objects, renderAssist, reloadCampaign } = args;
-  const enabled = Boolean(renderAssist && reloadCampaign);
+  const { campaign, objects, renderAssist, reloadCampaign, saveFirst } = args;
+  const enabled = Boolean(renderAssist && reloadCampaign && saveFirst);
   const [open, setOpen] = useState<Open | null>(null);
   const openRef = useRef<Open | null>(null);
   openRef.current = open;
@@ -104,6 +110,9 @@ export function useStoryboardAssist(args: {
   const closed = useRef(-1);
   const latest = useRef({ ...args, enabled });
   latest.current = { ...args, enabled };
+  const [opening, setOpening] = useState(false);
+  /** The save before opening did not go through: the panel is not opened, and the studio says why. */
+  const [openBlocked, setOpenBlocked] = useState(false);
   /** The adventure as it was when the panel opened: what the panel's changes are measured from. */
   const base = useRef<CampaignTemplate | null>(null);
   const lastPositions = useRef(new Map<string, StoryboardPosition>());
@@ -131,16 +140,33 @@ export function useStoryboardAssist(args: {
     if (model) lastPositions.current = model.positions;
   }, [model]);
 
+  /**
+   * Opens the panel on the adventure as it is saved. Whatever the author has not saved is saved
+   * first, the usual way; if that fails the panel does not open.
+   */
   const openAssist = useCallback(
-    (intent: AssistIntent, target: AssistTarget) => {
-      if (!latest.current.enabled || openRef.current) return;
-      const request: OpenAssist = { campaignId: campaign.id, intent, target };
-      base.current = campaign;
-      const next = { id: ++counter.current, request, anchorSceneId: anchorOf(campaign, target) };
+    async (intent: AssistIntent, target: AssistTarget) => {
+      const current = latest.current;
+      if (!current.enabled || openRef.current || opening) return;
+      setOpening(true);
+      setOpenBlocked(false);
+      let saved: CampaignTemplate | null;
+      try {
+        saved = await current.saveFirst!();
+      } finally {
+        setOpening(false);
+      }
+      if (!saved) {
+        setOpenBlocked(true);
+        return;
+      }
+      const request: OpenAssist = { campaignId: saved.id, intent, target };
+      base.current = saved;
+      const next = { id: ++counter.current, request, anchorSceneId: anchorOf(saved, target) };
       openRef.current = next;
       setOpen(next);
     },
-    [campaign],
+    [opening],
   );
 
   /** A panel can only change the preview of the opening it belongs to. */
@@ -157,6 +183,11 @@ export function useStoryboardAssist(args: {
       const merged = mergeSaved(current.campaign, from, loaded);
       const next = placeSaved(merged.campaign, newSceneIds, lastPositions.current);
       current.onChange(next);
+      // The new scenes' places are saved as they are, like a scene that was dragged: the adventure
+      // is not left changed after the panel has closed.
+      const persisted = await current.saveFirst!(next);
+      if (!persisted) throw new Error("The placed scenes could not be saved.");
+      base.current = persisted;
       if (forOpen === null || openRef.current?.id === forOpen) {
         setPreview(null);
         setOpen(null);
@@ -231,6 +262,10 @@ export function useStoryboardAssist(args: {
   return {
     enabled,
     isOpen: open !== null,
+    /** Which way is open, so that its button can show that it is. */
+    openIntent: open?.request.intent ?? null,
+    opening,
+    openBlocked,
     panelKey: open?.id,
     panel,
     openAssist,
