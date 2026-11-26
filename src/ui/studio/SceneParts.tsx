@@ -208,7 +208,7 @@ export function SceneParts({
         </p>
       )}
       <div className="storyboard-scene-parts__group">
-        <strong>{t("spPeople")}</strong>
+        <strong>{t("spPeopleInScene")}</strong>
         {here.length === 0 && <p className="playable-hint">{t("spNoOne")}</p>}
         <datalist id="storyboard-moods">
           {t("spMoodSuggestions")
