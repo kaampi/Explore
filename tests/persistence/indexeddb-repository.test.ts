@@ -9,7 +9,15 @@ import {
 } from "@persistence/IndexedDBRepository";
 import type { Session } from "@state/StateSchema";
 import type { CharacterTemplate } from "@library/LibrarySchema";
-import { newCampaignTemplate, newPlaceTemplate, parsePlaceTemplate } from "@library/LibrarySchema";
+import {
+  emptyCampaignScene,
+  newCampaignTemplate,
+  newPlaceTemplate,
+  newRealmTemplate,
+  parsePlaceTemplate,
+} from "@library/LibrarySchema";
+import { savedGuideImages } from "@library/guideImages";
+import { WorldMapSchema } from "@library/worldMap";
 
 function makeSession(id: string): Session {
   return {
@@ -643,3 +651,96 @@ describe("IndexedDBRepository library", () => {
     expect((await v9.listRealms())[0]?.name).toBe("City of Dunbaar");
   });
 });
+
+it.each([false, true])(
+  "blocks a stale image suggestion when a parent gains a backdrop (linked child card: %s)",
+  async (linkedChild) => {
+    const repo = new IndexedDBRepository(new IDBFactory(), "guide-location-image");
+    const world = newRealmTemplate({
+      id: "concert-world",
+      name: "Musikkvarteret",
+      source: "player",
+      note: "",
+    });
+    const parent = newPlaceTemplate({
+      id: "concert-house",
+      realmId: world.id,
+      name: "Konserthuset",
+    });
+    const child = newPlaceTemplate({ id: "hall-card", realmId: world.id, name: "Salen" });
+    world.worldMap = WorldMapSchema.parse({
+      routes: [],
+      nodes: [
+        { id: "house", name: parent.name, kind: "Landmark", placeId: parent.id, x: 5, y: 5 },
+        {
+          id: "hall",
+          name: child.name,
+          kind: "Landmark",
+          parentId: "house",
+          ...(linkedChild ? { placeId: child.id } : {}),
+          x: 10,
+          y: 10,
+        },
+      ],
+    });
+    await repo.savePlace(parent);
+    if (linkedChild) await repo.savePlace(child);
+    await repo.saveRealm(world);
+
+    const scene = {
+      ...emptyCampaignScene(),
+      name: child.name,
+      mapNodeId: "hall",
+      placeId: linkedChild ? child.id : "hall",
+    };
+    const campaign = newCampaignTemplate({
+      name: "Konserten",
+      mapWorldId: world.id,
+      startSceneId: scene.id,
+      scenes: [scene],
+    });
+    async function background() {
+      const images = savedGuideImages(campaign, {
+        characters: [],
+        objects: [],
+        places: await repo.listPlaces(),
+        realms: await repo.listRealms(),
+      });
+      return images.find(({ kind }) => kind === "opening");
+    }
+
+    const target = (await background())!.target!;
+    expect(target.kind).toBe(linkedChild ? "place" : "mapPlace");
+    const addedImage = { imageDataUrl: "new-image", thumbDataUrl: "thumbnail" };
+    if (linkedChild) {
+      await repo.savePlace({ ...parent, imageDataUrl: "inherited-image" });
+    } else {
+      await repo.saveRealm({
+        ...world,
+        worldMap: {
+          ...world.worldMap!,
+          nodes: world.worldMap!.nodes.map((node) =>
+            node.id === "house" ? { ...node, imageDataUrl: "inherited-image" } : node,
+          ),
+        },
+      });
+    }
+
+    expect(await background()).toBeUndefined();
+    await expect(repo.saveGuideImage(target, addedImage)).rejects.toThrow(/image unavailable/i);
+    if (linkedChild) {
+      expect((await repo.loadPlace(child.id)).imageDataUrl).toBeUndefined();
+      expect((await repo.loadPlace(parent.id)).imageDataUrl).toBe("inherited-image");
+      await repo.savePlace(parent);
+    } else {
+      const saved = (await repo.loadRealm(world.id)).worldMap!.nodes;
+      expect(saved.find(({ id }) => id === "hall")?.imageDataUrl).toBeUndefined();
+      expect(saved.find(({ id }) => id === "house")?.imageDataUrl).toBe("inherited-image");
+      await repo.saveRealm(world);
+    }
+
+    expect(await background()).toBeDefined();
+    await repo.saveGuideImage(target, addedImage);
+    expect(await background()).toBeUndefined();
+  },
+);

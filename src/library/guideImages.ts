@@ -15,17 +15,46 @@ type ImageLibrary = {
   realms: RealmTemplate[];
 };
 
+export type GuideImageTarget = {
+  name: string;
+  context?: string | undefined;
+  number?: number | undefined;
+} & (
+  | { kind: "character"; id: string }
+  | { kind: "object"; id: string }
+  | { kind: "realm"; id: string }
+  | { kind: "player"; id: string }
+  | { kind: "place"; id: string; realmId: string | undefined }
+  | { kind: "mapPlace"; id: string; realmId: string }
+);
+
 export type GuideImage = {
   id: string;
   kind: "opening" | "scene" | "portrait" | "item" | "world";
   subject: string;
   details: string[];
+  target?: GuideImageTarget | undefined;
 };
+
+export function guideMapPlaces(world: RealmTemplate | undefined, places: PlaceTemplate[]) {
+  // A node may inherit a backdrop through a parent card, within the same world only.
+  return world
+    ? adventureMapPlaces(
+        world,
+        places.filter((place) => place.realmId === world.id),
+      )
+    : [];
+}
+
+export function hasGuidePlaceImage(place: PlaceTemplate | undefined): boolean {
+  return Boolean(place?.imageDataUrl || place?.gallery?.length);
+}
 
 function sceneImages(
   scenes: InterviewScene[],
   openingId: string | undefined,
   library: ImageLibrary,
+  saved = false,
 ) {
   const images: GuideImage[] = [];
   const seen = new Set<string>();
@@ -41,9 +70,7 @@ function sceneImages(
     const cached = maps.get(realmId);
     if (cached) return cached;
     const realm = library.realms.find(({ id }) => id === realmId);
-    const places = library.places.filter((place) => place.realmId === realmId);
-    // The projection also inherits backdrops from parent nodes. Its cards must be from this world.
-    const entries = adventureMapPlaces(realm, places);
+    const entries = guideMapPlaces(realm, library.places);
     maps.set(realmId, entries);
     return entries;
   }
@@ -84,12 +111,29 @@ function sceneImages(
             : JSON.stringify(["new", realmId, placeName.toLowerCase() || scene.id]);
     if (seen.has(key)) continue;
     seen.add(key);
-    if (source?.imageDataUrl || source?.gallery?.length) continue;
+    if (hasGuidePlaceImage(source)) continue;
+    const linkedCard =
+      entry && realmId && sharedCard
+        ? library.places.find((card) => card.id === linkedCardId && card.realmId === realmId)
+        : undefined;
+    const card = saved && (entry ? linkedCard : directCard);
+    const target: GuideImageTarget | undefined = card
+      ? { kind: "place", id: card.id, realmId: card.realmId, name: card.name, context: entry?.path }
+      : saved && entry && realmId
+        ? {
+            kind: "mapPlace",
+            id: entry.node.id,
+            realmId,
+            name: entry.node.name,
+            context: entry.path,
+          }
+        : undefined;
     images.push({
       id: "scene-" + scene.id,
       kind: scene.id === openingId ? "opening" : "scene",
       subject: name,
       details: [scene.arrival, source?.note ?? ""],
+      target,
     });
   }
   return { images, placeNames: [...names] };
@@ -101,25 +145,48 @@ type Portrait = {
   appearance?: string | undefined;
   note: string;
   pictured?: boolean;
+  target?: GuideImageTarget | undefined;
 };
 
 function portraitImages(people: Portrait[]): GuideImage[] {
   const seen = new Set<string>();
-  return people.flatMap(({ id, name, appearance, note, pictured }) => {
+  return people.flatMap(({ id, name, appearance, note, pictured, target }) => {
     if (!name.trim() || pictured || seen.has(id)) return [];
     seen.add(id);
-    return [{ id, kind: "portrait", subject: name.trim(), details: [appearance ?? "", note] }];
+    return [
+      { id, kind: "portrait", subject: name.trim(), details: [appearance ?? "", note], target },
+    ];
   });
 }
 
 function itemImages(
-  items: Array<{ id: string; name: string; imageDataUrl?: string | undefined }>,
+  items: Array<Pick<ObjectTemplate, "id" | "name" | "imageDataUrl"> & { note?: string }>,
+  saved = false,
 ): GuideImage[] {
   const seen = new Set<string>();
-  return items.flatMap(({ id, name, imageDataUrl }) => {
+  return items.flatMap((item) => {
+    const { id, name, note, imageDataUrl } = item;
     if (!name.trim() || imageDataUrl || seen.has(id)) return [];
     seen.add(id);
-    return [{ id: "item-" + id, kind: "item", subject: name.trim(), details: [] }];
+    const sameName = saved ? items.filter((other) => other.name.trim() === name.trim()) : [];
+    const context = saved ? note?.trim() : undefined;
+    return [
+      {
+        id: "item-" + id,
+        kind: "item",
+        subject: name.trim(),
+        details: context ? [context] : [],
+        target: saved
+          ? {
+              kind: "object",
+              id,
+              name,
+              context,
+              number: sameName.length > 1 ? sameName.indexOf(item) + 1 : undefined,
+            }
+          : undefined,
+      },
+    ];
   });
 }
 
@@ -128,6 +195,7 @@ function worldImage(
   note: string,
   world: RealmTemplate | undefined,
   placeNames: string[],
+  saved = false,
 ): GuideImage[] {
   if (!name || world?.imageDataUrl || world?.gallery?.length) return [];
   return [
@@ -136,6 +204,7 @@ function worldImage(
       kind: "world",
       subject: name,
       details: [note || world?.note || "", placeNames.join(", ")],
+      target: saved && world ? { kind: "realm", id: world.id, name: world.name } : undefined,
     },
   ];
 }
@@ -196,20 +265,34 @@ export function savedGuideImages(campaign: CampaignTemplate, library: ImageLibra
         : (scene.encounter?.definition.description ?? scene.guideDraftNote ?? ""),
     };
   });
-  const { images, placeNames } = sceneImages(scenes, campaign.startSceneId ?? undefined, library);
+  const { images, placeNames } = sceneImages(
+    scenes,
+    campaign.startSceneId ?? undefined,
+    library,
+    true,
+  );
   const characterIds = new Set([
     ...campaign.people.map(({ characterId }) => characterId),
     ...campaign.scenes.flatMap(({ people }) => people.map(({ characterId }) => characterId)),
   ]);
-  const people = library.characters
-    .filter(({ id }) => characterIds.has(id))
-    .map((character) => ({
+  const characters = library.characters.filter(({ id }) => characterIds.has(id));
+  const people: Portrait[] = characters.map((character) => {
+    const sameName = characters.filter(({ name }) => name.trim() === character.name.trim());
+    return {
       id: "character-" + character.id,
       name: character.name,
       appearance: character.appearance,
       note: character.personality,
       pictured: !!character.portraitDataUrl,
-    }));
+      target: {
+        kind: "character",
+        id: character.id,
+        name: character.name,
+        context: character.appearance || character.personality,
+        number: sameName.length > 1 ? sameName.indexOf(character) + 1 : undefined,
+      },
+    };
+  });
   if (campaign.player) {
     people.unshift({
       id: "player",
@@ -217,6 +300,7 @@ export function savedGuideImages(campaign: CampaignTemplate, library: ImageLibra
       appearance: campaign.player.appearance,
       note: campaign.player.personality,
       pictured: !!campaign.player.portraitDataUrl,
+      target: { kind: "player", id: campaign.id, name: campaign.player.name },
     });
   }
   const itemIds = new Set([
@@ -228,7 +312,7 @@ export function savedGuideImages(campaign: CampaignTemplate, library: ImageLibra
   return [
     ...images,
     ...portraitImages(people),
-    ...itemImages(items),
-    ...worldImage(world?.name || "", "", world, placeNames),
+    ...itemImages(items, true),
+    ...worldImage(world?.name || "", "", world, placeNames, true),
   ];
 }

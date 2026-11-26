@@ -190,3 +190,39 @@ it("keeps separate portrait suggestions for two saved characters with the same n
     expect.objectContaining({ id: "character-" + other.id, kind: "portrait", subject: "Alex" }),
   ]);
 });
+
+it("identifies saved objects with the same name by their own description and ID", () => {
+  const first = newObjectTemplate({
+    id: "brass-key",
+    name: "Nyckeln",
+    source: "player",
+    tags: [],
+    note: "Mässing med ett runt skaft.",
+    readableContent: "En hemlig kod.",
+  });
+  const second = newObjectTemplate({
+    id: "iron-key",
+    name: "Nyckeln",
+    source: "player",
+    tags: [],
+    note: "Järn med ett fyrkantigt skaft.",
+  });
+  const campaign = newCampaignTemplate({ name: "Två nycklar", objectIds: [first.id, second.id] });
+  const images = savedGuideImages(campaign, { ...empty, objects: [first, second] });
+  expect(images.map(({ details, target }) => [details, target])).toEqual([
+    [
+      [first.note],
+      { kind: "object", id: first.id, name: first.name, context: first.note, number: 1 },
+    ],
+    [
+      [second.note],
+      { kind: "object", id: second.id, name: second.name, context: second.note, number: 2 },
+    ],
+  ]);
+  expect(JSON.stringify(images)).not.toContain("En hemlig kod.");
+  const remaining = savedGuideImages(campaign, {
+    ...empty,
+    objects: [{ ...first, imageDataUrl: "brass" }, second],
+  });
+  expect(remaining).toEqual([images[1]]);
+});

@@ -1049,3 +1049,104 @@ it("reopens saved image suggestions using the adventure's current library cards"
     await view.cleanup();
   }
 });
+
+it("cancels and saves an offline portrait to the selected card when two people have the same name", async () => {
+  const repo = new IndexedDBRepository(new IDBFactory(), "guide-portrait-import");
+  const draft = newGuideInterview();
+  draft.premise = "En konsert börjar om en timme.";
+  draft.role.name = "Arrangören";
+  draft.opening.place.name = "Musikhuset";
+  draft.opening.arrival = "Stolarna står i rader.";
+  draft.choices = [{ ...newGuideChoice(), label: "Öppna salongen", outcome: "Publiken går in." }];
+  draft.people = [
+    { name: "Dirigenten", note: "Leder ensemblen." },
+    { name: "Violinisten", note: "Spelar förstastämman." },
+  ];
+  await repo.saveGuideInterview(draft, undefined);
+  const campaign = await repo.approveGuideInterview(draft);
+  const cast = await Promise.all(
+    campaign.people.map(({ characterId }) => repo.loadCharacter(characterId)),
+  );
+  const violinist = cast.find(({ name }) => name === "Violinisten")!;
+  const conductor = cast.find(({ name }) => name === "Dirigenten")!;
+  await repo.saveCharacter({ ...conductor, name: violinist.name });
+
+  const filename = "violinisten.png";
+  const jpeg = "data:image/jpeg;base64,cG9ydHJhaXQ=";
+  vi.stubGlobal(
+    "createImageBitmap",
+    vi.fn().mockResolvedValue({ width: 16, height: 16, close: vi.fn() }),
+  );
+  const context = vi
+    .spyOn(HTMLCanvasElement.prototype, "getContext")
+    .mockReturnValue({ drawImage: vi.fn() } as unknown as CanvasRenderingContext2D);
+  const dataUrl = vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue(jpeg);
+  const view = mountGuide(repo);
+  const saveImage = vi.spyOn(repo, "saveGuideImage");
+  const listCharacters = vi.spyOn(repo, "listCharacters");
+
+  function cards() {
+    return Array.from(view.host.querySelectorAll<HTMLDetailsElement>(".guide-image-card")).filter(
+      (card) => card.querySelector("h3")?.textContent?.includes("Porträtt · Violinisten"),
+    );
+  }
+  function selectedCard() {
+    return cards().find((card) => card.textContent?.includes("Spelar förstastämman."))!;
+  }
+  async function selectFile() {
+    const visit = selectedCard();
+    await act(async () => visit.querySelector("summary")!.click());
+    const input = visit.querySelector<HTMLInputElement>("input[type=file]")!;
+    Object.defineProperty(input, "files", {
+      configurable: true,
+      value: [new File(["fixture"], filename, { type: "image/png" })],
+    });
+    await act(async () => input.dispatchEvent(new Event("change", { bubbles: true })));
+    await view.until(() => expect(visit.querySelector("img")?.getAttribute("src")).toBe(jpeg));
+    return visit;
+  }
+
+  try {
+    await view.open();
+    expect(cards()).toHaveLength(2);
+    expect(new Set(cards().map((card) => card.querySelector("h3")?.textContent)).size).toBe(2);
+    const card = await selectFile();
+    await view.click("Avbryt", ".guide-image-card[open]");
+    expect(card.open).toBe(false);
+    expect(card.querySelector("img")).toBeNull();
+    expect((await repo.loadCharacter(violinist.id)).portraitDataUrl).toBeUndefined();
+    expect(cards()).toHaveLength(2);
+
+    await selectFile();
+    listCharacters.mockRejectedValueOnce(new Error("Temporary library read failure"));
+    await view.click("Spara bild", ".guide-image-card[open]");
+    await view.until(() =>
+      expect(view.host.querySelector(".guide-image-plan [role=alert]")?.textContent).toContain(
+        "Biblioteket kunde inte läsas om",
+      ),
+    );
+    expect(view.host.textContent).toContain("Bilden sparades på Violinisten");
+    expect(view.host.textContent).not.toContain("Bilden kunde inte sparas");
+    expect((await repo.loadCharacter(violinist.id)).portraitDataUrl).toBe(jpeg);
+    expect(saveImage).toHaveBeenCalledTimes(1);
+
+    await view.click("Läs om biblioteket");
+    await view.until(() => expect(cards()).toHaveLength(1));
+    expect(saveImage).toHaveBeenCalledTimes(1);
+    expect(view.host.querySelector(".guide-image-plan [role=alert]")).toBeNull();
+    expect((await repo.loadCharacter(violinist.id)).portraitDataUrl).toBe(jpeg);
+    expect((await repo.loadCharacter(conductor.id)).portraitDataUrl).toBeUndefined();
+
+    await view.click("Stäng guiden");
+    await view.click("Öppna guiden igen");
+    await view.until(() => expect(cards()).toHaveLength(1));
+    expect(cards()[0]?.textContent).toContain("Leder ensemblen.");
+  } finally {
+    await view.cleanup();
+    listCharacters.mockRestore();
+    saveImage.mockRestore();
+    dataUrl.mockRestore();
+    context.mockRestore();
+    vi.unstubAllGlobals();
+  }
+});
