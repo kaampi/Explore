@@ -37,7 +37,7 @@ Allt gäller bara den scenen. Befintliga äventyr fungerar som i dag.
 | Fientlig person som avvaktar | ja, som standard | strid börjar bara när spelaren anfaller eller när en följd har effekten `start-combat` |
 | Relationsvärden | ja, men tappas när ett äventyr startar | `SceneCast.trust` med flera, se `outcome-values.sv.md` |
 | Något som är dolt tills en upptäckt | ja, för föremål | `items[].requiresFlags` och `itemRevealed` i `itemVisibility.ts` |
-| Bild och ljud | bara på platsen (och rum och värld som reserv) | `PlaceTemplate.imageDataUrl`, `audioDataUrl`, `sceneBackdrop`, `PlaceAudio` |
+| Bild och ljud | platsen. En plats utan rum använder världens bild som reserv. Ett namngivet rum visar bara sin egen bild, och saknar det en visas ingen bakgrund. | `PlaceTemplate.imageDataUrl`, `audioDataUrl`, `sceneBackdrop` (`sceneBackdrop.ts`), `PlaceAudio` |
 | Ljud vid en handling | nej | |
 | Dold person | nej | |
 
@@ -76,7 +76,11 @@ SceneCast = {
 ```
 
 **Positionen.** Sol kan skriva "I taket", och författaren kan döpa om den. Efter att positionen har skapats är det dess ID som gäller:
-- När scenen sparas letar Storyboard upp positionen efter ID om `positionId` finns, annars efter namnet. Saknas båda skapas en ny position, och dess ID skrivs i `positionId`.
+- När scenen sparas gäller tre fall, i den här ordningen:
+  1. **`positionId` finns:** personen står på den positionen, även om den har fått ett nytt namn.
+  2. **Bara ett namn finns:** Storyboard letar upp en befintlig position med namnet. Finns den, sätts `positionId` till dess ID.
+  3. **Varken ID eller namn finns:** en befintlig person behåller sin nuvarande motorposition. En ny person börjar där spelaren står.
+- En ny position skapas **bara** när författaren har angett ett namn som inte finns i scenen. Då skrivs dess ID i `positionId`.
 - Att döpa om positionen ändrar bara namnet. Personen står kvar på samma ID.
 - Exempel: Spindeln står på positionen "I taket". Författaren döper den om till "Bland takbjälkarna". Efter sparande och återöppning står spindeln fortfarande där, och namnet visas som "Bland takbjälkarna".
 - Motorn använder `actor.position`, som redan är ett ID. Storyboard håller namnet i takt med ID:t.
@@ -158,7 +162,8 @@ media?: {
 };
 ```
 
-- **Saknas `media`, eller `image` eller `ambient`,** används det som scenen ärver: platsens bild och ljud, och för ett namngivet rum utan egen bild, rummets reserv på platsen och världen, precis som i dag.
+- **Saknas `media`, eller `image` eller `ambient`,** används det som scenen ärver, precis som i dag: ett namngivet rum visar bara sin egen bild, och saknar det visas ingen bakgrund. En plats utan rum visar platsens bild, och världens bild om platsen saknar en. Ett ärvt val i ett befintligt äventyr ändras inte av det här beslutet.
+- **`use: "place"`** betyder det som scenen visar i dag utan `media`. Det är det förval som scenen har.
 - **`use: "none"`** är det enda som stänger av ett ärvt val. Det betyder ingen bild eller inget ljud i den här scenen, även om platsen har det.
 - **`use: "own"`** gäller bara den här scenen. Platsen ändras inte.
 - **`ambient`** börjar när spelaren kommer in i scenen och loopar, som platsens ljud i dag.
@@ -177,7 +182,7 @@ Förhandsvisningen spelar bara i Storyboard och följer spelvyns val för ljudni
 
 ### I spelet
 
-- Bilden och bakgrundsljudet väljs med `media` först, sedan platsen (och för ett rum, världen), som `sceneBackdrop` gör i dag.
+- Bilden och bakgrundsljudet väljs med `media` först, sedan det som `sceneBackdrop` visar i dag: för ett namngivet rum bara rummets egen bild, och för en plats utan rum platsens bild och sedan världens.
 - **Ett ljud vid upptäckt spelas ovanpå bakgrundsljudet**, även om bakgrundsljudet är regnet. Det tystar inte regnet. Det följer ljudnivån för bakgrundsljudet och tyst läge: är ljudet av, hörs inget skrap.
 
 ## Formatet för guiden
@@ -187,9 +192,9 @@ Det här är fälten som Sol kan skriva när guiden placerar personer och välje
 | Fält | Värden | Saknas |
 | --- | --- | --- |
 | `SceneCast.characterId` | bibliotekskaraktärens id | krävs |
-| `SceneCast.position` | positionens namn, fritext | personen står där spelaren börjar |
+| `SceneCast.position` | positionens namn, fritext. Ett namn som inte finns skapar en ny position, bara när namnet är nytt. | Befintlig person: behåller sin motorposition. Ny person: börjar där spelaren står. |
 | `SceneCast.mood` | fritext | karaktärens vanliga humör |
-| `SceneCast.stance` | `"friendly"`, `"neutral"`, `"hostile"` | neutral |
+| `SceneCast.stance` | `"friendly"`, `"neutral"`, `"hostile"` | Befintlig person: motorns lag, så en fientlig person förblir fientlig. Ny person: neutral. |
 | `SceneCast.hidden.revealedBy` | en fakta i äventyret, satt av ett utfall | synlig |
 | `SceneCast.onReveal` | `"wait"`, `"attack"` | `"wait"` |
 | `CampaignScene.media.image` | `{ use: "place" }`, `{ use: "none" }`, `{ use: "own", … }` | platsens bild |
@@ -225,12 +230,13 @@ Personerna hamnar i den scen där de placeras, öppningen eller en senare scen. 
 12. Först när spelaren väljer "Undersök taket" och lyckas hörs spindelns skrap, en gång.
 13. En scen med "Ingen bild" och "Inget ljud" visar ingen bild och spelar inget ljud, fast platsen har både och.
 14. En egen bild på en scen ändrar inte platsens bild eller andra scener på samma plats.
-15. Ett namngivet rum utan egen bild visar platsens bild, och världens bild om platsen saknar en. Ingen bild i rummet stänger av den ärvda bilden.
+15. Ett namngivet rum utan egen bild visar ingen bild, även om värdshuset har en, precis som i dag. Värdshusets bild syns inte i Emmas rum.
 16. En plats som använder världens bild får världens bild i en scen som inte har någon egen.
 17. Bakgrundsregnet hörs under hela scenen, även när skrapet spelas vid upptäckten. Med ljudet avstängt hörs inget skrap.
+18. Scenen har inget bakgrundsljud, och spelarens ljud är på. Värdshuset är tyst vid ankomst. När spelaren upptäcker spindeln hörs skrapet en gång. Med spelarens ljud avstängt hörs inget skrap.
 
 **Guiden:**
-18. Sol skapar Emma i öppningen och spindeln först i scen två. Spara, öppna i Storyboard och spela båda scenerna. Emma står i öppningen, och spindeln finns inte i den scenen. I scen två är spindeln dold tills "Undersök taket" lyckas.
+19. Sol skapar Emma i öppningen och spindeln först i scen två. Spara, öppna i Storyboard och spela båda scenerna. Emma står i öppningen, och spindeln finns inte i den scenen. I scen två är spindeln dold tills "Undersök taket" lyckas.
 
 ## Krav på tester
 
@@ -243,10 +249,10 @@ Personerna hamnar i den scen där de placeras, öppningen eller en senare scen. 
 7. Efter upptäckten: ingen ny notis, inget nytt skrap och ingen ny attack, även efter återinträde och efter att spelet öppnats på nytt.
 8. `position` matchas med `positionId` när det finns, annars med namnet. En omdöpt position behåller sin person.
 9. Upplysningen om en dold person som nämns i författarens egen ankomsttext, och texten ändras inte av Storyboard.
-10. Bild och bakgrundsljud väljs i ordningen scen, rum, plats, värld, inget. `use: "none"` ger ingenting, och ingen bild i rummet stänger av den ärvda.
+10. Bild väljs som i dag: ett namngivet rum visar bara sin egen bild, och saknar det visas ingen bakgrund. En plats utan rum visar platsens bild, och världens bild om platsen saknar en. `use: "none"` ger ingenting, och ett ärvt val i ett befintligt äventyr ändras inte.
 11. Ett ljud vid upptäckt spelas en gång när faktan sätts, ovanpå bakgrundsljudet, och inte igen efter att spelet har öppnats på nytt. Med ljudet avstängt hörs det inte.
-12. Acceptansprov 1–18 som ett test som startar och spelar äventyret med motorn, och en provkörning i webbläsaren med skärmbilder.
-13. Guideprovet (punkt 18) som ett eget test, med en guide-byggd äventyrsfil som sparas, öppnas i Storyboard och spelas.
+12. Acceptansprov 1–19 som ett test som startar och spelar äventyret med motorn, och en provkörning i webbläsaren med skärmbilder.
+13. Guideprovet (punkt 19) som ett eget test, med en guide-byggd äventyrsfil som sparas, öppnas i Storyboard och spelas.
 
 ## Byggordning
 
