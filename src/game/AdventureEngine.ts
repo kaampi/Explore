@@ -1,3 +1,4 @@
+import { visibleActors } from "./itemVisibility";
 import {
   AdventureRunSchema,
   AdventureTransitionSchema,
@@ -135,6 +136,8 @@ export function advanceAdventure(session: Session, raw: AdventureTransition) {
       game.state.actors[id] = {
         ...structuredClone(carried),
         position: authored.position,
+        ...(authored.requiresFlags ? { requiresFlags: authored.requiresFlags } : {}),
+        ...(authored.onReveal ? { onReveal: authored.onReveal } : {}),
         actionsLeft: game.definition.rules.actionsPerTurn,
         movesLeft: game.definition.rules.movesPerTurn,
         defending: false,
@@ -474,7 +477,7 @@ export function peopleMet(session: Session): PersonMet[] {
     const speakers = game.history.flatMap((entry) =>
       entry.events.flatMap((event) => (event.kind === "speech-reply" ? [event.actorId] : [])),
     );
-    const here = Object.values(game.state.actors).filter(
+    const here = visibleActors(game.state).filter(
       (actor) => actor.control === "npc" || speakers.includes(actor.id),
     );
     for (const actor of here) {

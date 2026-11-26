@@ -1,3 +1,4 @@
+import { visibleActors } from "./itemVisibility";
 import { encounterDescription } from "./sceneDescription";
 import { encounterRules, levelLabelForModifier } from "./rules";
 import type {
@@ -67,8 +68,10 @@ export function describeEvents(
           return event.text;
         case "interaction":
           return event.text;
+        case "revealed":
+          return `Du upptäcker: ${who(event.actorId)}.`;
         case "look":
-          return `${encounterDescription(d, s)} ${Object.values(s.actors)
+          return `${encounterDescription(d, s)} ${visibleActors(s)
             .map(
               (a) =>
                 `${a.name}: ${where(a.position)}, ${a.hp}/${a.maxHp} health${a.disposition !== "active" ? ", " + a.disposition : ""}.`,

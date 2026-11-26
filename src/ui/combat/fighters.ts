@@ -1,3 +1,4 @@
+import { visibleActors } from "../../game/itemVisibility";
 import archerFighting from "../assets/archer-fighting.png";
 import monaFighting from "../assets/mona-fighting.png";
 import playerSword from "../assets/player-sword.png";
@@ -54,7 +55,7 @@ export function encounterFighters(session: Session): { player: Fighter; opponent
       image: session.combatArtwork?.[id]?.imageDataUrl ?? EXAMPLE_FIGURES[a.name],
     };
   };
-  const opponents = Object.values(s.actors)
+  const opponents = visibleActors(s)
     .filter((a) => hostile(d, player, a))
     .map((a) => view(a.id));
   const fromExample = opponents.some((o) => o.name in EXAMPLE_FIGURES);

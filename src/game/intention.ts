@@ -1,3 +1,4 @@
+import { visibleActors } from "./itemVisibility";
 import type { EncounterAction, EncounterGame } from "./EncounterSchema";
 import { actionBlock, hostile } from "./EncounterEngine";
 import { actionLabel } from "./narration";
@@ -19,7 +20,7 @@ export function encounterCommands(game: EncounterGame): EncounterAction[] {
         operation,
       })),
     ),
-    ...Object.values(s.actors)
+    ...visibleActors(s)
       .filter((a) => hostile(d, player, a))
       .flatMap((target) =>
         player.weapons.map((weaponId) => ({
@@ -57,7 +58,7 @@ export function proposeEncounterText(game: EncounterGame, text: string): Encount
   if (/^(?:end turn|avsluta turen|avslutar turen)$/.test(t)) return { kind: "end-turn" };
   const attack = /\b(?:attack|shoot|strike|skjuter|skjuta|hugger|hugga|attackerar)\b/.test(t);
   if (attack) {
-    const targets = Object.values(s.actors).filter(
+    const targets = visibleActors(s).filter(
       (a) => t.includes(normalize(a.name)) || t.includes(a.id),
     );
     const weapons = d.weapons.filter(

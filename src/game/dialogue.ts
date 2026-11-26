@@ -1,3 +1,4 @@
+import { actorRevealed, visibleActors } from "./itemVisibility";
 import type { Actor, EncounterDefinition, EncounterState, Interaction } from "./EncounterSchema";
 
 const words = (text: string) =>
@@ -50,6 +51,7 @@ export function present(d: EncounterDefinition, s: EncounterState, actor: Actor)
   const fighting = hostile && s.phase === "combat" && actor.disposition === "active";
   return (
     actor.id !== d.playerId &&
+    actorRevealed(s, actor) &&
     actor.control === "npc" &&
     actor.hp > 0 &&
     actor.disposition !== "fled" &&
@@ -90,7 +92,7 @@ export function spokenInteraction(
       "hur",
     ].includes(w),
   );
-  const named = Object.values(s.actors).filter((a) => a.id !== d.playerId && containsName(text, a));
+  const named = visibleActors(s).filter((a) => a.id !== d.playerId && containsName(text, a));
   const candidates = d.interactions.filter((action) => {
     if (!question && action.dialogueMode !== "report") return false;
     const npc = action.counterpartyId ? s.actors[action.counterpartyId] : undefined;
@@ -124,7 +126,7 @@ export function greetingTarget(
 ): Actor | undefined {
   const t = normalize(text),
     npcs = Object.values(s.actors).filter((a) => present(d, s, a)),
-    named = Object.values(s.actors).filter((a) => a.id !== d.playerId && containsName(text, a));
+    named = visibleActors(s).filter((a) => a.id !== d.playerId && containsName(text, a));
   const target =
     named.length === 1
       ? npcs.find((a) => a.id === named[0]!.id)
@@ -159,7 +161,7 @@ export function speechAddressee(
   // The person the player chose to talk to goes before any guess, even if the line names someone else.
   const chosen = chosenId ? here.find((actor) => actor.id === chosenId) : undefined;
   if (chosen) return chosen;
-  const named = Object.values(s.actors).filter(
+  const named = visibleActors(s).filter(
     (actor) => actor.id !== d.playerId && containsName(text, actor),
   );
   if (named.length > 1) return undefined;

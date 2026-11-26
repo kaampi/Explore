@@ -1,3 +1,4 @@
+import { visibleActors } from "../../game/itemVisibility";
 import { hostile } from "../../game/EncounterEngine";
 import type { EncounterGame } from "../../game/EncounterSchema";
 import type { Session } from "../../state/StateSchema";
@@ -64,7 +65,7 @@ export function hasCombat(game: EncounterGame): boolean {
     d.weapons.length > 0 ||
     player.weapons.length > 0 ||
     player.hp < player.maxHp ||
-    Object.values(s.actors).some((actor) => actor.id !== d.playerId && hostile(d, player, actor)) ||
+    visibleActors(s).some((actor) => actor.id !== d.playerId && hostile(d, player, actor)) ||
     d.interactions.some((action) =>
       [...action.success.effects, ...action.failure.effects].some(
         (effect) => effect.kind === "start-combat",

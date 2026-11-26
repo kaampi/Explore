@@ -5,7 +5,7 @@ import type {
   Interaction,
 } from "./EncounterSchema";
 import { encounterRules, type RulesAdapter } from "./rules";
-import { itemRevealed } from "./itemVisibility";
+import { actorRevealed, itemRevealed } from "./itemVisibility";
 
 export function applyEffects(
   d: EncounterDefinition,
@@ -76,7 +76,7 @@ export function interactionBlock(
     return "Move to the right position first.";
   if (interaction.counterpartyId) {
     const other = s.actors[interaction.counterpartyId];
-    if (!other || other.hp === 0 || other.disposition === "fled")
+    if (!other || !actorRevealed(s, other) || other.hp === 0 || other.disposition === "fled")
       return "That person is unavailable.";
     if (other.position !== player.position)
       return `Move within speaking distance of ${other.name}.`;
