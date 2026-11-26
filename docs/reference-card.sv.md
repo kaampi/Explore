@@ -1,6 +1,6 @@
 # Designbeslut: referenskort för karaktärer
 
-Beslutat 25 november 2026. Version 3 den 26 november: flera namngivna kort per karaktär, och varje äventyr minns sitt val. Version 2 preciserade versionsnummer och jämförelsen mot Codex efter Astras granskning.
+Beslutat 25 november 2026. Version 4 den 26 november: spelarrollens koppling till biblioteket, porträttregeln för ett och flera kort, avbruten gallring, och beslutet om B2. Version 3 samma dag: flera namngivna kort per karaktär, och varje äventyr minns sitt val. Version 2 preciserade versionsnummer och jämförelsen mot Codex efter Astras granskning.
 
 Gäller karaktärsbiblioteket (Bygg → Karaktärer), bildprompter för karaktärer i biblioteket och i guiden, äventyrens val av utseende, och kopplingen till Codex. Bygger på `ownership.sv.md`. Ansluter till guidens bildspår (`guide-b2.sv.md`).
 
@@ -102,6 +102,21 @@ characterLooks?: { characterId: string; cardId: string }[];
 - Äventyret pekar på kortet, inte på en version. Prompter använder kortets aktiva version. Bilder som redan är sparade i äventyret ändras inte när kortet får en ny version.
 - Det här är en ändring av äventyrets format och följer samma formatregel. Guiden ska behålla fältet när den sparar om ett äventyr.
 
+### Spelarrollen
+
+Spelarrollen (`campaign.player`) får ett nytt valfritt fält:
+
+```ts
+// CampaignPlayerSchema
+characterId?: string;   // bibliotekskaraktären som spelarrollen är tagen från
+```
+
+- **När författaren väljer en bibliotekskaraktär som spelarroll,** i guiden eller i Storyboard, sparas karaktärens ID här. Namn, utseende och porträtt kopieras som i dag, men nu vet äventyret också vilken karaktär de kom från.
+- **`characterLooks` gäller spelarrollen på samma sätt** som andra karaktärer, via `characterId`. Väljer författaren Emmas kort Sci-fi för spelarrollen, blir det en vanlig rad i `characterLooks`.
+- **Explore gissar aldrig efter namn.** Det kan finnas två karaktärer som heter Emma. Ett äventyr utan `characterId` på spelarrollen (alla äventyr som finns i dag, och en spelarroll som skrivs för hand) har inget kort. Det fungerar som i dag, med spelarrollens egna kopior.
+- **Om karaktären har tagits bort** fungerar spelarrollen vidare med sina kopior, utan kort. Storyboard visar en upplysning: "Spelarrollen var kopplad till en karaktär som inte finns längre."
+- I Storyboard kan författaren koppla en befintlig spelarroll till en bibliotekskaraktär i efterhand, eller ta bort kopplingen.
+
 ### Vilket kort som gäller
 
 En ren funktion i `src/library/characterReference.ts`:
@@ -119,17 +134,45 @@ referenceFor(character: CharacterTemplate, campaign?: CampaignTemplate): {
 3. Utan kort finns inget kort. Då används karaktärens vanliga porträtt och `appearance`, som i dag.
 4. Har äventyret valt ett kort som har tagits bort, används förvalet. Storyboard visar då en upplysning: "Emmas utseende Sci-fi finns inte längre. Förvalet Fantasy används."
 
-All kod som behöver en karaktärs utseende i ett äventyr använder `referenceFor`: guiden, Storyboard, spelstarten och prompterna. Ingen väljer kort på egen hand.
+För spelarrollen finns en egen ingång, som använder samma regler:
+
+```ts
+playerReferenceFor(campaign: CampaignTemplate, characters: CharacterTemplate[]): {
+  character?: CharacterTemplate;     // via campaign.player.characterId, aldrig via namnet
+  card?: ReferenceCard;
+  reference?: CharacterReference;
+  portraitDataUrl?: string;
+}
+```
+
+Utan `characterId`, eller när karaktären inte finns, ger den inget kort och inget porträtt från biblioteket. Då används spelarrollens egna kopior.
+
+All kod som behöver en karaktärs utseende i ett äventyr använder `referenceFor` eller `playerReferenceFor`: guiden, Storyboard, spelstarten och prompterna. Ingen väljer kort på egen hand.
 
 ## Spelporträttet för varje utseende
 
-Ett äventyr med Emma som pilot ska inte visa porträttet av Emma som alv. Därför kan varje kort ha ett eget spelporträtt (`portraitDataUrl` på kortet).
+Ett äventyr med Emma som pilot ska inte visa porträttet av Emma som alv. Därför kan varje kort ha ett eget spelporträtt (`portraitDataUrl` på kortet). Regeln beror på hur många kort karaktären har.
 
-- **När ett spel startar** hämtas porträttet med `referenceFor`. Kortets porträtt används om det finns. Annars används karaktärens vanliga porträtt, så att ingen person i spelet står utan bild.
-- **Guidens porträttförslag** visas när det utseende som äventyret använder saknar ett eget porträtt. Om äventyret använder ett kort, sparar B2 porträttet på det kortet. Annars sparar B2 på karaktären, som i dag.
-- En karaktär med ett enda kort och ett vanligt porträtt fungerar exakt som i dag. Kortets porträtt behövs först när det finns flera utseenden.
+**Inget kort eller ett kort:** karaktärens vanliga porträtt räcker, som i dag.
+- När ett spel startar används kortets eget porträtt om det finns, annars det vanliga porträttet.
+- Guiden föreslår ett porträtt bara när karaktären saknar både vanligt porträtt och kortporträtt.
 
-**Fråga till Astra och Sol:** B2 sparar i dag porträttet på karaktären. Med flera kort behöver B2 spara på det kort som äventyret använder. Det är en liten ändring av målet för sparandet, men den hör till B2. Ska den göras i #77, eller som en uppföljning när referenskorten finns?
+**Två kort eller fler:** varje kort som används av ett äventyr ska ha ett eget porträtt.
+- När ett andra kort läggs till, kopieras karaktärens vanliga porträtt till det första kortet om det kortet saknar ett eget. Det vanliga porträttet visade ju det enda utseende som fanns.
+- Guiden föreslår ett porträtt när kortet som äventyret använder saknar ett eget, även om karaktären har ett vanligt porträtt. Exempel: Emma har Fantasy med porträtt och Sci-fi utan. Ett äventyr som använder Sci-fi får ett porträttförslag.
+- När ett spel startar används kortets porträtt. Saknas det används det vanliga porträttet, så att ingen person i spelet står utan bild, och Storyboard visar en upplysning: "Emmas utseende Sci-fi har inget eget porträtt."
+
+Samma regler gäller spelarrollen, via `playerReferenceFor`. Utan `characterId` gäller spelarrollens eget porträtt, som i dag.
+
+### Beslut om B2
+
+Astra har beslutat: **sparandet per kort görs som en uppföljning till #77**, när referenskorten finns. Det godkända B2-flödet går vidare enligt sin plan och sparar på karaktären tills dess.
+
+I uppföljningen:
+- **Förhandsvisningen bär med sig både `characterId` och `cardId`** för det kort som porträttet gäller, från det ögonblick förslaget visas.
+- **Sparandet använder de två ID:na,** inte förvalet eller äventyrets val vid sparögonblicket. Ett godkänt Sci-fi-porträtt hamnar alltså på det kort som författaren såg, även om förvalet eller äventyrets val ändras innan författaren sparar.
+- Har kortet tagits bort innan sparandet, sparas ingenting. Guiden visar varför och låter författaren välja ett annat kort.
+- För en karaktär med inget kort eller ett kort sparas porträttet på karaktären, som i dag.
 
 ## Versionerna
 
@@ -140,7 +183,8 @@ Reglerna gäller varje kort för sig.
 3. **`basedOn`** anger vilken version ändringen utgick från.
 4. **Att välja en tidigare version** gör den aktiv (`activeVersion`) men skapar ingen ny version. Ingenting ändras i den.
 5. **Att ändra en tidigare vald version** skapar en ny version enligt punkt 2. Den gamla versionen finns kvar oförändrad.
-6. **Gallring:** högst sex versioner per kort sparas. Den aktiva versionen gallras aldrig. När en sjunde version skapas tas versionen med det lägsta numret bort, efter att författaren har fått frågan. `latestVersion` och `codexBase` påverkas inte av gallringen.
+6. **Gallring:** högst sex versioner per kort sparas. Den aktiva versionen gallras aldrig. När en sjunde version skulle skapas frågar Explore först: "Kortet har redan sex versioner. Version 2, den äldsta, tas bort när du sparar." Valen är "Ta bort och spara" och "Avbryt". `latestVersion` och `codexBase` påverkas inte av gallringen.
+7. **"Avbryt" vid gallring** sparar ingenting och tar inte bort något. Utkastet finns kvar och kan fortsätta att redigeras. Historiken, den aktiva versionen och `latestVersion` är exakt som före försöket. Författaren kan själv ta bort en tidigare version och sedan spara.
 
 **Exempel:** författaren sparar version 1, 2 och 3 av kortet Fantasy. Hen väljer version 1 igen; den blir aktiv, och inget nytt nummer skapas. Hen ändrar hårfärgen och sparar. Det blir version 4, med `basedOn: 1`. Version 1 kan fortfarande öppnas och visar den ursprungliga hårfärgen. Om version 1 och 2 senare har gallrats bort, blir nästa version ändå 5, eftersom `latestVersion` är 4. Kortet Sci-fi har sina egna nummer och påverkas inte.
 
@@ -283,7 +327,8 @@ portraitSourceFromCharacter(character: CharacterTemplate, campaign?: CampaignTem
 
 - **En sparad karaktär:** `portraitSourceFromCharacter` ger namn, ålder, utseende, personligheten som `note`, och det kort som gäller enligt `referenceFor`. Med ett äventyr är det äventyrets val, och utan är det förvalet.
 - **En ny person i guiden:** guiden anger namn, utseende och intervjuanteckningen. Inget kort.
-- **Spelarrollen utan bibliotekskort:** guiden anger namn, utseende och personlighet från `campaign.player`. Inget kort.
+- **Spelarrollen med `characterId`:** guiden använder `playerReferenceFor`, och prompten bygger på det kort som äventyret har valt för den karaktären.
+- **Spelarrollen utan `characterId`:** guiden anger namn, utseende och personlighet från `campaign.player`. Inget kort.
 - `note` följer alltid med i prompten, med och utan kort. Ingenting som B1 skickar med i dag försvinner.
 
 - **Med ett kort** bygger prompten på kortets fakta och palett, med färgernas etiketter i ord. Kortets kläder följer inte med, om inte motivet ber om det.
@@ -299,14 +344,14 @@ portraitSourceFromCharacter(character: CharacterTemplate, campaign?: CampaignTem
 
 | Del | Spår |
 | --- | --- |
-| Fälten `references` och `characterLooks`, versionerna och reglerna för vad som följer med | Claude (Sonnet bygger) |
-| `referenceFor` och `portraitSourceFromCharacter` | Claude, granskas av båda |
+| Fälten `references`, `characterLooks` och spelarrollens `characterId`, versionerna och reglerna för vad som följer med | Claude (Sonnet bygger) |
+| `referenceFor`, `playerReferenceFor` och `portraitSourceFromCharacter` | Claude, granskas av båda |
 | Avsnittet Referenskort på karaktärens sida | Claude |
 | Raden Utseende i Storyboard | Claude |
 | `characterImagePrompt` | Claude, granskas av båda |
 | Hämtning från Codex och granskning av nya revisioner | Claude |
-| Guiden använder `characterImagePrompt`, visar och sparar valt utseende | ChatGPT (Sol) |
-| B2 sparar porträttet på det kort som äventyret använder | ChatGPT (Sol), se frågan ovan |
+| Guiden använder `characterImagePrompt`, visar och sparar valt utseende, och sparar spelarrollens `characterId` | ChatGPT (Sol) |
+| B2 sparar porträttet på kortet, som uppföljning till #77 (se Beslut om B2) | ChatGPT (Sol) |
 
 ## Krav på tester
 
@@ -315,27 +360,35 @@ portraitSourceFromCharacter(character: CharacterTemplate, campaign?: CampaignTem
    - Version 1, 2 och 3, välj version 1, ändra hårfärgen och spara: det blir version 4 med `basedOn: 1`. Version 1 visar fortfarande den ursprungliga hårfärgen.
    - Ett utkast som inte sparas skapar ingen version.
    - Efter gallring används inget nummer igen, och den aktiva versionen gallras aldrig.
+   - "Avbryt" vid den sjunde versionen: utkastet finns kvar, och historiken, `activeVersion` och `latestVersion` är oförändrade.
    - En ny version av ett kort ändrar inte numren på karaktärens andra kort.
-2. Flera kort:
+2. Flera kort och porträtt:
    - "Lägg till referensbild" skapar ett nytt kort. "Byt bild" skapar en ny version av det valda kortet.
    - Det första kortet blir förval. Förvalet kan bytas, men inte tas bort så länge det finns andra kort.
    - Att ta bort ett kort som används av ett äventyr, flyttar äventyret till förvalet efter bekräftelse.
+   - När ett andra kort läggs till får det första kortet karaktärens vanliga porträtt, om det saknar ett eget.
 3. `referenceFor`:
    - äventyrets val, annars förvalet, annars inget kort
    - ett val som pekar på ett borttaget kort ger förvalet och en upplysning
    - Emma i Alvskogen och i Stjärnhamnen ger två olika kort samtidigt, och en ny version av Fantasy ändrar bara Alvskogens prompt.
 4. Spelporträttet:
    - när ett spel startar används kortets porträtt, annars karaktärens
-   - guiden föreslår ett porträtt när utseendet i äventyret saknar ett eget.
-5. En karaktär utan `references`, och ett äventyr utan `characterLooks`, fungerar exakt som i dag. En karaktär som sparas om av guiden eller av Codex-granskningen behåller sina kort, och ett äventyr som sparas om av guiden behåller sitt val.
-6. Korten kopieras inte till en spelomgång, finns inte i det som skickas till berättande AI och finns inte i exporten av ett spel. De finns däremot i bibliotekets säkerhetskopia.
-7. Korten visas inte i galleriet, i Morph eller bland porträtten.
-8. `characterImagePrompt`:
+   - ett kort och ett vanligt porträtt: inget porträttförslag
+   - två kort: ett äventyr som använder Sci-fi utan eget porträtt får ett förslag, även om Emma har ett vanligt porträtt
+   - B2-uppföljningen: förhandsvisningen bär `characterId` och `cardId`, och porträttet sparas på det kortet även om förvalet ändras innan sparandet. Ett borttaget kort ger ett besked och inget sparande.
+5. Spelarrollen:
+   - Två bibliotekskaraktärer heter Emma. Välj den andra Emma som spelarroll, välj hennes kort Sci-fi, spara och öppna äventyret igen. `characterId` pekar på rätt Emma, prompten bygger på hennes Sci-fi-kort, och porträttet hör till det kortet.
+   - En spelarroll utan `characterId` har inget kort, och ingen karaktär väljs efter namnet.
+   - En spelarroll vars karaktär har tagits bort fungerar med sina kopior och ger en upplysning.
+6. En karaktär utan `references`, och ett äventyr utan `characterLooks` och utan `characterId` på spelarrollen, fungerar exakt som i dag. En karaktär som sparas om av guiden eller av Codex-granskningen behåller sina kort, och ett äventyr som sparas om av guiden behåller sitt val.
+7. Korten kopieras inte till en spelomgång, finns inte i det som skickas till berättande AI och finns inte i exporten av ett spel. De finns däremot i bibliotekets säkerhetskopia.
+8. Korten visas inte i galleriet, i Morph eller bland porträtten.
+9. `characterImagePrompt`:
    - med kort: prompten innehåller kortets fakta och färger i ord, men inte kläderna om motivet inte ber om dem
    - utan kort: samma innehåll som B1:s porträttprompt i dag, även `note`
    - för en ny person i guiden och för en spelarroll utan bibliotekskort, via `PortraitSource`
    - stilen läggs till, och `referenceImage` finns bara när verktyget tar emot referensbilder.
-9. Codex:
+10. Codex:
    - En nyare revision av ett kort visas men byts inte automatiskt. "Inte nu" ändrar ingenting.
    - Ett nytt kort i Codex blir ett förslag, inte ett kort.
    - Astras exempel: lokalt ändrat hår, och Codex ändrar hår och ögon. Bara håret blir en konflikt.
@@ -351,13 +404,13 @@ portraitSourceFromCharacter(character: CharacterTemplate, campaign?: CampaignTem
 
 ## Byggordning
 
-1. Formatet granskas av Astra (`references` och `characterLooks`), och frågan om B2 besvaras.
-2. Fälten, versionerna, `referenceFor` och reglerna för vad som följer med, med testerna 1–3 och 5–7.
-3. `characterImagePrompt` och `portraitSourceFromCharacter`, med test 8. Funktionerna granskas av Astra, eftersom Sol bygger på dem.
+1. Formatet granskas av Astra (`references`, `characterLooks` och spelarrollens `characterId`).
+2. Fälten, versionerna, `referenceFor`, `playerReferenceFor` och reglerna för vad som följer med, med testerna 1–3 och 5–8.
+3. `characterImagePrompt` och `portraitSourceFromCharacter`, med test 9. Funktionerna granskas av Astra, eftersom Sol bygger på dem.
 4. Avsnittet Referenskort på karaktärens sida, och raden Utseende i Storyboard.
 5. Spelporträttet för varje utseende, med test 4.
 6. Sol kopplar in funktionen och valet av utseende i guiden.
-7. Hämtning från Codex och granskning av nya revisioner, med test 9.
+7. Hämtning från Codex och granskning av nya revisioner, med test 10.
 
 Stanna för provkörning i webbläsaren efter steg 4 och steg 5.
 
