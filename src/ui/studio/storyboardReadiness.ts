@@ -438,6 +438,40 @@ function draftWarning(scene: CampaignScene): StoryboardIssue {
   };
 }
 
+/**
+ * The author's own arrival text names a person who is hidden when the scene starts. The text is
+ * the author's choice and is never changed; this only says so.
+ */
+function hiddenNameIssues(campaign: CampaignTemplate): StoryboardIssue[] {
+  const found: StoryboardIssue[] = [];
+  for (const scene of campaign.scenes) {
+    const game = scene.encounter;
+    if (!game || sceneFormat(scene) === "earlier" || isOpenDraft(scene)) continue;
+    const text = ` ${game.definition.description.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ")} `;
+    for (const actor of Object.values(game.state.actors)) {
+      if (
+        !actor.requiresFlags?.length ||
+        actor.requiresFlags.every((f) => game.state.flags.includes(f))
+      )
+        continue;
+      // A name also counts in another form: "Jättespindeln" is named by "en jättespindel".
+      const words = actor.name
+        .toLowerCase()
+        .split(/[^\p{L}\p{N}]+/u)
+        .filter(Boolean)
+        .map((word) => (word.length > 4 ? word.replace(/(en|et|na|n|s)$/, "") : word));
+      if (words.length === 0 || !words.every((word) => text.includes(` ${word}`))) continue;
+      found.push({
+        kind: "scene",
+        id: scene.id,
+        field: "arrival",
+        message: `The arrival text mentions ${actor.name}, who is hidden when the scene starts. Change the text, or let the person be seen from the start.`,
+      });
+    }
+  }
+  return found;
+}
+
 export function storyboardWarnings(
   campaign: CampaignTemplate,
   facts: ReadonlySet<string>,
@@ -456,6 +490,7 @@ export function storyboardWarnings(
     ...missingKeyIssues(campaign),
     ...unreachablePositionIssues(campaign),
     ...missingSkillIssues(campaign),
+    ...hiddenNameIssues(campaign),
   ];
   const reach = reachableFromStart(campaign);
   const labels = new Map(adventureFacts(campaign).map((fact) => [fact.id, fact.label]));

@@ -1054,6 +1054,7 @@ export function PlayableStoryboard({
             scene={scene}
             people={characters}
             things={objects}
+            facts={facts}
             busy={busy}
             onChange={patchScene}
             onOpenLibrary={onOpenLibrary}

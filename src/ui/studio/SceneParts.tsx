@@ -1,10 +1,19 @@
 import { useState } from "react";
+import {
+  placePerson,
+  setHidden,
+  setOnReveal,
+  setStance,
+  stanceOf,
+  type Stance,
+} from "../../library/sceneCast";
 import { useTranslate } from "../i18n/LanguageProvider";
 import type {
   CampaignScene,
   CampaignTemplate,
   CharacterTemplate,
   ObjectTemplate,
+  SceneCast,
 } from "../../library/LibrarySchema";
 import {
   actorIdFor,
@@ -27,18 +36,17 @@ import {
   removeItem,
   removePerson,
   setAmmunition,
-  setAttitude,
-  setPersonPosition,
   setTactics,
   setToughness,
   toughnessOf,
   healthFor,
   DEFAULT_PLAYER_HEALTH,
   isHostile,
-  type Attitude,
   type Toughness,
   type ItemPlace,
 } from "../../library/sceneParts";
+
+const NEW_POSITION = "__new-position__";
 
 /** "Who and what is here": the people and things in one scene. */
 export function SceneParts({
@@ -46,6 +54,7 @@ export function SceneParts({
   scene,
   people,
   things,
+  facts = [],
   busy,
   onChange,
   onChangeCampaign,
@@ -57,6 +66,8 @@ export function SceneParts({
   people: CharacterTemplate[];
   /** The adventure's Things. */
   things: ObjectTemplate[];
+  /** Facts an outcome can set, to say what reveals a hidden person. */
+  facts?: { id: string; label: string }[];
   busy: boolean;
   onChange: (scene: CampaignScene) => void;
   /** For changes that reach more than one scene, such as a door on a route. */
@@ -76,6 +87,8 @@ export function SceneParts({
   const [doorLocked, setDoorLocked] = useState(false);
   const [doorKey, setDoorKey] = useState("");
   const [attachTo, setAttachTo] = useState<Record<string, string>>({});
+  const [newPosition, setNewPosition] = useState<Record<string, string>>({});
+  const [willHide, setWillHide] = useState<Record<string, boolean>>({});
   const game = scene.encounter;
   if (!game) return null;
 
@@ -88,6 +101,20 @@ export function SceneParts({
   const player = game.state.actors[game.definition.playerId]!;
 
   const characterOf = (actorId: string) => actorId.replace(/^npc:/, "");
+  const castOf = (actorId: string) =>
+    scene.people.find((pick) => pick.characterId === characterOf(actorId));
+  const changeCast = (actorId: string, change: Partial<SceneCast>) =>
+    attempt(() => ({
+      ...scene,
+      people: scene.people.map((pick) =>
+        pick.characterId === characterOf(actorId) ? { ...pick, ...change } : pick,
+      ),
+    }));
+  /** The facts that can reveal someone; the one already chosen stays listed even if unreachable. */
+  const revealOptions = (chosen?: string) =>
+    chosen && !facts.some((fact) => fact.id === chosen)
+      ? [...facts, { id: chosen, label: chosen }]
+      : facts;
 
   function attempt(change: () => CampaignScene) {
     try {
@@ -183,6 +210,13 @@ export function SceneParts({
       <div className="storyboard-scene-parts__group">
         <strong>{t("spPeople")}</strong>
         {here.length === 0 && <p className="playable-hint">{t("spNoOne")}</p>}
+        <datalist id="storyboard-moods">
+          {t("spMoodSuggestions")
+            .split(",")
+            .map((mood) => (
+              <option key={mood} value={mood.trim()} />
+            ))}
+        </datalist>
         <ul>
           {here.map((actor) => (
             <li key={actor.id}>
@@ -197,34 +231,69 @@ export function SceneParts({
                 {t("spRemove")}
               </button>
               <span className="storyboard-scene-parts__attach">
-                {positions.length > 1 && (
-                  <select
-                    aria-label={`Position of ${actor.name}`}
-                    value={actor.position}
-                    disabled={busy}
-                    onChange={(event) =>
+                <select
+                  aria-label={`Position of ${actor.name}`}
+                  value={newPosition[actor.id] !== undefined ? NEW_POSITION : actor.position}
+                  disabled={busy}
+                  onChange={(event) => {
+                    if (event.target.value === NEW_POSITION)
+                      setNewPosition({ ...newPosition, [actor.id]: "" });
+                    else {
+                      setNewPosition(({ [actor.id]: _closed, ...rest }) => rest);
                       attempt(() =>
-                        setPersonPosition(scene, characterOf(actor.id), event.target.value),
-                      )
+                        placePerson(scene, characterOf(actor.id), {
+                          positionId: event.target.value,
+                        }),
+                      );
                     }
-                  >
-                    {positions.map((position) => (
-                      <option key={position.id} value={position.id}>
-                        {t("spStandsAt", { name: position.name })}
-                      </option>
-                    ))}
-                  </select>
+                  }}
+                >
+                  {positions.map((position) => (
+                    <option key={position.id} value={position.id}>
+                      {t("spStandsAt", { name: position.name })}
+                    </option>
+                  ))}
+                  <option value={NEW_POSITION}>{t("spNewPosition")}</option>
+                </select>
+                {newPosition[actor.id] !== undefined && (
+                  <>
+                    <input
+                      type="text"
+                      aria-label={`${t("spNewPositionName")} (${actor.name})`}
+                      value={newPosition[actor.id]}
+                      disabled={busy}
+                      onChange={(event) =>
+                        setNewPosition({ ...newPosition, [actor.id]: event.target.value })
+                      }
+                    />
+                    <button
+                      type="button"
+                      disabled={busy || !newPosition[actor.id]!.trim()}
+                      aria-label={`${t("spAddPosition")} (${actor.name})`}
+                      onClick={() => {
+                        attempt(() =>
+                          placePerson(scene, characterOf(actor.id), {
+                            name: newPosition[actor.id]!,
+                          }),
+                        );
+                        setNewPosition(({ [actor.id]: _done, ...rest }) => rest);
+                      }}
+                    >
+                      {t("spAddPosition")}
+                    </button>
+                  </>
                 )}
                 <select
                   aria-label={`Attitude of ${actor.name}`}
-                  value={isHostile(game, actor) ? "hostile" : "neutral"}
+                  value={stanceOf(scene, characterOf(actor.id))}
                   disabled={busy}
                   onChange={(event) =>
                     attempt(() =>
-                      setAttitude(scene, characterOf(actor.id), event.target.value as Attitude),
+                      setStance(scene, characterOf(actor.id), event.target.value as Stance),
                     )
                   }
                 >
+                  <option value="friendly">{t("spFriendly")}</option>
                   <option value="neutral">{t("spNeutral")}</option>
                   <option value="hostile">{t("spHostile")}</option>
                 </select>
@@ -255,6 +324,92 @@ export function SceneParts({
                     </option>
                   ))}
                 </select>
+              </span>
+              <span className="storyboard-scene-parts__attach">
+                <label>
+                  {t("spMood")}{" "}
+                  <input
+                    type="text"
+                    list="storyboard-moods"
+                    aria-label={`Mood of ${actor.name}`}
+                    defaultValue={castOf(actor.id)?.mood ?? ""}
+                    disabled={busy}
+                    onBlur={(event) => changeCast(actor.id, { mood: event.target.value })}
+                  />
+                </label>
+                <label>
+                  {t("spTrust")}{" "}
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    aria-label={`Trust of ${actor.name}`}
+                    key={`trust-${actor.id}-${castOf(actor.id)?.trust ?? ""}`}
+                    defaultValue={castOf(actor.id)?.trust ?? "20"}
+                    disabled={busy}
+                    onBlur={(event) => changeCast(actor.id, { trust: event.target.value })}
+                  />
+                </label>
+              </span>
+              <span className="storyboard-scene-parts__attach">
+                <select
+                  aria-label={`Visibility of ${actor.name}`}
+                  value={castOf(actor.id)?.hidden || willHide[actor.id] ? "hidden" : "visible"}
+                  disabled={busy}
+                  onChange={(event) => {
+                    if (event.target.value === "visible") {
+                      setWillHide(({ [actor.id]: _shown, ...rest }) => rest);
+                      attempt(() => setHidden(scene, characterOf(actor.id), null));
+                    } else setWillHide({ ...willHide, [actor.id]: true });
+                  }}
+                >
+                  <option value="visible">{t("spVisible")}</option>
+                  <option value="hidden">{t("spHiddenUntil")}…</option>
+                </select>
+                {(castOf(actor.id)?.hidden || willHide[actor.id]) &&
+                  (facts.length === 0 && !castOf(actor.id)?.hidden ? (
+                    <span className="playable-hint">{t("spNoFacts")}</span>
+                  ) : (
+                    <select
+                      aria-label={`Revealed by for ${actor.name}`}
+                      value={castOf(actor.id)?.hidden?.revealedBy ?? ""}
+                      disabled={busy}
+                      onChange={(event) => {
+                        if (!event.target.value) return;
+                        setWillHide(({ [actor.id]: _set, ...rest }) => rest);
+                        attempt(() => setHidden(scene, characterOf(actor.id), event.target.value));
+                      }}
+                    >
+                      <option value="">{t("spChooseFact")}</option>
+                      {revealOptions(castOf(actor.id)?.hidden?.revealedBy).map((fact) => (
+                        <option key={fact.id} value={fact.id}>
+                          {fact.label}
+                        </option>
+                      ))}
+                    </select>
+                  ))}
+                {castOf(actor.id)?.hidden && isHostile(game, actor) && (
+                  <label>
+                    {t("spOnReveal")}{" "}
+                    <select
+                      aria-label={`On reveal for ${actor.name}`}
+                      value={castOf(actor.id)?.onReveal ?? "wait"}
+                      disabled={busy}
+                      onChange={(event) =>
+                        attempt(() =>
+                          setOnReveal(
+                            scene,
+                            characterOf(actor.id),
+                            event.target.value as "wait" | "attack",
+                          ),
+                        )
+                      }
+                    >
+                      <option value="wait">{t("spWaits")}</option>
+                      <option value="attack">{t("spAttacks")}</option>
+                    </select>
+                  </label>
+                )}
               </span>
               {isHostile(game, actor) && actor.weapons.length > 0 && (
                 <span className="storyboard-scene-parts__attach">
