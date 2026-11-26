@@ -708,3 +708,29 @@ describe("saving and the panel (#78 review, points 1–5)", () => {
     );
   });
 });
+
+describe("a late close from an earlier panel (set of closed openings)", () => {
+  it("ignores a close from panel 1 that comes after panel 2 has opened and closed", async () => {
+    const { fake, tower, hall, reload } = await mount();
+    await act(async () => button("✦ Continue from here")!.click());
+    await act(async () => {});
+    const first = fake!.state.props!;
+    await act(async () => first.onClose({ changed: false, newSceneIds: [] }));
+    await act(async () => button("✦ Deepen")!.click());
+    await act(async () => {});
+    expect(fake!.state.opened.at(-1)).toMatchObject({
+      intent: "deepen",
+      target: { sceneId: tower },
+    });
+    const second = fake!.state.props!;
+    await act(async () => second.onClose({ changed: false, newSceneIds: [] }));
+    expect(host.querySelector("[data-assist-panel]")).toBeNull();
+    const readsBefore = reload.mock.calls.length;
+    // Panel 1 says it has saved something, late. It must not read the adventure again or change it.
+    await act(async () => first.onClose({ changed: true, newSceneIds: ["adv:scene:late"] }));
+    await act(async () => {});
+    expect(reload.mock.calls.length).toBe(readsBefore);
+    expect(host.querySelector(`[data-scene-id="adv:scene:late"]`)).toBeNull();
+    void hall;
+  });
+});

@@ -107,7 +107,8 @@ export function useStoryboardAssist(args: {
   /** Scenes the panel changed that the author had changed too: kept as the author has them. */
   const [conflicts, setConflicts] = useState<string[]>([]);
   const counter = useRef(0);
-  const closed = useRef(-1);
+  /** Every opening that has closed. A close from one of them, late, is ignored for good. */
+  const closed = useRef(new Set<number>());
   const latest = useRef({ ...args, enabled });
   latest.current = { ...args, enabled };
   const [opening, setOpening] = useState(false);
@@ -208,8 +209,8 @@ export function useStoryboardAssist(args: {
   const onClose = useCallback(
     async (result: AssistClose, forId: number) => {
       // Exactly once for each opening, whatever the panel does.
-      if (closed.current === forId) return;
-      closed.current = forId;
+      if (closed.current.has(forId)) return;
+      closed.current.add(forId);
       if (!result.changed) {
         if (openRef.current?.id === forId) {
           setPreview(null);
