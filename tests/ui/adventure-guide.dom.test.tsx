@@ -1082,6 +1082,8 @@ it("cancels and saves an offline portrait to the selected card when two people h
     .mockReturnValue({ drawImage: vi.fn() } as unknown as CanvasRenderingContext2D);
   const dataUrl = vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue(jpeg);
   const view = mountGuide(repo);
+  const saveImage = vi.spyOn(repo, "saveGuideImage");
+  const listCharacters = vi.spyOn(repo, "listCharacters");
 
   function cards() {
     return Array.from(view.host.querySelectorAll<HTMLDetailsElement>(".guide-image-card")).filter(
@@ -1116,8 +1118,22 @@ it("cancels and saves an offline portrait to the selected card when two people h
     expect(cards()).toHaveLength(2);
 
     await selectFile();
+    listCharacters.mockRejectedValueOnce(new Error("Temporary library read failure"));
     await view.click("Spara bild", ".guide-image-card[open]");
+    await view.until(() =>
+      expect(view.host.querySelector(".guide-image-plan [role=alert]")?.textContent).toContain(
+        "Biblioteket kunde inte läsas om",
+      ),
+    );
+    expect(view.host.textContent).toContain("Bilden sparades på Violinisten");
+    expect(view.host.textContent).not.toContain("Bilden kunde inte sparas");
+    expect((await repo.loadCharacter(violinist.id)).portraitDataUrl).toBe(jpeg);
+    expect(saveImage).toHaveBeenCalledTimes(1);
+
+    await view.click("Läs om biblioteket");
     await view.until(() => expect(cards()).toHaveLength(1));
+    expect(saveImage).toHaveBeenCalledTimes(1);
+    expect(view.host.querySelector(".guide-image-plan [role=alert]")).toBeNull();
     expect((await repo.loadCharacter(violinist.id)).portraitDataUrl).toBe(jpeg);
     expect((await repo.loadCharacter(conductor.id)).portraitDataUrl).toBeUndefined();
 
@@ -1127,6 +1143,8 @@ it("cancels and saves an offline portrait to the selected card when two people h
     expect(cards()[0]?.textContent).toContain("Leder ensemblen.");
   } finally {
     await view.cleanup();
+    listCharacters.mockRestore();
+    saveImage.mockRestore();
     dataUrl.mockRestore();
     context.mockRestore();
     vi.unstubAllGlobals();

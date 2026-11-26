@@ -36,6 +36,20 @@ export type GuideImage = {
   target?: GuideImageTarget | undefined;
 };
 
+export function guideMapPlaces(world: RealmTemplate | undefined, places: PlaceTemplate[]) {
+  // A node may inherit a backdrop through a parent card, within the same world only.
+  return world
+    ? adventureMapPlaces(
+        world,
+        places.filter((place) => place.realmId === world.id),
+      )
+    : [];
+}
+
+export function hasGuidePlaceImage(place: PlaceTemplate | undefined): boolean {
+  return Boolean(place?.imageDataUrl || place?.gallery?.length);
+}
+
 function sceneImages(
   scenes: InterviewScene[],
   openingId: string | undefined,
@@ -56,9 +70,7 @@ function sceneImages(
     const cached = maps.get(realmId);
     if (cached) return cached;
     const realm = library.realms.find(({ id }) => id === realmId);
-    const places = library.places.filter((place) => place.realmId === realmId);
-    // The projection also inherits backdrops from parent nodes. Its cards must be from this world.
-    const entries = adventureMapPlaces(realm, places);
+    const entries = guideMapPlaces(realm, library.places);
     maps.set(realmId, entries);
     return entries;
   }
@@ -99,7 +111,7 @@ function sceneImages(
             : JSON.stringify(["new", realmId, placeName.toLowerCase() || scene.id]);
     if (seen.has(key)) continue;
     seen.add(key);
-    if (source?.imageDataUrl || source?.gallery?.length) continue;
+    if (hasGuidePlaceImage(source)) continue;
     const linkedCard =
       entry && realmId && sharedCard
         ? library.places.find((card) => card.id === linkedCardId && card.realmId === realmId)
@@ -148,20 +160,31 @@ function portraitImages(people: Portrait[]): GuideImage[] {
 }
 
 function itemImages(
-  items: Array<{ id: string; name: string; imageDataUrl?: string | undefined }>,
+  items: Array<Pick<ObjectTemplate, "id" | "name" | "imageDataUrl"> & { note?: string }>,
   saved = false,
 ): GuideImage[] {
   const seen = new Set<string>();
-  return items.flatMap(({ id, name, imageDataUrl }) => {
+  return items.flatMap((item) => {
+    const { id, name, note, imageDataUrl } = item;
     if (!name.trim() || imageDataUrl || seen.has(id)) return [];
     seen.add(id);
+    const sameName = saved ? items.filter((other) => other.name.trim() === name.trim()) : [];
+    const context = saved ? note?.trim() : undefined;
     return [
       {
         id: "item-" + id,
         kind: "item",
         subject: name.trim(),
-        details: [],
-        target: saved ? { kind: "object", id, name } : undefined,
+        details: context ? [context] : [],
+        target: saved
+          ? {
+              kind: "object",
+              id,
+              name,
+              context,
+              number: sameName.length > 1 ? sameName.indexOf(item) + 1 : undefined,
+            }
+          : undefined,
       },
     ];
   });

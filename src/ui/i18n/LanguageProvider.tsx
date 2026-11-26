@@ -70,6 +70,10 @@ const guideLabels = {
     cgImageSave: "Spara bild",
     cgImageCancel: "Avbryt",
     cgImageSaved: "Bilden sparades på {name}.",
+    cgImageReloadingLibrary: "Läser om biblioteket …",
+    cgImageReloadFailed:
+      "Biblioteket kunde inte läsas om. Försök igen för att uppdatera bildförslagen.",
+    cgImageReloadLibrary: "Läs om biblioteket",
     cgImageReadFailed: "Bilden gick inte att öppna. Prova en annan fil.",
     cgImageSaveFailed: "Bilden kunde inte sparas. Öppna äventyret igen för att kontrollera kortet.",
     cgImageNoCard: "Det finns inget sparat kort att lägga bilden på.",
@@ -340,6 +344,10 @@ const guideLabels = {
     cgImageSave: "Save image",
     cgImageCancel: "Cancel",
     cgImageSaved: "Image saved to {name}.",
+    cgImageReloadingLibrary: "Reloading the library …",
+    cgImageReloadFailed:
+      "The library could not be reloaded. Try again to refresh the image suggestions.",
+    cgImageReloadLibrary: "Reload library",
     cgImageReadFailed: "The image could not be opened. Try another file.",
     cgImageSaveFailed: "The image could not be saved. Reopen the adventure to check the card.",
     cgImageNoCard: "There is no saved card to attach this image to.",
@@ -608,6 +616,10 @@ const guideLabels = {
     cgImageSave: "Lagre bilde",
     cgImageCancel: "Avbryt",
     cgImageSaved: "Bildet ble lagret på {name}.",
+    cgImageReloadingLibrary: "Laster biblioteket på nytt …",
+    cgImageReloadFailed:
+      "Biblioteket kunne ikke lastes på nytt. Prøv igjen for å oppdatere bildeforslagene.",
+    cgImageReloadLibrary: "Last biblioteket på nytt",
     cgImageReadFailed: "Bildet kunne ikke åpnes. Prøv en annen fil.",
     cgImageSaveFailed: "Bildet kunne ikke lagres. Åpne eventyret igjen for å sjekke kortet.",
     cgImageNoCard: "Det finnes ikke noe lagret kort å legge bildet på.",

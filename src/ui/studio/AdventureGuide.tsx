@@ -677,10 +677,8 @@ function GuideWorkspace({
               key={savedCampaign.id}
               saved
               images={savedGuideImages(savedCampaign, library)}
-              onSave={async (target, image) => {
-                await repo.saveGuideImage(target, image);
-                setLibrary(await readLibrary(repo));
-              }}
+              onSave={(target, image) => repo.saveGuideImage(target, image)}
+              onReload={async () => setLibrary(await readLibrary(repo))}
             />
           )}
         </section>

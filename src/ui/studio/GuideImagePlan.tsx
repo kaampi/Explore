@@ -13,6 +13,10 @@ const cardLabels = {
   realm: "cgImageWorldCard",
 } as const;
 
+function targetName(target: GuideImageTarget) {
+  return target.number ? `${target.name} #${target.number}` : target.name;
+}
+
 type SaveImage = (target: GuideImageTarget, image: SceneImagePair) => Promise<void>;
 
 const imageLabels = {
@@ -27,43 +31,70 @@ export function GuideImagePlan({
   images,
   saved = false,
   onSave,
+  onReload,
 }: {
   images: GuideImage[];
   saved?: boolean;
   onSave?: SaveImage;
+  onReload?: () => Promise<void>;
 }) {
   const t = useTranslate();
   const [savedName, setSavedName] = useState("");
+  const [reloadState, setReloadState] = useState<"ready" | "loading" | "failed">("ready");
+
+  async function reload() {
+    if (!onReload) return;
+    setReloadState("loading");
+    try {
+      await onReload();
+      setReloadState("ready");
+    } catch {
+      setReloadState("failed");
+    }
+  }
+
   async function save(target: GuideImageTarget, image: SceneImagePair) {
     if (!onSave) return;
     setSavedName("");
     await onSave(target, image);
-    setSavedName(target.name);
+    setSavedName(targetName(target));
+    await reload();
   }
   return (
     <details className="guide-plan-section guide-image-plan">
       <summary>{t("cgImagePlan")}</summary>
       {savedName && <p role="status">{t("cgImageSaved", { name: savedName })}</p>}
-      {images.length ? (
+      {reloadState === "loading" && <p role="status">{t("cgImageReloadingLibrary")}</p>}
+      {reloadState === "failed" && (
         <>
-          <p>{t(saved ? "cgImageSavedPlanHelp" : "cgImagePlanHelp")}</p>
-          {images.map((image) => (
-            <ImagePrompt
-              key={JSON.stringify([
-                image.id,
-                image.target?.kind,
-                image.target?.id,
-                image.target && "realmId" in image.target ? image.target.realmId : undefined,
-              ])}
-              image={image}
-              saved={saved}
-              onSave={save}
-            />
-          ))}
+          <p role="alert">{t("cgImageReloadFailed")}</p>
+          <button type="button" onClick={() => void reload()}>
+            {t("cgImageReloadLibrary")}
+          </button>
         </>
-      ) : (
-        <p>{t(saved ? "cgImagePlanSavedEmpty" : "cgImagePlanEmpty")}</p>
       )}
+      <div hidden={reloadState !== "ready"}>
+        {images.length ? (
+          <>
+            <p>{t(saved ? "cgImageSavedPlanHelp" : "cgImagePlanHelp")}</p>
+            {images.map((image) => (
+              <ImagePrompt
+                key={JSON.stringify([
+                  image.id,
+                  image.target?.kind,
+                  image.target?.id,
+                  image.target && "realmId" in image.target ? image.target.realmId : undefined,
+                ])}
+                image={image}
+                saved={saved}
+                onSave={save}
+              />
+            ))}
+          </>
+        ) : (
+          <p>{t(saved ? "cgImagePlanSavedEmpty" : "cgImagePlanEmpty")}</p>
+        )}
+      </div>
     </details>
   );
 }
@@ -141,7 +172,7 @@ function ImagePrompt({
     }
   }
 
-  const cardName = target?.number ? `${target.name} #${target.number}` : target?.name;
+  const cardName = target ? targetName(target) : undefined;
   const heading = (
     <h3>
       {t(label)} · {target?.number ? cardName : subject}

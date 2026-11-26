@@ -5,7 +5,7 @@ import {
   type CutsceneFilm,
 } from "../cutscenes/schema";
 import { FactionSchema, type Faction } from "../library/factions";
-import type { GuideImageTarget } from "../library/guideImages";
+import { guideMapPlaces, hasGuidePlaceImage, type GuideImageTarget } from "../library/guideImages";
 import { buildGuideAdventure } from "../library/buildGuideAdventure";
 import { AdventureGuideDraftSchema, type AdventureGuideDraft } from "../library/adventureGuidePlan";
 import {
@@ -1408,65 +1408,113 @@ export class IndexedDBRepository {
       return;
     }
     if (kind === "place") {
-      await this.updateImageRecord(PLACES_STORE, id, (row) => {
-        const card = parsePlaceTemplate(row);
-        if (card.realmId !== target.realmId || card.imageDataUrl || card.gallery?.length)
-          throw new Error("Location image unavailable");
-        return parsePlaceTemplate({ ...card, ...image, updatedAt });
+      const worldId = target.realmId;
+      await this.updateImageRecord(
+        PLACES_STORE,
+        id,
+        (row, [worldRow, placeRows]) => {
+          const card = parsePlaceTemplate(row);
+          const world = worldRow === undefined ? undefined : parseRealmTemplate(worldRow);
+          const places = Array.isArray(placeRows)
+            ? parseLibraryList("place", placeRows, parsePlaceTemplate)
+            : [];
+          const linked = guideMapPlaces(world, places).filter(({ node }) => node.placeId === id);
+          if (
+            card.realmId !== worldId ||
+            hasGuidePlaceImage(card) ||
+            (linked.length === 1 && hasGuidePlaceImage(linked[0]?.place))
+          )
+            throw new Error("Location image unavailable");
+          return parsePlaceTemplate({ ...card, ...image, updatedAt });
+        },
+        worldId ? [{ store: REALMS_STORE, id: worldId }, { store: PLACES_STORE }] : [],
+      );
+      return;
+    }
+    if (kind === "realm") {
+      await this.updateImageRecord(REALMS_STORE, id, (row) => {
+        const world = parseRealmTemplate(row);
+        if (world.imageDataUrl || world.gallery?.length) throw new Error("Image already exists");
+        return parseRealmTemplate({ ...world, ...image, updatedAt });
       });
       return;
     }
-    await this.updateImageRecord(REALMS_STORE, kind === "realm" ? id : target.realmId, (row) => {
-      const world = parseRealmTemplate(row);
-      if (kind === "realm") {
-        if (world.imageDataUrl || world.gallery?.length) throw new Error("Image already exists");
-        return parseRealmTemplate({ ...world, ...image, updatedAt });
-      }
-      const map = world.worldMap;
-      const node = map?.nodes.find((entry) => entry.id === id);
-      if (
-        !map ||
-        !node ||
-        node.isJunction ||
-        node.kind === "Furniture" ||
-        node.imageDataUrl ||
-        node.images?.some(Boolean)
-      )
-        throw new Error("Map image unavailable");
-      return parseRealmTemplate({
-        ...world,
-        updatedAt,
-        worldMap: {
-          ...map,
-          nodes: map.nodes.map((entry) =>
-            entry.id === id
-              ? { ...entry, imageDataUrl: image.imageDataUrl, images: [image.imageDataUrl] }
-              : entry,
-          ),
-        },
-      });
-    });
+    await this.updateImageRecord(
+      REALMS_STORE,
+      target.realmId,
+      (row, [placeRows]) => {
+        const world = parseRealmTemplate(row);
+        const map = world.worldMap;
+        const places = parseLibraryList("place", placeRows as unknown[], parsePlaceTemplate);
+        const entry = guideMapPlaces(world, places).find(({ node }) => node.id === id);
+        if (!map || !entry || hasGuidePlaceImage(entry.place))
+          throw new Error("Map image unavailable");
+        return parseRealmTemplate({
+          ...world,
+          updatedAt,
+          worldMap: {
+            ...map,
+            nodes: map.nodes.map((node) =>
+              node.id === id
+                ? { ...node, imageDataUrl: image.imageDataUrl, images: [image.imageDataUrl] }
+                : node,
+            ),
+          },
+        });
+      },
+      [{ store: PLACES_STORE }],
+    );
   }
 
-  private updateImageRecord(storeName: string, id: string, update: (row: unknown) => unknown) {
+  private updateImageRecord(
+    storeName: string,
+    id: string,
+    update: (row: unknown, relatedRows: unknown[]) => unknown,
+    related: { store: string; id?: string }[] = [],
+  ) {
     return this.withDb(
       (db) =>
         new Promise<void>((resolve, reject) => {
-          const tx = db.transaction(storeName, "readwrite");
+          const tx = db.transaction(
+            [...new Set([storeName, ...related.map(({ store }) => store)])],
+            "readwrite",
+          );
           const store = tx.objectStore(storeName);
-          const request = store.get(id);
           let failure: unknown;
           tx.oncomplete = () => resolve();
           tx.onabort = () => reject(failure ?? writeError(storeName, tx.error));
-          request.onsuccess = () => {
-            try {
-              if (request.result === undefined) throw new Error("Image card no longer exists");
-              store.put(update(request.result));
-            } catch (error) {
-              failure = error;
-              tx.abort();
+
+          function accept(request: IDBRequest, handler: (row: unknown) => void) {
+            request.onsuccess = () => {
+              try {
+                handler(request.result);
+              } catch (error) {
+                failure = error;
+                tx.abort();
+              }
+            };
+          }
+
+          accept(store.get(id), (row) => {
+            if (row === undefined) throw new Error("Image card no longer exists");
+            const relatedRows: unknown[] = [];
+            function readNext() {
+              const next = related[relatedRows.length];
+              if (!next) {
+                store.put(update(row, relatedRows));
+                return;
+              }
+              const relatedStore = tx.objectStore(next.store);
+              accept(
+                next.id === undefined ? relatedStore.getAll() : relatedStore.get(next.id),
+                (relatedRow) => {
+                  relatedRows.push(relatedRow);
+                  readNext();
+                },
+              );
             }
-          };
+            readNext();
+          });
         }),
     );
   }
