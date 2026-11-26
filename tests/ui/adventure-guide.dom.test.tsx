@@ -9,6 +9,7 @@ import { newAdventureGuideDraft } from "../../src/library/adventureGuidePlan";
 import { lighthouseExample } from "../../src/library/examples/guidePlans";
 import type { GuideSceneTarget } from "../../src/library/guideSceneRevision";
 import { GuideSceneEditor } from "../../src/ui/studio/GuideSceneEditor";
+import { discussGuideQuestion } from "../../src/library/guideAssistant";
 import { newGuideChoice, newGuideInterview } from "../../src/library/guideInterview";
 import {
   GuideInterviewConflictError,
@@ -308,6 +309,7 @@ it("uses AI only on request, applies synopsis answers one by one, and plays the 
     await view.until(() => expect(view.host.textContent).toContain("I väskan ligger ett brev."));
     const request = JSON.parse(chat.mock.calls[0]?.[0]?.body as string);
     expect(request.model).toBe("guide:latest");
+    expect(request.format).toBe("json");
     expect(JSON.parse(request.messages[1].content)).toEqual({ synopsis: draft.premise });
     expect(await repo.loadGuideInterview()).toEqual(draft);
     const cards = Array.from(view.host.querySelectorAll(".guide-assistant-suggestion"));
@@ -358,6 +360,105 @@ it("uses AI only on request, applies synopsis answers one by one, and plays the 
   }
 });
 
+it("allows a local model to finish a guide answer after 30 seconds", async () => {
+  vi.useFakeTimers();
+  try {
+    const reply = "Ask about the keepsake.";
+    const result = discussGuideQuestion(
+      {
+        async *streamCompletion() {
+          await new Promise((resolve) => setTimeout(resolve, 35_000));
+          yield { type: "text_delta", text: JSON.stringify({ reply }) };
+          yield { type: "done", finishReason: "stop" };
+        },
+      },
+      newGuideInterview(),
+      "action",
+      "What could the player try here?",
+      undefined,
+      "Suggest dialogue.",
+      [],
+      new AbortController().signal,
+    );
+    const check = expect(result).resolves.toEqual({ status: "ok", value: { reply } });
+    await vi.advanceTimersByTimeAsync(35_000);
+    await check;
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("reports a guide timeout only after the model request reaches its deadline", async () => {
+  vi.useFakeTimers();
+  try {
+    let signal: AbortSignal | undefined;
+    const result = discussGuideQuestion(
+      {
+        async *streamCompletion(request) {
+          signal = request.signal;
+          await new Promise<never>((_, reject) => {
+            signal?.addEventListener("abort", () => reject(new Error("Aborted")), { once: true });
+          });
+        },
+      },
+      newGuideInterview(),
+      "action",
+      "What could the player try here?",
+      undefined,
+      "Suggest dialogue.",
+      [],
+      new AbortController().signal,
+    );
+    await vi.advanceTimersByTimeAsync(119_999);
+    expect(signal?.aborted).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    await expect(result).resolves.toEqual({ status: "failed", reason: "timeout" });
+    expect(signal?.aborted).toBe(true);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it.each([true, false])(
+  "allows editing long dialogue before applying an action (structured suggestion: %s)",
+  async (withSuggestion) => {
+    const repo = new IndexedDBRepository(new IDBFactory(), "guide-dialogue");
+    const draft = newGuideInterview();
+    draft.premise = "Two musicians meet at a station.";
+    draft.question = "action";
+    draft.subject = "opening";
+    await repo.saveGuideInterview(draft, undefined);
+    const dialogue = "The musician pauses. ".repeat(52).trim();
+    const longAction = "Tell the musician about the journey. ".repeat(5).trim();
+    const chat = mockGuideModel(() =>
+      ollamaAnswer({ reply: dialogue, suggestion: withSuggestion ? longAction : undefined }),
+    );
+    const view = mountGuide(repo, "en", true);
+    try {
+      await view.open();
+      await view.click("Talk it through with the Assistant");
+      await view.fill("Question or idea to discuss", "Suggest dialogue for the meeting.");
+      await view.click("Send to Assistant");
+      await view.until(() => expect(view.host.textContent).toContain(dialogue));
+      expect(JSON.parse(chat.mock.calls[0]?.[0]?.body as string).format).toBe("json");
+      if (!withSuggestion) await view.click("Edit the reply as an answer");
+      expect(view.field("Edit suggestion for Action").value).toBe(
+        withSuggestion ? longAction : dialogue,
+      );
+      const use = view.host.querySelector<HTMLButtonElement>(".guide-assistant-suggestion button")!;
+      expect(use.disabled).toBe(true);
+      expect((await repo.loadGuideInterview())?.choices).toEqual(draft.choices);
+      await view.fill("Edit suggestion for Action", "Ask Emma about the letter.");
+      await view.click("Use as answer");
+      expect(view.field("Action", ".guide-answer").value).toBe("Ask Emma about the letter.");
+    } finally {
+      await view.cleanup();
+      localStorage.removeItem("sandboxai-preferred-model");
+      vi.unstubAllGlobals();
+    }
+  },
+);
+
 it("keeps discussion separate, recovers from invalid AI output, and cancels on leaving a question", async () => {
   const repo = new IndexedDBRepository(new IDBFactory(), "guide-discussion");
   const draft = newGuideInterview();
@@ -368,6 +469,8 @@ it("keeps discussion separate, recovers from invalid AI output, and cancels on l
   let inFlight: AbortSignal | null | undefined;
   const chat = mockGuideModel(() => ollamaAnswer({}));
   chat
+    .mockImplementationOnce(() => new Response(JSON.stringify({ error: "Model stopped" })))
+    .mockImplementationOnce(() => new Response(null, { status: 500 }))
     .mockImplementationOnce(() => ollamaAnswer("Fel format"))
     .mockImplementationOnce(() =>
       ollamaAnswer({
@@ -396,10 +499,15 @@ it("keeps discussion separate, recovers from invalid AI output, and cancels on l
     await view.open();
     await view.click("Bolla med Assistenten");
     await view.fill("Fråga eller idé att bolla", "Kan vi göra det spännande?");
-    await view.click("Skicka till Assistenten");
-    await view.until(() =>
-      expect(view.host.textContent).toContain("Assistenten kunde inte ge ett svar."),
-    );
+    for (const failure of [
+      "AI-anslutningen rapporterade ett fel.",
+      "Anropet till AI-tjänsten misslyckades.",
+      "Modellen svarade, men guiden kunde inte läsa svaret.",
+    ]) {
+      await view.click("Skicka till Assistenten");
+      await view.until(() => expect(view.host.textContent).toContain(failure));
+      expect(view.field("Fråga eller idé att bolla").value).toBe("Kan vi göra det spännande?");
+    }
     expect((await repo.loadGuideInterview())?.intention).toBe("");
     await view.click("Skicka till Assistenten");
     await view.until(() => expect(view.host.textContent).toContain("Samarbeta under tidspress."));
@@ -414,7 +522,7 @@ it("keeps discussion separate, recovers from invalid AI output, and cancels on l
     await view.until(() =>
       expect(view.host.textContent).toContain("Undersök varför tåget stannade."),
     );
-    const body = JSON.parse(chat.mock.calls[2]?.[0]?.body as string);
+    const body = JSON.parse(chat.mock.calls[4]?.[0]?.body as string);
     expect(JSON.parse(body.messages[1].content).history).toEqual([
       {
         message: "Kan vi göra det spännande?",

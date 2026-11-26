@@ -116,6 +116,8 @@ export interface OllamaProviderConfig {
    * proposal-extraction use case (Pass 2, §33.2).
    */
   structuredOutputSupported?: boolean;
+  /** Request a JSON response for tasks that parse the completion as one object. */
+  responseFormat?: "json";
   /** Injectable for tests; defaults to the global fetch. */
   fetchImpl?: typeof fetch;
 }
@@ -132,11 +134,13 @@ export class OllamaProvider implements LLMProvider {
   readonly name: string;
   readonly capabilities: ProviderCapabilities;
   private readonly model: string;
+  private readonly responseFormat: "json" | undefined;
   private readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
 
   constructor(config: OllamaProviderConfig) {
     this.model = config.model;
+    this.responseFormat = config.responseFormat;
     this.baseUrl = normalizeBaseUrl(config.baseUrl);
     this.name = config.name ?? `ollama:${config.model}`;
     this.fetchImpl = boundFetch(config.fetchImpl);
@@ -156,6 +160,7 @@ export class OllamaProvider implements LLMProvider {
         model: this.model,
         messages: request.messages.map((m) => ({ role: m.role, content: m.content })),
         stream: true,
+        ...(this.responseFormat ? { format: this.responseFormat } : {}),
         options: {
           ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
           ...(request.seed !== null && request.seed !== undefined ? { seed: request.seed } : {}),
