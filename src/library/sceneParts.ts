@@ -199,6 +199,35 @@ function withoutItem(game: EncounterGame, itemId: string) {
     game.definition.weapons = game.definition.weapons.filter((weapon) => weapon.id !== itemId);
 }
 
+/**
+ * Tell a scene what a thing is, without putting it anywhere and without touching who carries it.
+ * A door or an action there can then name it. `as: "gift"` also makes it a thing that lies about
+ * (an action can take it), even if it is known as a weapon; by default a weapon already counts.
+ */
+export function describeItem(
+  scene: CampaignScene,
+  object: ObjectTemplate,
+  as: "key" | "gift" = "key",
+): CampaignScene {
+  const current = requireGame(scene);
+  const d = current.encounter.definition;
+  const known =
+    d.items.some((item) => item.id === object.id) ||
+    (as === "key" && d.weapons.some((weapon) => weapon.id === object.id));
+  if (known) return scene;
+  const game = structuredClone(current.encounter);
+  game.definition.items.push({
+    id: object.id,
+    name: object.name,
+    description: itemDescription(object),
+    requiresFlags: [],
+    ...(object.readableContent ? { readableContent: object.readableContent } : {}),
+    ...(object.imageDataUrl ? { imageDataUrl: object.imageDataUrl } : {}),
+    ...itemExtras(object),
+  });
+  return finish(current, game);
+}
+
 /** Put an item from Things in the scene. An item is in one place at a time. */
 export function placeItem(
   scene: CampaignScene,

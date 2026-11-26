@@ -6,7 +6,8 @@ import type {
 } from "@library/LibrarySchema";
 import { defaultStoryboardPosition, storyboardHierarchy } from "@library/storyboardHierarchy";
 import { ceilStoryboardCoordinate } from "./storyboardGrid";
-import { layoutStoryboard, type StoryboardCard } from "./storyboardLayout";
+import { CARD_HEIGHT, CARD_WIDTH, layoutStoryboard, type StoryboardCard } from "./storyboardLayout";
+import { STORYBOARD_GRID_SIZE } from "./storyboardGrid";
 
 const COLUMN_GAP = 120;
 const CARD_GAP = 40;
@@ -160,4 +161,81 @@ export function arrangeStoryboard(
       }),
     ),
   };
+}
+
+/** A card that is already on the canvas: where it is and how big. */
+export type PlacedCard = { id: string; pos: StoryboardPosition; width: number; height: number };
+
+const floorToGrid = (value: number) =>
+  Math.floor(value / STORYBOARD_GRID_SIZE) * STORYBOARD_GRID_SIZE;
+
+/**
+ * Where new scenes go: on the grid, beside the scene they grow from, on the side where there is
+ * room. It never moves a card that is already there, and the same input gives the same answer.
+ */
+export function placeNewScenes(
+  cards: PlacedCard[],
+  anchorSceneId: string,
+  newIds: string[],
+): Map<string, StoryboardPosition> {
+  const fresh = new Set(newIds);
+  const taken: { x: number; y: number; width: number; height: number }[] = cards
+    .filter(({ id }) => !fresh.has(id))
+    .map(({ pos, width, height }) => ({ ...pos, width, height }));
+  const anchor = cards.find(({ id }) => id === anchorSceneId);
+  const placed = new Map<string, StoryboardPosition>();
+  const gap = STORYBOARD_GRID_SIZE;
+  const free = (x: number, y: number) =>
+    !taken.some(
+      (card) =>
+        x < card.x + card.width + gap &&
+        x + CARD_WIDTH + gap > card.x &&
+        y < card.y + card.height + gap &&
+        y + CARD_HEIGHT + gap > card.y,
+    );
+  /** The nearest free spot in a column, trying the anchor's own height first, then down and up. */
+  function inColumn(x: number, top: number): StoryboardPosition | undefined {
+    const step = ceilStoryboardCoordinate(CARD_HEIGHT + CARD_GAP);
+    for (let n = 0; n < 200; n++) {
+      const offset = Math.ceil(n / 2) * step * (n % 2 === 1 ? 1 : -1);
+      const y = top + offset;
+      if (free(x, y)) return { x, y };
+    }
+    return undefined;
+  }
+  /** A column beyond every card there is, which is always free. */
+  function newColumn(top: number): StoryboardPosition {
+    const right = Math.max(0, ...taken.map((card) => card.x + card.width));
+    const x = ceilStoryboardCoordinate(right + COLUMN_GAP);
+    return inColumn(x, top) ?? { x, y: top };
+  }
+  newIds.forEach((id) => {
+    let spot: StoryboardPosition;
+    if (!anchor) {
+      spot = newColumn(0);
+    } else {
+      const top = ceilStoryboardCoordinate(anchor.pos.y);
+      // Right side first, then left, then below. A side is good when its column has room within a
+      // card's height of the anchor; otherwise the side that needs the smallest move is used. If
+      // no side has room at all, the scene goes in a new column beyond the last card.
+      const step = ceilStoryboardCoordinate(CARD_HEIGHT + CARD_GAP);
+      const below = {
+        x: ceilStoryboardCoordinate(anchor.pos.x),
+        y: ceilStoryboardCoordinate(anchor.pos.y + anchor.height + CARD_GAP),
+      };
+      const sides: StoryboardPosition[] = [
+        inColumn(ceilStoryboardCoordinate(anchor.pos.x + anchor.width + COLUMN_GAP), top),
+        inColumn(floorToGrid(anchor.pos.x - COLUMN_GAP - CARD_WIDTH), top),
+      ].filter((side): side is StoryboardPosition => side !== undefined);
+      if (free(below.x, below.y)) sides.push(below);
+      const shift = (side: StoryboardPosition) => (side === below ? 0 : Math.abs(side.y - top));
+      spot =
+        sides.find((side) => shift(side) <= step) ??
+        [...sides].sort((a, b) => shift(a) - shift(b))[0] ??
+        newColumn(top);
+    }
+    placed.set(id, spot);
+    taken.push({ ...spot, width: CARD_WIDTH, height: CARD_HEIGHT });
+  });
+  return placed;
 }

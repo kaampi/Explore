@@ -5,8 +5,8 @@ import type {
 } from "../../library/LibrarySchema";
 import { defaultStoryboardPosition, storyboardHierarchy } from "../../library/storyboardHierarchy";
 
-const CARD_WIDTH = 200;
-const CARD_HEIGHT = 124;
+export const CARD_WIDTH = 200;
+export const CARD_HEIGHT = 124;
 const FRAME_GUTTER = 18;
 export const STORYBOARD_FRAME_HEADER = 44;
 

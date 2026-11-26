@@ -7,7 +7,7 @@ import type {
 import { encounterRules, type RulesAdapter } from "./rules";
 import { itemRevealed } from "./itemVisibility";
 
-function applyEffects(
+export function applyEffects(
   d: EncounterDefinition,
   s: EncounterState,
   effects: Interaction["success"]["effects"],
