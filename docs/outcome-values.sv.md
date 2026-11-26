@@ -40,10 +40,10 @@ Varje person som inte är spelaren får relationsvärden mot spelaren:
 
 ```ts
 // ActorSchema, valfritt
-attitude?: { trust: number; familiarity: number; tension: number }
+relation?: { trust: number; familiarity: number; tension: number }
 ```
 
-- När ett äventyr startar fylls `attitude` från scenens `SceneCastSchema`, där värdena i dag är text ("20"). Saknas personen där används 20, 10 och 5, samma som i dag.
+- När ett äventyr startar fylls `relation` från scenens `SceneCastSchema`, där värdena i dag är text ("20"). Saknas personen där används 20, 10 och 5, samma som i dag.
 - Följer med mellan scener som resten av personen.
 - I fritt spel med AI används samma värden som i dag. Ingenting ändras där.
 
@@ -132,7 +132,7 @@ Alla fält är valfria. Ett äventyr utan dem fungerar som i dag. Enligt `owners
 | Fält | Var | Vem skriver | Vem läser |
 | --- | --- | --- | --- |
 | Effekten `change-value` | `EffectSchema` | Storyboard, senare guiden och AI-hjälpen | motorn |
-| `attitude` | `ActorSchema` | när äventyret startar, och motorn | motorn och spelvyn |
+| `relation` | `ActorSchema` | när äventyret startar, och motorn | motorn och spelvyn |
 | `exceptional`, `severe` | `InteractionSchema` | Storyboard | motorn |
 | `requiresValues` | `InteractionSchema`, `descriptions`, `AdventureLinkSchema` | Storyboard | motorn |
 | `valueLimits` | `CampaignTemplateSchema` | Storyboard | motorn |
@@ -154,7 +154,7 @@ Det som gör AI-spel bättre ligger i version 2: krav på modell, ramar för ber
 Motorn:
 1. `change-value` ändrar rätt värde, stannar inom regelverkets gränser och påverkar nästa slag.
 2. Ett ändrat värde följer med till nästa scen.
-3. `attitude` fylls från scenens värden när äventyret startar, också när de är skrivna som text.
+3. `relation` fylls från scenens värden när äventyret startar, också när de är skrivna som text.
 4. En exceptionell eller allvarlig följd används när den finns, annars lyckad eller misslyckad.
 5. `requiresValues` döljer och visar handlingar, kopplingar och beskrivningar på gränsen (exakt 60 för "minst 60").
 6. En gräns slår till en gång, sätter sina fakta och avslutar spelet med `ends`.
@@ -173,7 +173,7 @@ Spelvyn:
 ## Byggordning
 
 1. Formatförslagen granskas av Astra.
-2. Motorn: `change-value`, `attitude`, de fyra följderna och `requiresValues`, med testerna 1–5, 8 och 9.
+2. Motorn: `change-value`, `relation`, de fyra följderna och `requiresValues`, med testerna 1–5, 8 och 9.
 3. Gränser (`valueLimits`), med test 6.
 4. Spelvyn: notiser, mätaren och dagboken, med testerna 10 och 11.
 5. Storyboard: raderna för värden och villkor, avsnittet om gränser och kontrollerna, med test 7.
