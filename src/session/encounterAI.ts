@@ -37,7 +37,9 @@ type CallText = { status: "ok"; text: string };
 export type CallResult = CallText | { status: "cancelled" | "failed" };
 
 type ProviderCallResult =
-  CallText | { status: "cancelled" } | { status: "failed"; reason: ProviderFailure };
+  | (CallText & { finishReason: "stop" | "length" })
+  | { status: "cancelled" }
+  | { status: "failed"; reason: ProviderFailure };
 
 /** True when the AI may be used at all: exploration only, never during combat or after the end. */
 export function aiAllowed(game: EncounterGame | undefined): game is EncounterGame {
@@ -64,7 +66,7 @@ export async function callProvider(
   };
   try {
     let text = "";
-    let finished = false;
+    let finishReason: "stop" | "length" | undefined;
     for await (const chunk of provider.streamCompletion({
       ...request,
       signal: controller.signal,
@@ -78,11 +80,11 @@ export async function callProvider(
       }
       if (chunk.type === "done") {
         if (chunk.finishReason === "cancelled") return failure("incomplete");
-        finished = true;
+        finishReason = chunk.finishReason;
       }
     }
-    if (controller.signal.aborted || !finished) return failure("incomplete");
-    return { status: "ok", text };
+    if (controller.signal.aborted || !finishReason) return failure("incomplete");
+    return { status: "ok", text, finishReason };
   } catch {
     return failure("request");
   } finally {

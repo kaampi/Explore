@@ -258,13 +258,13 @@ it("creates a writer's own playable opening with local help and keeps the respon
   }
 });
 
-function ollamaAnswer(answer: object | string) {
+function ollamaAnswer(answer: object | string, doneReason = "stop") {
   return new Response(
     [
       JSON.stringify({
         message: { content: typeof answer === "string" ? answer : JSON.stringify(answer) },
       }),
-      JSON.stringify({ done: true }),
+      JSON.stringify({ done: true, done_reason: doneReason }),
       "",
     ].join("\n"),
   );
@@ -458,6 +458,58 @@ it.each([true, false])(
     }
   },
 );
+
+it("reports truncated Ollama JSON as incomplete and lets the author resend the same question", async () => {
+  const repo = new IndexedDBRepository(new IDBFactory(), "guide-truncated-reply");
+  const draft = newGuideInterview("en");
+  draft.question = "action";
+  draft.subject = "opening";
+  await repo.saveGuideInterview(draft, undefined);
+  const chat = mockGuideModel(() =>
+    ollamaAnswer(
+      { reply: "Emma is holding a letter.", suggestion: "Ask Emma about the letter." },
+      "length",
+    ),
+  );
+  chat
+    .mockImplementationOnce(() => ollamaAnswer('{"reply":"Emma', "length"))
+    .mockImplementationOnce(() => ollamaAnswer({ reply: 42 }, "length"));
+
+  const view = mountGuide(repo, "en", true);
+  const question = "What could the player say to Emma?";
+  try {
+    await view.open();
+    await view.click("Talk it through with the Assistant");
+    await view.fill("Question or idea to discuss", question);
+    await view.click("Send to Assistant");
+    await view.until(() =>
+      expect(view.host.textContent).toContain("The AI service did not send a complete answer."),
+    );
+    expect(view.field("Question or idea to discuss").value).toBe(question);
+
+    await view.click("Send to Assistant");
+    await view.until(() =>
+      expect(view.host.textContent).toContain(
+        "The model replied, but the guide could not read its answer.",
+      ),
+    );
+    expect(view.field("Question or idea to discuss").value).toBe(question);
+
+    await view.click("Send to Assistant");
+    await view.until(() => expect(view.host.textContent).toContain("Emma is holding a letter."));
+    await view.click("Use as answer");
+    expect(view.field("Action", ".guide-answer").value).toBe("Ask Emma about the letter.");
+    const sentQuestions = chat.mock.calls.map(([init]) => {
+      const body = JSON.parse(init?.body as string);
+      return JSON.parse(body.messages[1].content).message;
+    });
+    expect(sentQuestions).toEqual([question, question, question]);
+  } finally {
+    await view.cleanup();
+    localStorage.removeItem("sandboxai-preferred-model");
+    vi.unstubAllGlobals();
+  }
+});
 
 it("keeps discussion separate, recovers from invalid AI output, and cancels on leaving a question", async () => {
   const repo = new IndexedDBRepository(new IDBFactory(), "guide-discussion");

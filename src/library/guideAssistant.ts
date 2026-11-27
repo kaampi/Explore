@@ -180,14 +180,18 @@ async function ask<T>(
   );
   if (response.status !== "ok") return response;
   const invalidReply = { status: "failed", reason: "invalid-reply" } as const;
-  if (response.text.length > maxResponseChars) return invalidReply;
   const raw = response.text.trim().replace(/^```(?:json)?\s*([\s\S]*?)\s*```$/i, "$1");
+  let json: unknown;
   try {
-    const parsed = schema.safeParse(JSON.parse(raw));
-    return parsed.success ? { status: "ok", value: parsed.data } : invalidReply;
+    json = JSON.parse(raw);
   } catch {
-    return invalidReply;
+    return response.finishReason === "length"
+      ? { status: "failed", reason: "incomplete" }
+      : invalidReply;
   }
+  if (response.text.length > maxResponseChars) return invalidReply;
+  const parsed = schema.safeParse(json);
+  return parsed.success ? { status: "ok", value: parsed.data } : invalidReply;
 }
 
 export function discussGuideQuestion(
