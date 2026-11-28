@@ -300,6 +300,35 @@ describe("external world import journeys", () => {
     await repo.close();
   }, 15000);
 
+  it("lets the player leave as soon as the world is saved, while the lists are still being read again", async () => {
+    await mount();
+    await openImports();
+    await upload(cards, "Slow lists.json");
+    await click(button("Use supported entries with kaampi Explore rules"));
+    await click(container.querySelector<HTMLInputElement>(".sb-world-import-choice input")!);
+    // Reading the lists again after the save is held back, as on a busy machine.
+    let release = () => {};
+    const held = new Promise<void>((resolve) => (release = resolve));
+    const original = IndexedDBRepository.prototype.listRealms;
+    const reread = vi
+      .spyOn(IndexedDBRepository.prototype, "listRealms")
+      .mockImplementationOnce(async function (this: IndexedDBRepository) {
+        await held;
+        return original.call(this);
+      });
+    const discard = vi.fn(() => false);
+    vi.stubGlobal("confirm", discard);
+    await click(button("Save world & lore"));
+    await waitFor(
+      () => container.textContent?.includes("World saved with 1 characters and 1 places") ?? false,
+    );
+    expect(reread).toHaveBeenCalled();
+    await click(named("kaampi Explore home"));
+    await waitFor(() => !!container.querySelector(".sb-home-connection"));
+    expect(discard).not.toHaveBeenCalled();
+    await act(async () => release());
+  }, 15000);
+
   it("keeps a world review on storage failure, retries safely and lets an import be cancelled", async () => {
     await mount();
     await openImports();

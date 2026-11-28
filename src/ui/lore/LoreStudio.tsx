@@ -139,6 +139,7 @@ export function LoreStudio({
     pending.current = true;
     setBusy(true);
     setError("");
+    let committed = false;
     try {
       let saved = draft;
       let notice = "Lorebook saved. Changes apply to new conversations only.";
@@ -157,23 +158,28 @@ export function LoreStudio({
       setDraft(null);
       setCreateWorld(false);
       setMessage(notice);
-      try {
-        await refresh();
-      } catch {
-        setError("Saved successfully. Reopen this screen to refresh the library list.");
-      }
+      committed = true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save import.");
     } finally {
       pending.current = false;
       setBusy(false);
     }
+    // Reading the lists again comes after the save is over. While it runs nothing is unsaved, so the
+    // studio must not count as busy: leaving it then would ask to discard changes that are saved.
+    if (committed)
+      try {
+        await refresh();
+      } catch {
+        setError("Saved successfully. Reopen this screen to refresh the library list.");
+      }
   }
   async function saveAventurasLibrary() {
     if (!draft || pending.current) return;
     pending.current = true;
     setBusy(true);
     setError("");
+    let committed = false;
     try {
       const preview = aventurasLibraryPreview(draft);
       if (!preview.characters.length && !preview.stories.length)
@@ -186,13 +192,20 @@ export function LoreStudio({
         `Saved ${preview.characters.length} characters and ${preview.stories.length} stories to your library. Original JSON retained in Lorebooks.`,
       );
       setDraft(null);
-      await refresh();
+      committed = true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save Aventuras library items.");
     } finally {
       pending.current = false;
       setBusy(false);
     }
+    // As in save(): the lists are read again once the save is over, not as part of it.
+    if (committed)
+      try {
+        await refresh();
+      } catch {
+        setError("Saved successfully. Reopen this screen to refresh the library list.");
+      }
   }
   const reviewing = Boolean(draft || avtPreview);
   useEffect(() => onDirtyChange(reviewing || busy), [reviewing, busy, onDirtyChange]);
