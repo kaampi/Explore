@@ -14,8 +14,17 @@ export type ReferenceLookup = {
   card?: ReferenceCard;
   /** The card's active version: what prompts are built from. */
   reference?: CharacterReference;
-  /** The portrait for this look in a game. */
+  /**
+   * What the game shows: the card's own portrait, otherwise the character's ordinary portrait. It is
+   * never empty only because the card has no portrait of its own.
+   */
   portraitDataUrl?: string;
+  /**
+   * The character has two cards or more and the card that applies has no portrait of its own. This
+   * is what the guide and Storyboard use to suggest and to tell the author. Missing when the
+   * character has no card at all.
+   */
+  needsOwnPortrait?: boolean;
   /** The adventure chose a card that is no longer there, so the default is used. Shown to the author. */
   choiceGone?: { cardId: string };
 };
@@ -35,11 +44,13 @@ export function referenceFor(
     cards.find((card) => card.cardId === character.references?.defaultCardId) ?? cards[0]!;
   const card = picked ?? defaultCard;
   const reference = card.versions.find((item) => item.version === card.activeVersion);
-  // A card with no portrait of its own shows the ordinary portrait only while there is one look.
-  const portraitDataUrl =
-    card.portraitDataUrl ?? (cards.length < 2 ? character.portraitDataUrl : undefined);
+  // The game shows the card's own portrait, otherwise the ordinary one. A card that lacks its own
+  // while the character has several looks is not an empty picture: it is marked as needing one.
+  const portraitDataUrl = card.portraitDataUrl ?? character.portraitDataUrl;
+  const needsOwnPortrait = cards.length >= 2 && !card.portraitDataUrl;
   return {
     card,
+    needsOwnPortrait,
     ...(reference ? { reference } : {}),
     ...(portraitDataUrl ? { portraitDataUrl } : {}),
     ...(chosen && !picked ? { choiceGone: { cardId: chosen } } : {}),

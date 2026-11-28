@@ -66,10 +66,21 @@ export const ReferenceCardSchema = z.object({
 });
 export type ReferenceCard = z.infer<typeof ReferenceCardSchema>;
 
-export const CharacterReferencesSchema = z.object({
-  cards: z.array(ReferenceCardSchema).default([]),
-  defaultCardId: z.string().default(""),
-});
+/**
+ * With cards, the default is always one of them. A missing or stale `defaultCardId` is put right
+ * when the references are read: the first card becomes the default. Nothing else is changed.
+ */
+export const CharacterReferencesSchema = z
+  .object({
+    cards: z.array(ReferenceCardSchema).default([]),
+    defaultCardId: z.string().default(""),
+  })
+  .transform((references) =>
+    references.cards.length > 0 &&
+    !references.cards.some((card) => card.cardId === references.defaultCardId)
+      ? { ...references, defaultCardId: references.cards[0]!.cardId }
+      : references,
+  );
 export type CharacterReferences = z.infer<typeof CharacterReferencesSchema>;
 
 /** What an author saves as a version: everything but the numbers and the time, which are given here. */

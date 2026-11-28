@@ -366,3 +366,79 @@ describe("6–7. what does not follow a card into a game", () => {
     expect(campaign.player?.characterId).toBeUndefined();
   });
 });
+
+describe("3b. the game's portrait and the need for one of its own", () => {
+  const ORDINARY = "data:image/png;base64,ORD";
+  const campaignWith = (cardId: string): CampaignTemplate => ({
+    ...sketchAdventure().campaign,
+    characterLooks: [{ characterId: "emma", cardId }],
+  });
+  /** Emma with Fantasy (has a portrait) and Sci-fi (has none). Her ordinary portrait is ORD. */
+  function fantasyAndSciFi(): CharacterTemplate {
+    const character = twoCards();
+    return { ...character, portraitDataUrl: ORDINARY };
+  }
+
+  it("an adventure that uses Sci-fi gets the ordinary portrait, and needs a portrait of its own", () => {
+    const found = referenceFor(fantasyAndSciFi(), campaignWith("sci-fi"));
+    expect(found.card?.cardId).toBe("sci-fi");
+    expect(found.portraitDataUrl).toBe(ORDINARY);
+    expect(found.needsOwnPortrait).toBe(true);
+  });
+
+  it("Fantasy shows its own portrait and needs nothing", () => {
+    const found = referenceFor(fantasyAndSciFi(), campaignWith("fantasy"));
+    expect(found.portraitDataUrl).toBe("data:image/png;base64,PORTRAIT");
+    expect(found.needsOwnPortrait).toBe(false);
+  });
+
+  it("with one card and an ordinary portrait, nothing is needed", () => {
+    const one = addReferenceCard(undefined, {
+      cardId: "fantasy",
+      name: "Fantasy",
+      draft: draft("brown"),
+      now: NOW,
+    });
+    if (!one.ok) throw new Error(one.reason);
+    const found = referenceFor({ ...emma(one.value), portraitDataUrl: ORDINARY });
+    expect(found.portraitDataUrl).toBe(ORDINARY);
+    expect(found.needsOwnPortrait).toBe(false);
+  });
+
+  it("is never empty only because a card lacks a portrait", () => {
+    const character = fantasyAndSciFi();
+    for (const card of character.references!.cards)
+      expect(referenceFor(character, campaignWith(card.cardId)).portraitDataUrl).toBeTruthy();
+  });
+});
+
+describe("the default card is always one of the cards", () => {
+  const withCards = (defaultCardId?: string) => ({
+    cards: twoCards().references!.cards,
+    ...(defaultCardId === undefined ? {} : { defaultCardId }),
+  });
+
+  it("a card list without defaultCardId gets the first card as the default", () => {
+    const character = parseCharacterTemplate({
+      ...newCharacterTemplate({ id: "emma", name: "Emma" }),
+      references: withCards(),
+    });
+    expect(character.references!.defaultCardId).toBe("fantasy");
+  });
+
+  it("a default that points at no card is put right when it is read", () => {
+    const character = parseCharacterTemplate({
+      ...newCharacterTemplate({ id: "emma", name: "Emma" }),
+      references: withCards("gone"),
+    });
+    expect(character.references!.defaultCardId).toBe("fantasy");
+  });
+
+  it("a default that is one of the cards is kept", () => {
+    const character = parseCharacterTemplate({
+      ...newCharacterTemplate({ id: "emma", name: "Emma" }),
+      references: withCards("sci-fi"),
+    });
+    expect(character.references!.defaultCardId).toBe("sci-fi");
+  });
+});
