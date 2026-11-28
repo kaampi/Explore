@@ -326,6 +326,8 @@ export function CharacterStudio({ repo }: { repo: IndexedDBRepository }) {
       scenario: "",
       source: current.source,
       ...(original?.coreOrigin ? { coreOrigin: original.coreOrigin } : {}),
+      // The reference cards are the author's own material and are not on the sheet: keep them.
+      ...(original?.references ? { references: original.references } : {}),
       ...(current.pronoun ? { pronoun: current.pronoun } : {}),
       ...(portraitSrc(current.portraitDataUrl)
         ? { portraitDataUrl: portraitSrc(current.portraitDataUrl) }

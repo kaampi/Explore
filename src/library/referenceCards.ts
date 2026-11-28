@@ -54,16 +54,42 @@ export const CodexBaseSchema = z.object({
 });
 export type CodexBase = z.infer<typeof CodexBaseSchema>;
 
-export const ReferenceCardSchema = z.object({
-  cardId: z.string().min(1),
-  name: z.string(),
-  versions: z.array(CharacterReferenceSchema).default([]),
-  activeVersion: z.number().int().positive(),
-  latestVersion: z.number().int().nonnegative(),
-  portraitDataUrl: z.string().optional(),
-  codexBase: CodexBaseSchema.optional(),
-  codexCardRef: z.string().optional(),
-});
+/**
+ * Checked when a card is read, from the library or from a backup: the versions have different
+ * numbers, there are at most six, the active version is one of them, and `latestVersion` is at
+ * least the highest saved number. A higher `latestVersion` is kept, since earlier versions may have
+ * been pruned and their numbers must not be used again; a lower one is raised to the highest number.
+ */
+export const ReferenceCardSchema = z
+  .object({
+    cardId: z.string().min(1),
+    name: z.string(),
+    versions: z.array(CharacterReferenceSchema).max(MAX_VERSIONS).default([]),
+    activeVersion: z.number().int().positive(),
+    latestVersion: z.number().int().nonnegative(),
+    portraitDataUrl: z.string().optional(),
+    codexBase: CodexBaseSchema.optional(),
+    codexCardRef: z.string().optional(),
+  })
+  .superRefine((card, context) => {
+    const numbers = card.versions.map((item) => item.version);
+    if (new Set(numbers).size !== numbers.length)
+      context.addIssue({
+        code: "custom",
+        path: ["versions"],
+        message: "Version numbers must be unique.",
+      });
+    if (card.versions.length > 0 && !numbers.includes(card.activeVersion))
+      context.addIssue({
+        code: "custom",
+        path: ["activeVersion"],
+        message: "The active version must be one of the saved versions.",
+      });
+  })
+  .transform((card) => {
+    const highest = Math.max(0, ...card.versions.map((item) => item.version));
+    return card.latestVersion < highest ? { ...card, latestVersion: highest } : card;
+  });
 export type ReferenceCard = z.infer<typeof ReferenceCardSchema>;
 
 /**
@@ -72,7 +98,7 @@ export type ReferenceCard = z.infer<typeof ReferenceCardSchema>;
  */
 export const CharacterReferencesSchema = z
   .object({
-    cards: z.array(ReferenceCardSchema).default([]),
+    cards: z.array(ReferenceCardSchema).max(MAX_CARDS).default([]),
     defaultCardId: z.string().default(""),
   })
   .transform((references) =>

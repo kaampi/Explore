@@ -10,7 +10,9 @@ import {
   type CharacterTemplate,
 } from "../../src/library/LibrarySchema";
 import {
+  MAX_CARDS,
   MAX_VERSIONS,
+  ReferenceCardSchema,
   addReferenceCard,
   chooseCardVersion,
   removeReferenceCard,
@@ -23,6 +25,13 @@ import {
   type ReferenceCard,
 } from "../../src/library/referenceCards";
 import { sketchAdventure } from "../fixtures/authoring-sketch";
+import { IDBFactory } from "fake-indexeddb";
+import { IndexedDBRepository } from "../../src/persistence/IndexedDBRepository";
+import {
+  collectLibraryBackup,
+  parseLibraryBackup,
+  restoreLibraryBackup,
+} from "../../src/library/libraryBackup";
 
 const NOW = "2026-11-26T10:00:00.000Z";
 /** A draft whose hair is `label`, so that versions can be told apart. */
@@ -346,11 +355,19 @@ describe("6–7. what does not follow a card into a game", () => {
     expect(text).not.toContain("references");
   });
 
-  it("the library backup keeps the cards, as the author's own material", () => {
+  it("the library backup keeps the cards, through export, file and restore", async () => {
     const character = twoCards();
-    const back = parseCharacterTemplate(JSON.parse(JSON.stringify(character)));
+    const source = new IndexedDBRepository(new IDBFactory(), "backup-source");
+    const target = new IndexedDBRepository(new IDBFactory(), "backup-target");
+    await source.saveCharacter(character);
+    const exported = await collectLibraryBackup(source);
+    const { backup, skipped } = parseLibraryBackup(JSON.parse(JSON.stringify(exported)));
+    expect(skipped).toBe(0);
+    expect(await restoreLibraryBackup(target, backup)).toEqual({ saved: 1, skipped: 0 });
+    const back = (await target.listCharacters())[0]!;
     expect(back.references?.cards.map((card) => card.cardId)).toEqual(["fantasy", "sci-fi"]);
     expect(back.references?.defaultCardId).toBe("fantasy");
+    expect(back.references).toEqual(character.references);
   });
 
   it("a character and an adventure without the new fields work exactly as before", () => {
@@ -440,5 +457,112 @@ describe("the default card is always one of the cards", () => {
       references: withCards("sci-fi"),
     });
     expect(character.references!.defaultCardId).toBe("sci-fi");
+  });
+});
+
+describe("version numbers are checked when a card is read", () => {
+  const version = (n: number) => ({
+    ...draft(`v${n}`),
+    version: n,
+    createdAt: NOW,
+  });
+  const card = (over: Record<string, unknown>) => ({
+    cardId: "c",
+    name: "C",
+    versions: [version(2), version(1)],
+    activeVersion: 2,
+    latestVersion: 2,
+    ...over,
+  });
+
+  it("refuses two versions with the same number", () => {
+    expect(
+      ReferenceCardSchema.safeParse(card({ versions: [version(2), version(2)] })).success,
+    ).toBe(false);
+  });
+
+  it("refuses an active version that is not saved", () => {
+    expect(ReferenceCardSchema.safeParse(card({ activeVersion: 7 })).success).toBe(false);
+  });
+
+  it("raises a latestVersion that is below the highest saved number, so the next save is 3", () => {
+    const read = ReferenceCardSchema.parse(card({ latestVersion: 1 }));
+    expect(read.latestVersion).toBe(2);
+    const saved = saveCardVersion(read, draft("next"), NOW);
+    if (saved.status !== "saved") throw new Error("unexpected");
+    expect(saved.card.versions.map((v) => v.version)).toEqual([3, 2, 1]);
+  });
+
+  it("keeps a higher latestVersion: pruned versions' numbers are not reused", () => {
+    const read = ReferenceCardSchema.parse(card({ latestVersion: 5 }));
+    expect(read.latestVersion).toBe(5);
+    const saved = saveCardVersion(read, draft("next"), NOW);
+    if (saved.status !== "saved") throw new Error("unexpected");
+    expect(saved.card.activeVersion).toBe(6);
+  });
+
+  it("holds the limits of six versions and eight cards on import", () => {
+    const six = [6, 5, 4, 3, 2, 1].map(version);
+    expect(
+      ReferenceCardSchema.safeParse(card({ versions: six, activeVersion: 6, latestVersion: 6 }))
+        .success,
+    ).toBe(true);
+    expect(
+      ReferenceCardSchema.safeParse(
+        card({
+          versions: [7, ...[6, 5, 4, 3, 2, 1]].map(version),
+          activeVersion: 7,
+          latestVersion: 7,
+        }),
+      ).success,
+    ).toBe(false);
+    const cards = (n: number) => Array.from({ length: n }, (_, i) => card({ cardId: `card-${i}` }));
+    const base = newCharacterTemplate({ id: "emma", name: "Emma" });
+    expect(() =>
+      parseCharacterTemplate({
+        ...base,
+        references: { cards: cards(MAX_CARDS), defaultCardId: "card-0" },
+      }),
+    ).not.toThrow();
+    expect(() =>
+      parseCharacterTemplate({
+        ...base,
+        references: { cards: cards(MAX_CARDS + 1), defaultCardId: "card-0" },
+      }),
+    ).toThrow();
+    expect(MAX_VERSIONS).toBe(6);
+  });
+
+  it("a backup with a broken card skips that character and keeps the others", () => {
+    const good = JSON.parse(JSON.stringify(twoCards()));
+    const broken = JSON.parse(JSON.stringify({ ...twoCards(), id: "broken" }));
+    broken.references.cards[0].versions.push({ ...broken.references.cards[0].versions[0] });
+    const { backup, skipped } = parseLibraryBackup({
+      kind: "ai-sandbox-library",
+      format: 3,
+      exportedAt: NOW,
+      characters: [good, broken],
+    });
+    expect(backup.characters.map((c) => c.id)).toEqual(["emma"]);
+    expect(skipped).toBe(1);
+  });
+});
+
+describe("3c. the adventure's chosen card was the last one", () => {
+  it("keeps the ordinary portrait and says which card is gone", () => {
+    const character = {
+      ...emma(),
+      portraitDataUrl: "data:image/png;base64,ORD",
+    };
+    const campaign: CampaignTemplate = {
+      ...sketchAdventure().campaign,
+      characterLooks: [{ characterId: "emma", cardId: "sci-fi" }],
+    };
+    const found = referenceFor(character, campaign);
+    expect(found.portraitDataUrl).toBe("data:image/png;base64,ORD");
+    expect(found.choiceGone).toEqual({ cardId: "sci-fi" });
+    expect(found.card).toBeUndefined();
+    // Without a choice there is nothing to explain.
+    expect(referenceFor(character, sketchAdventure().campaign).choiceGone).toBeUndefined();
   });
 });

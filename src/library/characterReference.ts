@@ -34,11 +34,16 @@ export function referenceFor(
   campaign?: CampaignTemplate,
 ): ReferenceLookup {
   const cards = character.references?.cards ?? [];
-  if (cards.length === 0)
-    return character.portraitDataUrl ? { portraitDataUrl: character.portraitDataUrl } : {};
   const chosen = campaign?.characterLooks?.find(
     (look) => look.characterId === character.id,
   )?.cardId;
+  if (cards.length === 0)
+    // The adventure chose a card and it was the last one: keep the ordinary portrait and say which
+    // card is gone, so that Storyboard can explain why the ordinary portrait is shown.
+    return {
+      ...(character.portraitDataUrl ? { portraitDataUrl: character.portraitDataUrl } : {}),
+      ...(chosen ? { choiceGone: { cardId: chosen } } : {}),
+    };
   const picked = chosen ? cards.find((card) => card.cardId === chosen) : undefined;
   const defaultCard =
     cards.find((card) => card.cardId === character.references?.defaultCardId) ?? cards[0]!;
