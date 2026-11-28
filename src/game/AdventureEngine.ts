@@ -136,12 +136,17 @@ export function advanceAdventure(session: Session, raw: AdventureTransition) {
       game.state.actors[id] = {
         ...structuredClone(carried),
         position: authored.position,
-        ...(authored.requiresFlags ? { requiresFlags: authored.requiresFlags } : {}),
-        ...(authored.onReveal ? { onReveal: authored.onReveal } : {}),
         actionsLeft: game.definition.rules.actionsPerTurn,
         movesLeft: game.definition.rules.movesPerTurn,
         defending: false,
       };
+    // The scene the player enters decides whether the person is hidden and what happens when found:
+    // never what an earlier scene said. Missing in the scene means visible, and waiting.
+    const merged = game.state.actors[id]!;
+    if (authored.requiresFlags) merged.requiresFlags = structuredClone(authored.requiresFlags);
+    else delete merged.requiresFlags;
+    if (authored.onReveal) merged.onReveal = authored.onReveal;
+    else delete merged.onReveal;
     game.state.actors[id]!.inventory = game.state.actors[id]!.inventory.filter(
       (item) => !owners.has(item) || owners.get(item) === id,
     );

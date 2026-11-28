@@ -13,6 +13,7 @@ import { describeEvents } from "../../src/game/narration";
 import { speechAddressee } from "../../src/game/dialogue";
 import { buildFreeReplyMessages } from "../../src/session/encounterPrompt";
 import { startPlayableCampaign } from "../../src/session/adventureStart";
+import { hideUntilOutcome, setOnReveal } from "../../src/library/sceneCast";
 import type { EncounterGame } from "../../src/game/EncounterSchema";
 
 function setup(onReveal?: "attack") {
@@ -150,5 +151,48 @@ describe("a person who stays hidden until a fact is set", () => {
     expect(next.state.phase).toBe("combat");
     expect(next.state.initiative!.order).toContain("bandit");
     expect(next.state.initiative!.order).not.toContain(id);
+  });
+});
+
+describe("Undersök taket, made fresh and then chosen as what reveals the person", () => {
+  function fresh(onReveal: "wait" | "attack") {
+    const { built, spider, id } = setup();
+    let scene = addPerson(structuredClone(built.campaign.scenes[0]!), spider);
+    scene = setAttitude(scene, spider.id, "hostile");
+    const look = newOpportunity("Undersök taket", "Du tittar upp.");
+    const stat = Object.keys(scene.encounter!.state.actors.player!.stats)[0] ?? "Observation";
+    scene.encounter!.state.actors.player!.stats[stat] ??= 50;
+    look.check = { stat, modifier: 0 };
+    look.once = false;
+    scene.encounter!.definition.interactions.push(look);
+    scene = hideUntilOutcome(scene, spider.id, look.id, "success");
+    scene = setOnReveal(scene, spider.id, onReveal);
+    return { game: scene.encounter!, id, look };
+  }
+  const play = (game: EncounterGame, interactionId: string, rng: () => number) =>
+    resolve(
+      game,
+      `try-${game.state.revision}`,
+      { kind: "interaction", interactionId } as never,
+      rng,
+    );
+
+  it("a failed attempt keeps the person hidden and silent", () => {
+    const { game, id, look } = fresh("attack");
+    const failed = play(game, look.id, () => 0.999);
+    expect(failed.history.at(-1)!.events.map((e) => e.kind)).toEqual(["interaction"]);
+    expect(failed.history.at(-1)!.text).not.toContain("Jättespindeln");
+    expect(failed.state.phase).toBe("exploration");
+    expect(visibleActors(failed.state).map((a) => a.id)).not.toContain(id);
+  });
+
+  it("success reveals with a notice, and then Attacks starts the fight or Waits does not", () => {
+    for (const mode of ["attack", "wait"] as const) {
+      const { game, id, look } = fresh(mode);
+      const found = play(game, look.id, () => 0);
+      expect(found.history.at(-1)!.text).toContain("Du upptäcker: Jättespindeln.");
+      expect(visibleActors(found.state).map((a) => a.id)).toContain(id);
+      expect(found.state.phase).toBe(mode === "attack" ? "combat" : "exploration");
+    }
   });
 });

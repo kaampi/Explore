@@ -10,7 +10,12 @@ import {
   setAttitude,
 } from "../../src/library/sceneParts";
 import {
+  hideUntilOutcome,
+  outcomeSetting,
   placePerson,
+  suggestedTrust,
+  takeSuggestedTrust,
+  writeCast,
   setHidden,
   setOnReveal,
   setStance,
@@ -80,23 +85,27 @@ describe("stance and the engine follow each other", () => {
     expect(cast(setAttitude(turned, spider.id, "neutral"), spider.id).stance).toBe("neutral");
   });
 
-  it("suggests trust 60 for a first friendly stance and never changes it again", () => {
+  it("never changes trust by itself: a saved 20 stays 20 until the author takes the suggestion", () => {
     const { scene, spider } = setup();
-    const friendly = setStance(scene, spider.id, "friendly");
-    expect(cast(friendly, spider.id).trust).toBe("60");
-    const edited = {
-      ...friendly,
-      people: friendly.people.map((p) => ({ ...p, trust: "45" })),
-    };
-    expect(cast(setStance(edited, spider.id, "neutral"), spider.id).trust).toBe("45");
-    expect(cast(setStance(friendly, spider.id, "hostile"), spider.id).trust).toBe("60");
-    expect(cast(setStance(scene, spider.id, "neutral"), spider.id).trust).toBe("20");
+    const saved = { ...scene, people: scene.people.map((p) => ({ ...p, trust: "20" })) };
+    const friendly = setStance(saved, spider.id, "friendly");
+    expect(cast(friendly, spider.id).trust).toBe("20");
+    expect(suggestedTrust("friendly")).toBe("60");
+    expect(suggestedTrust("neutral")).toBe("20");
+    expect(suggestedTrust("hostile")).toBeUndefined();
+    expect(cast(takeSuggestedTrust(friendly, spider.id), spider.id).trust).toBe("60");
+    expect(cast(setStance(friendly, spider.id, "hostile"), spider.id).trust).toBe("20");
+    expect(
+      cast(takeSuggestedTrust(setStance(friendly, spider.id, "hostile"), spider.id), spider.id)
+        .trust,
+    ).toBe("20");
   });
 
-  it("does not overwrite a trust the author already chose", () => {
+  it("keeps a trust the author chose, whatever the stance", () => {
     const { scene, spider } = setup();
     const chosen = { ...scene, people: scene.people.map((p) => ({ ...p, trust: "35" })) };
     expect(cast(setStance(chosen, spider.id, "friendly"), spider.id).trust).toBe("35");
+    expect(cast(setStance(chosen, spider.id, "neutral"), spider.id).trust).toBe("35");
   });
 });
 
@@ -196,5 +205,92 @@ describe("position as a name and an id", () => {
     const tuned = tuneCast(odd);
     expect(tuned.encounter!.definition.places).toEqual(scene.encounter!.definition.places);
     expect(cast(tuned, spider.id).position).toBe("Vid disken");
+  });
+});
+
+describe("the guide's way of saving a person", () => {
+  const hiddenSpider = () => {
+    const base = setup();
+    const hidden = writeCast(base.scene, base.spider.id, {
+      stance: "hostile",
+      hidden: { revealedBy: "spider-found" },
+      onReveal: "attack",
+    });
+    return { ...base, hidden };
+  };
+
+  it("removing hidden clears the condition and the attack, and stays cleared on reopening", () => {
+    const { hidden, spider, id, built, library } = hiddenSpider();
+    expect(hidden.encounter!.state.actors[id]!.requiresFlags).toEqual(["spider-found"]);
+    expect(hidden.encounter!.state.actors[id]!.onReveal).toBe("attack");
+    // The guide saves the cast entry without `hidden` and without `onReveal`.
+    const saved = {
+      ...hidden,
+      people: hidden.people.map((p) => {
+        const { hidden: _h, onReveal: _o, ...rest } = p;
+        return rest;
+      }),
+    };
+    const reopened = syncScene(built.campaign, saved, library);
+    const actor = reopened.encounter!.state.actors[id]!;
+    expect(actor.requiresFlags).toBeUndefined();
+    expect(actor.onReveal).toBeUndefined();
+    expect(cast(reopened, spider.id).hidden).toBeUndefined();
+    expect(syncScene(built.campaign, reopened, library)).toEqual(reopened);
+  });
+
+  it("writeCast with hidden set to undefined makes the person visible and drops onReveal", () => {
+    const { hidden, spider, id } = hiddenSpider();
+    const shown = writeCast(hidden, spider.id, { hidden: undefined });
+    expect(shown.encounter!.state.actors[id]!.requiresFlags).toBeUndefined();
+    expect(shown.encounter!.state.actors[id]!.onReveal).toBeUndefined();
+    expect(cast(shown, spider.id).onReveal).toBeUndefined();
+  });
+
+  it("a new position name goes through writeCast and makes the position", () => {
+    const { scene, spider, id } = setup();
+    const before = scene.encounter!.definition.places.length;
+    const written = writeCast(scene, spider.id, { position: "I taket", mood: "lugn" });
+    expect(written.encounter!.definition.places).toHaveLength(before + 1);
+    expect(cast(written, spider.id).positionId).toBeTruthy();
+    expect(written.encounter!.state.actors[id]!.position).toBe(cast(written, spider.id).positionId);
+    expect(cast(written, spider.id).mood).toBe("lugn");
+    const again = writeCast(written, spider.id, { position: "I taket" });
+    expect(again.encounter!.definition.places).toHaveLength(before + 1);
+  });
+
+  it("a write that does not mention a field leaves it as it was", () => {
+    const { hidden, spider } = hiddenSpider();
+    const next = writeCast(hidden, spider.id, { mood: "arg" });
+    expect(cast(next, spider.id).hidden).toEqual({ revealedBy: "spider-found" });
+    expect(cast(next, spider.id).stance).toBe("hostile");
+  });
+});
+
+describe("hiding a person until an outcome of an action", () => {
+  it("makes a fact for that outcome and hides the person until then", () => {
+    const { scene, spider, id } = setup();
+    const action = scene.encounter!.definition.interactions[0]!;
+    const hidden = hideUntilOutcome(scene, spider.id, action.id, "success");
+    const fact = cast(hidden, spider.id).hidden!.revealedBy;
+    expect(outcomeSetting(hidden, fact)).toEqual({ actionId: action.id, outcome: "success" });
+    expect(hidden.encounter!.state.actors[id]!.requiresFlags).toEqual([fact]);
+    expect(
+      hidden.encounter!.definition.interactions[0]!.failure.effects.some(
+        (e) => e.kind === "flag" && e.flag === fact,
+      ),
+    ).toBe(false);
+  });
+
+  it("reuses the fact the outcome already sets, and only a rolling action can fail", () => {
+    const { scene, spider } = setup();
+    const action = scene.encounter!.definition.interactions[0]!;
+    const once = hideUntilOutcome(scene, spider.id, action.id, "success");
+    const twice = hideUntilOutcome(once, spider.id, action.id, "success");
+    expect(cast(twice, spider.id).hidden).toEqual(cast(once, spider.id).hidden);
+    expect(twice.encounter!.definition.interactions[0]!.success.effects).toEqual(
+      once.encounter!.definition.interactions[0]!.success.effects,
+    );
+    expect(() => hideUntilOutcome(scene, spider.id, action.id, "failure")).toThrow(/rolls/);
   });
 });

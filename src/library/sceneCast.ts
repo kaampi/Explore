@@ -60,23 +60,31 @@ export function stanceOf(scene: CampaignScene, characterId: string): Stance {
 
 /**
  * Set how a person feels about the player. Hostile makes them an opponent; friendly and neutral
- * both make them peaceful. The suggested trust (friendly 60) is written only the first time a
- * stance is set, and only if the author has not set another value. Changing it later never
- * changes trust.
+ * both make them peaceful. This never changes trust: a saved value (even 20) is the author's.
+ * The suggestion for a stance is `suggestedTrust`, and the author takes it explicitly.
  */
 export function setStance(
   scene: CampaignScene,
   characterId: string,
   stance: Stance,
 ): CampaignScene {
-  const pick = requireCast(scene, characterId);
-  const first = pick.stance === undefined;
-  const peaceful = setAttitude(scene, characterId, stance === "hostile" ? "hostile" : "neutral");
-  return withCast(peaceful, characterId, (entry) => {
-    const next: SceneCast = { ...entry, stance };
-    if (first && stance !== "hostile" && entry.trust === "20") next.trust = STANCE_TRUST[stance];
-    return next;
-  });
+  requireCast(scene, characterId);
+  const next = setAttitude(scene, characterId, stance === "hostile" ? "hostile" : "neutral");
+  return withCast(next, characterId, (entry) => ({ ...entry, stance }));
+}
+
+/** The trust to suggest for a stance, or nothing for a hostile one. */
+export function suggestedTrust(stance: Stance): string | undefined {
+  return stance === "hostile" ? undefined : STANCE_TRUST[stance];
+}
+
+/** The author takes the suggested trust for the person's stance. */
+export function takeSuggestedTrust(scene: CampaignScene, characterId: string): CampaignScene {
+  requireCast(scene, characterId);
+  const suggestion = suggestedTrust(stanceOf(scene, characterId));
+  return suggestion
+    ? withCast(scene, characterId, (entry) => ({ ...entry, trust: suggestion }))
+    : scene;
 }
 
 /** Hide a person until a fact is set, or show them from the start (null). */
@@ -167,6 +175,94 @@ export function placePerson(
   }));
 }
 
+/** Where an outcome can be named as what reveals a person. */
+export type RevealOutcome = "success" | "failure";
+
+/** The fact an outcome sets, if it sets one. */
+function factOf(
+  scene: CampaignScene,
+  actionId: string,
+  outcome: RevealOutcome,
+): string | undefined {
+  const action = scene.encounter?.definition.interactions.find((item) => item.id === actionId);
+  const effect = action?.[outcome].effects.find((entry) => entry.kind === "flag");
+  return effect?.kind === "flag" ? effect.flag : undefined;
+}
+
+/** Which action and outcome of the scene set a fact, if any does. */
+export function outcomeSetting(
+  scene: CampaignScene,
+  fact: string,
+): { actionId: string; outcome: RevealOutcome } | undefined {
+  for (const action of scene.encounter?.definition.interactions ?? [])
+    for (const outcome of ["success", "failure"] as const)
+      if (action[outcome].effects.some((e) => e.kind === "flag" && e.flag === fact))
+        return { actionId: action.id, outcome };
+}
+
+/**
+ * Hide a person until one outcome of one action of this scene happens, for example "Undersök
+ * taket · lyckas". The fact that outcome already sets is used; if it sets none, one is made for
+ * this person. A failed attempt sets nothing, so the person stays hidden.
+ */
+export function hideUntilOutcome(
+  scene: CampaignScene,
+  characterId: string,
+  actionId: string,
+  outcome: RevealOutcome = "success",
+): CampaignScene {
+  const current = requireGame(scene);
+  requireCast(scene, characterId);
+  const game = structuredClone(current.encounter);
+  const action = game.definition.interactions.find((item) => item.id === actionId);
+  if (!action) throw new Error("That action is not in this scene.");
+  if (outcome === "failure" && !action.check)
+    throw new Error("Only an action that rolls can fail.");
+  let fact = factOf(scene, actionId, outcome);
+  if (!fact) {
+    fact = `found:${characterId}`;
+    action[outcome].effects.push({ kind: "flag", flag: fact });
+  }
+  validateEncounter(game);
+  return setHidden({ ...scene, encounter: game }, characterId, fact);
+}
+
+/** What the guide or another writer may say about a person in a scene. `undefined` removes it. */
+export type CastWrite = Partial<Omit<SceneCast, "characterId">>;
+
+/**
+ * The one way to write a person's cast entry, for the guide and for Storyboard. Everything in the
+ * write is applied in step with the engine, in this order:
+ *  1. position: a `positionId` that exists wins; otherwise a name finds the position of that
+ *     name, or makes a new one when no position has it (the only place a position is made);
+ *  2. stance, 3. hidden (a key set to undefined makes the person visible and drops `onReveal`),
+ *  4. onReveal, 5. the plain fields (mood, clothing, holding, trust, familiarity, tension).
+ * What the write does not mention is left as it was.
+ */
+export function writeCast(
+  scene: CampaignScene,
+  characterId: string,
+  write: CastWrite,
+): CampaignScene {
+  requireCast(scene, characterId);
+  let next = scene;
+  const id = write.positionId;
+  const places = requireGame(next).encounter.definition.places;
+  if (id && places.some((place) => place.id === id))
+    next = placePerson(next, characterId, { positionId: id });
+  else if (write.position?.trim()) next = placePerson(next, characterId, { name: write.position });
+  if (write.stance) next = setStance(next, characterId, write.stance);
+  if ("hidden" in write)
+    next = setHidden(next, characterId, write.hidden ? write.hidden.revealedBy : null);
+  if (write.onReveal) next = setOnReveal(next, characterId, write.onReveal);
+  const plain = (
+    ["mood", "clothing", "holding", "trust", "familiarity", "tension"] as const
+  ).flatMap((key) => (write[key] === undefined ? [] : [[key, write[key]] as const]));
+  return plain.length
+    ? withCast(next, characterId, (entry) => ({ ...entry, ...Object.fromEntries(plain) }))
+    : next;
+}
+
 /**
  * Bring the engine in step with what the cast says, when a scene is saved or opened. Nothing is
  * written for a person whose cast says nothing new: a person without a stance keeps the engine's
@@ -213,11 +309,13 @@ export function tuneCast(scene: CampaignScene): CampaignScene {
     const latest = next.people.find((entry) => entry.characterId === pick.characterId)!;
     const copy = structuredClone(next.encounter!);
     const target = copy.state.actors[id]!;
+    // The cast is the source: no `hidden` there means visible, so an old condition is dropped.
     if (latest.hidden) target.requiresFlags = [latest.hidden.revealedBy];
-    const hostileNow = isHostile(copy, target);
-    const attack = latest.onReveal === "attack" && !!latest.hidden && hostileNow;
+    else delete target.requiresFlags;
+    // "Attack when found" only means something for a hostile person who is hidden.
+    const attack = latest.onReveal === "attack" && !!latest.hidden && isHostile(copy, target);
     if (attack) target.onReveal = "attack";
-    else if (live.onReveal && latest.onReveal !== undefined) delete target.onReveal;
+    else delete target.onReveal;
     if (
       JSON.stringify([live.requiresFlags, live.onReveal]) !==
       JSON.stringify([target.requiresFlags, target.onReveal])

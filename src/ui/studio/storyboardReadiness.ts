@@ -444,10 +444,17 @@ function draftWarning(scene: CampaignScene): StoryboardIssue {
  */
 function hiddenNameIssues(campaign: CampaignTemplate): StoryboardIssue[] {
   const found: StoryboardIssue[] = [];
+  const plain = (text: string) => ` ${text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ")} `;
   for (const scene of campaign.scenes) {
     const game = scene.encounter;
     if (!game || sceneFormat(scene) === "earlier" || isOpenDraft(scene)) continue;
-    const text = ` ${game.definition.description.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ")} `;
+    const arrival = plain(game.definition.description);
+    // What the player can see before anything is found: actions that are on offer at the start.
+    const offered = game.definition.interactions.filter(
+      (action) =>
+        action.requiresFlags.every((flag) => game.state.flags.includes(flag)) &&
+        !action.excludesFlags.some((flag) => game.state.flags.includes(flag)),
+    );
     for (const actor of Object.values(game.state.actors)) {
       if (
         !actor.requiresFlags?.length ||
@@ -460,13 +467,32 @@ function hiddenNameIssues(campaign: CampaignTemplate): StoryboardIssue[] {
         .split(/[^\p{L}\p{N}]+/u)
         .filter(Boolean)
         .map((word) => (word.length > 4 ? word.replace(/(en|et|na|n|s)$/, "") : word));
-      if (words.length === 0 || !words.every((word) => text.includes(` ${word}`))) continue;
-      found.push({
-        kind: "scene",
-        id: scene.id,
-        field: "arrival",
-        message: `The arrival text mentions ${actor.name}, who is hidden when the scene starts. Change the text, or let the person be seen from the start.`,
-      });
+      const names = (text: string) =>
+        words.length > 0 && words.every((word) => plain(text).includes(` ${word}`));
+      const hiddenNow = `${actor.name}, who is hidden when the scene starts`;
+      if (names(arrival))
+        found.push({
+          kind: "scene",
+          id: scene.id,
+          field: "arrival",
+          message: `The arrival text mentions ${hiddenNow}. Change the text, or let the person be seen from the start.`,
+        });
+      for (const action of offered) {
+        if (action.counterpartyId === actor.id) continue;
+        const actionName = action.label.trim() || "Untitled action";
+        for (const [what, text] of [
+          ["name", action.label],
+          ["description", action.description],
+        ] as const)
+          if (text.trim() && names(text))
+            found.push({
+              kind: "scene",
+              id: scene.id,
+              field: "action",
+              action: { id: action.id, field: "label" },
+              message: `The ${what} of the action “${actionName}” mentions ${hiddenNow}, and the player can see it before finding them. Change the text, or let the person be seen from the start.`,
+            });
+      }
     }
   }
   return found;

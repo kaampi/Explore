@@ -1,10 +1,14 @@
 import { useState } from "react";
 import {
+  hideUntilOutcome,
+  outcomeSetting,
   placePerson,
   setHidden,
   setOnReveal,
   setStance,
   stanceOf,
+  suggestedTrust,
+  takeSuggestedTrust,
   type Stance,
 } from "../../library/sceneCast";
 import { useTranslate } from "../i18n/LanguageProvider";
@@ -47,6 +51,7 @@ import {
 } from "../../library/sceneParts";
 
 const NEW_POSITION = "__new-position__";
+const FACT_CHOICE = "__fact__";
 
 /** "Who and what is here": the people and things in one scene. */
 export function SceneParts({
@@ -89,6 +94,7 @@ export function SceneParts({
   const [attachTo, setAttachTo] = useState<Record<string, string>>({});
   const [newPosition, setNewPosition] = useState<Record<string, string>>({});
   const [willHide, setWillHide] = useState<Record<string, boolean>>({});
+  const [byFact, setByFact] = useState<Record<string, boolean>>({});
   const game = scene.encounter;
   if (!game) return null;
 
@@ -110,6 +116,17 @@ export function SceneParts({
         pick.characterId === characterOf(actorId) ? { ...pick, ...change } : pick,
       ),
     }));
+  /** What reveals a person: the action of this scene whose outcome sets the fact, or a fact. */
+  const revealChoice = (actorId: string): string => {
+    const fact = castOf(actorId)?.hidden?.revealedBy;
+    if (byFact[actorId]) return FACT_CHOICE;
+    if (!fact) return "";
+    return outcomeSetting(scene, fact)?.actionId ?? FACT_CHOICE;
+  };
+  const outcomeOf = (actorId: string): "success" | "failure" => {
+    const fact = castOf(actorId)?.hidden?.revealedBy;
+    return (fact ? outcomeSetting(scene, fact)?.outcome : undefined) ?? "success";
+  };
   /** The facts that can reveal someone; the one already chosen stays listed even if unreachable. */
   const revealOptions = (chosen?: string) =>
     chosen && !facts.some((fact) => fact.id === chosen)
@@ -350,6 +367,22 @@ export function SceneParts({
                     onBlur={(event) => changeCast(actor.id, { trust: event.target.value })}
                   />
                 </label>
+                {suggestedTrust(stanceOf(scene, characterOf(actor.id))) !== undefined &&
+                  suggestedTrust(stanceOf(scene, characterOf(actor.id))) !==
+                    (castOf(actor.id)?.trust ?? "20") && (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      aria-label={`Use suggested trust for ${actor.name}`}
+                      onClick={() =>
+                        attempt(() => takeSuggestedTrust(scene, characterOf(actor.id)))
+                      }
+                    >
+                      {t("spUseTrust", {
+                        value: suggestedTrust(stanceOf(scene, characterOf(actor.id))) ?? "",
+                      })}
+                    </button>
+                  )}
               </span>
               <span className="storyboard-scene-parts__attach">
                 <select
@@ -366,28 +399,77 @@ export function SceneParts({
                   <option value="visible">{t("spVisible")}</option>
                   <option value="hidden">{t("spHiddenUntil")}…</option>
                 </select>
-                {(castOf(actor.id)?.hidden || willHide[actor.id]) &&
-                  (facts.length === 0 && !castOf(actor.id)?.hidden ? (
-                    <span className="playable-hint">{t("spNoFacts")}</span>
-                  ) : (
+                {(castOf(actor.id)?.hidden || willHide[actor.id]) && (
+                  <>
                     <select
-                      aria-label={`Revealed by for ${actor.name}`}
-                      value={castOf(actor.id)?.hidden?.revealedBy ?? ""}
+                      aria-label={`Revealed by action for ${actor.name}`}
+                      value={revealChoice(actor.id)}
                       disabled={busy}
                       onChange={(event) => {
-                        if (!event.target.value) return;
-                        setWillHide(({ [actor.id]: _set, ...rest }) => rest);
-                        attempt(() => setHidden(scene, characterOf(actor.id), event.target.value));
+                        const value = event.target.value;
+                        if (value === FACT_CHOICE) setByFact({ ...byFact, [actor.id]: true });
+                        else if (value) {
+                          setByFact(({ [actor.id]: _off, ...rest }) => rest);
+                          setWillHide(({ [actor.id]: _set, ...rest }) => rest);
+                          attempt(() =>
+                            hideUntilOutcome(scene, characterOf(actor.id), value, "success"),
+                          );
+                        }
                       }}
                     >
-                      <option value="">{t("spChooseFact")}</option>
-                      {revealOptions(castOf(actor.id)?.hidden?.revealedBy).map((fact) => (
-                        <option key={fact.id} value={fact.id}>
-                          {fact.label}
+                      <option value="">{t("spChooseAction")}</option>
+                      {game.definition.interactions.map((action) => (
+                        <option key={action.id} value={action.id}>
+                          {action.label.trim() || t("spUntitledAction")}
                         </option>
                       ))}
+                      <option value={FACT_CHOICE}>{t("spExistingFact")}</option>
                     </select>
-                  ))}
+                    {revealChoice(actor.id) === FACT_CHOICE ? (
+                      <select
+                        aria-label={`Revealed by for ${actor.name}`}
+                        value={castOf(actor.id)?.hidden?.revealedBy ?? ""}
+                        disabled={busy}
+                        onChange={(event) => {
+                          if (!event.target.value) return;
+                          setWillHide(({ [actor.id]: _set, ...rest }) => rest);
+                          attempt(() =>
+                            setHidden(scene, characterOf(actor.id), event.target.value),
+                          );
+                        }}
+                      >
+                        <option value="">{t("spChooseFact")}</option>
+                        {revealOptions(castOf(actor.id)?.hidden?.revealedBy).map((fact) => (
+                          <option key={fact.id} value={fact.id}>
+                            {fact.label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      revealChoice(actor.id) !== "" && (
+                        <select
+                          aria-label={`Outcome for ${actor.name}`}
+                          value={outcomeOf(actor.id)}
+                          disabled={busy}
+                          onChange={(event) =>
+                            attempt(() =>
+                              hideUntilOutcome(
+                                scene,
+                                characterOf(actor.id),
+                                revealChoice(actor.id),
+                                event.target.value as "success" | "failure",
+                              ),
+                            )
+                          }
+                        >
+                          <option value="success">{t("spSucceeds")}</option>
+                          {game.definition.interactions.find((a) => a.id === revealChoice(actor.id))
+                            ?.check && <option value="failure">{t("spFails")}</option>}
+                        </select>
+                      )
+                    )}
+                  </>
+                )}
                 {castOf(actor.id)?.hidden && isHostile(game, actor) && (
                   <label>
                     {t("spOnReveal")}{" "}
