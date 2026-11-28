@@ -143,6 +143,19 @@ export function advanceAdventure(session: Session, raw: AdventureTransition) {
     // The scene the player enters decides whether the person is hidden and what happens when found:
     // never what an earlier scene said. Missing in the scene means visible, and waiting.
     const merged = game.state.actors[id]!;
+    // Which side they stand on is also the entered scene's: hostile there means an opponent,
+    // whatever they were before. A new opponent fights with what they carry.
+    if (merged.team !== authored.team) {
+      merged.team = authored.team;
+      const first = merged.weapons[0];
+      const tactics = authored.tactics && merged.weapons.includes(authored.tactics.preferredWeapon);
+      if (tactics) merged.tactics = structuredClone(authored.tactics);
+      else if (first && authored.tactics)
+        merged.tactics = { ...structuredClone(authored.tactics), preferredWeapon: first };
+      else delete merged.tactics;
+      const spare = merged.tactics?.fallbackWeapon;
+      if (spare && !merged.weapons.includes(spare)) delete merged.tactics!.fallbackWeapon;
+    }
     if (authored.requiresFlags) merged.requiresFlags = structuredClone(authored.requiresFlags);
     else delete merged.requiresFlags;
     if (authored.onReveal) merged.onReveal = authored.onReveal;

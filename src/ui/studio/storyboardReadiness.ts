@@ -8,7 +8,7 @@ export { reachableFromStart };
 import { isHostile, reachablePositions } from "../../library/sceneParts";
 
 export type SceneField = "name" | "place" | "playable" | "arrival" | "action" | "reach" | "parts";
-export type ActionField = "label" | "success" | "failure";
+export type ActionField = "label" | "description" | "success" | "failure";
 export type StoryboardIssue = { message: string } & (
   | { kind: "scene"; id: string; field: SceneField; action?: { id: string; field: ActionField } }
   | { kind: "link"; id: string }
@@ -442,6 +442,49 @@ function draftWarning(scene: CampaignScene): StoryboardIssue {
  * The author's own arrival text names a person who is hidden when the scene starts. The text is
  * the author's choice and is never changed; this only says so.
  */
+/**
+ * The actions the player can be shown before a hidden person is found: those whose conditions
+ * can be met without the facts that reveal them. Facts the scene's own actions set count once
+ * those actions can be done, except the outcome that reveals the person. Facts set elsewhere
+ * in the adventure are taken as reachable.
+ */
+function offeredBeforeFound(
+  campaign: CampaignTemplate,
+  scene: CampaignTemplate["scenes"][number],
+  revealedBy: string[],
+) {
+  const game = scene.encounter!;
+  const hiding = new Set(revealedBy);
+  const flags = new Set(game.state.flags.filter((flag) => !hiding.has(flag)));
+  for (const other of campaign.scenes)
+    if (other.id !== scene.id)
+      for (const action of other.encounter?.definition.interactions ?? [])
+        for (const side of [action.success, action.failure])
+          for (const effect of side.effects) if (effect.kind === "flag") flags.add(effect.flag);
+  for (const link of campaign.sceneLinks) for (const flag of link.setsFlags) flags.add(flag);
+  for (const flag of campaign.storyFlags) flags.add(flag);
+  for (const cutscene of campaign.cutscenes) for (const flag of cutscene.setsFlags) flags.add(flag);
+  for (const flag of hiding) flags.delete(flag);
+  const offered = new Set<string>();
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const action of game.definition.interactions) {
+      if (offered.has(action.id) || !action.requiresFlags.every((flag) => flags.has(flag)))
+        continue;
+      offered.add(action.id);
+      grew = true;
+      for (const side of [action.success, action.failure]) {
+        const reveals = side.effects.some((e) => e.kind === "flag" && hiding.has(e.flag));
+        if (reveals) continue;
+        for (const effect of side.effects)
+          if (effect.kind === "flag" && !hiding.has(effect.flag)) flags.add(effect.flag);
+      }
+    }
+  }
+  return game.definition.interactions.filter((action) => offered.has(action.id));
+}
+
 function hiddenNameIssues(campaign: CampaignTemplate): StoryboardIssue[] {
   const found: StoryboardIssue[] = [];
   const plain = (text: string) => ` ${text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ")} `;
@@ -449,12 +492,6 @@ function hiddenNameIssues(campaign: CampaignTemplate): StoryboardIssue[] {
     const game = scene.encounter;
     if (!game || sceneFormat(scene) === "earlier" || isOpenDraft(scene)) continue;
     const arrival = plain(game.definition.description);
-    // What the player can see before anything is found: actions that are on offer at the start.
-    const offered = game.definition.interactions.filter(
-      (action) =>
-        action.requiresFlags.every((flag) => game.state.flags.includes(flag)) &&
-        !action.excludesFlags.some((flag) => game.state.flags.includes(flag)),
-    );
     for (const actor of Object.values(game.state.actors)) {
       if (
         !actor.requiresFlags?.length ||
@@ -470,6 +507,7 @@ function hiddenNameIssues(campaign: CampaignTemplate): StoryboardIssue[] {
       const names = (text: string) =>
         words.length > 0 && words.every((word) => plain(text).includes(` ${word}`));
       const hiddenNow = `${actor.name}, who is hidden when the scene starts`;
+      const offered = offeredBeforeFound(campaign, scene, actor.requiresFlags);
       if (names(arrival))
         found.push({
           kind: "scene",
@@ -489,7 +527,7 @@ function hiddenNameIssues(campaign: CampaignTemplate): StoryboardIssue[] {
               kind: "scene",
               id: scene.id,
               field: "action",
-              action: { id: action.id, field: "label" },
+              action: { id: action.id, field: what === "name" ? "label" : "description" },
               message: `The ${what} of the action “${actionName}” mentions ${hiddenNow}, and the player can see it before finding them. Change the text, or let the person be seen from the start.`,
             });
       }

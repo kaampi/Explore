@@ -1781,6 +1781,15 @@ function SceneActions({
             />
           </label>
           <label>
+            {t("psActionDescription")}
+            <textarea
+              data-action-field="description"
+              rows={2}
+              value={action.description}
+              onChange={(event) => patch(action.id, { description: event.target.value })}
+            />
+          </label>
+          <label>
             {t("psWhatHappensOnSuccess")}
             <textarea
               data-action-field="success"

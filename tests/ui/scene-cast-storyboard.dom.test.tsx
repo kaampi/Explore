@@ -190,3 +190,41 @@ it("warns about the arrival text and about action texts the player sees first, n
 function edda0(box: { campaign: CampaignTemplate }) {
   return box.campaign.scenes[0]!.people[0]!.hidden!.revealedBy;
 }
+
+it("warns about an action that unlocks later but before the discovery, and points at its description", async () => {
+  const { choose, box, done } = await mount();
+  try {
+    const first = box.campaign.scenes[0]!.encounter!.definition.interactions[0]!;
+    await choose("Visibility of Edda", "hidden");
+    await choose("Revealed by action for Edda", first.id);
+    const game = box.campaign.scenes[0]!.encounter!;
+    game.definition.description = "A quiet square.";
+    const second = game.definition.interactions[1]!;
+    delete second.counterpartyId;
+    // "Light the lantern" unlocks it; Edda stays hidden until the first action succeeds.
+    const lantern = { ...structuredClone(second), id: "lantern", label: "Light the lantern" };
+    lantern.requiresFlags = [];
+    lantern.description = "";
+    lantern.success.effects = [{ kind: "flag", flag: "lantern-lit" }];
+    game.definition.interactions.push(lantern);
+    second.requiresFlags = ["lantern-lit"];
+    second.label = "Look up";
+    second.description = "Edda moves above you.";
+    const issues = storyboardWarnings(
+      box.campaign,
+      new Set(adventureFacts(box.campaign).map((f) => f.id)),
+    ).filter((w) => w.message.includes("mentions Edda"));
+    const hit = issues.find((w) => w.message.includes("description of the action"))!;
+    expect(hit).toBeTruthy();
+    expect("action" in hit && hit.action).toEqual({ id: second.id, field: "description" });
+    // Only after the discovery itself: no warning.
+    second.requiresFlags = [box.campaign.scenes[0]!.people[0]!.hidden!.revealedBy];
+    expect(
+      storyboardWarnings(box.campaign, new Set()).filter((w) =>
+        w.message.includes("mentions Edda"),
+      ),
+    ).toEqual([]);
+  } finally {
+    await done();
+  }
+});

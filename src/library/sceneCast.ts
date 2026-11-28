@@ -179,17 +179,6 @@ export function placePerson(
 /** Where an outcome can be named as what reveals a person. */
 export type RevealOutcome = "success" | "failure";
 
-/** The fact an outcome sets, if it sets one. */
-function factOf(
-  scene: CampaignScene,
-  actionId: string,
-  outcome: RevealOutcome,
-): string | undefined {
-  const action = scene.encounter?.definition.interactions.find((item) => item.id === actionId);
-  const effect = action?.[outcome].effects.find((entry) => entry.kind === "flag");
-  return effect?.kind === "flag" ? effect.flag : undefined;
-}
-
 /** Which action and outcome of the scene set a fact, if any does. */
 export function outcomeSetting(
   scene: CampaignScene,
@@ -201,10 +190,16 @@ export function outcomeSetting(
         return { actionId: action.id, outcome };
 }
 
+/** The fact this tool makes for a person in one scene. Scoped to the scene, so it never reveals them elsewhere. */
+export const discoveryFact = (scene: CampaignScene, characterId: string) =>
+  `found:${characterId}:${scene.id}`;
+
 /**
  * Hide a person until one outcome of one action of this scene happens, for example "Undersök
  * taket · lyckas". The fact that outcome already sets is used; if it sets none, one is made for
- * this person. A failed attempt sets nothing, so the person stays hidden.
+ * this person in this scene. Choosing again moves the binding: the made fact is taken off every
+ * other outcome of the scene, so only the last choice reveals the person. The author's own
+ * facts are never touched. A failed attempt sets nothing, so the person stays hidden.
  */
 export function hideUntilOutcome(
   scene: CampaignScene,
@@ -219,9 +214,16 @@ export function hideUntilOutcome(
   if (!action) throw new Error("That action is not in this scene.");
   if (outcome === "failure" && !action.check)
     throw new Error("Only an action that rolls can fail.");
-  let fact = factOf(scene, actionId, outcome);
+  const made = discoveryFact(scene, characterId);
+  for (const other of game.definition.interactions)
+    for (const side of ["success", "failure"] as const)
+      other[side].effects = other[side].effects.filter(
+        (effect) => !(effect.kind === "flag" && effect.flag === made),
+      );
+  const existing = action[outcome].effects.find((effect) => effect.kind === "flag");
+  let fact = existing?.kind === "flag" ? existing.flag : undefined;
   if (!fact) {
-    fact = `found:${characterId}`;
+    fact = made;
     action[outcome].effects.push({ kind: "flag", flag: fact });
   }
   validateEncounter(game);

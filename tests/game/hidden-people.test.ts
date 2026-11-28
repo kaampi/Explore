@@ -13,7 +13,8 @@ import { describeEvents } from "../../src/game/narration";
 import { speechAddressee } from "../../src/game/dialogue";
 import { buildFreeReplyMessages } from "../../src/session/encounterPrompt";
 import { startPlayableCampaign } from "../../src/session/adventureStart";
-import { hideUntilOutcome, setOnReveal } from "../../src/library/sceneCast";
+import { hideUntilOutcome, outcomeSetting, setOnReveal } from "../../src/library/sceneCast";
+import { syncScene } from "../../src/library/sceneSync";
 import type { EncounterGame } from "../../src/game/EncounterSchema";
 
 function setup(onReveal?: "attack") {
@@ -154,6 +155,9 @@ describe("a person who stays hidden until a fact is set", () => {
   });
 });
 
+const play = (game: EncounterGame, interactionId: string, rng: () => number) =>
+  resolve(game, `try-${game.state.revision}`, { kind: "interaction", interactionId } as never, rng);
+
 describe("Undersök taket, made fresh and then chosen as what reveals the person", () => {
   function fresh(onReveal: "wait" | "attack") {
     const { built, spider, id } = setup();
@@ -169,13 +173,6 @@ describe("Undersök taket, made fresh and then chosen as what reveals the person
     scene = setOnReveal(scene, spider.id, onReveal);
     return { game: scene.encounter!, id, look };
   }
-  const play = (game: EncounterGame, interactionId: string, rng: () => number) =>
-    resolve(
-      game,
-      `try-${game.state.revision}`,
-      { kind: "interaction", interactionId } as never,
-      rng,
-    );
 
   it("a failed attempt keeps the person hidden and silent", () => {
     const { game, id, look } = fresh("attack");
@@ -194,5 +191,90 @@ describe("Undersök taket, made fresh and then chosen as what reveals the person
       expect(visibleActors(found.state).map((a) => a.id)).toContain(id);
       expect(found.state.phase).toBe(mode === "attack" ? "combat" : "exploration");
     }
+  });
+});
+
+describe("changing what reveals the person", () => {
+  /** An action with no flags at all, as when the author has just made "Undersök taket". */
+  function bare() {
+    const { built, spider, id } = setup();
+    let scene = addPerson(structuredClone(built.campaign.scenes[0]!), spider);
+    scene = setAttitude(scene, spider.id, "hostile");
+    const look = newOpportunity("Undersök taket", "Du tittar upp.");
+    const stat = Object.keys(scene.encounter!.state.actors.player!.stats)[0] ?? "Observation";
+    scene.encounter!.state.actors.player!.stats[stat] ??= 50;
+    look.check = { stat, modifier: 0 };
+    look.once = false;
+    look.success.effects = [];
+    look.failure.effects = [];
+    scene.encounter!.definition.interactions.push(look);
+    const library = {
+      characters: [...built.characters, spider],
+      objects: built.objects,
+      places: built.places,
+    };
+    return { built, spider, id, scene, look, library };
+  }
+  type Sides = Record<"success" | "failure", { effects: { kind: string }[] }>;
+  const flagsOf = (action: Sides, side: "success" | "failure") =>
+    action[side].effects.flatMap((e) => (e.kind === "flag" ? [(e as { flag: string }).flag] : []));
+  const find = (scene: { encounter?: EncounterGame }, id: string) =>
+    scene.encounter!.definition.interactions.find((a) => a.id === id)!;
+
+  it("moves the binding: only the last chosen outcome reveals, after saving and reopening", () => {
+    const { built, spider, id, scene, look, library } = bare();
+    let next = hideUntilOutcome(scene, spider.id, look.id, "success");
+    next = hideUntilOutcome(next, spider.id, look.id, "failure");
+    const reopened = syncScene(built.campaign, next, library);
+    const fact = reopened.people.find((p) => p.characterId === spider.id)!.hidden!.revealedBy;
+    expect(outcomeSetting(reopened, fact)).toEqual({ actionId: look.id, outcome: "failure" });
+    expect(flagsOf(find(reopened, look.id), "success")).toEqual([]);
+    expect(flagsOf(find(reopened, look.id), "failure")).toEqual([fact]);
+    const won = play(reopened.encounter!, look.id, () => 0);
+    expect(visibleActors(won.state).map((a) => a.id)).not.toContain(id);
+    const lost = play(reopened.encounter!, look.id, () => 0.999);
+    expect(visibleActors(lost.state).map((a) => a.id)).toContain(id);
+    // And back to success: now only success reveals.
+    const back = syncScene(
+      built.campaign,
+      hideUntilOutcome(reopened, spider.id, look.id, "success"),
+      library,
+    );
+    expect(flagsOf(find(back, look.id), "failure")).toEqual([]);
+    const seen = (rng: () => number) =>
+      visibleActors(play(back.encounter!, look.id, rng).state).map((a) => a.id);
+    expect(seen(() => 0)).toContain(id);
+    expect(seen(() => 0.999)).not.toContain(id);
+  });
+
+  it("keeps the author's own facts, and reuses one an outcome already sets", () => {
+    const { built, spider, scene, look, library } = bare();
+    find(scene, look.id).success.effects.push({ kind: "flag", flag: "authors-own" });
+    find(scene, look.id).failure.effects.push({ kind: "flag", flag: "authors-failure-flag" });
+    let next = hideUntilOutcome(scene, spider.id, look.id, "success");
+    expect(next.people.find((p) => p.characterId === spider.id)!.hidden!.revealedBy).toBe(
+      "authors-own",
+    );
+    next = hideUntilOutcome(next, spider.id, look.id, "failure");
+    const reopened = syncScene(built.campaign, next, library);
+    expect(flagsOf(find(reopened, look.id), "success")).toEqual(["authors-own"]);
+    expect(flagsOf(find(reopened, look.id), "failure")).toEqual(["authors-failure-flag"]);
+  });
+
+  it("does not let the same person's fact in another scene reveal her here", () => {
+    const { built, spider } = setup();
+    const one = addPerson(structuredClone(built.campaign.scenes[0]!), spider);
+    const two = addPerson(structuredClone(built.campaign.scenes[1]!), spider);
+    const a = newOpportunity("Look", "x");
+    const b = newOpportunity("Look", "x");
+    one.encounter!.definition.interactions.push(a);
+    two.encounter!.definition.interactions.push(b);
+    const factOne = hideUntilOutcome(one, spider.id, a.id).people.find(
+      (p) => p.characterId === spider.id,
+    )!.hidden!.revealedBy;
+    const factTwo = hideUntilOutcome(two, spider.id, b.id).people.find(
+      (p) => p.characterId === spider.id,
+    )!.hidden!.revealedBy;
+    expect(factOne).not.toBe(factTwo);
   });
 });
