@@ -49,6 +49,8 @@ En dold person och ett ljud vid en upptäckt utlöses av **en fakta som blir sat
 
 I Storyboard väljer författaren **en handling och ett utfall**, inte en fakta: "Upptäcks när spelaren: [Undersök taket ▾] [lyckas ▾]". Storyboard ser till att det utfallet sätter en fakta (och lägger till en om den saknas). Den som vill kan välja en fakta direkt.
 
+"lyckas" är **förvalet**, inte det enda valet. En handling som slår tärning kan också låta ett **misslyckat** utfall avslöja personen. Bara det senast valda utfallet avslöjar personen, och författarens egna fakta på de andra utfallen rörs inte.
+
 **Upptäckt och synlighet är olika saker:**
 - **Synlig** betyder att personen finns för spelaren just nu.
 - **Upptäckt** är händelsen när faktan sätts, och den sker **en gång**.
@@ -120,6 +122,8 @@ En dold person finns inte för spelaren förrän den upptäcks:
 - Ett ljud vid upptäckt spelas, om det finns och spelaren har ljudet på.
 - Följdens text berättar vad som händer.
 - Med `onReveal: "attack"` börjar striden i samma handling. Annars avvaktar personen.
+
+**Faktan är redan satt när spelaren kommer in första gången** (till exempel av en handling i en annan scen): personen är **synlig från början**, utan notis och utan ljud, precis som vid återinträde.
 
 **När spelaren kommer tillbaka** till scenen, eller spelet öppnas på nytt, efter att faktan redan är satt:
 - Personen är **synlig**, utan notis, utan skrap och utan ny attack.
