@@ -15,6 +15,7 @@ import { buildFreeReplyMessages } from "../../src/session/encounterPrompt";
 import { startPlayableCampaign } from "../../src/session/adventureStart";
 import { hideUntilOutcome, outcomeSetting, setOnReveal } from "../../src/library/sceneCast";
 import { syncScene } from "../../src/library/sceneSync";
+import type { CampaignScene } from "../../src/library/LibrarySchema";
 import type { EncounterGame } from "../../src/game/EncounterSchema";
 
 function setup(onReveal?: "attack") {
@@ -217,8 +218,10 @@ describe("changing what reveals the person", () => {
   }
   type Sides = Record<"success" | "failure", { effects: { kind: string }[] }>;
   const flagsOf = (action: Sides, side: "success" | "failure") =>
-    action[side].effects.flatMap((e) => (e.kind === "flag" ? [(e as { flag: string }).flag] : []));
-  const find = (scene: { encounter?: EncounterGame }, id: string) =>
+    action[side].effects.flatMap((e) =>
+      e.kind === "flag" ? [(e as unknown as { flag: string }).flag] : [],
+    );
+  const find = (scene: CampaignScene, id: string) =>
     scene.encounter!.definition.interactions.find((a) => a.id === id)!;
 
   it("moves the binding: only the last chosen outcome reveals, after saving and reopening", () => {
