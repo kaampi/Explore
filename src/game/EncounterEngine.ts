@@ -10,6 +10,7 @@ import {
   type EncounterState,
   type ActionCheck,
 } from "./EncounterSchema";
+import { actorRevealed } from "./itemVisibility";
 import { canMove, connected, distance, findPath, lineOfSight } from "./geometry";
 import { encounterRules, type RulesAdapter } from "./rules";
 import { describeEvents, actionLabel } from "./narration";
@@ -31,7 +32,9 @@ export function hostile(d: EncounterDefinition, a: Actor, b: Actor) {
   );
 }
 export function opponents(d: EncounterDefinition, s: EncounterState, actor: Actor) {
-  return Object.values(s.actors).filter((other) => active(other) && hostile(d, actor, other));
+  return Object.values(s.actors).filter(
+    (other) => active(other) && actorRevealed(s, other) && hostile(d, actor, other),
+  );
 }
 export function combatOver(d: EncounterDefinition, s: EncounterState) {
   return opponents(d, s, s.actors[d.playerId]!).length === 0;
@@ -185,6 +188,7 @@ export function attackBlock(
     return "Unknown actor, target or weapon.";
   if (!active(actor)) return "That actor cannot act.";
   if (!weaponReady(actor)) return "That actor must ready a weapon before attacking.";
+  if (!actorRevealed(s, target)) return "Unknown actor, target or weapon.";
   if (!hostile(d, actor, target)) return "That character is not a hostile target.";
   if (target.hp === 0) return "That opponent is already incapacitated.";
   if (target.disposition === "fled") return "That opponent has left the fight.";
@@ -547,7 +551,11 @@ export function startEncounterCombat(
     actors = Object.values(s.actors).filter(
       (a) =>
         active(a) &&
-        (a.id === d.playerId || Object.values(s.actors).some((b) => active(b) && hostile(d, a, b))),
+        actorRevealed(s, a) &&
+        (a.id === d.playerId ||
+          Object.values(s.actors).some(
+            (b) => active(b) && actorRevealed(s, b) && hostile(d, a, b),
+          )),
     );
   // Ties are stable and favour the player; all other actors keep their authored order.
   actors.sort((a, b) => Number(b.id === d.playerId) - Number(a.id === d.playerId));
@@ -716,11 +724,21 @@ export function resolveEncounterAction(
       );
     }
     if (action.kind === "interaction") {
-      const outcome = performInteraction(d, s, action.interactionId, out, rng, adapters);
-      const fightBreaksOut = outcome.effects.some((effect) => effect.kind === "start-combat");
-      const someoneToFight = Object.values(s.actors).some(
-        (other) => active(other) && hostile(d, actor, other),
+      const hiddenBefore = new Set(
+        Object.values(s.actors)
+          .filter((a) => !actorRevealed(s, a))
+          .map((a) => a.id),
       );
+      const outcome = performInteraction(d, s, action.interactionId, out, rng, adapters);
+      // Reveal is the event of the fact being set: once, in the action that sets it.
+      const found = Object.values(s.actors).filter(
+        (a) => hiddenBefore.has(a.id) && actorRevealed(s, a),
+      );
+      for (const person of found) out.events.push({ kind: "revealed", actorId: person.id });
+      const fightBreaksOut =
+        outcome.effects.some((effect) => effect.kind === "start-combat") ||
+        found.some((person) => person.onReveal === "attack");
+      const someoneToFight = opponents(d, s, actor).length > 0;
       if (fightBreaksOut && someoneToFight) startEncounterCombat(d, s, out, rng, adapters);
     }
     if (action.kind === "look") out.events.push({ kind: "look", actorId: actor.id });

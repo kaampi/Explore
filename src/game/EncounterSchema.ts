@@ -19,6 +19,10 @@ export const ActorSchema = z.object({
   /** The author's choice. The engine never reads it; the sync turns it into health. */
   toughness: z.enum(["weak", "normal", "tough"]).optional(),
   weaponReady: z.boolean().optional(),
+  /** Hidden until all these facts are set, like `items[].requiresFlags`. Missing = always visible. */
+  requiresFlags: z.array(id).optional(),
+  /** What happens in the action that reveals them: "attack" starts combat; missing = they wait. */
+  onReveal: z.literal("attack").optional(),
   defending: z.boolean().default(false),
   actionsLeft: z.number().int().nonnegative().default(1),
   movesLeft: z.number().int().nonnegative().default(1),
@@ -284,6 +288,8 @@ export const EncounterEventSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("speech-reply"), actorId: id, text: z.string() }),
   z.object({ kind: z.literal("look"), actorId: id }),
   z.object({ kind: z.literal("interaction"), actorId: id, interactionId: id, text: z.string() }),
+  /** A hidden person has been discovered. Happens once: when the fact that hid them is set. */
+  z.object({ kind: z.literal("revealed"), actorId: id }),
 ]);
 export type EncounterEvent = z.infer<typeof EncounterEventSchema>;
 export const ActorTurnSchema = z.object({

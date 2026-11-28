@@ -379,6 +379,14 @@ export const SceneCastSchema = z.object({
   trust: z.string().default("20"),
   familiarity: z.string().default("10"),
   tension: z.string().default("5"),
+  /** The stable id of the position in the scene's engine. `position` is then only its name. */
+  positionId: z.string().min(1).optional(),
+  /** Attitude to the player. Missing: the engine's law (an opponent is hostile, anyone else neutral). */
+  stance: z.enum(["friendly", "neutral", "hostile"]).optional(),
+  /** Hidden until this fact is set by an outcome. Missing: visible. */
+  hidden: z.object({ revealedBy: z.string().min(1) }).optional(),
+  /** What a hostile, hidden person does when found. Missing: waits. */
+  onReveal: z.enum(["wait", "attack"]).optional(),
 });
 export type SceneCast = z.infer<typeof SceneCastSchema>;
 

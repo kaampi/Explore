@@ -10,6 +10,7 @@ import type {
 } from "./LibrarySchema";
 import type { EncounterGame } from "../game/EncounterSchema";
 import { validateEncounter } from "../game/EncounterEngine";
+import { tuneCast } from "./sceneCast";
 import { sceneFormat } from "./sceneFormat";
 import { attributeRange } from "../state/traitBands";
 import { BASIC_RULESET, BASIC_START_VALUE } from "./basicRuleset";
@@ -317,7 +318,8 @@ export function syncScene(
   library: SceneLibrary,
 ): CampaignScene {
   if (!scene.encounter) return scene;
-  const game = structuredClone(scene.encounter);
+  const tuned = tuneCast(scene);
+  const game = structuredClone(tuned.encounter!);
   const rules = activeRules(campaign, game, library);
   if (rules) syncRules(campaign, game, rules);
   syncPlayer(campaign, game, rules);
@@ -328,7 +330,7 @@ export function syncScene(
   if (campaign.guideItemText) syncAdventureItemText(campaign, game, library.objects);
   resetPlayState(game);
   validateEncounter(game);
-  return { ...scene, encounter: game };
+  return { ...tuned, encounter: game };
 }
 
 /** Sync every scene built in Storyboard. Scenes in the earlier format are not touched. */

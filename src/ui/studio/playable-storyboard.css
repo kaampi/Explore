@@ -805,7 +805,18 @@
 .storyboard-scene-parts__attach {
   display: flex;
   flex-basis: 100%;
+  flex-wrap: wrap;
   gap: 6px;
+}
+.storyboard-scene-parts__attach > select,
+.storyboard-scene-parts__attach > input[type="text"],
+.storyboard-scene-parts__attach > label {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+.storyboard-scene-parts__attach > label > select,
+.storyboard-scene-parts__attach > label > input[type="text"] {
+  width: 100%;
 }
 
 /* AI help (docs/storyboard-ai.sv.md): what a proposal would add, drawn dashed. Nothing here is saved. */

@@ -1,3 +1,4 @@
+import { visibleActors } from "../game/itemVisibility";
 import type { ChatMessage } from "../llm/types";
 import type { Session } from "../state/StateSchema";
 import type { EncounterGame } from "../game/EncounterSchema";
@@ -133,7 +134,7 @@ function doorLines(game: EncounterGame): string[] {
 function peopleHereLines(game: EncounterGame): string[] {
   const { definition: d, state: s } = game;
   const player = s.actors[d.playerId]!;
-  return Object.values(s.actors)
+  return visibleActors(s)
     .filter((actor) => actor.id !== d.playerId && actor.hp > 0 && actor.disposition !== "fled")
     .map((actor) => {
       const where =

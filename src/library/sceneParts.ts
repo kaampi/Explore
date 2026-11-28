@@ -700,7 +700,20 @@ export function renamePosition(scene: CampaignScene, id: string, name: string): 
   )
     throw new Error(`There is already a position called “${trimmed}”.`);
   place.name = trimmed;
-  return finish(current, game);
+  const next = finish(current, game);
+  // The cast keeps the name in step with the id: whoever stands there is shown at the new name.
+  return {
+    ...next,
+    people: next.people.map((pick) => {
+      const actor = game.state.actors[actorIdFor(pick.characterId)];
+      const standsHere = pick.positionId === id || (!pick.positionId && actor?.position === id);
+      return standsHere && pick.position
+        ? { ...pick, position: trimmed, positionId: id }
+        : pick.positionId === id
+          ? { ...pick, position: trimmed }
+          : pick;
+    }),
+  };
 }
 
 /** What stops a position from being removed: someone or something is there, or points there. */
@@ -902,7 +915,16 @@ export function setAttitude(
       );
     delete actor.tactics;
   }
-  return finish(current, game);
+  // The scene's cast follows the engine: hostile is hostile; anyone else keeps friendly or neutral.
+  const next = finish(current, game);
+  return {
+    ...next,
+    people: next.people.map((pick) => {
+      if (pick.characterId !== characterId || pick.stance === undefined) return pick;
+      if (attitude === "hostile") return { ...pick, stance: "hostile" as const };
+      return pick.stance === "hostile" ? { ...pick, stance: "neutral" as const } : pick;
+    }),
+  };
 }
 
 /** How tough a person is. Their health follows, and the sync keeps it in step with the player's. */

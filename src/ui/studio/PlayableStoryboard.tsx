@@ -1054,6 +1054,7 @@ export function PlayableStoryboard({
             scene={scene}
             people={characters}
             things={objects}
+            facts={facts}
             busy={busy}
             onChange={patchScene}
             onOpenLibrary={onOpenLibrary}
@@ -1777,6 +1778,15 @@ function SceneActions({
               data-action-field="label"
               value={action.label}
               onChange={(event) => patch(action.id, { label: event.target.value })}
+            />
+          </label>
+          <label>
+            {t("psActionDescription")}
+            <textarea
+              data-action-field="description"
+              rows={2}
+              value={action.description}
+              onChange={(event) => patch(action.id, { description: event.target.value })}
             />
           </label>
           <label>
