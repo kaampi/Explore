@@ -17,6 +17,7 @@ import {
 } from "@state/StateSchema";
 import { z } from "zod";
 import { PlayThemeSchema } from "../ui/themes/theme";
+import { CharacterReferencesSchema } from "./referenceCards";
 
 /**
  * Library templates — reusable characters, places, stories, narrator
@@ -67,6 +68,8 @@ export const CharacterTemplateSchema = z.object({
    * Data-URL portrait for Studio / Cast. Not included in LLM context.
    */
   portraitDataUrl: z.string().optional(),
+  /** Reference cards: the author's pictures of this character, one per look. Never shown to the player. */
+  references: CharacterReferencesSchema.optional(),
   /** Leftover on old cards. Play uses campaign-member lore. */
   lore: z.array(CharacterLoreEntrySchema).default(() => []),
   /**
@@ -345,6 +348,8 @@ export const CampaignPlayerSchema = z.object({
   personality: z.string().default(""),
   pronoun: CharacterPronounSchema.optional(),
   portraitDataUrl: z.string().optional(),
+  /** The library character this player role was taken from. Never matched by name. */
+  characterId: z.string().min(1).optional(),
   stats: z
     .record(z.string(), z.union([z.string(), z.number()]))
     .default(() => ({}))
@@ -460,6 +465,10 @@ export type CampaignScene = z.infer<typeof CampaignSceneSchema>;
  * and optional Triggers. Start copies one scene onto a live session.
  */
 export const CampaignTemplateSchema = z.object({
+  /** Which reference card each character uses in this adventure. Missing: the character's default. */
+  characterLooks: z
+    .array(z.object({ characterId: z.string().min(1), cardId: z.string().min(1) }))
+    .optional(),
   /** How the play view looks in this adventure. It comes before the world's theme and the player's own. */
   theme: PlayThemeSchema.optional(),
   id: z.string().min(1),
