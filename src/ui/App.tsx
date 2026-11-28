@@ -439,7 +439,11 @@ function SandboxApp() {
         id={view === "play" ? (session?.id ?? null) : null}
         authorTheme={view === "play" ? session?.authorTheme : undefined}
       />
-      <header className="sb-header" data-play={view === "play" || undefined}>
+      <header
+        className="sb-header"
+        data-play={view === "play" || undefined}
+        data-busy={working || undefined}
+      >
         <div className="sb-header-start">
           <button
             type="button"

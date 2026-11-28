@@ -27,7 +27,13 @@ function named(label: string): HTMLButtonElement {
   if (!element) throw new Error(`Missing action: ${label}`);
   return element;
 }
+/**
+ * The app finishes opening, leaving and archiving a conversation in the background. Until it has,
+ * it refuses a click (a banner says to wait) or has the buttons disabled. What shows on the screen
+ * can be there before that is over, so a click waits for the app to be idle, as a person would.
+ */
 async function click(element: HTMLElement) {
+  await waitFor(() => !container.querySelector(".sb-header[data-busy]"));
   await act(async () => {
     element.click();
   });
