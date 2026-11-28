@@ -1,11 +1,15 @@
 import { z } from "zod";
-import { callProvider, TEXT_TIMEOUT_MS, type Provider } from "../session/encounterAI";
+import { callProvider, type Provider, type ProviderFailure } from "../session/encounterAI";
 import {
   newGuideChoice,
   newGuideScene,
   type GuideInterview,
   type GuideQuestion,
 } from "./guideInterview";
+
+// Authoring can wait for a local model to load and continue generating a dialogue.
+const guideTimeoutMs = 120_000;
+const maxResponseChars = 4000;
 
 const synopsisFields = {
   title: ["cgAdventureTitle", 120, "adventure title"],
@@ -149,13 +153,19 @@ export type GuideDiscussion = { reply: string; suggestion?: string | null | unde
 export type GuideExchange = GuideDiscussion & { message: string };
 export type SynopsisSuggestions = z.infer<typeof synopsisSchema>;
 
+export type GuideRequestFailure = ProviderFailure | "invalid-reply";
+export type GuideRequestResult<T> =
+  | { status: "ok"; value: T }
+  | { status: "cancelled" }
+  | { status: "failed"; reason: GuideRequestFailure };
+
 async function ask<T>(
   provider: Provider,
   system: string,
   input: object,
   schema: z.ZodType<T>,
   signal: AbortSignal,
-): Promise<T | null> {
+): Promise<GuideRequestResult<T>> {
   const response = await callProvider(
     provider,
     {
@@ -166,16 +176,22 @@ async function ask<T>(
       temperature: 0.4,
       maxTokens: 1600,
     },
-    { signal, timeoutMs: TEXT_TIMEOUT_MS, maxChars: 4000 },
+    { signal, timeoutMs: guideTimeoutMs, maxChars: maxResponseChars },
   );
-  if (response.status !== "ok" || response.text.length > 4000) return null;
+  if (response.status !== "ok") return response;
+  const invalidReply = { status: "failed", reason: "invalid-reply" } as const;
   const raw = response.text.trim().replace(/^```(?:json)?\s*([\s\S]*?)\s*```$/i, "$1");
+  let json: unknown;
   try {
-    const parsed = schema.safeParse(JSON.parse(raw));
-    return parsed.success ? parsed.data : null;
+    json = JSON.parse(raw);
   } catch {
-    return null;
+    return response.finishReason === "length"
+      ? { status: "failed", reason: "incomplete" }
+      : invalidReply;
   }
+  if (response.text.length > maxResponseChars) return invalidReply;
+  const parsed = schema.safeParse(json);
+  return parsed.success ? { status: "ok", value: parsed.data } : invalidReply;
 }
 
 export function discussGuideQuestion(
@@ -204,6 +220,7 @@ ${
     ? `If you have a specific answer, include a "suggestion" string for this field only: ${field} (up to ${length} characters). Make it ready to paste, without commentary.`
     : 'The current answer is linked or unavailable. Give advice only and omit "suggestion".'
 }
+${question === "action" && answer.change ? 'If asked for dialogue, put the dialogue in "reply" and give one short, playable action or opening line in "suggestion".' : ""}
 An omitted or null suggestion is fine. Never claim to save, edit or approve anything. Do not give IDs or game data.`,
     {
       question: questionText,
@@ -219,11 +236,13 @@ An omitted or null suggestion is fine. Never claim to save, edit or approve anyt
     },
     z
       .object({
-        reply: z.string().trim().min(1).max(1000),
-        suggestion: z.string().trim().min(1).max(length).nullable().optional(),
+        reply: z.string().trim().min(1),
+        suggestion: z.string().trim().nullable().optional(),
       })
       .strict()
-      .transform((result) => (answer.change ? result : { reply: result.reply })),
+      .transform(({ reply, suggestion }) =>
+        answer.change && suggestion ? { reply, suggestion } : { reply },
+      ),
     signal,
   );
 }

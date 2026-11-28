@@ -31,7 +31,15 @@ export const TEXT_TIMEOUT_MS = 30_000;
 const MAX_INTERPRET_REPLY_CHARS = 512;
 const MAX_TEXT_CHARS = 600;
 
-export type CallResult = { status: "ok"; text: string } | { status: "cancelled" | "failed" };
+export type ProviderFailure = "timeout" | "provider" | "request" | "incomplete";
+
+type CallText = { status: "ok"; text: string };
+export type CallResult = CallText | { status: "cancelled" | "failed" };
+
+type ProviderCallResult =
+  | (CallText & { finishReason: "stop" | "length" })
+  | { status: "cancelled" }
+  | { status: "failed"; reason: ProviderFailure };
 
 /** True when the AI may be used at all: exploration only, never during combat or after the end. */
 export function aiAllowed(game: EncounterGame | undefined): game is EncounterGame {
@@ -42,37 +50,43 @@ export async function callProvider(
   provider: Provider,
   request: Omit<CompletionRequest, "signal">,
   options: TextOptions & { timeoutMs: number; maxChars: number },
-): Promise<CallResult> {
+): Promise<ProviderCallResult> {
   if (options.signal?.aborted) return { status: "cancelled" };
   const controller = new AbortController();
   const abort = () => controller.abort();
   options.signal?.addEventListener("abort", abort, { once: true });
-  const timer = setTimeout(abort, options.timeoutMs);
-  const outcomeIfStopped = (): CallResult =>
-    options.signal?.aborted ? { status: "cancelled" } : { status: "failed" };
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    abort();
+  }, options.timeoutMs);
+  const failure = (reason: ProviderFailure): ProviderCallResult => {
+    if (options.signal?.aborted) return { status: "cancelled" };
+    return { status: "failed", reason: timedOut ? "timeout" : reason };
+  };
   try {
     let text = "";
-    let finished = false;
+    let finishReason: "stop" | "length" | undefined;
     for await (const chunk of provider.streamCompletion({
       ...request,
       signal: controller.signal,
     })) {
-      if (controller.signal.aborted) return outcomeIfStopped();
-      if (chunk.type === "error") return { status: "failed" };
+      if (controller.signal.aborted) return failure("request");
+      if (chunk.type === "error") return failure("provider");
       if (chunk.type === "text_delta") {
         text += chunk.text;
-        if (text.length > options.maxChars * 4) return { status: "failed" };
+        if (text.length > options.maxChars * 4) return failure("incomplete");
         options.onDelta?.(text);
       }
       if (chunk.type === "done") {
-        if (chunk.finishReason === "cancelled") return outcomeIfStopped();
-        finished = true;
+        if (chunk.finishReason === "cancelled") return failure("incomplete");
+        finishReason = chunk.finishReason;
       }
     }
-    if (controller.signal.aborted || !finished) return outcomeIfStopped();
-    return { status: "ok", text };
+    if (controller.signal.aborted || !finishReason) return failure("incomplete");
+    return { status: "ok", text, finishReason };
   } catch {
-    return outcomeIfStopped();
+    return failure("request");
   } finally {
     clearTimeout(timer);
     controller.abort();

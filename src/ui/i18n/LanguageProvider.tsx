@@ -29,8 +29,11 @@ const guideLabels = {
       "Svaret har ändrats. Be om ett nytt förslag som utgår från det aktuella svaret.",
     cgAiNoSuggestions: "Assistenten hittade inga svar att fylla i från din synopsis.",
     cgAiNoEmptyAnswers: "Det finns inga tomma svar som Assistenten kan fylla i.",
+    cgAiEditReplyAsAnswer: "Redigera assistentens text som svar",
     cgAiUseAnswer: "Använd som svar",
     cgAiEditSuggestion: "Redigera förslag för {field}",
+    cgAiShortenSuggestion:
+      "Korta förslaget till högst {limit} tecken för att använda det som svar.",
     cgAiDismissSuggestion: "Avvisa förslaget",
     cgAiTarget: "Fält som förslaget gäller",
     cgAiAdviceOnly: "Inget fält valt – ge bara råd",
@@ -45,7 +48,14 @@ const guideLabels = {
     cgAiCancel: "Avbryt AI-förfrågan",
     cgAiUnavailable:
       "Assistenten är inte tillgänglig just nu. Kontrollera AI-anslutningen och modellen i Inställningar eller fortsätt i guiden.",
-    cgAiFailed: "Assistenten kunde inte ge ett svar. Försök igen eller fortsätt i guiden.",
+    cgAiTimedOut: "Väntetiden gick ut innan AI-svaret var klart. Din fråga finns kvar.",
+    cgAiProviderError: "AI-anslutningen rapporterade ett fel. Din fråga finns kvar. Försök igen.",
+    cgAiIncompleteReply:
+      "AI-tjänsten skickade inget fullständigt svar. Din fråga finns kvar. Försök igen.",
+    cgAiFailed:
+      "Anropet till AI-tjänsten misslyckades. Kontrollera anslutningen och den valda modellen och försök igen.",
+    cgAiInvalidReply:
+      "Modellen svarade, men guiden kunde inte läsa svaret. Din fråga finns kvar. Försök igen.",
     cgClose: "Stäng guiden",
     cgLoading: "Öppnar guiden …",
     cgSaveFailed: "Utkastet kunde inte sparas.",
@@ -261,8 +271,11 @@ const guideLabels = {
       "The answer has changed. Ask for a new suggestion to work from the current answer.",
     cgAiNoSuggestions: "The Assistant found no answers to fill in from your synopsis.",
     cgAiNoEmptyAnswers: "There are no empty answers for the Assistant to fill in.",
+    cgAiEditReplyAsAnswer: "Edit the reply as an answer",
     cgAiUseAnswer: "Use as answer",
     cgAiEditSuggestion: "Edit suggestion for {field}",
+    cgAiShortenSuggestion:
+      "Shorten the suggestion to {limit} characters or fewer to use it as an answer.",
     cgAiDismissSuggestion: "Dismiss suggestion",
     cgAiTarget: "Field for the suggestion",
     cgAiAdviceOnly: "No field selected – advice only",
@@ -277,7 +290,16 @@ const guideLabels = {
     cgAiCancel: "Cancel AI request",
     cgAiUnavailable:
       "The Assistant is unavailable right now. Check the AI connection and model in Settings or keep using the guide.",
-    cgAiFailed: "The Assistant could not give an answer. Try again or keep using the guide.",
+    cgAiTimedOut:
+      "The wait expired before the AI answer was complete. Your question is still here.",
+    cgAiProviderError:
+      "The AI connection reported an error. Your question is still here. Try again.",
+    cgAiIncompleteReply:
+      "The AI service did not send a complete answer. Your question is still here. Try again.",
+    cgAiFailed:
+      "The request to the AI service failed. Check the connection and selected model, then try again.",
+    cgAiInvalidReply:
+      "The model replied, but the guide could not read its answer. Your question is still here. Try again.",
     cgClose: "Close guide",
     cgLoading: "Opening the guide …",
     cgSaveFailed: "The draft could not be saved.",
@@ -492,8 +514,10 @@ const guideLabels = {
       "Svaret er endret. Be om et nytt forslag som tar utgangspunkt i det gjeldende svaret.",
     cgAiNoSuggestions: "Assistenten fant ingen svar å fylle inn fra synopsisen din.",
     cgAiNoEmptyAnswers: "Det er ingen tomme svar som Assistenten kan fylle ut.",
+    cgAiEditReplyAsAnswer: "Rediger assistentens tekst som svar",
     cgAiUseAnswer: "Bruk som svar",
     cgAiEditSuggestion: "Rediger forslag for {field}",
+    cgAiShortenSuggestion: "Kort ned forslaget til høyst {limit} tegn for å bruke det som svar.",
     cgAiDismissSuggestion: "Avvis forslaget",
     cgAiTarget: "Felt for forslaget",
     cgAiAdviceOnly: "Intet felt valgt – bare råd",
@@ -508,7 +532,15 @@ const guideLabels = {
     cgAiCancel: "Avbryt KI-forespørselen",
     cgAiUnavailable:
       "Assistenten er utilgjengelig akkurat nå. Sjekk KI-tilkoblingen og modellen i Innstillinger eller fortsett i veiviseren.",
-    cgAiFailed: "Assistenten kunne ikke gi et svar. Prøv igjen eller fortsett i veiviseren.",
+    cgAiTimedOut: "Ventetiden gikk ut før KI-svaret var ferdig. Spørsmålet ditt er fortsatt her.",
+    cgAiProviderError:
+      "KI-tilkoblingen meldte om en feil. Spørsmålet ditt er fortsatt her. Prøv igjen.",
+    cgAiIncompleteReply:
+      "KI-tjenesten sendte ikke et fullstendig svar. Spørsmålet ditt er fortsatt her. Prøv igjen.",
+    cgAiFailed:
+      "Kallet til KI-tjenesten mislyktes. Sjekk tilkoblingen og den valgte modellen, og prøv igjen.",
+    cgAiInvalidReply:
+      "Modellen svarte, men veiviseren kunne ikke lese svaret. Spørsmålet ditt er fortsatt her. Prøv igjen.",
     cgClose: "Lukk veiviseren",
     cgLoading: "Åpner veiviseren …",
     cgSaveFailed: "Utkastet kunne ikke lagres.",

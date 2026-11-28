@@ -10,6 +10,8 @@ import {
   suggestGuideSceneText,
   synopsisOrder,
   type GuideExchange,
+  type GuideRequestFailure,
+  type GuideRequestResult,
   type GuideWorldTarget,
   type SynopsisSuggestions,
 } from "../../library/guideAssistant";
@@ -33,10 +35,20 @@ const worldTopics = {
   map: "cgWorldOrMap",
 } as const;
 
+const guideRequestErrors = {
+  timeout: "cgAiTimedOut",
+  provider: "cgAiProviderError",
+  request: "cgAiFailed",
+  incomplete: "cgAiIncompleteReply",
+  "invalid-reply": "cgAiInvalidReply",
+} as const satisfies Record<GuideRequestFailure, string>;
+
 function useGuideRequest() {
   const connection = useOptionalConnection();
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState<"cgAiUnavailable" | "cgAiFailed">();
+  const [error, setError] = useState<
+    "cgAiUnavailable" | (typeof guideRequestErrors)[GuideRequestFailure]
+  >();
   const request = useRef<AbortController | null>(null);
 
   const backend = connection?.backend;
@@ -58,7 +70,7 @@ function useGuideRequest() {
   }
 
   async function send<T>(
-    load: (provider: Provider, signal: AbortSignal) => Promise<T | null>,
+    load: (provider: Provider, signal: AbortSignal) => Promise<GuideRequestResult<T>>,
     receive: (result: T) => void,
   ) {
     if (request.current) return;
@@ -87,11 +99,11 @@ function useGuideRequest() {
       const provider =
         connection.backend === "strata"
           ? new OpenAICompatibleProvider({ model, baseUrl: connection.baseUrl })
-          : new OllamaProvider({ model });
+          : new OllamaProvider({ model, responseFormat: "json" });
       const result = await load(provider, controller.signal);
       if (controller.signal.aborted) return;
-      if (result === null) setError("cgAiFailed");
-      else receive(result);
+      if (result.status === "failed") setError(guideRequestErrors[result.reason]);
+      else if (result.status === "ok") receive(result.value);
     } catch {
       if (!controller.signal.aborted) setError("cgAiFailed");
     } finally {
@@ -123,6 +135,7 @@ function GuideSuggestion({
   dismiss: () => void;
 }) {
   const t = useTranslate();
+  const tooLong = value.trim().length > maxLength;
   return (
     <div className="guide-assistant-suggestion">
       <label className="guide-field">
@@ -133,8 +146,9 @@ function GuideSuggestion({
           onChange={(event) => change(event.target.value)}
         />
       </label>
+      {tooLong && <p>{t("cgAiShortenSuggestion", { limit: maxLength })}</p>}
       <div className="guide-buttons">
-        <button type="button" onClick={apply} disabled={disabled || !value.trim()}>
+        <button type="button" onClick={apply} disabled={disabled || tooLong || !value.trim()}>
           {t("cgAiUseAnswer")}
         </button>
         <button type="button" onClick={dismiss}>
@@ -197,7 +211,11 @@ export function GuideAssistant({
   const [message, setMessage] = useState("");
   const [worldTarget, setWorldTarget] = useState<GuideWorldTarget>();
   const [exchanges, setExchanges] = useState<GuideExchange[]>([]);
-  const [discussion, setDiscussion] = useState<{ revision: number; value: string }>();
+  const [discussion, setDiscussion] = useState<{
+    revision: number;
+    value: string;
+    fromReply: boolean;
+  }>();
   const [synopsis, setSynopsis] = useState<{
     original: string;
     suggestions: SynopsisSuggestions;
@@ -274,8 +292,12 @@ export function GuideAssistant({
         (response) => {
           setExchanges((history) => [...history, { message: input, ...response }]);
           setDiscussion(
-            response.suggestion
-              ? { revision: draft.revision, value: response.suggestion }
+            answer.change
+              ? {
+                  revision: draft.revision,
+                  value: response.suggestion ?? response.reply,
+                  fromReply: !response.suggestion,
+                }
               : undefined,
           );
           setMessage("");
@@ -373,19 +395,29 @@ export function GuideAssistant({
               </div>
               {discussion && answer.change && (
                 <>
-                  <GuideSuggestion
-                    label={t(answerLabel)}
-                    maxLength={maxLength}
-                    value={discussion.value}
-                    disabled={pending || discussionChanged}
-                    change={(value) => setDiscussion({ ...discussion, value })}
-                    dismiss={() => setDiscussion(undefined)}
-                    apply={() => {
-                      if (discussionChanged || !answer.change) return;
-                      edit(answer.change(discussion.value.trim()));
-                      setDiscussion(undefined);
-                    }}
-                  />
+                  {discussion.fromReply ? (
+                    <button
+                      type="button"
+                      disabled={pending || discussionChanged}
+                      onClick={() => setDiscussion({ ...discussion, fromReply: false })}
+                    >
+                      {t("cgAiEditReplyAsAnswer")}
+                    </button>
+                  ) : (
+                    <GuideSuggestion
+                      label={t(answerLabel)}
+                      maxLength={maxLength}
+                      value={discussion.value}
+                      disabled={pending || discussionChanged}
+                      change={(value) => setDiscussion({ ...discussion, value })}
+                      dismiss={() => setDiscussion(undefined)}
+                      apply={() => {
+                        if (discussionChanged || !answer.change) return;
+                        edit(answer.change(discussion.value.trim()));
+                        setDiscussion(undefined);
+                      }}
+                    />
+                  )}
                   {discussionChanged && <p>{t("cgAiAnswerChanged")}</p>}
                 </>
               )}
