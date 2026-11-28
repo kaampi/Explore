@@ -45,8 +45,9 @@ function withCast(
 
 /** Leave a field out instead of writing `undefined`. */
 function without<K extends keyof SceneCast>(pick: SceneCast, key: K): SceneCast {
-  const { [key]: _gone, ...rest } = pick;
-  return rest as SceneCast;
+  const copy = { ...pick };
+  delete copy[key];
+  return copy;
 }
 
 /** What a person's stance is: the one written, else the engine's law. */

@@ -50,6 +50,13 @@ import {
   type ItemPlace,
 } from "../../library/sceneParts";
 
+/** A copy of a record without one key. */
+function dropKey<T>(record: Record<string, T>, key: string): Record<string, T> {
+  const copy = { ...record };
+  delete copy[key];
+  return copy;
+}
+
 const NEW_POSITION = "__new-position__";
 const FACT_CHOICE = "__fact__";
 
@@ -256,7 +263,7 @@ export function SceneParts({
                     if (event.target.value === NEW_POSITION)
                       setNewPosition({ ...newPosition, [actor.id]: "" });
                     else {
-                      setNewPosition(({ [actor.id]: _closed, ...rest }) => rest);
+                      setNewPosition((current) => dropKey(current, actor.id));
                       attempt(() =>
                         placePerson(scene, characterOf(actor.id), {
                           positionId: event.target.value,
@@ -293,7 +300,7 @@ export function SceneParts({
                             name: newPosition[actor.id]!,
                           }),
                         );
-                        setNewPosition(({ [actor.id]: _done, ...rest }) => rest);
+                        setNewPosition((current) => dropKey(current, actor.id));
                       }}
                     >
                       {t("spAddPosition")}
@@ -391,7 +398,7 @@ export function SceneParts({
                   disabled={busy}
                   onChange={(event) => {
                     if (event.target.value === "visible") {
-                      setWillHide(({ [actor.id]: _shown, ...rest }) => rest);
+                      setWillHide((current) => dropKey(current, actor.id));
                       attempt(() => setHidden(scene, characterOf(actor.id), null));
                     } else setWillHide({ ...willHide, [actor.id]: true });
                   }}
@@ -409,8 +416,8 @@ export function SceneParts({
                         const value = event.target.value;
                         if (value === FACT_CHOICE) setByFact({ ...byFact, [actor.id]: true });
                         else if (value) {
-                          setByFact(({ [actor.id]: _off, ...rest }) => rest);
-                          setWillHide(({ [actor.id]: _set, ...rest }) => rest);
+                          setByFact((current) => dropKey(current, actor.id));
+                          setWillHide((current) => dropKey(current, actor.id));
                           attempt(() =>
                             hideUntilOutcome(scene, characterOf(actor.id), value, "success"),
                           );
@@ -432,7 +439,7 @@ export function SceneParts({
                         disabled={busy}
                         onChange={(event) => {
                           if (!event.target.value) return;
-                          setWillHide(({ [actor.id]: _set, ...rest }) => rest);
+                          setWillHide((current) => dropKey(current, actor.id));
                           attempt(() =>
                             setHidden(scene, characterOf(actor.id), event.target.value),
                           );

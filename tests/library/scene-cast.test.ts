@@ -179,8 +179,9 @@ describe("position as a name and an id", () => {
     const byName = {
       ...scene,
       people: scene.people.map((p) => {
-        const { positionId: _drop, ...rest } = p;
-        return { ...rest, position: "i taket" };
+        const rest = { ...p, position: "i taket" };
+        delete rest.positionId;
+        return rest;
       }),
     };
     // The name only matches once the position exists.
@@ -227,7 +228,9 @@ describe("the guide's way of saving a person", () => {
     const saved = {
       ...hidden,
       people: hidden.people.map((p) => {
-        const { hidden: _h, onReveal: _o, ...rest } = p;
+        const rest = { ...p };
+        delete rest.hidden;
+        delete rest.onReveal;
         return rest;
       }),
     };
